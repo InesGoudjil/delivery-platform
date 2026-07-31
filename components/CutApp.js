@@ -30,11 +30,10 @@ import {
 //  your own art — these are placeholder gradients generated for this port.
 // ============================================================
 
-import IMG_ABOUT from "../assets/about-img.png";
-
 const IMG_HERO = "/images/hero.jpg";
 const IMG_SHOW = "/images/showcase.jpg";
 const IMG_CTA = "/images/cta.jpg";
+const IMG_ABOUT = '/images/about-img.png';
 
 const STATUS = {
   draft: { l: "Draft", c: "#6B7580" },
@@ -613,7 +612,7 @@ export default function CutApp() {
                 <div className="am-photos">
                   <div
                     className="am-portrait"
-                    style={{ backgroundImage: `url(${IMG_ABOUT.src})` }}
+                    style={{ backgroundImage: `url(${IMG_ABOUT})` }}
                   />
                 </div>
                 <div className="am-text">
