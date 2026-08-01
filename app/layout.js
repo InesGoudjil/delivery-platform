@@ -16,7 +16,7 @@ const satoshi = localFont({
 });
 
 export const metadata = {
-  title: "CineSpace — Deliver films like a studio.",
+  title: "CineSpace | Deliver films like a studio.",
   description:
     "Your portfolio, client review, and delivery — in one place, built for filmmakers in the Gulf.",
 };
