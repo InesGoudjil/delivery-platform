@@ -58,7 +58,7 @@ import {
 const IMG_HERO = "/images/hero.jpg";
 const IMG_SHOW = "/images/showcase.jpg";
 const IMG_CTA = "/images/cta.jpg";
-const IMG_ABOUT = "/images/about.jpg";
+const IMG_ABOUT = "/images/about-img.png";
 const LOGO_SRC = "/images/logo.svg";
 
 const STATUS = {
