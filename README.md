@@ -16,7 +16,7 @@ Then open http://localhost:3000.
 ## What changed from the prototype
 
 - **Project structure** — split into `app/layout.js`, `app/page.js`, and
-  `components/CutApp.js` (a client component, since it's all `useState`/
+  `components/CineSpaceApp.js` (a client component, since it's all `useState`/
   `useEffect` driven) instead of one giant file.
 - **Fonts** — Archivo + Inter now load through `next/font/google` instead of
   a `@import` in the stylesheet, which avoids the extra network round-trip
@@ -47,10 +47,10 @@ Then open http://localhost:3000.
 ```
 app/
   layout.js       — root layout, loads fonts, imports globals.css
-  page.js          — renders <CutApp />
+  page.js          — renders <CineSpaceApp />
   globals.css      — Tailwind directives + bespoke component CSS
 components/
-  CutApp.js        — the ported app ("use client")
+  CineSpaceApp.js        — the ported app ("use client")
 public/images/     — hero.jpg, showcase.jpg, cta.jpg placeholders
 tailwind.config.js
 postcss.config.js

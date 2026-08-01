@@ -1,5 +1,5 @@
-import CutApp from "@/components/CutApp";
+import CineSpaceApp from "@/components/CineSpaceApp";
 
 export default function Page() {
-  return <CutApp />;
+  return <CineSpaceApp />;
 }

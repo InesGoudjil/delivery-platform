@@ -17,28 +17,54 @@ import {
   ArrowLeft,
   X,
   Send,
+  Pencil,
   Upload,
   ChevronDown,
   Star,
 } from "lucide-react";
 
+// Global styles now live in styles/globals.css (imported once in your
+// app/layout.js or pages/_app.js — see the setup notes at the bottom
+// of this message). Do NOT import it here as well, or it'll be
+// duplicated in the bundle.
+
 // ============================================================
-//  CUT — full prototype (orange/dark), ported to Next.js + Tailwind
-//  Surfaces: CUT website · Filmmaker PUBLIC page · Filmmaker BACKEND (private) · Client view
+//  CineSpace — full prototype (orange/dark)
+//  Surfaces: CineSpace website · Filmmaker PUBLIC page ·
+//            Filmmaker BACKEND (private) · Client view
+// ============================================================
+
+// -----------------------------------------------------------------
+// Image / logo assets
+// -----------------------------------------------------------------
+// These were large inline base64 data URIs in your original single
+// file. Rather than bloat this component (and your JS bundle) with
+// ~200KB+ of base64 text, drop the actual image files in /public and
+// reference them by path — that's the normal Next.js pattern and lets
+// next/image optimize them for you.
 //
-//  Images live in /public/images. Swap hero.jpg / showcase.jpg / cta.jpg for
-//  your own art — these are placeholder gradients generated for this port.
-// ============================================================
+//   1. Save each data URI from your original file as a real file:
+//        IMG_HERO   -> public/images/hero.jpg
+//        IMG_SHOW   -> public/images/showcase.jpg
+//        IMG_CTA    -> public/images/cta.jpg
+//        IMG_ABOUT  -> public/images/about.jpg
+//        LOGO_SRC   -> public/images/logo.svg
+//   2. Keep the paths below (or update them to match).
+//
+// If you'd rather keep them inline for now, just paste your original
+// base64 strings back in as the values of these consts — everything
+// else in this file works unchanged either way.
 
 const IMG_HERO = "/images/hero.jpg";
 const IMG_SHOW = "/images/showcase.jpg";
 const IMG_CTA = "/images/cta.jpg";
-const IMG_ABOUT = '/images/about-img.png';
+const IMG_ABOUT = "/images/about.jpg";
+const LOGO_SRC = "/images/logo.svg";
 
 const STATUS = {
-  draft: { l: "Draft", c: "#6B7580" },
-  review: { l: "In review", c: "#F5551D" },
-  delivered: { l: "Delivered", c: "#86B98F" },
+  draft: { l: "Draft", c: "var(--grey)" },
+  review: { l: "In review", c: "var(--orange)" },
+  delivered: { l: "Delivered", c: "var(--sage)" },
 };
 const ACCENTS = ["#F5551D", "#E23B3B", "#7C5CFF", "#1D9E75", "#378ADD"];
 const SEED = [
@@ -103,7 +129,7 @@ const FAQS = [
   },
 ];
 
-export default function CutApp() {
+export default function CineSpaceApp() {
   const [surface, setSurface] = useState("public");
   const [pubTab, setPubTab] = useState("work");
   const [beTab, setBeTab] = useState("projects");
@@ -118,7 +144,12 @@ export default function CutApp() {
   const [tpl, setTpl] = useState("Grid");
   const [brandName, setBrandName] = useState("Pedro Concreato");
   const [faqOpen, setFaqOpen] = useState(0);
+  const [billing, setBilling] = useState("monthly");
   const [reply, setReply] = useState("");
+  const [pinnedId, setPinnedId] = useState(1);
+  const [bio, setBio] = useState(
+    "Filmmaker & creative director based between Dubai and Sharjah. I make brand films, weddings, and launch content for the Gulf — story first, craft you don't notice.",
+  );
   const [draft, setDraft] = useState("");
   const [comments, setComments] = useState([
     {
@@ -152,7 +183,7 @@ export default function CutApp() {
     setTimeout(() => setToast(null), 2100);
   };
   const sel = projects.find((p) => p.id === selId) || projects[0];
-  const pinned = projects.find((p) => p.pinned) || projects[0];
+  const pinned = projects.find((p) => p.id === pinnedId) || projects[0];
   const editProject = (id, f, v) =>
     setProjects(projects.map((p) => (p.id === id ? { ...p, [f]: v } : p)));
   const addProject = () => {
@@ -204,9 +235,9 @@ export default function CutApp() {
         style={{
           background:
             c.who === "me"
-              ? "linear-gradient(140deg,#F5551D,#FF8A45)"
-              : "#1C1C20",
-          color: c.who === "me" ? "#1a0c04" : "#F6F3EC",
+              ? "linear-gradient(140deg,var(--orange),var(--orange2))"
+              : "var(--bg3)",
+          color: c.who === "me" ? "#1a0c04" : "var(--ink)",
         }}
       >
         {c.who === "me" ? "PC" : "C"}
@@ -242,12 +273,12 @@ export default function CutApp() {
   const nDeliv = projects.filter((p) => p.status === "delivered").length;
 
   return (
-    <div className="min-h-screen bg-bg text-ink">
+    <div className="root">
       <div className="switcher">
         <span className="lbl">Preview</span>
         <div className="seg">
           {[
-            ["website", "CUT website"],
+            ["website", "CineSpace website"],
             ["public", "Public page"],
             ["backend", "Backend"],
             ["client", "Client view"],
@@ -263,13 +294,11 @@ export default function CutApp() {
         </div>
       </div>
 
-      {/* ===================== CUT WEBSITE ===================== */}
+      {/* ===================== CineSpace WEBSITE ===================== */}
       {surface === "website" && (
         <div className="wrap anim-in">
           <nav className="topnav">
-            <span className="logo">
-              CUT<span className="d">.</span>
-            </span>
+            <img className="logo-img" src={LOGO_SRC} alt="CineSpace" />
             <div className="navlinks">
               <a>Features</a>
               <a>How it works</a>
@@ -301,7 +330,7 @@ export default function CutApp() {
                 className="btn dark"
                 onClick={() => setSurface("backend")}
               >
-                Start free <ArrowRight size={16} />
+                Start free trial <ArrowRight size={16} />
               </button>
               <button
                 className="btn ghost"
@@ -386,6 +415,107 @@ export default function CutApp() {
             </div>
           </section>
 
+          <section className="featsec reveal">
+            <div className="fs-text">
+              <div className="eyebrow">Feature 01</div>
+              <h2 className="disp">A portfolio that sells.</h2>
+              <p>
+                Your best work, always ready to share. A clean, branded page you
+                can send to any lead in a tap — no PDFs, no WeTransfer links, no
+                clutter.
+              </p>
+            </div>
+            <div className="fs-visual">
+              <div className="mini-grid">
+                <div
+                  className="mini-tile"
+                  style={{
+                    background: "linear-gradient(135deg,#3a1a10,#7a2f18)",
+                  }}
+                >
+                  <Play size={14} />
+                </div>
+                <div
+                  className="mini-tile"
+                  style={{
+                    background: "linear-gradient(135deg,#1c2230,#38404e)",
+                  }}
+                >
+                  <Play size={14} />
+                </div>
+                <div
+                  className="mini-tile"
+                  style={{
+                    background: "linear-gradient(135deg,#101a1c,#20403f)",
+                  }}
+                >
+                  <Play size={14} />
+                </div>
+                <div
+                  className="mini-tile"
+                  style={{
+                    background: "linear-gradient(135deg,#3a2208,#8a4f14)",
+                  }}
+                >
+                  <Play size={14} />
+                </div>
+              </div>
+            </div>
+          </section>
+          <section className="featsec rev reveal">
+            <div className="fs-text">
+              <div className="eyebrow">Feature 02</div>
+              <h2 className="disp">Review &amp; approve.</h2>
+              <p>
+                Feedback without the chaos. Clients watch each cut, leave notes,
+                and compare versions — and every approval is timestamped and
+                locks that version.
+              </p>
+            </div>
+            <div className="fs-visual">
+              <div
+                className="mini-player"
+                style={{
+                  background: "linear-gradient(135deg,#2b1a1f,#4a2530)",
+                }}
+              >
+                <div className="mini-play">
+                  <Play size={16} />
+                </div>
+                <span className="mini-seal">
+                  <Check size={11} />
+                  Approved
+                </span>
+              </div>
+              <div className="mini-chips">
+                <span>V1</span>
+                <span>V2</span>
+                <span className="on">Final</span>
+              </div>
+            </div>
+          </section>
+          <section className="featsec reveal">
+            <div className="fs-text">
+              <div className="eyebrow">Feature 03</div>
+              <h2 className="disp">Deliver on WhatsApp.</h2>
+              <p>
+                Meet clients where they already are. Send a private link over
+                WhatsApp — they open it in one tap, no account, no app. You're
+                notified the moment they comment or approve.
+              </p>
+            </div>
+            <div className="fs-visual">
+              <div className="wa">
+                <div className="wa-bubble">
+                  Your final cut is ready 🎬
+                  <div className="wa-link">cinespace.film/aisha-omar</div>
+                </div>
+                <div className="wa-meta">
+                  <Check size={11} /> Delivered · opened just now
+                </div>
+              </div>
+            </div>
+          </section>
           <section className="showcase reveal">
             <div>
               <div className="eyebrow">The client experience</div>
@@ -425,41 +555,58 @@ export default function CutApp() {
 
           <section className="quote reveal">
             <p className="disp">
-              &quot;CUT replaced three tools. My clients approve faster, and
-              every page looks like it came from a real studio.&quot;
+              "CineSpace replaced three tools. My clients approve faster, and
+              every page looks like it came from a real studio."
             </p>
             <div className="by">— A filmmaker in Dubai</div>
           </section>
 
           <section className="section reveal">
             <h2 className="sec-h disp">Simple pricing</h2>
-            <p className="sec-sub">Priced in AED. Cancel anytime.</p>
+            <p className="sec-sub">
+              Priced in AED · 7-day free trial · cancel anytime.
+            </p>
+            <div className="billtoggle">
+              <button
+                className={billing === "monthly" ? "on" : ""}
+                onClick={() => setBilling("monthly")}
+              >
+                Monthly
+              </button>
+              <button
+                className={billing === "yearly" ? "on" : ""}
+                onClick={() => setBilling("yearly")}
+              >
+                Yearly <span>Save 20%</span>
+              </button>
+            </div>
             <div className="plans">
               {[
                 {
                   n: "Solo",
-                  p: "45",
+                  p: "39",
                   pop: false,
                   f: [
-                    "50 GB video hosting",
+                    "75 GB video hosting",
                     "Unlimited client links",
                     "WhatsApp delivery",
+                    "Your own branding",
                   ],
                 },
                 {
                   n: "Studio",
-                  p: "129",
+                  p: "99",
                   pop: true,
                   f: [
                     "500 GB hosting",
-                    "Approvals & versions",
+                    "Versions & approvals",
                     "Custom domain",
                     "Arabic + English",
                   ],
                 },
                 {
                   n: "Agency",
-                  p: "349",
+                  p: "199",
                   pop: false,
                   f: [
                     "2 TB hosting",
@@ -473,9 +620,15 @@ export default function CutApp() {
                   {pl.pop && <span className="tag">Most popular</span>}
                   <div className="pname disp">{pl.n}</div>
                   <div className="price disp">
-                    AED {pl.p}
+                    AED{" "}
+                    {billing === "yearly"
+                      ? Math.round(Number(pl.p) * 0.8)
+                      : pl.p}
                     <small> /mo</small>
                   </div>
+                  {billing === "yearly" && (
+                    <div className="billnote">billed yearly · save 20%</div>
+                  )}
                   <ul>
                     {pl.f.map((x, i) => (
                       <li key={i}>
@@ -494,8 +647,8 @@ export default function CutApp() {
                         ? {}
                         : {
                             background: "transparent",
-                            border: "1px solid rgba(255,255,255,.15)",
-                            color: "#F6F3EC",
+                            border: "1px solid var(--line2)",
+                            color: "var(--ink)",
                           }),
                     }}
                     onClick={() => setSurface("backend")}
@@ -553,7 +706,7 @@ export default function CutApp() {
             </button>
           </section>
           <div className="foot">
-            <span>© CUT — for filmmakers</span>
+            <span>© CineSpace — for filmmakers</span>
             <span>Dubai · Sharjah</span>
           </div>
         </div>
@@ -606,8 +759,6 @@ export default function CutApp() {
                 </div>
                 <span className="pin-tc">{pinned.tc}</span>
               </div>
-
-              {/* ---- About section (above Selected work) ---- */}
               <div className="about-me">
                 <div className="am-photos">
                   <div
@@ -617,14 +768,14 @@ export default function CutApp() {
                 </div>
                 <div className="am-text">
                   <div className="eyebrow">About</div>
-                  <h2 className="disp">Behind the lens</h2>
+                  <h2 className="disp">{brandName}</h2>
                   <p>
                     Pedro Concreato is a filmmaker and creative director based
-                    between Dubai and Sharjah. Over six years he&apos;s shot
-                    brand films, weddings, and launch content across the Gulf —
-                    story first, craft you don&apos;t notice. He shoots,
-                    directs, and grades his own work, and cares as much about
-                    how a film is delivered as how it&apos;s made.
+                    between Dubai and Sharjah. Over six years he's shot brand
+                    films, weddings, and launch content across the Gulf — story
+                    first, craft you don't notice. He shoots, directs, and
+                    grades his own work, and cares as much about how a film is
+                    delivered as how it's made.
                   </p>
                   <div className="am-stats">
                     <div>
@@ -648,7 +799,6 @@ export default function CutApp() {
                   </button>
                 </div>
               </div>
-
               <div className="sectitle disp">Selected work</div>
               <div className="grid">
                 {projects.map((p) => (
@@ -659,8 +809,6 @@ export default function CutApp() {
                   />
                 ))}
               </div>
-
-              {/* ---- "Every frame, considered" end band (below Selected work) ---- */}
               <div
                 className="endband"
                 style={{
@@ -681,10 +829,9 @@ export default function CutApp() {
                   </button>
                 </div>
               </div>
-
               <div className="foot">
                 <span>© Pedro Concreato — Films</span>
-                <span>Made with CUT</span>
+                <span>Made with CineSpace</span>
               </div>
             </>
           )}
@@ -693,12 +840,14 @@ export default function CutApp() {
             <>
               <div className="pf">
                 <div className="grain" />
-                <div className="pfname disp">Pedro Concreato</div>
-                <div className="pfbio">
-                  Filmmaker & creative director based between Dubai and Sharjah.
-                  I make brand films, weddings, and launch content for the Gulf
-                  — story first, craft you don&apos;t notice.
+                <div className="pf-head">
+                  <div className="pfname disp">Pedro Concreato</div>
+                  <div
+                    className="pf-avatar"
+                    style={{ backgroundImage: `url(${IMG_ABOUT})` }}
+                  />
                 </div>
+                <div className="pfbio">{bio}</div>
                 <div className="pfmeta">
                   <div>
                     <b className="disp">80+</b>
@@ -743,19 +892,18 @@ export default function CutApp() {
               </div>
               <div className="foot">
                 <span>© Pedro Concreato — Films</span>
-                <span>Made with CUT</span>
+                <span>Made with CineSpace</span>
               </div>
             </>
           )}
         </div>
       )}
+
       {/* ===================== FILMMAKER BACKEND (PRIVATE) ===================== */}
       {surface === "backend" && (
         <div className="wrap anim-in">
           <div className="appbar">
-            <span className="logo">
-              CUT<span className="d">.</span>
-            </span>
+            <img className="logo-img" src={LOGO_SRC} alt="CineSpace" />
             <span className="pill-demo">Backend · private</span>
             <div className="who">
               <span>Pedro Concreato</span>
@@ -901,6 +1049,7 @@ export default function CutApp() {
               <div className="tabs">
                 {[
                   ["projects", "Projects"],
+                  ["mypage", "My page"],
                   ["customize", "Customize"],
                 ].map(([k, l]) => (
                   <button
@@ -920,8 +1069,9 @@ export default function CutApp() {
                       <div className="eyebrow">Private workspace</div>
                       <h1 className="disp">Your projects</h1>
                       <p>
-                        Upload, edit details and descriptions, manage versions,
-                        and deliver. Tap a project to open it.
+                        Create a project, upload cuts, send the delivery link to
+                        your client, and follow up on comments and approvals.
+                        Tap a project to open it.
                       </p>
                     </div>
                     <button className="btn" onClick={() => setShowAdd(true)}>
@@ -941,6 +1091,84 @@ export default function CutApp() {
                         }}
                       />
                     ))}
+                  </div>
+                </>
+              )}
+
+              {beTab === "mypage" && (
+                <>
+                  <div className="pagehead">
+                    <div>
+                      <div className="eyebrow">Your public page</div>
+                      <h1 className="disp">My page</h1>
+                      <p>
+                        Manage the work potential clients see when they visit
+                        your public Work and Portfolio pages.
+                      </p>
+                    </div>
+                    <button
+                      className="btn"
+                      onClick={() => flash("Upload started")}
+                    >
+                      <Upload size={16} />
+                      Upload work
+                    </button>
+                  </div>
+                  <div className="panel">
+                    <h4>Featured on your Work page</h4>
+                    <div className="featrow">
+                      {projects.map((p) => (
+                        <div
+                          key={p.id}
+                          className={`featpick ${pinnedId === p.id ? "on" : ""}`}
+                          onClick={() => {
+                            setPinnedId(p.id);
+                            flash("Featured updated");
+                          }}
+                          style={{ background: p.g }}
+                        >
+                          {pinnedId === p.id && (
+                            <span className="featbadge">
+                              <Star size={10} />
+                              Featured
+                            </span>
+                          )}
+                          <span className="featname">{p.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="panel">
+                    <h4>Portfolio work — shown to visitors</h4>
+                    <div className="grid">
+                      {projects
+                        .filter((p) => p.status === "delivered")
+                        .map((p) => (
+                          <Card
+                            key={p.id}
+                            p={p}
+                            onClick={() => flash("Editing " + p.title)}
+                          />
+                        ))}
+                    </div>
+                  </div>
+                  <div className="panel">
+                    <h4>About &amp; bio</h4>
+                    <div className="field2">
+                      <textarea
+                        rows={3}
+                        value={bio}
+                        onChange={(e) => setBio(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      className="btn sm"
+                      style={{ marginTop: 14 }}
+                      onClick={() => flash("Saved to your public page")}
+                    >
+                      <Check size={15} />
+                      Save
+                    </button>
                   </div>
                 </>
               )}
@@ -1022,8 +1250,7 @@ export default function CutApp() {
         <div className="wrap anim-in">
           <div className="clienthead">
             <span className="brand disp">
-              Pedro Concreato
-              <span style={{ color: "#F5551D" }}>.</span>
+              Pedro Concreato<span style={{ color: "var(--orange)" }}>.</span>
             </span>
             <span className="lockpill">
               <Lock size={13} /> Private · expires in 30 days
@@ -1102,8 +1329,8 @@ export default function CutApp() {
             </div>
           </div>
           <div className="foot">
-            <span>Delivered with CUT</span>
-            <span>cut.film</span>
+            <span>Delivered with CineSpace</span>
+            <span>cinespace.film</span>
           </div>
         </div>
       )}

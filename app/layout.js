@@ -1,29 +1,29 @@
-import { Archivo, Inter } from "next/font/google";
+import { Manrope } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const archivo = Archivo({
+const manrope = Manrope({
   subsets: ["latin"],
-  weight: ["600", "700", "800", "900"],
-  variable: "--font-archivo",
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-manrope",
   display: "swap",
 });
 
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-inter",
+const satoshi = localFont({
+  src: "../public/fonts/Satoshi-Black.otf",
+  variable: "--font-satoshi",
   display: "swap",
 });
 
 export const metadata = {
-  title: "CUT — Deliver films like a studio.",
+  title: "CineSpace — Deliver films like a studio.",
   description:
     "Your portfolio, client review, and delivery — in one place, built for filmmakers in the Gulf.",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${archivo.variable} ${inter.variable}`}>
+    <html lang="en" className={`${manrope.variable} ${satoshi.variable}`}>
       <body>{children}</body>
     </html>
   );
