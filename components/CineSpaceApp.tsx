@@ -109,7 +109,7 @@ const FAQS = [
   },
 ];
 
-export default function CutApp() {
+export default function CineSpaceApp() {
   const [surface, setSurface] = useState<"website" | "public" | "backend" | "client">("website");
   const [pubTab, setPubTab] = useState<"work" | "about">("work");
   const [beTab, setBeTab] = useState<"projects" | "brand">("projects");

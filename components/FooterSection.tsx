@@ -9,9 +9,9 @@ export function FooterSection() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/" className="disp font-black text-sm text-[#f6f3ec]">
-            CUT<span className="text-[#f5551d]">.</span>
+            CineSpace<span className="text-[#f5551d]">.</span>
           </Link>
-          <span>© {new Date().getFullYear()} CUT Platform. Built for Gulf filmmakers.</span>
+          <span>© {new Date().getFullYear()} CineSpace Platform. Built for Gulf filmmakers.</span>
         </div>
         <div className="flex items-center gap-6">
           <a href="#features" className="hover:text-[#f6f3ec] transition-colors">Features</a>
