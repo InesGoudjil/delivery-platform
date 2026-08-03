@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 
-export async function POST(req) {
+export async function POST(req: Request) {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -16,15 +16,15 @@ export async function POST(req) {
   }
 
   const stripe = new Stripe(stripeSecretKey, {
-    apiVersion: "2025-01-27.acacia",
+    apiVersion: "2025-01-27.acacia" as any,
   });
 
   const body = await req.text();
-  let event;
+  let event: Stripe.Event;
 
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-  } catch (err) {
+  } catch (err: any) {
     return NextResponse.json({ error: `Webhook Signature Error: ${err.message}` }, { status: 400 });
   }
 
@@ -32,7 +32,7 @@ export async function POST(req) {
 
   switch (event.type) {
     case "checkout.session.completed": {
-      const session = event.data.object;
+      const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.client_reference_id;
 
       if (userId) {
@@ -44,7 +44,7 @@ export async function POST(req) {
       break;
     }
     case "customer.subscription.deleted": {
-      const subscription = event.data.object;
+      const subscription = event.data.object as Stripe.Subscription;
       const userId = subscription.metadata?.userId;
 
       if (userId) {

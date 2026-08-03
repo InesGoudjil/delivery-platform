@@ -3,10 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
-/**
- * Creates a new project in Supabase for the authenticated filmmaker
- */
-export async function createProjectAction(formData) {
+export async function createProjectAction(formData: FormData) {
   const supabase = await createClient();
   const title = formData.get("title");
   const clientName = formData.get("client");
@@ -29,7 +26,7 @@ export async function createProjectAction(formData) {
       {
         user_id: user.id,
         title: title.trim(),
-        client_name: (clientName || "Unassigned").trim(),
+        client_name: (typeof clientName === "string" ? clientName : "Unassigned").trim(),
         status: "draft",
         project_type: "film",
       },
@@ -45,13 +42,9 @@ export async function createProjectAction(formData) {
   return { success: true, project: data };
 }
 
-/**
- * Approves a project cut (locking version and updating status to delivered)
- */
-export async function approveCutAction(projectId, versionId) {
+export async function approveCutAction(projectId: string, versionId?: string) {
   const supabase = await createClient();
 
-  // Update version approval flag
   if (versionId) {
     await supabase
       .from("video_versions")
@@ -59,7 +52,6 @@ export async function approveCutAction(projectId, versionId) {
       .eq("id", versionId);
   }
 
-  // Update overall project status to delivered
   const { error } = await supabase
     .from("projects")
     .update({ status: "delivered" })
@@ -73,10 +65,21 @@ export async function approveCutAction(projectId, versionId) {
   return { success: true };
 }
 
-/**
- * Adds a new comment (client feedback or filmmaker response)
- */
-export async function addCommentAction({ projectId, versionId, authorType, authorName, content }) {
+export interface AddCommentParams {
+  projectId: string;
+  versionId?: string;
+  authorType?: "client" | "me";
+  authorName?: string;
+  content: string;
+}
+
+export async function addCommentAction({
+  projectId,
+  versionId,
+  authorType = "client",
+  authorName = "Client",
+  content,
+}: AddCommentParams) {
   const supabase = await createClient();
 
   if (!content || !content.trim()) {
@@ -89,8 +92,8 @@ export async function addCommentAction({ projectId, versionId, authorType, autho
       {
         project_id: projectId,
         version_id: versionId,
-        author_type: authorType || "client",
-        author_name: authorName || "Client",
+        author_type: authorType,
+        author_name: authorName,
         content: content.trim(),
       },
     ])
