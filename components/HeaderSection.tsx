@@ -98,12 +98,12 @@ export function HeaderSection({
               Live Demo
             </a>
 
-            <a
+            {/* <a
               href="#workflow"
               className="transition-colors duration-300 hover:text-[#f6f3ec]"
             >
               How it Works
-            </a>
+            </a> */}
 
             <a
               href="#pricing"
