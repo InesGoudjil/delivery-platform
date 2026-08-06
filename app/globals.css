@@ -1449,6 +1449,294 @@ button {
   font-size: 14px;
   margin-bottom: 14px;
 }
+.dhero {
+  position: relative;
+  border-radius: 22px;
+  overflow: hidden;
+  min-height: clamp(280px, 44vw, 460px);
+  display: flex;
+  align-items: flex-end;
+  background-size: cover;
+  background-position: center;
+  margin-top: 14px;
+}
+.dhero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 10, 11, 0.45) 0%,
+    rgba(10, 10, 11, 0.4) 30%,
+    rgba(10, 10, 11, 0.97)
+  );
+}
+.dhero-inner {
+  position: relative;
+  z-index: 2;
+  padding: clamp(24px, 4vw, 44px);
+  width: 100%;
+}
+.dhero-title {
+  font-family: "Satoshi";
+  font-weight: 800;
+  font-size: clamp(32px, 6vw, 60px);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  margin-top: 8px;
+}
+.dmeta {
+  display: flex;
+  gap: clamp(22px, 5vw, 54px);
+  margin-top: 22px;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  padding-top: 18px;
+}
+.dmeta div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dmeta span {
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.dmeta b {
+  font-family: "Satoshi";
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+}
+.dmeta b.acc {
+  color: var(--orange);
+}
+.dbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.dbar-l {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 200px;
+}
+.dbar-prog {
+  flex: 1;
+  max-width: 280px;
+  height: 7px;
+  border-radius: 100px;
+  background: var(--bg3);
+  overflow: hidden;
+}
+.dbar-fill {
+  height: 100%;
+  background: var(--orange);
+  border-radius: 100px;
+  transition: width 0.3s;
+}
+.dbar-l span {
+  font-size: 13px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.dbar-r {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.dlib {
+  margin-top: clamp(32px, 5vw, 52px);
+}
+.dlib-h {
+  font-family: "Satoshi";
+  font-weight: 800;
+  font-size: clamp(28px, 5vw, 46px);
+  letter-spacing: -0.02em;
+  margin-top: 6px;
+}
+.dtabs {
+  display: flex;
+  gap: 6px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  padding: 5px;
+  width: fit-content;
+  margin: 20px 0;
+}
+.dtabs button {
+  border: none;
+  background: none;
+  color: var(--dim);
+  font-family: "Manrope";
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 9px 22px;
+  border-radius: 100px;
+  cursor: pointer;
+}
+.dtabs button.on {
+  background: var(--ink);
+  color: var(--bg);
+}
+.dgrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media (max-width: 760px) {
+  .dgrid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dtabs button {
+    padding: 9px 16px;
+  }
+}
+@media (max-width: 460px) {
+  .dgrid {
+    grid-template-columns: 1fr;
+  }
+}
+.acard {
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.acard:hover {
+  border-color: var(--line2);
+  transform: translateY(-2px);
+}
+.acard-th {
+  position: relative;
+  aspect-ratio: 16/10;
+  background-size: cover;
+  background-position: center;
+}
+.acard-type {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: rgba(10, 10, 11, 0.6);
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+}
+.acard-appr {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--sage);
+  display: grid;
+  place-items: center;
+  color: #0a0a0b;
+}
+.acard-tc {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(10, 10, 11, 0.6);
+  color: var(--ink);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.acard-meta {
+  padding: 12px 14px;
+}
+.acard-name {
+  display: block;
+  font-family: "Manrope";
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+}
+.acard-sub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--dim);
+}
+.acard-sub .acc {
+  color: var(--orange);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.acard-cc {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--dim);
+}
+.asheet {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  max-width: 640px;
+  width: 92vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 24px;
+}
+.asheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.astage {
+  position: relative;
+  aspect-ratio: 16/9;
+  border-radius: 14px;
+  background-size: cover;
+  background-position: center;
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+}
+.cmt-empty {
+  color: var(--faint);
+  font-size: 13px;
+  margin: 8px 0 12px;
+}
+.pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dim);
+}
+.pending svg {
+  color: var(--orange);
+}
 .field2 label {
   display: block;
   font-size: 12px;

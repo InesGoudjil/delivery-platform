@@ -75,6 +75,11 @@ const SEED = [
     type: "film",
     status: "review",
     tc: "00:47",
+    delivered: "Aug 08, 2026",
+    location: "Tokyo, Japan",
+    totalSize: "2.8 GB",
+    assets: 4,
+    bgImage: "/images/placeholder.jpg",
     g: "linear-gradient(135deg,#3a1a10,#7a2f18)",
     pinned: true,
     desc: "A moody 47-second teaser for the launch of a new omakase counter.",
@@ -86,6 +91,11 @@ const SEED = [
     type: "film",
     status: "delivered",
     tc: "03:12",
+    delivered: "Jul 24, 2026",
+    location: "Dubai, UAE",
+    totalSize: "14.6 GB",
+    assets: 2,
+    bgImage: "/images/placeholder.jpg",
     g: "linear-gradient(135deg,#1c2230,#38404e)",
     desc: "A three-minute wedding film shot across two days in Dubai.",
   },
@@ -96,6 +106,11 @@ const SEED = [
     type: "film",
     status: "review",
     tc: "01:20",
+    delivered: "02.21.26",
+    location: "Dubai, UAE",
+    totalSize: "1.1 GB",
+    assets: 6,
+    bgImage: "/images/project-files/the-gt3-build/cover.jpg",
     g: "linear-gradient(135deg,#101a1c,#20403f)",
     desc: "Documenting a Mercedes GT converted to full GT3 spec.",
   },
@@ -106,10 +121,223 @@ const SEED = [
     type: "film",
     status: "delivered",
     tc: "00:30",
+    delivered: "Jun 12, 2026",
+    location: "Riyadh, Saudi Arabia",
+    totalSize: "1.5 GB",
+    assets: 5,
+    bgImage: "/images/placeholder.jpg",
     g: "linear-gradient(135deg,#3a2208,#8a4f14)",
     desc: "A punchy 30-second launch reel for a healthy-snack brand.",
   },
 ];
+// Each project keeps its own asset library
+// switching the project being previewed also switches its files
+const PROJECT_FILES = {
+  1: [
+    {
+      id: 1,
+      name: "main_edit",
+      type: "video",
+      size: "312 MB",
+      tc: "1:24",
+      bgImage: "/images/placeholder.jpg",
+      g: "linear-gradient(135deg,#3a1a10,#7a2f18)",
+      versions: ["V1", "V2"],
+      approved: false,
+      comments: [
+        {
+          who: "client",
+          meta: "Client · 2h ago",
+          text: "Love the opening — can we punch the grade a touch?",
+        },
+      ],
+    },
+    {
+      id: 2,
+      name: "vertical_cut",
+      type: "video",
+      size: "298 MB",
+      tc: "0:58",
+      bgImage: "/images/placeholder.jpg",
+      g: "linear-gradient(135deg,#1c2230,#38404e)",
+      versions: ["V1"],
+      approved: true,
+      comments: [],
+    },
+    {
+      id: 3,
+      name: "still_01",
+      type: "photo",
+      size: "24 MB",
+      bgImage: "/images/placeholder.jpg",
+      g: "linear-gradient(135deg,#101a1c,#20403f)",
+      versions: ["Final"],
+      approved: false,
+      comments: [],
+    },
+    {
+      id: 4,
+      name: "still_02",
+      type: "photo",
+      size: "22 MB",
+      bgImage: "/images/placeholder.jpg",
+      g: "linear-gradient(135deg,#3a2208,#8a4f14)",
+      versions: ["Final"],
+      approved: false,
+      comments: [],
+    },
+  ],
+  2: [
+    {
+      id: 1,
+      name: "ceremony_highlight",
+      type: "video",
+      size: "540 MB",
+      tc: "3:12",
+      bgImage: "/images/placeholder.jpg",
+      g: "linear-gradient(135deg,#1c2230,#38404e)",
+      versions: ["V1", "Final"],
+      approved: true,
+      comments: [],
+    },
+    {
+      id: 2,
+      name: "reception_edit",
+      type: "video",
+      size: "410 MB",
+      tc: "2:05",
+      bgImage: "/images/placeholder.jpg",
+      g: "linear-gradient(135deg,#2b1a1f,#4a2530)",
+      versions: ["V1", "Final"],
+      approved: true,
+      comments: [],
+    },
+    {
+      id: 3,
+      name: "portrait_01",
+      type: "photo",
+      size: "31 MB",
+      bgImage: "/images/placeholder.jpg",
+      g: "linear-gradient(135deg,#101a1c,#20403f)",
+      versions: ["Final"],
+      approved: true,
+      comments: [],
+    },
+    {
+      id: 4,
+      name: "portrait_02",
+      type: "photo",
+      size: "29 MB",
+      bgImage: "/images/placeholder.jpg",
+      g: "linear-gradient(135deg,#3a2208,#8a4f14)",
+      versions: ["Final"],
+      approved: true,
+      comments: [],
+    },
+  ],
+  3: [
+    {
+      id: 1,
+      name: "build_montage",
+      type: "video",
+      size: "280 MB",
+      tc: "1:00",
+      bgImage: "/images/project-files/the-gt3-build/1.jpg",
+      g: "linear-gradient(135deg,#101a1c,#20403f)",
+      versions: ["V1", "V2"],
+      approved: false,
+      comments: [
+        {
+          who: "client",
+          meta: "Prestige Rentals · 5h ago",
+          text: "Can we get a slower push-in on the engine bay shot?",
+        },
+      ],
+    },
+    {
+      id: 2,
+      name: "drive_teaser",
+      type: "video",
+      size: "190 MB",
+      tc: "0:20",
+      bgImage: "/images/project-files/the-gt3-build/2.jpg",
+      g: "linear-gradient(135deg,#1c2230,#38404e)",
+      versions: ["V1"],
+      approved: false,
+      comments: [],
+    },
+    {
+      id: 3,
+      name: "still_engine",
+      type: "photo",
+      size: "18 MB",
+      bgImage: "/images/project-files/the-gt3-build/3.jpg",
+      g: "linear-gradient(135deg,#3a1a10,#7a2f18)",
+      versions: ["Final"],
+      approved: false,
+      comments: [],
+    },
+    {
+      id: 4,
+      name: "still_exterior",
+      type: "photo",
+      size: "20 MB",
+      bgImage: "/images/project-files/the-gt3-build/4.jpg",
+      g: "linear-gradient(135deg,#3a2208,#8a4f14)",
+      versions: ["Final"],
+      approved: false,
+      comments: [],
+    },
+  ],
+  4: [
+    {
+      id: 1,
+      name: "launch_reel_30s",
+      type: "video",
+      size: "165 MB",
+      tc: "0:30",
+      bgImage: "/images/placeholder.jpg",
+      g: "linear-gradient(135deg,#3a2208,#8a4f14)",
+      versions: ["V1", "Final"],
+      approved: true,
+      comments: [],
+    },
+    {
+      id: 2,
+      name: "social_cutdown",
+      type: "video",
+      size: "88 MB",
+      tc: "0:15",
+      bgImage: "/images/placeholder.jpg",
+      g: "linear-gradient(135deg,#1c2230,#38404e)",
+      versions: ["Final"],
+      approved: true,
+      comments: [],
+    },
+    {
+      id: 3,
+      name: "product_still_01",
+      type: "photo",
+      size: "16 MB",
+      bgImage: "/images/placeholder.jpg",
+      g: "linear-gradient(135deg,#101a1c,#20403f)",
+      versions: ["Final"],
+      approved: true,
+      comments: [],
+    },
+    {
+      id: 4,
+      name: "product_still_02",
+      type: "photo",
+      size: "15 MB",
+      bgImage: "/images/placeholder.jpg",
+      g: "linear-gradient(135deg,#3a1a10,#7a2f18)",
+      versions: ["Final"],
+      approved: false,
+      comments: [],
+    },
+  ],
+};
 
 const COMPARISON_ROWS = [
   {
@@ -183,12 +411,19 @@ const FAQS = [
 ];
 
 export default function CineSpaceApp() {
+  // Which project Client view previews
+  // 1 = Omakase Teaser
+  // 2 = Aisha & Omar
+  // 3 = GT3 Build Film
+  // 4 = Launch Reel.
+  const CLIENT_VIEW_PROJECT_ID = 3;
+
   const [surface, setSurface] = useState("public");
   const [pubTab, setPubTab] = useState("work");
   const [beTab, setBeTab] = useState("projects");
   const [openProj, setOpenProj] = useState(null);
   const [projects, setProjects] = useState(SEED);
-  const [selId, setSelId] = useState(1);
+  const [selId, setSelId] = useState(CLIENT_VIEW_PROJECT_ID);
   const [toast, setToast] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ title: "", client: "" });
@@ -200,6 +435,13 @@ export default function CineSpaceApp() {
   const [billing, setBilling] = useState("monthly");
   const [reply, setReply] = useState("");
   const [pinnedId, setPinnedId] = useState(1);
+  const [assetTab, setAssetTab] = useState("all");
+  const [openAsset, setOpenAsset] = useState(null);
+  const [assetVer, setAssetVer] = useState("V1");
+  const [assetDraft, setAssetDraft] = useState("");
+  const [projectFiles, setProjectFiles] = useState(() => ({
+    ...PROJECT_FILES,
+  }));
   const [bio, setBio] = useState(
     "Filmmaker & creative director based between Dubai and Sharjah. I make brand films, weddings, and launch content for the Gulf — story first, craft you don't notice.",
   );
@@ -235,25 +477,72 @@ export default function CineSpaceApp() {
     setToast(m);
     setTimeout(() => setToast(null), 2100);
   };
+  const selAssets = projectFiles[selId] || [];
+  const approvedCount = selAssets.filter((a) => a.approved).length;
+
+  // Toggle a single asset's approval on/off, so the client can approve
+  // and — if they change their mind — cancel that approval again.
+  const toggleAssetApproval = (id) => {
+    const current = (projectFiles[selId] || []).find((a) => a.id === id);
+    const nextApproved = current ? !current.approved : true;
+    setProjectFiles((pf) => ({
+      ...pf,
+      [selId]: (pf[selId] || []).map((a) =>
+        a.id === id ? { ...a, approved: nextApproved } : a,
+      ),
+    }));
+    flash(nextApproved ? "Asset approved" : "Approval removed");
+  };
+  const approveAll = () => {
+    setProjectFiles((pf) => ({
+      ...pf,
+      [selId]: (pf[selId] || []).map((a) => ({ ...a, approved: true })),
+    }));
+    flash("Project approved");
+  };
+  const addAssetComment = (id) => {
+    if (!assetDraft.trim()) return;
+    setProjectFiles((pf) => ({
+      ...pf,
+      [selId]: (pf[selId] || []).map((a) =>
+        a.id === id
+          ? {
+              ...a,
+              comments: [
+                ...a.comments,
+                { who: "client", meta: "You · just now", text: assetDraft },
+              ],
+            }
+          : a,
+      ),
+    }));
+    setAssetDraft("");
+  };
   const sel = projects.find((p) => p.id === selId) || projects[0];
   const pinned = projects.find((p) => p.id === pinnedId) || projects[0];
   const editProject = (id, f, v) =>
     setProjects(projects.map((p) => (p.id === id ? { ...p, [f]: v } : p)));
   const addProject = () => {
     if (!form.title.trim()) return;
+    const newId = Date.now();
     setProjects([
       {
-        id: Date.now(),
+        id: newId,
         title: form.title.trim(),
         client: form.client.trim() || "Unassigned",
         type: "film",
         status: "draft",
         tc: "00:00",
+        delivered: "—",
+        location: "—",
+        totalSize: "0 GB",
+        bgImage: "/images/placeholder.jpg",
         g: "linear-gradient(135deg,#1a2028,#2a3742)",
         desc: "",
       },
       ...projects,
     ]);
+    setProjectFiles((pf) => ({ ...pf, [newId]: [] }));
     setForm({ title: "", client: "" });
     setShowAdd(false);
     flash("Project created");
@@ -1345,82 +1634,277 @@ export default function CineSpaceApp() {
               <Lock size={13} /> Private · expires in 30 days
             </span>
           </div>
-          <div className="pagehead" style={{ paddingTop: 22 }}>
-            <div>
+
+          <div
+            className="dhero"
+            style={{
+              backgroundImage: `url(${sel.bgImage})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+            }}
+          >
+            <div className="dhero-inner">
               <div className="eyebrow">Delivery for {sel.client}</div>
-              <h1 className="disp">{sel.title}</h1>
+              <h1 className="dhero-title disp">{sel.title}</h1>
+              <div className="dmeta">
+                <div>
+                  <span>DELIVERED</span>
+                  <b>{sel.delivered}</b>
+                </div>
+                <div>
+                  <span>LOCATION</span>
+                  <b>{sel.location}</b>
+                </div>
+                <div>
+                  <span>TOTAL SIZE</span>
+                  <b style={{ color: "var(--orange)" }}>{sel.totalSize}</b>
+                </div>
+                <div>
+                  <span>ASSETS</span>
+                  <b>{selAssets.length}</b>
+                </div>
+                {/* <div>
+                  <span>Approved</span>
+                  <b className="acc">
+                    {approvedCount}/{selAssets.length}
+                  </b>
+                </div> */}
+              </div>
+              <button
+                className="btn sm"
+                style={{ marginTop: 22 }}
+                onClick={() => flash("Preparing download…")}
+              >
+                <Download size={15} />
+                Download all
+              </button>
             </div>
           </div>
-          <div className="stage-wrap">
-            <div className="stage" style={{ background: sel.g }}>
-              <span className="stage-title disp">{sel.title}</span>
-              <div className="bigplay" onClick={() => flash("Playing…")}>
-                <Play size={24} />
+
+          <div className="dbar">
+            <div className="dbar-l">
+              <div className="dbar-prog">
+                <div
+                  className="dbar-fill"
+                  style={{
+                    width: `${selAssets.length ? Math.round((approvedCount / selAssets.length) * 100) : 0}%`,
+                  }}
+                />
               </div>
-              <span className="stage-tc">00:00 / {sel.tc}</span>
+              <span>
+                {approvedCount} of {selAssets.length} assets approved
+              </span>
             </div>
-            <div className="vstrip">
-              {["V1", "V2", "Final"].map((v) => (
+            <div className="dbar-r">
+              <button
+                className="btn ghost sm"
+                onClick={() => flash("Opening WhatsApp…")}
+              >
+                <MessageCircle size={15} />
+                Message Pedro
+              </button>
+              {selAssets.length > 0 && approvedCount === selAssets.length ? (
+                <span className="seal">
+                  <Check size={14} />
+                  Project approved
+                </span>
+              ) : (
+                <button className="btn sm" onClick={approveAll}>
+                  <Check size={15} />
+                  Approve all
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="dlib">
+            <div className="eyebrow">Asset library</div>
+            <h2 className="dlib-h disp">Project files</h2>
+            <div className="dtabs">
+              {[
+                ["all", "All"],
+                ["video", "Videos"],
+                ["photo", "Photos"],
+              ].map(([k, l]) => (
                 <button
-                  key={v}
-                  className={`vchip ${ver === v ? "on" : ""}`}
-                  onClick={() => setVer(v)}
+                  key={k}
+                  className={assetTab === k ? "on" : ""}
+                  onClick={() => setAssetTab(k)}
                 >
-                  {v}
+                  {l}
                 </button>
               ))}
             </div>
-          </div>
-          <div className="dactions">
-            <button className="btn" onClick={() => flash("Download started")}>
-              <Download size={15} />
-              Download
-            </button>
-            {sel.status !== "delivered" ? (
-              <button className="btn ghost" onClick={approve}>
-                <Check size={15} />
-                Approve final cut
-              </button>
-            ) : (
-              <span className="seal">
-                <Check size={14} />
-                Approved
-              </span>
-            )}
-            <button
-              className="btn ghost"
-              onClick={() => flash("Opening WhatsApp…")}
-            >
-              <MessageCircle size={15} />
-              Message Pedro
-            </button>
-          </div>
-          <div className="cmts">
-            <h4>Leave a note</h4>
-            {comments.map((c, i) => (
-              <Comment key={i} c={c} />
-            ))}
-            <div className="cinput">
-              <input
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Add a comment…"
-                onKeyDown={(e) =>
-                  e.key === "Enter" &&
-                  addComment("client", draft, () => setDraft(""))
-                }
-              />
-              <button
-                onClick={() => addComment("client", draft, () => setDraft(""))}
-              >
-                <Send size={16} />
-              </button>
+            <div className="dgrid">
+              {selAssets
+                .filter((a) => assetTab === "all" || a.type === assetTab)
+                .map((a) => (
+                  <div
+                    key={a.id}
+                    className="acard"
+                    onClick={() => {
+                      setOpenAsset(a.id);
+                      setAssetVer(a.versions[a.versions.length - 1]);
+                    }}
+                  >
+                    <div
+                      className="acard-th"
+                      style={{
+                        backgroundImage: `linear-gradient(160deg, rgba(10,10,11,.15), rgba(10,10,11,.62)), url(${a.bgImage})`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }}
+                    >
+                      <span className="acard-type">
+                        {a.type === "video" ? (
+                          <Play size={13} />
+                        ) : (
+                          <ImageIcon size={13} />
+                        )}
+                      </span>
+                      {a.approved && (
+                        <span className="acard-appr">
+                          <Check size={12} />
+                        </span>
+                      )}
+                      {a.type === "video" && (
+                        <span className="acard-tc">{a.tc}</span>
+                      )}
+                    </div>
+                    <div className="acard-meta">
+                      <span className="acard-name">{a.name}</span>
+                      <span className="acard-sub">
+                        <span className="acc">{a.size}</span>
+                        {a.comments.length > 0 && (
+                          <span className="acard-cc">
+                            <MessageCircle size={11} />
+                            {a.comments.length}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              {selAssets.length === 0 && (
+                <p className="cmt-empty">
+                  No files uploaded to this project yet.
+                </p>
+              )}
             </div>
           </div>
+
           <div className="foot">
             <span>Delivered with CineSpace</span>
             <span>cinespace.film</span>
           </div>
+
+          {openAsset !== null &&
+            (() => {
+              const a = selAssets.find((x) => x.id === openAsset);
+              if (!a) return null;
+              return (
+                <div className="overlay" onClick={() => setOpenAsset(null)}>
+                  <div className="asheet" onClick={(e) => e.stopPropagation()}>
+                    <div className="asheet-head">
+                      <div>
+                        <div className="eyebrow">
+                          {a.type === "video" ? "Video" : "Photo"} · {a.size}
+                        </div>
+                        <h3 className="disp">{a.name}</h3>
+                      </div>
+                      <button
+                        className="btn ghost sm"
+                        style={{ padding: 8 }}
+                        onClick={() => setOpenAsset(null)}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                    <div
+                      className="astage"
+                      style={{
+                        backgroundImage: `linear-gradient(160deg, rgba(10,10,11,.10), rgba(10,10,11,.55)), url(${a.bgImage})`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }}
+                    >
+                      {a.type === "video" && (
+                        <div
+                          className="bigplay"
+                          onClick={() => flash("Playing…")}
+                        >
+                          <Play size={24} />
+                        </div>
+                      )}
+                    </div>
+                    {a.versions.length > 1 && (
+                      <div className="vstrip">
+                        {a.versions.map((v) => (
+                          <button
+                            key={v}
+                            className={`vchip ${assetVer === v ? "on" : ""}`}
+                            onClick={() => setAssetVer(v)}
+                          >
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="dactions">
+                      <button
+                        className="btn"
+                        onClick={() => flash("Download started")}
+                      >
+                        <Download size={15} />
+                        Download
+                      </button>
+                      {a.approved ? (
+                        <button
+                          className="btn ghost"
+                          onClick={() => toggleAssetApproval(a.id)}
+                        >
+                          <Check size={15} />
+                          Approved · cancel
+                        </button>
+                      ) : (
+                        <button
+                          className="btn ghost"
+                          onClick={() => toggleAssetApproval(a.id)}
+                        >
+                          <Check size={15} />
+                          Approve this asset
+                        </button>
+                      )}
+                    </div>
+                    <div className="cmts">
+                      <h4>Comments on {a.name}</h4>
+                      {a.comments.length === 0 && (
+                        <p className="cmt-empty">
+                          No comments yet — leave the first note.
+                        </p>
+                      )}
+                      {a.comments.map((c, i) => (
+                        <Comment key={i} c={c} />
+                      ))}
+                      <div className="cinput">
+                        <input
+                          value={assetDraft}
+                          onChange={(e) => setAssetDraft(e.target.value)}
+                          placeholder="Add a comment…"
+                          onKeyDown={(e) =>
+                            e.key === "Enter" && addAssetComment(a.id)
+                          }
+                        />
+                        <button onClick={() => addAssetComment(a.id)}>
+                          <Send size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
         </div>
       )}
 
