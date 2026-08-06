@@ -110,6 +110,59 @@ const SEED = [
     desc: "A punchy 30-second launch reel for a healthy-snack brand.",
   },
 ];
+
+const COMPARISON_ROWS = [
+  {
+    feature: "Built for",
+    cine: "Video",
+    pixieset: "Photos",
+    pictime: "Photos",
+    shootproof: "Photos",
+  },
+  {
+    feature: "Video on entry plan",
+    cine: "100 GB · hundreds of films",
+    pixieset: "30 min",
+    pictime: "Minimal",
+    shootproof: "Minimal",
+  },
+  {
+    feature: "Review, comment & approve",
+    cine: true,
+    pixieset: "Photos only",
+    pictime: "Photos only",
+    shootproof: "Photos only",
+  },
+  {
+    feature: "WhatsApp delivery",
+    cine: true,
+    pixieset: "—",
+    pictime: "—",
+    shootproof: "—",
+  },
+  {
+    feature: "Arabic + English",
+    cine: true,
+    pixieset: "—",
+    pictime: "—",
+    shootproof: "—",
+  },
+  {
+    feature: "Priced in AED",
+    cine: true,
+    pixieset: "—",
+    pictime: "—",
+    shootproof: "—",
+  },
+  {
+    feature: "Starts at",
+    cine: "AED 39/mo",
+    pixieset: "$10/mo",
+    pictime: "$8/mo",
+    shootproof: "$10/mo",
+  },
+];
+
 const FAQS = [
   {
     q: "Do my clients need an account?",
@@ -657,6 +710,42 @@ export default function CineSpaceApp() {
                   </button>
                 </div>
               ))}
+            </div>
+
+            <div className="cmp-wrap">
+              <h3 className="cmp-title">How we compare</h3>
+
+              <div className="cmp-scroll">
+                <table className="cmp">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th className="me">CineSpace</th>
+                      <th>Pixieset</th>
+                      <th>Pic-Time</th>
+                      <th>ShootProof</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {COMPARISON_ROWS.map((row) => (
+                      <tr key={row.feature}>
+                        <td>{row.feature}</td>
+                        <td className="me">
+                          {row.cine === true ? <Check size={18} /> : row.cine}
+                        </td>
+                        <td>{row.pixieset}</td>
+                        <td>{row.pictime}</td>
+                        <td>{row.shootproof}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="cmp-note">
+                Based on competitors' public 2026 plans — they cap video at 30
+                min–2 hrs even at their top tiers.
+              </p>
             </div>
           </section>
 
