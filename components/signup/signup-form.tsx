@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { signupAction } from "@/app/actions/auth";
+import { createClient } from "@/lib/supabase/client";
 
 export function SignupForm({
   className,
@@ -10,6 +12,50 @@ export function SignupForm({
 }: React.ComponentProps<"form">) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const handleOAuthSignup = async (provider: "google" | "apple") => {
+    try {
+      setError(null);
+      setSuccess(null);
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/callback`,
+        },
+      });
+      if (error) setError(error.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "OAuth sign up failed");
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    const formData = new FormData(e.currentTarget);
+    const password = formData.get("password") as string;
+    const confirmPassword = formData.get("confirm-password") as string;
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await signupAction(null, formData);
+      if (res?.error) {
+        setError(res.error);
+      } else if (res?.success) {
+        setSuccess(res.success);
+      }
+    });
+  };
 
   return (
     <div className="relative flex min-h-screen items-center justify-center p-3 sm:p-4 lg:p-6">
@@ -36,6 +82,7 @@ export function SignupForm({
 
           {/* Form */}
           <form
+            onSubmit={handleSubmit}
             className={cn("flex w-full flex-col gap-6", className)}
             {...props}
           >
@@ -49,6 +96,20 @@ export function SignupForm({
               </p>
             </div>
 
+            {error && (
+              <div className="flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 p-3.5 text-sm text-red-400">
+                <AlertCircle className="h-5 w-5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {success && (
+              <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3.5 text-sm text-emerald-400">
+                <CheckCircle2 className="h-5 w-5 shrink-0" />
+                <span>{success}</span>
+              </div>
+            )}
+
             {/* Full Name + Email Row */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
@@ -61,10 +122,12 @@ export function SignupForm({
 
                 <input
                   id="name"
+                  name="name"
                   type="text"
                   placeholder="John Doe"
                   required
-                  className="w-full rounded-xl border border-white/10 bg-[#0a0a0b] px-4 py-3 text-sm text-[#f6f3ec] placeholder:text-[#5e5e64] outline-none transition focus:border-[#f5551d]"
+                  disabled={isPending}
+                  className="w-full rounded-xl border border-white/10 bg-[#0a0a0b] px-4 py-3 text-sm text-[#f6f3ec] placeholder:text-[#5e5e64] outline-none transition focus:border-[#f5551d] disabled:opacity-50"
                 />
               </div>
 
@@ -78,10 +141,12 @@ export function SignupForm({
 
                 <input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="m@example.com"
                   required
-                  className="w-full rounded-xl border border-white/10 bg-[#0a0a0b] px-4 py-3 text-sm text-[#f6f3ec] placeholder:text-[#5e5e64] outline-none transition focus:border-[#f5551d]"
+                  disabled={isPending}
+                  className="w-full rounded-xl border border-white/10 bg-[#0a0a0b] px-4 py-3 text-sm text-[#f6f3ec] placeholder:text-[#5e5e64] outline-none transition focus:border-[#f5551d] disabled:opacity-50"
                 />
               </div>
             </div>
@@ -99,10 +164,12 @@ export function SignupForm({
                 <div className="relative">
                   <input
                     id="password"
+                    name="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter password"
                     required
-                    className="w-full rounded-xl border border-white/10 bg-[#0a0a0b] px-4 py-3 pr-12 text-sm text-[#f6f3ec] placeholder:text-[#5e5e64] outline-none transition focus:border-[#f5551d]"
+                    disabled={isPending}
+                    className="w-full rounded-xl border border-white/10 bg-[#0a0a0b] px-4 py-3 pr-12 text-sm text-[#f6f3ec] placeholder:text-[#5e5e64] outline-none transition focus:border-[#f5551d] disabled:opacity-50"
                   />
 
                   <button
@@ -133,10 +200,12 @@ export function SignupForm({
                 <div className="relative">
                   <input
                     id="confirm-password"
+                    name="confirm-password"
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirm password"
                     required
-                    className="w-full rounded-xl border border-white/10 bg-[#0a0a0b] px-4 py-3 pr-12 text-sm text-[#f6f3ec] placeholder:text-[#5e5e64] outline-none transition focus:border-[#f5551d]"
+                    disabled={isPending}
+                    className="w-full rounded-xl border border-white/10 bg-[#0a0a0b] px-4 py-3 pr-12 text-sm text-[#f6f3ec] placeholder:text-[#5e5e64] outline-none transition focus:border-[#f5551d] disabled:opacity-50"
                   />
 
                   <button
@@ -164,9 +233,14 @@ export function SignupForm({
             {/* Create Account */}
             <button
               type="submit"
-              className="w-full rounded-full cursor-pointer bg-[#f5551d] py-3 text-sm font-bold text-[#160a03] transition-all hover:-translate-y-0.5 hover:bg-[#ff8a45]"
+              disabled={isPending}
+              className="flex w-full cursor-pointer items-center justify-center rounded-full bg-[#f5551d] py-3 text-sm font-bold text-[#160a03] transition-all hover:-translate-y-0.5 hover:bg-[#ff8a45] disabled:opacity-50 disabled:hover:translate-y-0"
             >
-              Create Account
+              {isPending ? (
+                <Loader2 className="h-5 w-5 animate-spin text-[#160a03]" />
+              ) : (
+                "Create Account"
+              )}
             </button>
 
             {/* Divider */}
@@ -181,7 +255,9 @@ export function SignupForm({
               {/* Google */}
               <button
                 type="button"
-                className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-full border border-white/20 py-3 text-sm font-semibold text-[#f6f3ec] transition-all hover:-translate-y-0.5 hover:bg-white/10"
+                onClick={() => handleOAuthSignup("google")}
+                disabled={isPending}
+                className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-full border border-white/20 py-3 text-sm font-semibold text-[#f6f3ec] transition-all hover:-translate-y-0.5 hover:bg-white/10 disabled:opacity-50"
               >
                 <svg
                   viewBox="-3 0 262 262"
@@ -220,7 +296,9 @@ export function SignupForm({
               {/* Apple */}
               <button
                 type="button"
-                className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-full border border-white/20 py-3 text-sm font-semibold text-[#f6f3ec] transition-all hover:-translate-y-0.5 hover:bg-white/10"
+                onClick={() => handleOAuthSignup("apple")}
+                disabled={isPending}
+                className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-full border border-white/20 py-3 text-sm font-semibold text-[#f6f3ec] transition-all hover:-translate-y-0.5 hover:bg-white/10 disabled:opacity-50"
               >
                 <svg
                   viewBox="0 0 24 24"

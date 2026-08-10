@@ -1,7 +1,12 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { cache } from 'react';
 
-export async function createClient() {
+/**
+ * Request-scoped singleton Supabase Server Client.
+ * Wrapped with React `cache()` to reuse the client instance within the same request lifecycle.
+ */
+export const createClient = cache(async () => {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -24,4 +29,5 @@ export async function createClient() {
       },
     }
   );
-}
+});
+

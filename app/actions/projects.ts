@@ -1,109 +1,59 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import { SupabaseWorkspaceRepository } from "@/infrastructure/repositories/supabase-workspace.repository";
+import { SupabaseProjectRepository } from "@/infrastructure/repositories/supabase-project.repository";
+import { GetOrCreateWorkspaceUseCase } from "@/core/use-cases/workspace/get-or-create-workspace.use-case";
+import { CreateProjectUseCase } from "@/core/use-cases/projects/create-project.use-case";
+import { ApproveProjectUseCase } from "@/core/use-cases/projects/approve-project.use-case";
 
 export async function createProjectAction(formData: FormData) {
-  const supabase = await createClient();
-  const title = formData.get("title");
-  const clientName = formData.get("client");
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!title || typeof title !== "string") {
-    return { error: "Project title is required." };
+    if (!user) {
+      return { error: "User is not authenticated." };
+    }
+
+    const title = formData.get("title") as string;
+    const description = formData.get("description") as string;
+
+    const workspaceRepo = new SupabaseWorkspaceRepository(supabase);
+    const getWorkspaceUseCase = new GetOrCreateWorkspaceUseCase(workspaceRepo);
+    const workspace = await getWorkspaceUseCase.execute(user.id);
+
+    const projectRepo = new SupabaseProjectRepository(supabase);
+    const createProjectUseCase = new CreateProjectUseCase(projectRepo);
+
+    const project = await createProjectUseCase.execute({
+      workspaceId: workspace.id,
+      title: title || "Untitled Project",
+      description: description || undefined,
+    });
+
+    revalidatePath("/dashboard");
+    return { success: true, project };
+  } catch (err: any) {
+    return { error: err.message || "Failed to create project." };
   }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: "User is not authenticated." };
-  }
-
-  const { data, error } = await supabase
-    .from("projects")
-    .insert([
-      {
-        user_id: user.id,
-        title: title.trim(),
-        client_name: (typeof clientName === "string" ? clientName : "Unassigned").trim(),
-        status: "draft",
-        project_type: "film",
-      },
-    ])
-    .select()
-    .single();
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  revalidatePath("/dashboard");
-  return { success: true, project: data };
 }
 
-export async function approveCutAction(projectId: string, versionId?: string) {
-  const supabase = await createClient();
+export async function approveCutAction(projectId: string, approvedByName?: string) {
+  try {
+    const supabase = await createClient();
+    const projectRepo = new SupabaseProjectRepository(supabase);
+    const approveUseCase = new ApproveProjectUseCase(projectRepo);
 
-  if (versionId) {
-    await supabase
-      .from("video_versions")
-      .update({ is_approved: true })
-      .eq("id", versionId);
+    const project = await approveUseCase.execute(projectId, approvedByName);
+
+    revalidatePath(`/deliver/${project.shareToken}`);
+    revalidatePath(`/deliver/${project.id}`);
+    return { success: true, project };
+  } catch (err: any) {
+    return { error: err.message || "Failed to approve cut." };
   }
-
-  const { error } = await supabase
-    .from("projects")
-    .update({ status: "delivered" })
-    .eq("id", projectId);
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  revalidatePath(`/deliver/${projectId}`);
-  return { success: true };
-}
-
-export interface AddCommentParams {
-  projectId: string;
-  versionId?: string;
-  authorType?: "client" | "me";
-  authorName?: string;
-  content: string;
-}
-
-export async function addCommentAction({
-  projectId,
-  versionId,
-  authorType = "client",
-  authorName = "Client",
-  content,
-}: AddCommentParams) {
-  const supabase = await createClient();
-
-  if (!content || !content.trim()) {
-    return { error: "Comment text cannot be empty." };
-  }
-
-  const { data, error } = await supabase
-    .from("comments")
-    .insert([
-      {
-        project_id: projectId,
-        version_id: versionId,
-        author_type: authorType,
-        author_name: authorName,
-        content: content.trim(),
-      },
-    ])
-    .select()
-    .single();
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  revalidatePath(`/deliver/${projectId}`);
-  return { success: true, comment: data };
 }

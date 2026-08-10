@@ -1,14 +1,47 @@
 "use client";
 
-import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { loginAction } from "@/app/actions/auth";
+import { createClient } from "@/lib/supabase/client";
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const handleOAuthLogin = async (provider: "google" | "apple") => {
+    try {
+      setError(null);
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/callback`,
+        },
+      });
+      if (error) setError(error.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "OAuth sign in failed");
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    const formData = new FormData(e.currentTarget);
+
+    startTransition(async () => {
+      const res = await loginAction(null, formData);
+      if (res?.error) {
+        setError(res.error);
+      }
+    });
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0a0a0b] p-3 sm:p-4 lg:p-6">
@@ -53,6 +86,7 @@ export function LoginForm({
 
             {/* Form */}
             <form
+              onSubmit={handleSubmit}
               className={cn("flex w-full flex-col gap-6", className)}
               {...props}
             >
@@ -66,6 +100,13 @@ export function LoginForm({
                 </p>
               </div>
 
+              {error && (
+                <div className="flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 p-3.5 text-sm text-red-400">
+                  <AlertCircle className="h-5 w-5 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
               {/* Email */}
               <div className="flex flex-col gap-2">
                 <label
@@ -77,10 +118,12 @@ export function LoginForm({
 
                 <input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="m@example.com"
                   required
-                  className="w-full rounded-xl border border-white/10 bg-[#0a0a0b] px-4 py-3 text-sm text-[#f6f3ec] placeholder:text-[#5e5e64] outline-none transition focus:border-[#f5551d]"
+                  disabled={isPending}
+                  className="w-full rounded-xl border border-white/10 bg-[#0a0a0b] px-4 py-3 text-sm text-[#f6f3ec] placeholder:text-[#5e5e64] outline-none transition focus:border-[#f5551d] disabled:opacity-50"
                 />
               </div>
 
@@ -105,10 +148,12 @@ export function LoginForm({
                 <div className="relative">
                   <input
                     id="password"
+                    name="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
                     required
-                    className="w-full rounded-xl border border-white/10 bg-[#0a0a0b] px-4 py-3 pr-12 text-sm text-[#f6f3ec] placeholder:text-[#5e5e64] outline-none transition focus:border-[#f5551d]"
+                    disabled={isPending}
+                    className="w-full rounded-xl border border-white/10 bg-[#0a0a0b] px-4 py-3 pr-12 text-sm text-[#f6f3ec] placeholder:text-[#5e5e64] outline-none transition focus:border-[#f5551d] disabled:opacity-50"
                   />
 
                   <button
@@ -131,9 +176,14 @@ export function LoginForm({
               {/* Login */}
               <button
                 type="submit"
-                className="w-full rounded-full cursor-pointer bg-[#f5551d] py-3 text-sm font-bold text-[#160a03] transition-all hover:-translate-y-0.5 hover:bg-[#ff8a45]"
+                disabled={isPending}
+                className="flex w-full cursor-pointer items-center justify-center rounded-full bg-[#f5551d] py-3 text-sm font-bold text-[#160a03] transition-all hover:-translate-y-0.5 hover:bg-[#ff8a45] disabled:opacity-50 disabled:hover:translate-y-0"
               >
-                Login
+                {isPending ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-[#160a03]" />
+                ) : (
+                  "Login"
+                )}
               </button>
 
               {/* Divider */}
@@ -148,7 +198,9 @@ export function LoginForm({
                 {/* Google */}
                 <button
                   type="button"
-                  className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-full border border-white/20 py-3 text-sm font-semibold text-[#f6f3ec] transition-all hover:-translate-y-0.5 hover:bg-white/10"
+                  onClick={() => handleOAuthLogin("google")}
+                  disabled={isPending}
+                  className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-full border border-white/20 py-3 text-sm font-semibold text-[#f6f3ec] transition-all hover:-translate-y-0.5 hover:bg-white/10 disabled:opacity-50"
                 >
                   <svg
                     viewBox="-3 0 262 262"
@@ -156,11 +208,11 @@ export function LoginForm({
                     preserveAspectRatio="xMidYMid"
                     className="h-5 w-5 shrink-0"
                   >
-                    <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                    <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
                     <g
                       id="SVGRepo_tracerCarrier"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     ></g>
                     <g id="SVGRepo_iconCarrier">
                       <path
@@ -187,7 +239,9 @@ export function LoginForm({
                 {/* Apple */}
                 <button
                   type="button"
-                  className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-full border border-white/20 py-3 text-sm font-semibold text-[#f6f3ec] transition-all hover:-translate-y-0.5 hover:bg-white/10"
+                  onClick={() => handleOAuthLogin("apple")}
+                  disabled={isPending}
+                  className="flex w-full cursor-pointer items-center justify-center gap-3 rounded-full border border-white/20 py-3 text-sm font-semibold text-[#f6f3ec] transition-all hover:-translate-y-0.5 hover:bg-white/10 disabled:opacity-50"
                 >
                   <svg
                     viewBox="0 0 24 24"
@@ -205,7 +259,7 @@ export function LoginForm({
               <p className="text-center text-sm text-[#9a9a9f]">
                 Don&apos;t have an account?{" "}
                 <a
-                  href="#"
+                  href="/signup"
                   className="font-semibold text-[#f6f3ec] transition hover:text-[#f5551d]"
                 >
                   Sign up

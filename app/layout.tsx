@@ -40,7 +40,11 @@ export const metadata = {
     "Your portfolio, client review, and delivery — in one place, built for filmmakers in the Gulf.",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" className={`${manrope.variable} ${satoshi.variable}`}>
       <body>{children}</body>
