@@ -13,7 +13,7 @@ interface HeroSectionProps {
 
 export function HeroSection({ onOpenDemo, onStartTrial }: HeroSectionProps) {
   return (
-    <section className="relative my-6 rounded-[28px] overflow-hidden border border-white/10 bg-gradient-to-b from-[#18181c] via-[#141416] to-[#0a0a0b] p-8 sm:p-14 text-center flex flex-col items-center justify-center shadow-2xl max-w-6xl mx-auto">
+    <section  className="relative my-6 rounded-[28px] overflow-hidden border border-white/10 bg-gradient-to-b from-[#18181c] via-[#141416] to-[#0a0a0b] p-8 sm:p-14 text-center flex flex-col items-center justify-center shadow-2xl max-w-6xl mx-auto">
       {/* Subtle Ambient Glow */}
       <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-[#f5551d]/15 blur-[120px] rounded-full pointer-events-none" />
 
@@ -37,7 +37,7 @@ export function HeroSection({ onOpenDemo, onStartTrial }: HeroSectionProps) {
         <Button
           onClick={onStartTrial}
           size="lg"
-          className="rounded-full bg-[#f5551d] hover:bg-[#ff8a45] text-[#160a03] font-bold px-7 py-3.5 text-base shadow-xl shadow-[#f5551d]/25 transition-all hover:-translate-y-0.5 flex items-center gap-2"
+          className="rounded-full cursor-pointer bg-[#f5551d] hover:bg-[#ff8a45] text-[#160a03] font-bold px-7 py-3.5 text-base shadow-xl shadow-[#f5551d]/25 transition-all hover:-translate-y-0.5 flex items-center gap-2"
         >
           Start Free Trial <ArrowRight className="size-5" />
         </Button>
@@ -45,7 +45,7 @@ export function HeroSection({ onOpenDemo, onStartTrial }: HeroSectionProps) {
           onClick={onOpenDemo}
           variant="outline"
           size="lg"
-          className="rounded-full border-white/20 text-[#f6f3ec] hover:bg-white/10 hover:border-white/40 px-7 py-3.5 text-base transition-all flex items-center gap-2"
+          className="rounded-full cursor-pointer border-white/20 text-[#000000] hover:bg-white/10 hover:border-white/40 px-7 py-3.5 text-base transition-all flex items-center gap-2"
         >
           <Play className="size-4 fill-current text-[#f5551d]" />
           See Live Client Room Demo
