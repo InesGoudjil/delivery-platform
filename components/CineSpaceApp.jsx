@@ -982,8 +982,9 @@ export default function CineSpaceApp() {
                     like a <span className="acc">studio</span>.
                   </h1>
                   <p>
-                    Your portfolio, client review, and delivery — in one place,
-                    built for filmmakers in the Gulf.
+                    Your portfolio, client review, feedback, and delivery — in
+                    one place, built for elite filmmakers, videographers, and
+                    production agencies.
                   </p>
                   <div className="row">
                     <button
@@ -1005,8 +1006,7 @@ export default function CineSpaceApp() {
                 </div>
               </header>
               <div className="trust">
-                <b>Trusted by</b> Lost in Tokyo · Clean Performance · Prestige
-                Rentals · Seen Couture
+                Stop sending “Boring Links” and send something worthy of your work
               </div>
 
               <section id="features" className="section reveal">
