@@ -210,23 +210,33 @@ const SEED = [
   },
   {
     id: 5,
-    title: "Launch Reel",
-    client: "Clean Performance",
+    title: "Rooftop Sessions",
+    client: "Horizon Records",
     type: "film",
     status: "delivered",
-    tc: "00:30",
+    tc: "02:05",
     g: "url(/images/projects/5.jpeg) center/cover no-repeat",
-    desc: "A punchy 30-second launch reel for a healthy-snack brand.",
+    desc: "A live acoustic set filmed at golden hour on a downtown rooftop.",
   },
   {
     id: 6,
-    title: "Launch Reel",
-    client: "Clean Performance",
+    title: "The Roasting Room",
+    client: "Norra Coffee Co.",
     type: "film",
     status: "delivered",
-    tc: "00:30",
+    tc: "01:48",
     g: "url(/images/projects/6.jpeg) center/cover no-repeat",
-    desc: "A punchy 30-second launch reel for a healthy-snack brand.",
+    desc: "Behind-the-scenes look at a small-batch coffee roastery's daily craft.",
+  },
+  {
+    id: 7,
+    title: "Desert Line",
+    client: "Falcon Motors",
+    type: "film",
+    status: "delivered",
+    tc: "00:52",
+    g: "url(/images/projects/7.jpeg) center/cover no-repeat",
+    desc: "A high-speed teaser shot across the dunes for a new SUV launch.",
   },
 ];
 const FAQS = [
@@ -2137,14 +2147,16 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
                 <h2 className="disp">Latest work</h2>
               </div>
               <div className={"grid sz-" + pageView.size.toLowerCase()}>
-                {projects.map((p) => (
-                  <Card
-                    key={p.id}
-                    p={p}
-                    view={pageView}
-                    onClick={() => flash("Playing " + p.title + "…")}
-                  />
-                ))}
+                {projects
+                  .filter((p) => p.id !== pinned.id)
+                  .map((p) => (
+                    <Card
+                      key={p.id}
+                      p={p}
+                      view={pageView}
+                      onClick={() => flash("Playing " + p.title + "…")}
+                    />
+                  ))}
               </div>
               <div className="about-me banner">
                 <div
