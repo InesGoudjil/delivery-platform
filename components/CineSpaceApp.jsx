@@ -4015,12 +4015,12 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
                 </div>
 
                 {/* Bottom-right button */}
-                <button
+                {/* <button
                   className="btn sm show-project"
                   onClick={() => setPfOpen(pinned.id)}
                 >
                   View Project
-                </button>
+                </button> */}
               </div>
               <div className="workhead">
                 <div className="eyebrow">Our portfolio</div>

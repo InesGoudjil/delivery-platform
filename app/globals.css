@@ -2777,12 +2777,12 @@ html {
 
   .featured-badge {
     padding: 6px 10px;
-    font-size: 9px;
+    font-size: 6px;
     letter-spacing: 0.11em;
   }
 
   .featured-title {
-    font-size: clamp(22px, 7vw, 34px);
+    font-size: clamp(22px, 7vw, 18px);
   }
 
   .featured-client {
