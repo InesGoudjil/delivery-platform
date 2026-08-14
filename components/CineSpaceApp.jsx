@@ -1361,7 +1361,7 @@ function WaitlistSurface({ onOpenDemo }) {
                 like a studio.
               </h1>
               <p className="wl-sub">
-                Your portfolio, client review, and delivery — in one place.
+                Your portfolio, client feedback, and delivery — in one place.
                 CineSpace is opening in private beta. Join the waitlist and get
                 early access, founder pricing, and a say in what we build.
               </p>
@@ -2979,8 +2979,8 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
                     like a <span className="acc">studio</span>.
                   </h1>
                   <p>
-                    Your portfolio, client review, and delivery — in one place,
-                    built for filmmakers in the Gulf.
+                    Your portfolio, client feedback, and delivery — in one place,
+                    built for elite filmmakers, videographers, and production agencies.
                   </p>
                   <div className="row">
                     <button
@@ -3002,8 +3002,7 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
                 </div>
               </header>
               <div className="trust">
-                <b>Trusted by</b> Lost in Tokyo · Clean Performance · Prestige
-                Rentals · Seen Couture
+               Stop sending "Boring links" and send something worthy of your work
               </div>
 
               <section id="features" className="section reveal">
@@ -3025,7 +3024,7 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
                     <div className="ic">
                       <MessageCircle size={20} />
                     </div>
-                    <h3>Review & approve</h3>
+                    <h3>Feedback & approval</h3>
                     <p>
                       Clients watch, comment, and approve each cut. Every
                       version tracked, every sign-off locked.
@@ -3087,7 +3086,7 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
                       style={{ backgroundImage: `url(${SHOT_UPLOAD})` }}
                     />
                     <div className="n">01</div>
-                    <h3>Upload your cut</h3>
+                    <h3>Upload your assets</h3>
                     <p>
                       Drop in a film. We handle the hosting, transcoding, and
                       smooth playback.
@@ -3111,7 +3110,7 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
                       style={{ backgroundImage: `url(${SHOT_APPROVE})` }}
                     />
                     <div className="n">03</div>
-                    <h3>Get approved & paid</h3>
+                    <h3>Edit & get approvals</h3>
                     <p>
                       Clients comment and approve the final cut, and you deliver
                       the finished files.
@@ -3181,7 +3180,7 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
                 <div className="fs-text">
                   <div className="eyebrow">Feature 02</div>
                   <h2 className="disp">
-                    Review &amp; <span className="acc">approve</span>.
+                    Feedback &amp; <span className="acc">approval</span>.
                   </h2>
                   <p>
                     Feedback without the chaos. Clients watch each cut, leave
@@ -3259,14 +3258,14 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
                 <div
                   className="mini-stage"
                   style={{
-                    backgroundImage: `linear-gradient(rgba(10,10,11,.22),rgba(10,10,11,.58)), url(${IMG_SHOW})`,
+                    backgroundImage: `linear-gradient(rgba(10,10,11,.22),rgba(10,10,11,.58)), url(${IMG_HERO})`,
                     backgroundSize: "cover",
                     backgroundPosition: "center",
                   }}
                 >
-                  <div className="play">
+                  {/* <div className="play">
                     <Play size={18} />
-                  </div>
+                  </div> */}
                   <span className="seal2">
                     <Check size={12} />
                     Approved
@@ -3321,7 +3320,7 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
                       p: "0",
                       pop: false,
                       f: [
-                        "Portfolio page (up to 4 videos)",
+                        "Full portfolio page",
                         "2 GB video storage",
                         "1 client delivery link",
                         "Review, comments & approvals",
@@ -3460,7 +3459,7 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
 
                         <tr>
                           <td>Portfolio page</td>
-                          <td>Up to 4 videos</td>
+                          <td>Full</td>
                           <td>Full</td>
                           <td className="me">Full</td>
                           <td>Full</td>
@@ -3674,8 +3673,8 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
                     </div>
                     <h4>Creator access</h4>
                     <p>
-                      Get the <b>Studio plan (2 TB)</b> free for 12 months.
-                      Build your own client galleries, remove CineSpace
+                      Get the <b>Pro plan (500 GB)</b> free for 12 months.
+                      Build your own client galleries, add your own
                       branding, and use it across your workflow and tutorials.
                     </p>
                   </div>
