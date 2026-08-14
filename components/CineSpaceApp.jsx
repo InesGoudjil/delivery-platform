@@ -494,7 +494,7 @@ const PF_ASSETS = [
     desc: "A cinematic fashion film, shot across the day.",
     ar: 0.72,
     tc: "—",
-    g: "url(/images/portfolio/projects/Fashion/8.webp) center/cover no-repeat",
+    g: "url(/images/portfolio/projects/fashion/8.webp) center/cover no-repeat",
   },
   {
     id: 3,
@@ -564,7 +564,7 @@ const PF_ASSETS = [
     desc: "A cinematic fashion film, shot across the day.",
     ar: 0.667,
     tc: "—",
-    g: "url(/images/portfolio/projects/Fashion/1.webp) center/cover no-repeat",
+    g: "url(/images/portfolio/projects/fashion/1.webp) center/cover no-repeat",
   },
   {
     id: 10,
@@ -644,7 +644,7 @@ const PF_ASSETS = [
     desc: "A cinematic still from the Fashion Event.",
     ar: 0.82,
     tc: "—",
-    g: "url(/images/portfolio/projects/Fashion/4.webp) center/cover no-repeat",
+    g: "url(/images/portfolio/projects/fashion/4.webp) center/cover no-repeat",
   },
   {
     id: 17,
@@ -734,7 +734,7 @@ const PF_ASSETS = [
     desc: "A cinematic still from the Fashion Event.",
     ar: 0.667,
     tc: "—",
-    g: "url(/images/portfolio/projects/Fashion/6.webp) center/cover no-repeat",
+    g: "url(/images/portfolio/projects/fashion/6.webp) center/cover no-repeat",
   },
   {
     id: 25,
@@ -794,7 +794,7 @@ const PF_ASSETS = [
     desc: "A cinematic still from the Fashion Event.",
     ar: 0.82,
     tc: "—",
-    g: "url(/images/portfolio/projects/Fashion/3.webp) center/cover no-repeat",
+    g: "url(/images/portfolio/projects/fashion/3.webp) center/cover no-repeat",
   },
   {
     id: 31,
@@ -884,7 +884,7 @@ const PF_ASSETS = [
     desc: "A cinematic still from the Fashion Event.",
     ar: 0.667,
     tc: "—",
-    g: "url(/images/portfolio/projects/Fashion/7.webp) center/cover no-repeat",
+    g: "url(/images/portfolio/projects/fashion/7.webp) center/cover no-repeat",
   },
   {
     id: 37,
@@ -934,7 +934,7 @@ const PF_ASSETS = [
     desc: "A cinematic still from the Fashion Event.",
     ar: 0.75,
     tc: "—",
-    g: "url(/images/portfolio/projects/Fashion/5.webp) center/cover no-repeat",
+    g: "url(/images/portfolio/projects/fashion/5.webp) center/cover no-repeat",
   },
   {
     id: 42,
@@ -994,7 +994,7 @@ const PF_ASSETS = [
     desc: "A cinematic still from the Fashion Event.",
     ar: 0.667,
     tc: "—",
-    g: "url(/images/portfolio/projects/Fashion/2.webp) center/cover no-repeat",
+    g: "url(/images/portfolio/projects/fashion/2.webp) center/cover no-repeat",
   },
   {
     id: 47,
@@ -4016,7 +4016,7 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
 
                 {/* Bottom-right button */}
                 <button
-                  className="btn show-project"
+                  className="btn sm show-project"
                   onClick={() => setPfOpen(pinned.id)}
                 >
                   View Project
