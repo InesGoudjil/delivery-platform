@@ -2618,40 +2618,186 @@ html {
   border-radius: 22px;
   overflow: hidden;
   margin-top: 18px;
-  aspect-ratio: 2.6/1;
+
+  aspect-ratio: 2.6 / 1;
   max-height: min(72vh, 720px);
+
   display: grid;
   place-items: center;
+
   background-size: cover;
   background-position: center;
+  background-repeat: no-repeat;
 }
-@media (max-width: 600px) {
-  .showreel {
-    aspect-ratio: 16/9;
-    max-height: none;
-  }
-}
+
+/* Dark gradient */
 .showreel::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.55));
+  z-index: 1;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.08) 0%,
+      rgba(0, 0, 0, 0.2) 38%,
+      rgba(0, 0, 0, 0.72) 100%
+    );
 }
+
+/* Center play button */
 .showreel .bigplay {
   position: relative;
   z-index: 3;
-  width: 74px;
-  height: 74px;
+
+  width: 94px;
+  height: 94px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+
+  color: #fff;
+
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
 }
-.showreel .rl-tc {
+
+.showreel .bigplay:hover {
+  transform: scale(1.06);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Bottom-left content */
+.showreel-info {
   position: absolute;
-  right: 16px;
-  bottom: 14px;
+  left: 36px;
+  bottom: 34px;
+
   z-index: 3;
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  gap: 7px;
+
+  max-width: 55%;
+}
+
+/* Featured Project badge */
+.featured-badge {
+  display: inline-flex;
+  align-items: center;
+
+  width: fit-content;
+
+  padding: 7px 13px;
+
+  border-radius: 999px;
+
+  background: #ff551d;
+  color: #000;
+
+  font-family: "Satoshi", sans-serif;
   font-size: 12px;
-  background: rgba(10, 10, 11, 0.6);
-  padding: 4px 9px;
-  border-radius: 6px;
+  font-weight: 700;
+
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Project title */
+.featured-title {
+  font-family: "Satoshi", sans-serif;
+
+  font-size: clamp(26px, 3.2vw, 48px);
+  font-weight: 800;
+
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+
+  text-transform: uppercase;
+
+  color: #fff;
+
+  margin: 2px 0 0;
+}
+
+/* Description */
+.featured-client {
+  max-width: 500px;
+
+  margin: 0;
+
+  font-family: "Satoshi", sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 500;
+
+  color: rgba(255, 255, 255, 0.78);
+}
+
+/* Position the existing .btn system */
+.showreel .show-project {
+  position: absolute;
+  right: 34px;
+  bottom: 34px;
+
+  z-index: 4;
+
+  /* Override only positioning-related things */
+  margin: 0;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .showreel {
+    aspect-ratio: 16 / 9;
+    max-height: none;
+  }
+
+  .showreel-info {
+    left: 20px;
+    bottom: 20px;
+    max-width: 65%;
+  }
+
+  .featured-badge {
+    padding: 6px 10px;
+    font-size: 9px;
+    letter-spacing: 0.11em;
+  }
+
+  .featured-title {
+    font-size: clamp(22px, 7vw, 34px);
+  }
+
+  .featured-client {
+    font-size: 11px;
+  }
+
+  .showreel .bigplay {
+    width: 64px;
+    height: 64px;
+  }
+
+  .showreel .show-project {
+    right: 20px;
+    bottom: 20px;
+  }
 }
 .workhead {
   text-align: center;

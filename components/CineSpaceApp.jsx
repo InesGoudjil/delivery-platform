@@ -600,8 +600,8 @@ const PF_ASSETS = [
     id: 54,
     kind: "film",
     cat: "martin-katler",
-    title: "Martin Katler",
-    desc: "A cinematic Martin Katler film, shot across the day.",
+    title: "Mercedes GTS",
+    desc: "A cinematic Mercedes GTS film, shot across the day.",
     ar: 1.35,
     tc: "—",
     g: "url(/images/portfolio/projects/Martin-katler/1.webp) center/cover no-repeat",
@@ -690,8 +690,8 @@ const PF_ASSETS = [
     id: 55,
     kind: "still",
     cat: "martin-katler",
-    title: "Martin Katler",
-    desc: "A cinematic still from the Martin Katler project.",
+    title: "Mercedes GTS",
+    desc: "A cinematic still from the Mercedes GTS project.",
     ar: 0.72,
     tc: "—",
     g: "url(/images/portfolio/projects/Martin-katler/2.webp) center/cover no-repeat",
@@ -830,8 +830,8 @@ const PF_ASSETS = [
     id: 56,
     kind: "still",
     cat: "martin-katler",
-    title: "Martin Katler",
-    desc: "A cinematic still from the Martin Katler project.",
+    title: "Mercedes GTS",
+    desc: "A cinematic still from the Mercedes GTS project.",
     ar: 1.55,
     tc: "—",
     g: "url(/images/portfolio/projects/Martin-katler/3.webp) center/cover no-repeat",
@@ -850,8 +850,8 @@ const PF_ASSETS = [
     id: 57,
     kind: "still",
     cat: "martin-katler",
-    title: "Martin Katler",
-    desc: "A cinematic still from the Martin Katler project.",
+    title: "Mercedes GTS",
+    desc: "A cinematic still from the Mercedes GTS project.",
     ar: 0.85,
     tc: "—",
     g: "url(/images/portfolio/projects/Martin-katler/4.webp) center/cover no-repeat",
@@ -870,8 +870,8 @@ const PF_ASSETS = [
     id: 58,
     kind: "still",
     cat: "martin-katler",
-    title: "Martin Katler",
-    desc: "A cinematic still from the Martin Katler project.",
+    title: "Mercedes GTS",
+    desc: "A cinematic still from the Mercedes GTS project.",
     ar: 1.25,
     tc: "—",
     g: "url(/images/portfolio/projects/Martin-katler/5.webp) center/cover no-repeat",
@@ -960,8 +960,8 @@ const PF_ASSETS = [
     id: 59,
     kind: "still",
     cat: "martin-katler",
-    title: "Martin Katler",
-    desc: "A cinematic still from the Martin Katler project.",
+    title: "Mercedes GTS",
+    desc: "A cinematic still from the Mercedes GTS project.",
     ar: 0.68,
     tc: "—",
     g: "url(/images/portfolio/projects/Martin-katler/6.webp) center/cover no-repeat",
@@ -1040,8 +1040,8 @@ const PF_ASSETS = [
     id: 60,
     kind: "still",
     cat: "martin-katler",
-    title: "Martin Katler",
-    desc: "A cinematic still from the Martin Katler project.",
+    title: "Mercedes GTS",
+    desc: "A cinematic still from the Mercedes GTS project.",
     ar: 1.65,
     tc: "—",
     g: "url(/images/portfolio/projects/Martin-katler/7.webp) center/cover no-repeat",
@@ -1225,9 +1225,9 @@ const PF_PROJECTS = [
 
   {
     id: 8,
-    title: "Martin Katler",
-    client: "Martin Katler",
-    desc: "A cinematic project featuring Martin Katler through film and photography.",
+    title: "Mercedes GTS",
+    client: "Mercedes GTS",
+    desc: "A cinematic project featuring Mercedes GTS through film and photography.",
     date: "—",
     location: "—",
     cover: 54,
@@ -1263,11 +1263,9 @@ const FAQS = [
   },
 ];
 
-const SHOT_UPLOAD =
-  "data:image/webp;base64,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";
-const SHOT_LINK = "/images/posts/IG-Posts-9-_1_.webp";
-const SHOT_APPROVE =
-  "data:image/webp;base64,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";
+const SHOT_UPLOAD = "/images/posts/shot-upload.webp";
+const SHOT_LINK = "/images/posts/shot-link.webp";
+const SHOT_APPROVE = "/images/posts/shot-approve.webp";
 // CineSpace — Waitlist landing page
 // Persists signups via window.storage (shared) so the counter is live in the artifact preview.
 // For production, the developer swaps saveSignup()/loadCount() for a real backend (Supabase, Mailchimp, etc.).
@@ -1761,7 +1759,16 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
   const [profMenu, setProfMenu] = useState(false);
   const [livePrev, setLivePrev] = useState(false);
   const [openProj, setOpenProj] = useState(null);
-  const [projects, setProjects] = useState(SEED);
+  const [projects, setProjects] = useState(
+    PF_PROJECTS.map((p) => ({
+      ...p,
+      type: "film",
+      status: "draft",
+      g:
+        PF_ASSETS.find((a) => a.id === p.cover)?.g ||
+        "linear-gradient(135deg,#1a2028,#2a3742)",
+    })),
+  );
   const [selId, setSelId] = useState(1);
   const [toast, setToast] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -1809,7 +1816,7 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
   };
   const [menuOpen, setMenuOpen] = useState(false);
   const [reply, setReply] = useState("");
-  const [pinnedId, setPinnedId] = useState(1);
+  const [pinnedId, setPinnedId] = useState(8);
   const [bio, setBio] = useState(
     "Filmmaker & creative director based between Dubai and Sharjah. I make brand films, weddings, and launch content for the Gulf — story first, craft you don't notice.",
   );
@@ -1893,6 +1900,31 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
     setPlayT(0);
     setReplyKey(null);
   }, [openAsset]);
+
+  useEffect(() => {
+    if (openProj) {
+      const proj = projects.find((p) => p.id === openProj);
+      if (proj && proj.assetIds) {
+        const projectAssets = proj.assetIds
+          .map((assetId) => pfAssets.find((a) => a.id === assetId))
+          .filter(Boolean)
+          .map((asset) => ({
+            id: asset.id,
+            name: asset.title,
+            type: asset.kind === "film" ? "video" : "photo",
+            size: "— MB",
+            tc: asset.tc || "—",
+            ar: asset.ar,
+            g: asset.g,
+            versions: ["V1"],
+            approved: false,
+            comments: [],
+          }));
+        setAssets(projectAssets);
+      }
+    }
+  }, [openProj, projects, pfAssets]);
+
   useEffect(() => {
     const el = document.querySelector(".bgimg");
     if (!el) return;
@@ -1979,7 +2011,16 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
     };
   })();
   const thStyle = (a) => ({
-    background: a.g,
+    backgroundImage: a.g.match(/url\([^)]+\)/)?.[0] || "none",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    backgroundSize:
+      clientView.ratio === "mixed"
+        ? "cover"
+        : clientView.scale === "fit"
+          ? "contain"
+          : "cover",
+    backgroundColor: "var(--bg3)",
     aspectRatio:
       clientView.ratio === "mixed"
         ? a.ar
@@ -1988,13 +2029,6 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
             ? "3 / 4"
             : "16 / 10"
         : AV_RATIO[clientView.ratio],
-    backgroundSize:
-      clientView.ratio === "mixed"
-        ? "cover"
-        : clientView.scale === "fit"
-          ? "contain"
-          : "cover",
-    backgroundColor: "var(--bg3)",
   });
   const approvedCount = assets.filter((a) => a.approved).length;
   const approveAsset = (id) => {
@@ -3953,17 +3987,40 @@ export default function CineSpaceApp({ initialSurface, embedded } = {}) {
               <div
                 className="showreel"
                 style={{
-                  background:
-                    "url(" + SHOWREEL_IMG + ") center/cover no-repeat",
+                  backgroundImage:
+                    pinned.g.match(/url\([^)]+\)/)?.[0] || "none",
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  backgroundRepeat: "no-repeat",
                 }}
               >
+                {/* Center play button */}
                 <div
                   className="bigplay"
-                  onClick={() => flash("Playing showreel…")}
+                  onClick={() => {
+                    setSelId(pinned.id);
+                    setOpenProj(pinned.id);
+                  }}
                 >
                   <Play size={26} />
                 </div>
-                <span className="rl-tc">{pinned.tc}</span>
+
+                {/* Bottom-left information */}
+                <div className="showreel-info">
+                  <div className="featured-badge">Featured Project</div>
+
+                  <h3 className="featured-title">{pinned.title}</h3>
+
+                  <p className="featured-client">{pinned.desc}</p>
+                </div>
+
+                {/* Bottom-right button */}
+                <button
+                  className="btn show-project"
+                  onClick={() => setPfOpen(pinned.id)}
+                >
+                  View Project
+                </button>
               </div>
               <div className="workhead">
                 <div className="eyebrow">Our portfolio</div>
