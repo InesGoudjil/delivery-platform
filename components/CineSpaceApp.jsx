@@ -476,10 +476,6 @@ const SEED = [
 ];
 
 const PF_ASSETS = [
-  // ============================================================
-  // FILMS — KEEPING YOUR CURRENT FILM SELECTION
-  // ============================================================
-
   {
     id: 1,
     kind: "film",
@@ -601,6 +597,16 @@ const PF_ASSETS = [
     g: "url(/images/portfolio/projects/Restaurant/12.webp) center/cover no-repeat",
   },
   {
+    id: 54,
+    kind: "film",
+    cat: "martin-katler",
+    title: "Martin Katler",
+    desc: "A cinematic Martin Katler film, shot across the day.",
+    ar: 1.35,
+    tc: "—",
+    g: "url(/images/portfolio/projects/Martin-katler/1.webp) center/cover no-repeat",
+  },
+  {
     id: 13,
     kind: "film",
     cat: "tenis",
@@ -630,11 +636,6 @@ const PF_ASSETS = [
     tc: "01:20",
     g: "url(/images/portfolio/projects/Restaurant/2.webp) center/cover no-repeat",
   },
-
-  // ============================================================
-  // STILLS — ALL REMAINING IMAGES, RANDOMIZED
-  // ============================================================
-
   {
     id: 16,
     kind: "still",
@@ -684,6 +685,16 @@ const PF_ASSETS = [
     ar: 1.7,
     tc: "—",
     g: "url(/images/portfolio/projects/G-class/5.webp) center/cover no-repeat",
+  },
+  {
+    id: 55,
+    kind: "still",
+    cat: "martin-katler",
+    title: "Martin Katler",
+    desc: "A cinematic still from the Martin Katler project.",
+    ar: 0.72,
+    tc: "—",
+    g: "url(/images/portfolio/projects/Martin-katler/2.webp) center/cover no-repeat",
   },
   {
     id: 21,
@@ -816,6 +827,16 @@ const PF_ASSETS = [
     g: "url(/images/portfolio/projects/Boxing/7.webp) center/cover no-repeat",
   },
   {
+    id: 56,
+    kind: "still",
+    cat: "martin-katler",
+    title: "Martin Katler",
+    desc: "A cinematic still from the Martin Katler project.",
+    ar: 1.55,
+    tc: "—",
+    g: "url(/images/portfolio/projects/Martin-katler/3.webp) center/cover no-repeat",
+  },
+  {
     id: 34,
     kind: "still",
     cat: "g class",
@@ -826,6 +847,16 @@ const PF_ASSETS = [
     g: "url(/images/portfolio/projects/G-class/4.webp) center/cover no-repeat",
   },
   {
+    id: 57,
+    kind: "still",
+    cat: "martin-katler",
+    title: "Martin Katler",
+    desc: "A cinematic still from the Martin Katler project.",
+    ar: 0.85,
+    tc: "—",
+    g: "url(/images/portfolio/projects/Martin-katler/4.webp) center/cover no-repeat",
+  },
+  {
     id: 35,
     kind: "still",
     cat: "restaurant",
@@ -834,6 +865,16 @@ const PF_ASSETS = [
     ar: 1.5,
     tc: "—",
     g: "url(/images/portfolio/projects/Restaurant/11.webp) center/cover no-repeat",
+  },
+  {
+    id: 58,
+    kind: "still",
+    cat: "martin-katler",
+    title: "Martin Katler",
+    desc: "A cinematic still from the Martin Katler project.",
+    ar: 1.25,
+    tc: "—",
+    g: "url(/images/portfolio/projects/Martin-katler/5.webp) center/cover no-repeat",
   },
   {
     id: 36,
@@ -916,6 +957,16 @@ const PF_ASSETS = [
     g: "url(/images/portfolio/projects/Boxing/5.webp) center/cover no-repeat",
   },
   {
+    id: 59,
+    kind: "still",
+    cat: "martin-katler",
+    title: "Martin Katler",
+    desc: "A cinematic still from the Martin Katler project.",
+    ar: 0.68,
+    tc: "—",
+    g: "url(/images/portfolio/projects/Martin-katler/6.webp) center/cover no-repeat",
+  },
+  {
     id: 44,
     kind: "still",
     cat: "restaurant",
@@ -984,6 +1035,16 @@ const PF_ASSETS = [
     ar: 0.64,
     tc: "—",
     g: "url(/images/portfolio/projects/G-class/4.webp) center/cover no-repeat",
+  },
+  {
+    id: 60,
+    kind: "still",
+    cat: "martin-katler",
+    title: "Martin Katler",
+    desc: "A cinematic still from the Martin Katler project.",
+    ar: 1.65,
+    tc: "—",
+    g: "url(/images/portfolio/projects/Martin-katler/7.webp) center/cover no-repeat",
   },
   {
     id: 51,
@@ -1159,6 +1220,26 @@ const PF_PROJECTS = [
       32,
       40,
       49, // Stills
+    ],
+  },
+
+  {
+    id: 8,
+    title: "Martin Katler",
+    client: "Martin Katler",
+    desc: "A cinematic project featuring Martin Katler through film and photography.",
+    date: "—",
+    location: "—",
+    cover: 54,
+    tc: "—",
+    assetIds: [
+      54, // Film
+      55,
+      56,
+      57,
+      58,
+      59,
+      60, // Stills
     ],
   },
 ];
