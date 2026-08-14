@@ -287,7 +287,7 @@ const DELIVERY = {
   location: "Dubai, UAE",
   size: "1.1 GB",
   cover:
-    "url(/images/projects/mercedes-amg-gt/cover.webp) center/cover no-repeat",
+    "url(/images/projects/mercedes-amg-gt/1.webp) center/cover no-repeat",
 };
 const DELIVERY_ASSETS = [
   {
