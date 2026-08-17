@@ -37,8 +37,11 @@ export async function updateSession(request: NextRequest) {
     const { data: workspace } = await (supabase as any)
       .from('workspaces')
       .select('slug')
-      .eq('owner_id', user.id)
+      .eq('owner_id', user)
       .maybeSingle();
+
+        console.log("workspace",workspace)
+
 
     url.pathname = workspace?.slug ? `/${workspace.slug}` : '/';
     return NextResponse.redirect(url);

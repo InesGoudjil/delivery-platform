@@ -1,7 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { SupabaseWorkspaceRepository } from "@/infrastructure/repositories/supabase-workspace.repository";
-import { SupabaseProjectRepository } from "@/infrastructure/repositories/supabase-project.repository";
+import { getServerServices } from "@/core/server";
 import Link from "next/link";
 import { Plus, Film, ArrowRight } from "lucide-react";
 
@@ -11,17 +9,15 @@ export default async function WorkspaceDashboardPage({
   params: Promise<{ workspaceSlug: string }>;
 }) {
   const { workspaceSlug } = await params;
-  const supabase = await createClient();
+  const services = await getServerServices();
 
-  const workspaceRepo = new SupabaseWorkspaceRepository(supabase);
-  const workspace = await workspaceRepo.findBySlug(workspaceSlug);
+  const workspace = await services.workspace.getWorkspaceBySlug(workspaceSlug);
 
   if (!workspace) {
     redirect("/");
   }
 
-  const projectRepo = new SupabaseProjectRepository(supabase);
-  const projects = await projectRepo.listByWorkspaceId(workspace.id);
+  const projects = await services.project.listWorkspaceProjects(workspace.id);
 
   const draftCount = projects.filter((p) => p.status === "draft").length;
   const inReviewCount = projects.filter((p) => p.status === "in_review").length;

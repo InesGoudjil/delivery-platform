@@ -10,6 +10,7 @@ export interface Project {
   passcodeHash?: string | null;
   status: ProjectStatus;
   isDownloadAllowed: boolean;
+  notifyOnDownload: boolean;
   approvedAt?: string | null;
   approvedByName?: string | null;
   createdAt: string;
