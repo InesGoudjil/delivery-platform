@@ -7,6 +7,7 @@ export interface Asset {
   title: string;
   type: AssetType;
   sortOrder: number;
+  isArchived: boolean;
   createdAt: string;
   updatedAt: string;
 }

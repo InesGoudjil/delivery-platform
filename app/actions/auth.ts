@@ -2,9 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { SupabaseWorkspaceRepository } from '@/infrastructure/repositories/supabase-workspace.repository';
-import { GetOrCreateWorkspaceUseCase } from '@/core/use-cases/workspace/get-or-create-workspace.use-case';
+import { getServerServices } from '@/core/server';
 
 export interface AuthState {
   error?: string | null;
@@ -19,21 +17,15 @@ export async function loginAction(prevState: AuthState | null, formData: FormDat
     return { error: 'Please fill in all required fields.' };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  const services = await getServerServices();
+  const { error } = await services.auth.signInWithPassword(email, password);
 
   if (error) {
     return { error: error.message };
   }
 
-  const { data: workspace } = await (supabase as any)
-    .from('workspaces')
-    .select('slug')
-    .eq('owner_id', (await supabase.auth.getUser()).data.user?.id)
-    .maybeSingle();
+  const user = await services.auth.getCurrentUser();
+  const workspace = user ? await services.workspace.getWorkspaceByOwnerId(user.id) : null;
 
   revalidatePath('/', 'layout');
   redirect(workspace?.slug ? `/${workspace.slug}` : '/');
@@ -57,25 +49,15 @@ export async function signupAction(prevState: AuthState | null, formData: FormDa
     return { error: 'Passwords do not match.' };
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        full_name: name,
-      },
-    },
-  });
+  const services = await getServerServices();
+  const { data, error } = await services.auth.signUp(email, password, name);
 
   if (error) {
     return { error: error.message };
   }
 
   if (data.session && data.user) {
-    const workspaceRepo = new SupabaseWorkspaceRepository(supabase);
-    const getOrCreate = new GetOrCreateWorkspaceUseCase(workspaceRepo);
-    const workspace = await getOrCreate.execute(data.user.id, name);
+    const workspace = await services.workspace.getOrCreateWorkspace(data.user.id, name);
 
     revalidatePath('/', 'layout');
     redirect(`/${workspace.slug}`);
@@ -87,8 +69,8 @@ export async function signupAction(prevState: AuthState | null, formData: FormDa
 }
 
 export async function signOutAction() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  const services = await getServerServices();
+  await services.auth.signOut();
   revalidatePath('/', 'layout');
   redirect('/login');
 }

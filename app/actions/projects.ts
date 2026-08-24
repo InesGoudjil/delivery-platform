@@ -1,19 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { SupabaseWorkspaceRepository } from "@/infrastructure/repositories/supabase-workspace.repository";
-import { SupabaseProjectRepository } from "@/infrastructure/repositories/supabase-project.repository";
-import { GetOrCreateWorkspaceUseCase } from "@/core/use-cases/workspace/get-or-create-workspace.use-case";
-import { CreateProjectUseCase } from "@/core/use-cases/projects/create-project.use-case";
-import { ApproveProjectUseCase } from "@/core/use-cases/projects/approve-project.use-case";
+import { getServerServices } from "@/core/server";
 
 export async function createProjectAction(formData: FormData) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const services = await getServerServices();
+    const user = await services.auth.getCurrentUser();
 
     if (!user) {
       return { error: "User is not authenticated." };
@@ -22,14 +15,9 @@ export async function createProjectAction(formData: FormData) {
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
 
-    const workspaceRepo = new SupabaseWorkspaceRepository(supabase);
-    const getWorkspaceUseCase = new GetOrCreateWorkspaceUseCase(workspaceRepo);
-    const workspace = await getWorkspaceUseCase.execute(user.id);
+    const workspace = await services.workspace.getOrCreateWorkspace(user.id);
 
-    const projectRepo = new SupabaseProjectRepository(supabase);
-    const createProjectUseCase = new CreateProjectUseCase(projectRepo);
-
-    const project = await createProjectUseCase.execute({
+    const project = await services.project.createProject({
       workspaceId: workspace.id,
       title: title || "Untitled Project",
       description: description || undefined,
@@ -44,11 +32,8 @@ export async function createProjectAction(formData: FormData) {
 
 export async function approveCutAction(projectId: string, approvedByName?: string) {
   try {
-    const supabase = await createClient();
-    const projectRepo = new SupabaseProjectRepository(supabase);
-    const approveUseCase = new ApproveProjectUseCase(projectRepo);
-
-    const project = await approveUseCase.execute(projectId, approvedByName);
+    const services = await getServerServices();
+    const project = await services.project.approveCut(projectId, approvedByName);
 
     revalidatePath(`/deliver/${project.shareToken}`);
     revalidatePath(`/deliver/${project.id}`);

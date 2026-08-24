@@ -1,9 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { SupabaseFeedbackRepository } from "@/infrastructure/repositories/supabase-feedback.repository";
-import { AddTimecodedFeedbackUseCase } from "@/core/use-cases/feedback/add-feedback.use-case";
+import { getServerServices } from "@/core/server";
 
 export interface AddFeedbackParams {
   assetVersionId: string;
@@ -15,15 +13,10 @@ export interface AddFeedbackParams {
 
 export async function addFeedbackAction(params: AddFeedbackParams) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const services = await getServerServices();
+    const user = await services.auth.getCurrentUser();
 
-    const feedbackRepo = new SupabaseFeedbackRepository(supabase);
-    const useCase = new AddTimecodedFeedbackUseCase(feedbackRepo);
-
-    const feedback = await useCase.execute({
+    const feedback = await services.feedback.addFeedback({
       assetVersionId: params.assetVersionId,
       authorUserId: user?.id,
       authorName: params.authorName || (user?.email ? user.email.split("@")[0] : "Client Guest"),

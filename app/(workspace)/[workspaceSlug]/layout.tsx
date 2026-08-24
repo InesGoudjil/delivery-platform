@@ -1,7 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { SupabaseWorkspaceRepository } from "@/infrastructure/repositories/supabase-workspace.repository";
-import { WorkspaceSidebar } from "./_components/workspace-sidebar";
+import { getServerServices } from "@/core/server";
+import {
+  SidebarProvider,
+  SidebarInset,
+} from "@/components/ui/sidebar";
+import { WorkspaceSidebar } from "@/components/workspaces/workspace-sidebar";
+import { WorkspaceHeader } from "@/components/workspaces/workspace-header";
 
 export default async function WorkspaceLayout({
   children,
@@ -11,17 +15,14 @@ export default async function WorkspaceLayout({
   params: Promise<{ workspaceSlug: string }>;
 }) {
   const { workspaceSlug } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const services = await getServerServices();
+  const user = await services.auth.getCurrentUser();
 
   if (!user) {
     redirect(`/login?redirect=/${workspaceSlug}`);
   }
 
-  const workspaceRepo = new SupabaseWorkspaceRepository(supabase);
-  const workspace = await workspaceRepo.findBySlug(workspaceSlug);
+  const workspace = await services.workspace.getWorkspaceBySlug(workspaceSlug);
 
   if (!workspace) {
     redirect("/");
@@ -31,17 +32,34 @@ export default async function WorkspaceLayout({
     redirect("/");
   }
 
+  const [profile, plan] = await Promise.all([
+    services.profile.getProfile(user.id),
+    services.subscription.getCurrentPlan(workspace.id),
+  ]);
+
   return (
-    <div className="min-h-screen bg-bg text-ink flex flex-col md:flex-row">
+    <SidebarProvider defaultOpen={true}>
       <WorkspaceSidebar
-        workspaceSlug={workspace.slug}
-        workspaceName={workspace.brandName}
-        accentColor={workspace.accentColor}
-        userEmail={user.email}
+        workspace={workspace}
+        workspaces={[workspace]}
+        user={user}
+        profile={profile}
+        plan={plan}
       />
-      <main className="flex-1 p-6 md:p-10 overflow-y-auto">
-        {children}
-      </main>
-    </div>
+      <SidebarInset className="bg-[#09090b] text-[#f6f3ec] min-h-screen flex flex-col">
+        {/* Top Header matching CineSpace Dashboard with LIVE PREVIEW */}
+        <WorkspaceHeader
+          workspace={workspace}
+          user={user}
+          profile={profile}
+          plan={plan}
+        />
+
+        {/* Main Content View */}
+        <main className="flex-1 p-6 md:p-10 overflow-y-auto">
+          {children}
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

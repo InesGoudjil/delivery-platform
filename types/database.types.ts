@@ -19,7 +19,8 @@ export interface Database {
           custom_domain: string | null;
           accent_color: string | null;
           default_language: 'ar' | 'en';
-          storage_limit_bytes: number;
+          account_type: 'individual' | 'studio';
+          storage_used_bytes: number;
           created_at: string;
           updated_at: string;
         };
@@ -32,7 +33,8 @@ export interface Database {
           custom_domain?: string | null;
           accent_color?: string | null;
           default_language?: 'ar' | 'en';
-          storage_limit_bytes?: number;
+          account_type?: 'individual' | 'studio';
+          storage_used_bytes?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -45,7 +47,162 @@ export interface Database {
           custom_domain?: string | null;
           accent_color?: string | null;
           default_language?: 'ar' | 'en';
-          storage_limit_bytes?: number;
+          account_type?: 'individual' | 'studio';
+          storage_used_bytes?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      workspace_features: {
+        Row: {
+          workspace_id: string;
+          features: Json;
+          updated_at: string;
+        };
+        Insert: {
+          workspace_id: string;
+          features?: Json;
+          updated_at?: string;
+        };
+        Update: {
+          workspace_id?: string;
+          features?: Json;
+          updated_at?: string;
+        };
+      };
+      user_profiles: {
+        Row: {
+          id: string;
+          full_name: string | null;
+          avatar_url: string | null;
+          platform_role: 'user' | 'admin';
+          last_login_at: string | null;
+          last_login_ip: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          full_name?: string | null;
+          avatar_url?: string | null;
+          platform_role?: 'user' | 'admin';
+          last_login_at?: string | null;
+          last_login_ip?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          full_name?: string | null;
+          avatar_url?: string | null;
+          platform_role?: 'user' | 'admin';
+          last_login_at?: string | null;
+          last_login_ip?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      workspace_members: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          user_id: string;
+          role: 'owner' | 'admin' | 'editor' | 'viewer';
+          joined_at: string;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          user_id: string;
+          role?: 'owner' | 'admin' | 'editor' | 'viewer';
+          joined_at?: string;
+        };
+        Update: {
+          id?: string;
+          workspace_id?: string;
+          user_id?: string;
+          role?: 'owner' | 'admin' | 'editor' | 'viewer';
+          joined_at?: string;
+        };
+      };
+      workspace_invitations: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          inviter_id: string;
+          email: string;
+          role: 'admin' | 'editor' | 'viewer';
+          token: string;
+          status: 'pending' | 'accepted' | 'expired' | 'revoked';
+          expires_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          inviter_id: string;
+          email: string;
+          role?: 'admin' | 'editor' | 'viewer';
+          token?: string;
+          status?: 'pending' | 'accepted' | 'expired' | 'revoked';
+          expires_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          workspace_id?: string;
+          inviter_id?: string;
+          email?: string;
+          role?: 'admin' | 'editor' | 'viewer';
+          token?: string;
+          status?: 'pending' | 'accepted' | 'expired' | 'revoked';
+          expires_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      plans: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          price_cents: number;
+          currency: string;
+          billing_interval: 'month' | 'year';
+          sort_order: number;
+          is_active: boolean;
+          stripe_price_id: string | null;
+          features: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          price_cents?: number;
+          currency?: string;
+          billing_interval?: 'month' | 'year';
+          sort_order?: number;
+          is_active?: boolean;
+          stripe_price_id?: string | null;
+          features?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          slug?: string;
+          price_cents?: number;
+          currency?: string;
+          billing_interval?: 'month' | 'year';
+          sort_order?: number;
+          is_active?: boolean;
+          stripe_price_id?: string | null;
+          features?: Json;
           created_at?: string;
           updated_at?: string;
         };
@@ -54,6 +211,7 @@ export interface Database {
         Row: {
           id: string;
           workspace_id: string;
+          plan_id: string;
           payment_provider_sub_id: string | null;
           payment_provider_cust_id: string | null;
           status: 'trialing' | 'active' | 'past_due' | 'canceled';
@@ -66,6 +224,7 @@ export interface Database {
         Insert: {
           id?: string;
           workspace_id: string;
+          plan_id: string;
           payment_provider_sub_id?: string | null;
           payment_provider_cust_id?: string | null;
           status?: 'trialing' | 'active' | 'past_due' | 'canceled';
@@ -78,6 +237,7 @@ export interface Database {
         Update: {
           id?: string;
           workspace_id?: string;
+          plan_id?: string;
           payment_provider_sub_id?: string | null;
           payment_provider_cust_id?: string | null;
           status?: 'trialing' | 'active' | 'past_due' | 'canceled';
@@ -166,6 +326,7 @@ export interface Database {
           passcode_hash: string | null;
           status: 'draft' | 'in_review' | 'approved' | 'archived';
           is_download_allowed: boolean;
+          notify_on_download: boolean;
           approved_at: string | null;
           approved_by_name: string | null;
           created_at: string;
@@ -181,6 +342,7 @@ export interface Database {
           passcode_hash?: string | null;
           status?: 'draft' | 'in_review' | 'approved' | 'archived';
           is_download_allowed?: boolean;
+          notify_on_download?: boolean;
           approved_at?: string | null;
           approved_by_name?: string | null;
           created_at?: string;
@@ -196,6 +358,7 @@ export interface Database {
           passcode_hash?: string | null;
           status?: 'draft' | 'in_review' | 'approved' | 'archived';
           is_download_allowed?: boolean;
+          notify_on_download?: boolean;
           approved_at?: string | null;
           approved_by_name?: string | null;
           created_at?: string;
@@ -226,6 +389,7 @@ export interface Database {
           title: string;
           type: 'video' | 'photo_gallery';
           sort_order: number;
+          is_archived: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -235,6 +399,7 @@ export interface Database {
           title: string;
           type?: 'video' | 'photo_gallery';
           sort_order?: number;
+          is_archived?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -244,6 +409,7 @@ export interface Database {
           title?: string;
           type?: 'video' | 'photo_gallery';
           sort_order?: number;
+          is_archived?: boolean;
           created_at?: string;
           updated_at?: string;
         };

@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Archivo, Inter, Geist } from "next/font/google";
+import { Archivo, Inter } from "next/font/google";
 import "./globals.css";
+
 import { Manrope } from "next/font/google";
 import localFont from "next/font/local";
-import { cn } from "@/lib/utils";
-
-// const inter = Inter({subsets:['latin'],variable:'--font-sans'});
+import { ThemeProvider } from "@/components/theme-provider";
+import { I18nProvider } from "@/i18n/context";
 
 const archivo = Archivo({
   subsets: ["latin"],
@@ -27,14 +27,7 @@ const satoshi = localFont({
   display: "swap",
 });
 
-// const inter = Inter({
-//   subsets: ["latin"],
-//   weight: ["400", "500", "600", "700"],
-//   variable: "--font-inter",
-//   display: "swap",
-// });
-
-export const metadata = {
+export const metadata: Metadata = {
   title: "CineSpace — Deliver films like a studio.",
   description:
     "Your portfolio, client review, and delivery — in one place, built for filmmakers in the Gulf.",
@@ -46,8 +39,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${manrope.variable} ${satoshi.variable}`}>
-      <body>{children}</body>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${manrope.variable} ${satoshi.variable}`}
+    >
+      <body className="min-h-screen bg-background text-foreground antialiased selection:bg-[#f5551d] selection:text-black">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <I18nProvider initialLocale="en">
+            {children}
+          </I18nProvider>
+        </ThemeProvider>
+      </body>
     </html>
   );
 }
