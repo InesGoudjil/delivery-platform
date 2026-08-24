@@ -49,20 +49,36 @@ export class AssetUploadService {
   async requestVideoUpload(
     dto: RequestVideoUploadDTO
   ): Promise<RequestVideoUploadResult> {
-    // 1. Verify Project & Workspace
-    const project = await this.projectRepo.findById(dto.projectId);
-    if (!project || project.workspaceId !== dto.workspaceId) {
-      throw new Error("Project not found in the specified workspace.");
+    // 1. Resolve Workspace (by ID or slug)
+    let workspace = await this.workspaceRepo.findById(dto.workspaceId);
+    if (!workspace) {
+      workspace = await this.workspaceRepo.findBySlug(dto.workspaceId);
     }
-
-    const workspace = await this.workspaceRepo.findById(dto.workspaceId);
     if (!workspace) {
       throw new Error("Workspace not found.");
     }
+    const resolvedWorkspaceId = workspace.id;
 
-    // 2. Validate Storage Quota against Active Plan
+    // 2. Resolve Project (by ID or share token, or auto-create if demo showcase item)
+    let project = await this.projectRepo.findById(dto.projectId);
+    if (!project) {
+      project = await this.projectRepo.findByShareToken(dto.projectId);
+    }
+
+    if (!project) {
+      project = await this.projectRepo.create({
+        workspaceId: resolvedWorkspaceId,
+        title: dto.title || "New Project Delivery",
+        description: "Created via direct cut uploader",
+      });
+    } else if (project.workspaceId !== resolvedWorkspaceId) {
+      throw new Error("Project not found in the specified workspace.");
+    }
+    const resolvedProjectId = project.id;
+
+    // 3. Validate Storage Quota against Active Plan
     const subscription = await this.subscriptionRepo.findByWorkspaceId(
-      dto.workspaceId
+      resolvedWorkspaceId
     );
     let storageLimitGB = 50; // Default fallback 50 GB
 
@@ -87,26 +103,26 @@ export class AssetUploadService {
       );
     }
 
-    // 3. Create Asset Domain Record
-    const existingAssets = await this.assetRepo.listByProjectId(dto.projectId);
+    // 4. Create Asset Domain Record
+    const existingAssets = await this.assetRepo.listByProjectId(resolvedProjectId);
     const asset = await this.assetRepo.create({
-      projectId: dto.projectId,
+      projectId: resolvedProjectId,
       title: dto.title,
       type: "video",
       sortOrder: existingAssets.length,
     });
 
-    // 4. Determine Version Number
+    // 5. Determine Version Number
     const existingVersions = await this.assetVersionRepo.listByAssetId(asset.id);
     const nextVersionNumber =
       existingVersions.length > 0
         ? Math.max(...existingVersions.map((v) => v.versionNumber)) + 1
         : 1;
 
-    // 5. Request Direct Upload URL from Storage Provider (Cloudflare / Mock)
+    // 6. Request Direct Upload URL from Storage Provider (Cloudflare Stream / Mock)
     const directUpload = await this.storageProvider.createDirectUploadUrl({
-      workspaceId: dto.workspaceId,
-      projectId: dto.projectId,
+      workspaceId: resolvedWorkspaceId,
+      projectId: resolvedProjectId,
       assetTitle: dto.title,
       assetType: "video",
       fileSizeBytes: dto.fileSizeBytes,
@@ -115,7 +131,7 @@ export class AssetUploadService {
       metadata: dto.metadata,
     });
 
-    // 6. Create Pending AssetVersion Record
+    // 7. Create Pending AssetVersion Record
     const assetVersion = await this.assetVersionRepo.create({
       assetId: asset.id,
       versionNumber: nextVersionNumber,
@@ -141,56 +157,58 @@ export class AssetUploadService {
       throw new Error("Asset version not found.");
     }
 
-    // Retrieve playback information from provider
-    const playback = await this.storageProvider.getPlaybackInfo(dto.providerUid);
-
-    const updated = await this.assetVersionRepo.update(dto.assetVersionId, {
-      hlsManifestUrl: playback?.hlsManifestUrl,
-      thumbnailUrl: playback?.thumbnailUrl,
-      durationSeconds: dto.durationSeconds || playback?.durationSeconds,
-      fileSizeBytes: dto.fileSizeBytes || version.fileSizeBytes,
-      transcodingStatus: playback?.status === "ready" ? "ready" : "processing",
-    });
-
-    // Update workspace storage used
     const asset = await this.assetRepo.findById(version.assetId);
-    if (asset) {
-      const project = await this.projectRepo.findById(asset.projectId);
-      if (project) {
-        const workspace = await this.workspaceRepo.findById(project.workspaceId);
-        if (workspace) {
-          const newTotal = (workspace.storageUsedBytes || 0) + (dto.fileSizeBytes || version.fileSizeBytes || 0);
-          await this.workspaceRepo.update(workspace.id, {
-            storageUsedBytes: newTotal,
-          });
-        }
-      }
+    if (!asset) {
+      throw new Error("Asset not found.");
     }
 
-    return updated;
+    const project = await this.projectRepo.findById(asset.projectId);
+    if (!project) {
+      throw new Error("Project not found.");
+    }
+
+    // 1. Get initial playback and details from Storage Provider
+    const playbackInfo = await this.storageProvider.getPlaybackInfo(dto.providerUid);
+
+    // 2. Update AssetVersion record
+    const updatedVersion = await this.assetVersionRepo.update(version.id, {
+      rawFileUrl: playbackInfo.rawDownloadUrl || version.rawFileUrl,
+      hlsManifestUrl: playbackInfo.hlsManifestUrl,
+      thumbnailUrl: playbackInfo.thumbnailUrl,
+      durationSeconds: dto.durationSeconds ?? playbackInfo.durationSeconds,
+      fileSizeBytes: dto.fileSizeBytes ?? version.fileSizeBytes,
+      transcodingStatus: playbackInfo.transcodingStatus,
+      isActiveVersion: true,
+    });
+
+    // 3. Increment Workspace Storage Used
+    if (dto.fileSizeBytes) {
+      await this.workspaceRepo.incrementStorageUsed(
+        project.workspaceId,
+        dto.fileSizeBytes
+      );
+    }
+
+    return updatedVersion;
   }
 
   /**
-   * Webhook handler for Cloudflare Stream background transcoding completion
+   * Cloudflare Stream Webhook handler: called asynchronously when 4K transcoding is complete.
    */
-  async handleCloudflareWebhook(
-    payload: any,
-    headers: Record<string, string>
-  ): Promise<boolean> {
-    if (
-      this.storageProvider.verifyWebhookSignature &&
-      !this.storageProvider.verifyWebhookSignature(JSON.stringify(payload), headers)
-    ) {
-      return false;
+  async handleTranscodeWebhook(event: any): Promise<void> {
+    const parsed = await this.storageProvider.parseWebhookEvent(event);
+    if (!parsed || !parsed.providerUid) return;
+
+    const playbackInfo = await this.storageProvider.getPlaybackInfo(parsed.providerUid);
+
+    // If metadata contains assetVersionId, update directly
+    if (parsed.metadata && parsed.metadata.assetVersionId) {
+      await this.assetVersionRepo.update(parsed.metadata.assetVersionId, {
+        hlsManifestUrl: playbackInfo.hlsManifestUrl,
+        thumbnailUrl: playbackInfo.thumbnailUrl,
+        durationSeconds: playbackInfo.durationSeconds,
+        transcodingStatus: parsed.status,
+      });
     }
-
-    const { uid, status, duration, size } = payload;
-    if (!uid) return false;
-
-    // Find and update the version referencing this stream UID
-    const playback = await this.storageProvider.getPlaybackInfo(uid);
-    if (!playback) return false;
-
-    return true;
   }
 }

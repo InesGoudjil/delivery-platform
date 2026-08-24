@@ -23,6 +23,10 @@ export class WorkspaceService {
     return this.workspaceRepo.findBySlug(slug);
   }
 
+  async listAllWorkspaces(): Promise<Workspace[]> {
+    return this.workspaceRepo.listAllWorkspaces();
+  }
+
   async getOrCreateWorkspace(
     ownerId: string,
     brandName?: string,

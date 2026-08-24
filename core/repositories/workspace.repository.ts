@@ -21,6 +21,7 @@ export interface IWorkspaceRepository {
   create(dto: CreateWorkspaceDTO): Promise<Workspace>;
   update(id: string, data: Partial<Workspace>): Promise<Workspace>;
   delete(id: string): Promise<void>;
+  listAllWorkspaces(): Promise<Workspace[]>;
 }
 
 export interface IWorkspaceFeaturesRepository {
@@ -141,6 +142,16 @@ export class SupabaseWorkspaceRepository implements IWorkspaceRepository {
       .eq('id', id);
 
     if (error) throw new Error(`Failed to delete workspace: ${error.message}`);
+  }
+
+  async listAllWorkspaces(): Promise<Workspace[]> {
+    const { data, error } = await (this.supabase as any)
+      .from('workspaces')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(`Error listing workspaces: ${error.message}`);
+    return (data || []).map((row: any) => this.mapRowToEntity(row));
   }
 }
 

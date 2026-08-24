@@ -4,8 +4,10 @@ import { UserProfile, PlatformRole } from '@/core/entities/user-profile';
 
 export interface IUserProfileRepository {
   findById(id: string): Promise<UserProfile | null>;
+  listAll(limit?: number): Promise<UserProfile[]>;
   create(profile: { id: string; fullName?: string | null; avatarUrl?: string | null; platformRole?: PlatformRole }): Promise<UserProfile>;
   update(id: string, data: Partial<UserProfile>): Promise<UserProfile>;
+  updatePlatformRole(id: string, role: PlatformRole): Promise<UserProfile>;
   updateLoginInfo(id: string, ip?: string): Promise<void>;
 }
 
@@ -34,6 +36,17 @@ export class SupabaseUserProfileRepository implements IUserProfileRepository {
 
     if (error) throw new Error(`Error fetching user profile: ${error.message}`);
     return data ? this.mapRowToEntity(data) : null;
+  }
+
+  async listAll(limit = 100): Promise<UserProfile[]> {
+    const { data, error } = await (this.supabase as any)
+      .from('user_profiles')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw new Error(`Error listing user profiles: ${error.message}`);
+    return (data || []).map(this.mapRowToEntity);
   }
 
   async create(profile: { id: string; fullName?: string | null; avatarUrl?: string | null; platformRole?: PlatformRole }): Promise<UserProfile> {
@@ -68,6 +81,18 @@ export class SupabaseUserProfileRepository implements IUserProfileRepository {
       .single();
 
     if (error) throw new Error(`Error updating user profile: ${error.message}`);
+    return this.mapRowToEntity(updated);
+  }
+
+  async updatePlatformRole(id: string, role: PlatformRole): Promise<UserProfile> {
+    const { data: updated, error } = await (this.supabase as any)
+      .from('user_profiles')
+      .update({ platform_role: role })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Error updating platform role: ${error.message}`);
     return this.mapRowToEntity(updated);
   }
 

@@ -1,8 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
   Pencil,
   LayoutGrid,
@@ -16,28 +14,24 @@ import {
   Send,
   BookOpen,
   ArrowRight,
-  type LucideIcon,
 } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  useSidebar,
 } from "@/components/ui/sidebar";
 import { signOutAction } from "@/app/actions/auth";
-import { useTranslation } from "@/i18n";
+import { NavDocuments } from "./nav-documents";
 
-export interface WorkspaceSidebarProps extends React.ComponentProps<typeof Sidebar> {
+export interface WorkspaceSidebarProps extends React.ComponentProps<
+  typeof Sidebar
+> {
   workspace?: {
     id: string;
     brandName: string;
@@ -76,18 +70,6 @@ export interface WorkspaceSidebarProps extends React.ComponentProps<typeof Sideb
   onSignOut?: () => void;
 }
 
-interface SidebarNavItem {
-  title: string;
-  url: string;
-  icon: LucideIcon;
-  exact?: boolean;
-}
-
-interface SidebarNavGroup {
-  label: string;
-  items: SidebarNavItem[];
-}
-
 export function WorkspaceSidebar({
   workspace,
   workspaces = [],
@@ -97,10 +79,7 @@ export function WorkspaceSidebar({
   onSignOut,
   ...props
 }: WorkspaceSidebarProps) {
-  const pathname = usePathname();
-  const { dict } = useTranslation();
   const [isPending, startTransition] = React.useTransition();
-
   const workspaceSlug = workspace?.slug || "studio";
 
   const handleLogout = () => {
@@ -113,85 +92,75 @@ export function WorkspaceSidebar({
     });
   };
 
-  // Groups matching the exact screenshot layout
-  const navigationGroups: SidebarNavGroup[] = [
-    {
-      label: "WORKSPACE",
-      items: [
-        {
-          title: "Profile",
-          url: `/${workspaceSlug}/settings`,
-          icon: Pencil,
-          exact: true,
-        },
-        {
-          title: "Portfolio",
-          url: `/${workspaceSlug}/portfolio`,
-          icon: LayoutGrid,
-        },
-        {
-          title: "Client Deliveries",
-          url: `/${workspaceSlug}/deliveries`,
-          icon: Link2,
-        },
-        {
-          title: "Storage & Usage",
-          url: `/${workspaceSlug}/storage`,
-          icon: Upload,
-        },
-      ],
-    },
-    {
-      label: "ACCOUNT",
-      items: [
-        {
-          title: "Add your branding",
-          url: `/${workspaceSlug}/settings#branding`,
-          icon: Pencil,
-        },
-        {
-          title: "Subscription",
-          url: `/${workspaceSlug}/subscription`,
-          icon: Star,
-        },
-        {
-          title: "Billing",
-          url: `/${workspaceSlug}/billing`,
-          icon: Download,
-        },
-        {
-          title: "Security",
-          url: `/${workspaceSlug}/security`,
-          icon: Lock,
-        },
-        {
-          title: "Notifications",
-          url: `/${workspaceSlug}/notifications`,
-          icon: MessageSquare,
-        },
-      ],
-    },
-    {
-      label: "SUPPORT",
-      items: [
-        {
-          title: "Help Center",
-          url: `/${workspaceSlug}/help`,
-          icon: MessageCircle,
-        },
-        {
-          title: "Contact Us",
-          url: `/${workspaceSlug}/help#contact`,
-          icon: Send,
-        },
-        {
-          title: "Documentation",
-          url: `/${workspaceSlug}/docs`,
-          icon: BookOpen,
-        },
-      ],
-    },
-  ];
+  const data = {
+    documents: [
+      {
+        name: "Profile",
+        url: `/${workspaceSlug}/settings`,
+        icon: Pencil,
+        exact: true,
+      },
+      {
+        name: "Portfolio",
+        url: `/${workspaceSlug}/portfolio`,
+        icon: LayoutGrid,
+      },
+      {
+        name: "Client Deliveries",
+        url: `/${workspaceSlug}/deliveries`,
+        icon: Link2,
+      },
+      {
+        name: "Storage & Usage",
+        url: `/${workspaceSlug}/storage`,
+        icon: Upload,
+      },
+    ],
+    account: [
+      {
+        name: "Add your branding",
+        url: `/${workspaceSlug}/settings#branding`,
+        icon: Pencil,
+      },
+      {
+        name: "Subscription",
+        url: `/${workspaceSlug}/subscription`,
+        icon: Star,
+      },
+      {
+        name: "Billing",
+        url: `/${workspaceSlug}/billing`,
+        icon: Download,
+      },
+      {
+        name: "Security",
+        url: `/${workspaceSlug}/security`,
+        icon: Lock,
+      },
+      {
+        name: "Notifications",
+        url: `/${workspaceSlug}/notifications`,
+        icon: MessageSquare,
+      },
+    ],
+    support: [
+      {
+        name: "Help Center",
+        url: `/${workspaceSlug}/help`,
+        icon: MessageCircle,
+      },
+      {
+        name: "Contact Us",
+        url: `/${workspaceSlug}/help#contact`,
+        icon: Send,
+      },
+      {
+        name: "Documentation",
+        url: `/${workspaceSlug}/docs`,
+        icon: BookOpen,
+      },
+    ],
+  };
 
   return (
     <Sidebar
@@ -199,53 +168,14 @@ export function WorkspaceSidebar({
       className="border-r border-white/[0.08] bg-[#0c0c0e] text-[#f6f3ec]"
       {...props}
     >
-      <SidebarContent className="px-3 py-5 space-y-6">
-        {navigationGroups.map((group) => (
-          <SidebarGroup key={group.label} className="p-0">
-            <SidebarGroupLabel className="text-[10px] font-mono font-semibold uppercase tracking-widest text-[#5e5e64] px-3 mb-2 h-auto group-data-[collapsible=icon]:hidden">
-              {group.label}
-            </SidebarGroupLabel>
+      <SidebarHeader className="hidden" />
 
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
-                {group.items.map((item) => {
-                  const isActive = item.exact
-                    ? pathname === item.url
-                    : pathname === item.url || pathname.startsWith(item.url.split("#")[0]);
-
-                  return (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        tooltip={item.title}
-                        isActive={isActive}
-                        className={cn(
-                          "flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150 h-auto",
-                          isActive
-                            ? "bg-white/[0.08] text-[#f6f3ec] font-semibold shadow-sm"
-                            : "text-[#8e8e93] hover:text-[#f6f3ec] hover:bg-white/[0.04]"
-                        )}
-                      >
-                        <Link href={item.url}>
-                          <item.icon
-                            className={cn(
-                              "size-4 shrink-0 transition-colors",
-                              isActive ? "text-[#f5551d]" : "text-[#8e8e93]"
-                            )}
-                          />
-                          <span className="truncate">{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+      <SidebarContent className="px-3 py-6 space-y-6">
+        <NavDocuments title="WORKSPACE" items={data.documents} />
+        <NavDocuments title="ACCOUNT" items={data.account} />
+        <NavDocuments title="SUPPORT" items={data.support} />
       </SidebarContent>
 
-      {/* Footer with Log out */}
       <SidebarFooter className="p-3 border-t border-white/[0.08]">
         <SidebarMenu>
           <SidebarMenuItem>
@@ -253,10 +183,10 @@ export function WorkspaceSidebar({
               onClick={handleLogout}
               disabled={isPending}
               tooltip="Log out"
-              className="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-[#f5551d] hover:text-[#ff8a45] hover:bg-white/[0.04] transition-colors cursor-pointer h-auto"
+              className="flex items-center gap-3 px-3 py-2 text-xs font-medium text-[#f5551d] hover:text-[#ff8a45] hover:bg-white/[0.04] transition-colors cursor-pointer"
             >
               <ArrowRight className="size-4 shrink-0 text-[#f5551d] rtl:rotate-180" />
-              <span className="truncate">{isPending ? "Logging out..." : "Log out"}</span>
+              <span>{isPending ? "Logging out..." : "Log out"}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

@@ -2,8 +2,7 @@
 
 import * as React from "react";
 import { Globe, Check } from "lucide-react";
-import { useTranslation, localeNames, type Locale } from "@/i18n";
-import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/i18n";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,16 +15,12 @@ export function LanguageToggle() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="size-8 p-0 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer flex items-center justify-center font-mono text-xs"
-          title="Switch Language / تغيير اللغة"
-        >
-          <Globe className="size-4" />
-          <span className="sr-only">Switch Language</span>
-        </Button>
+      <DropdownMenuTrigger
+        className="size-8 p-0 rounded-full text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer flex items-center justify-center font-mono text-xs outline-none"
+        title="Switch Language / تغيير اللغة"
+      >
+        <Globe className="size-4" />
+        <span className="sr-only">Switch Language</span>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent

@@ -3,8 +3,6 @@
 import * as React from "react";
 import { Moon, Sun, Check, Laptop } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
-
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,16 +15,13 @@ export function ModeToggle() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="size-8 p-0 rounded-full text-muted-foreground hover:text-foreground hover:bg-white/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
-        >
-          <Sun className="size-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute size-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span className="sr-only">Toggle theme</span>
-        </Button>
+      <DropdownMenuTrigger
+        className="size-8 p-0 rounded-full text-muted-foreground hover:text-foreground hover:bg-white/10 dark:hover:bg-white/10 transition-colors cursor-pointer flex items-center justify-center relative outline-none"
+        title="Toggle theme"
+      >
+        <Sun className="size-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+        <Moon className="absolute size-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+        <span className="sr-only">Toggle theme</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"

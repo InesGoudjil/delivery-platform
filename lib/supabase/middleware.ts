@@ -1,6 +1,12 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { createCoreServices } from '@/core/container';
 
+/**
+ * Next.js Edge Middleware
+ * Handles session token refresh, authentication redirects, and role-based access control.
+ * Injects domain business logic services via createCoreServices.
+ */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -15,7 +21,9 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
           supabaseResponse = NextResponse.next({
             request,
           });
@@ -27,79 +35,101 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // 1. Initialize Core Domain Services with the request-scoped Supabase client
+  const { services } = createCoreServices(supabase as any);
 
+  // 2. Fetch User, Profile (holding platform_role), and Primary Workspace
+  let userSession;
+  try {
+    userSession = await services.auth.getCurrentSessionData();
+  } catch (err) {
+    userSession = { user: null, profile: null, workspace: null };
+  }
+
+  const { user, profile, workspace } = userSession;
   const url = request.nextUrl.clone();
+  const pathname = url.pathname;
 
-  if (user && (url.pathname === '/login' || url.pathname === '/signup')) {
-    const { data: workspace } = await (supabase as any)
-      .from('workspaces')
-      .select('slug')
-      .eq('owner_id', user)
-      .maybeSingle();
-
-        console.log("workspace",workspace)
-
-
-    url.pathname = workspace?.slug ? `/${workspace.slug}` : '/';
+  // 3. AUTH PAGES: If already logged in, redirect away from /login and /signup
+  if (user && (pathname === '/login' || pathname === '/signup')) {
+    url.pathname = workspace?.slug ? `/${workspace.slug}/deliveries` : '/';
     return NextResponse.redirect(url);
   }
 
-  const workspacePattern = /^\/([^/]+)\/(projects|settings|portfolio)/;
-  const workspaceMatch = url.pathname.match(workspacePattern);
+  // 4. ADMIN ROUTE GUARD (/admin, /admin/*)
+  if (pathname.startsWith('/admin')) {
+    if (!user) {
+      const redirectParam = encodeURIComponent(pathname);
+      url.pathname = `/login`;
+      url.search = `redirect=${redirectParam}`;
+      return NextResponse.redirect(url);
+    }
+
+    // Check platform role from user_profiles table as well as auth metadata
+    const isAdmin =
+      profile?.platformRole === 'admin' ||
+      user.user_metadata?.platform_role === 'admin' ||
+      user.user_metadata?.is_admin === true;
+
+    if (!isAdmin) {
+      // Non-admins are redirected back to their creator workspace
+      url.pathname = workspace?.slug ? `/${workspace.slug}/deliveries` : '/';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // 5. WORKSPACE ROUTE GUARD (/[workspaceSlug]/[section])
+  const workspacePattern =
+    /^\/([^/]+)\/(deliveries|portfolio|settings|storage|billing|members|notifications|security|projects|docs|help)/;
+  const workspaceMatch = pathname.match(workspacePattern);
 
   if (workspaceMatch) {
     if (!user) {
-      const redirectParam = encodeURIComponent(url.pathname);
-      url.pathname = `/login?redirect=${redirectParam}`;
-      url.search = '';
+      const redirectParam = encodeURIComponent(pathname);
+      url.pathname = `/login`;
+      url.search = `redirect=${redirectParam}`;
       return NextResponse.redirect(url);
     }
 
-    const slug = workspaceMatch[1];
-    const { data: workspace } = await (supabase as any)
-      .from('workspaces')
-      .select('id, owner_id')
-      .eq('slug', slug)
-      .maybeSingle();
+    const targetSlug = workspaceMatch[1];
 
-    if (!workspace || workspace.owner_id !== user.id) {
-      url.pathname = '/';
-      url.search = '';
-      return NextResponse.redirect(url);
-    }
-  }
-
-  if (url.pathname.startsWith('/admin')) {
-    if (!user) {
-      url.pathname = '/login';
-      url.search = '';
-      return NextResponse.redirect(url);
+    // If target slug is the user's primary workspace, allow immediate access
+    if (workspace && workspace.slug === targetSlug) {
+      return supabaseResponse;
     }
 
-    const isAdmin = user.user_metadata?.is_admin === true;
-    if (!isAdmin) {
-      url.pathname = '/';
-      url.search = '';
-      return NextResponse.redirect(url);
-    }
-  }
-
-  if (url.pathname === '/' || url.pathname === '/dashboard') {
-    if (user) {
-      const { data: workspace } = await (supabase as any)
-        .from('workspaces')
-        .select('slug')
-        .eq('owner_id', user.id)
-        .maybeSingle();
-
-      if (workspace?.slug) {
-        url.pathname = `/${workspace.slug}`;
+    // Otherwise verify membership in target workspace
+    try {
+      const targetWorkspace = await services.workspace.getWorkspaceBySlug(targetSlug);
+      if (!targetWorkspace) {
+        url.pathname = workspace?.slug ? `/${workspace.slug}/deliveries` : '/';
         url.search = '';
         return NextResponse.redirect(url);
       }
+
+      // Check if user is owner or member
+      if (targetWorkspace.ownerId !== user.id) {
+        const isMember = await services.member.isMember(targetWorkspace.id, user.id);
+        if (!isMember) {
+          url.pathname = workspace?.slug ? `/${workspace.slug}/deliveries` : '/';
+          url.search = '';
+          return NextResponse.redirect(url);
+        }
+      }
+    } catch {
+      url.pathname = workspace?.slug ? `/${workspace.slug}/deliveries` : '/';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // 6. ROOT / DASHBOARD REDIRECT (/ or /dashboard)
+  if (pathname === '/' || pathname === '/dashboard') {
+    if (user && workspace?.slug) {
+      url.pathname = `/${workspace.slug}/deliveries`;
+      url.search = '';
+      return NextResponse.redirect(url);
     }
   }
 
