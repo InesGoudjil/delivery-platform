@@ -56,7 +56,7 @@ export default async function WorkspaceDashboardPage({
             <Film className="w-10 h-10 text-dim mx-auto mb-3" />
             <p className="text-dim text-sm">No projects yet.</p>
             <Link
-              href={`/${workspaceSlug}/projects`}
+              href={`/${workspaceSlug}/deliveries`}
               className="btn px-5 py-2.5 rounded-full text-sm font-bold mt-4 inline-flex items-center gap-2"
             >
               <Plus className="w-4 h-4" /> Create Your First Project
@@ -67,7 +67,7 @@ export default async function WorkspaceDashboardPage({
             {projects.slice(0, 4).map((project) => (
               <Link
                 key={project.id}
-                href={`/${workspaceSlug}/projects/${project.id}`}
+                href={`/${workspaceSlug}/deliveries/${project.id}`}
                 className="bg-bg2 border border-line rounded-2xl p-5 hover:border-orange/40 transition flex items-center justify-between"
               >
                 <div>

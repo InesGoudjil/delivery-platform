@@ -1,33 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
+import { getServerServices } from "@/core/server";
 import Link from "next/link";
-import { ArrowLeft, Building2, FileText, BarChart3 } from "lucide-react";
-
-async function getWorkspaceDetail(id: string) {
-  const supabase = await createClient();
-  try {
-    const { data: workspace } = await (supabase as any)
-      .from('workspaces')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    const { data: projects } = await (supabase as any)
-      .from('projects')
-      .select('*')
-      .eq('workspace_id', id)
-      .order('created_at', { ascending: false });
-
-    const { data: subscription } = await (supabase as any)
-      .from('subscriptions')
-      .select('*')
-      .eq('workspace_id', id)
-      .maybeSingle();
-
-    return { workspace, projects: projects ?? [], subscription };
-  } catch {
-    return null;
-  }
-}
+import { ArrowLeft, Building2, FileText, CreditCard, HardDrive, Shield } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default async function AdminWorkspaceDetailPage({
   params,
@@ -35,125 +10,156 @@ export default async function AdminWorkspaceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const detail = await getWorkspaceDetail(id);
+  const services = await getServerServices();
 
-  if (!detail?.workspace) {
+  const workspace = await services.workspace.getWorkspaceById(id).catch(() => null);
+
+  if (!workspace) {
     return (
-      <div className="max-w-4xl mx-auto py-20 text-center">
-        <p className="text-dim text-lg">Workspace not found.</p>
-        <Link href="/admin/workspaces" className="text-orange text-sm font-semibold hover:underline mt-2 inline-block">
-          Back to workspaces
+      <div className="max-w-4xl mx-auto py-20 text-center space-y-3">
+        <p className="text-muted-foreground text-lg font-mono">Workspace not found.</p>
+        <Link href="/admin/workspaces" className="text-primary text-xs font-bold hover:underline inline-block">
+          &larr; Back to all workspaces
         </Link>
       </div>
     );
   }
 
-  const { workspace, projects, subscription } = detail;
+  const projects = await services.project.listWorkspaceProjects(workspace.id).catch(() => []);
+  const subscription = await services.subscription.getSubscription(workspace.id).catch(() => null);
+  const plan = subscription ? await services.subscription.getPlanById(subscription.planId).catch(() => null) : null;
+  const features = await services.workspace.getWorkspaceFeatures(workspace.id).catch(() => ({} as any));
+
+  const usedGB = (workspace.storageUsedBytes || 0) / (1024 * 1024 * 1024);
+  const limitGB = (features as any)?.storage_gb || 500;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <div className="flex items-center gap-4 pb-6 border-b border-line">
-        <Link href="/admin/workspaces" className="text-dim hover:text-ink transition">
-          <ArrowLeft className="w-5 h-5" />
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-200">
+      {/* Header */}
+      <div className="flex items-center gap-4 pb-6 border-b border-border">
+        <Link href="/admin/workspaces" className="p-2 rounded-xl bg-muted border border-border text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="size-4" />
         </Link>
         <div>
-          <h1 className="font-display text-3xl font-bold">{workspace.brand_name}</h1>
-          <p className="text-sm text-dim font-mono">{workspace.slug}</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-bg2 border border-line rounded-2xl p-5">
-          <p className="text-xs text-dim uppercase tracking-wider font-semibold mb-1">Storage</p>
-          <p className="font-display font-bold text-lg">
-            {Math.round(workspace.storage_limit_bytes / (1024 * 1024 * 1024))} GB
+          <div className="flex items-center gap-2">
+            <h1 className="font-heading text-2xl font-black text-foreground">{workspace.brandName}</h1>
+            <Badge variant="outline" className="text-[10px] font-mono capitalize border-border">
+              {plan?.name || "Starter"}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground font-mono">
+            /{workspace.slug} · ID: {workspace.id}
           </p>
         </div>
-        <div className="bg-bg2 border border-line rounded-2xl p-5">
-          <p className="text-xs text-dim uppercase tracking-wider font-semibold mb-1">Language</p>
-          <p className="font-display font-bold text-lg">{workspace.default_language?.toUpperCase()}</p>
-        </div>
-        <div className="bg-bg2 border border-line rounded-2xl p-5">
-          <p className="text-xs text-dim uppercase tracking-wider font-semibold mb-1">Projects</p>
-          <p className="font-display font-bold text-lg">{projects.length}</p>
-        </div>
       </div>
 
-      <div className="bg-bg2 border border-line rounded-2xl p-6">
-        <h2 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
-          <CreditCardIcon className="w-4 h-4 text-orange" /> Subscription
-        </h2>
-        {subscription ? (
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-dim">Status:</span>{" "}
-              <span className={`font-semibold ${
-                subscription.status === "active" ? "text-emerald-400" :
-                subscription.status === "trialing" ? "text-amber-400" :
-                "text-dim"
-              }`}>
-                {subscription.status}
-              </span>
-            </div>
-            <div>
-              <span className="text-dim">Currency:</span>{" "}
-              <span className="font-semibold">{subscription.currency}</span>
-            </div>
-            {subscription.trial_ends_at && (
-              <div>
-                <span className="text-dim">Trial Ends:</span>{" "}
-                <span className="font-mono text-xs">{new Date(subscription.trial_ends_at).toLocaleDateString()}</span>
-              </div>
-            )}
-            {subscription.current_period_end && (
-              <div>
-                <span className="text-dim">Period Ends:</span>{" "}
-                <span className="font-mono text-xs">{new Date(subscription.current_period_end).toLocaleDateString()}</span>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-dim text-sm">No subscription record found.</p>
-        )}
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="bg-card border-border shadow-sm">
+          <CardHeader className="pb-2">
+            <CardDescription className="text-xs uppercase font-mono">Storage Used</CardDescription>
+            <CardTitle className="text-xl font-bold font-heading">
+              {usedGB.toFixed(1)} / {limitGB} GB
+            </CardTitle>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-card border-border shadow-sm">
+          <CardHeader className="pb-2">
+            <CardDescription className="text-xs uppercase font-mono font-semibold">Default Language</CardDescription>
+            <CardTitle className="text-xl font-bold font-heading uppercase">
+              {workspace.defaultLanguage}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-card border-border shadow-sm">
+          <CardHeader className="pb-2">
+            <CardDescription className="text-xs uppercase font-mono font-semibold">Total Delivery Rooms</CardDescription>
+            <CardTitle className="text-xl font-bold font-heading">
+              {projects.length}
+            </CardTitle>
+          </CardHeader>
+        </Card>
       </div>
 
-      <div className="bg-bg2 border border-line rounded-2xl p-6">
-        <h2 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
-          <FileText className="w-4 h-4 text-orange" /> Projects ({projects.length})
-        </h2>
-        {projects.length === 0 ? (
-          <p className="text-dim text-sm">No projects yet.</p>
-        ) : (
-          <div className="space-y-2">
-            {projects.map((p: any) => (
-              <div key={p.id} className="flex items-center justify-between py-2 border-b border-line last:border-b-0">
-                <div>
-                  <p className="text-sm font-semibold">{p.title}</p>
-                  <p className="text-xs text-dim">
-                    {p.status} · {new Date(p.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                  p.status === "approved" ? "bg-emerald-500/20 text-emerald-400" :
-                  p.status === "in_review" ? "bg-orange/20 text-orange" :
-                  "bg-bg3 text-dim"
+      {/* Subscription Information */}
+      <Card className="bg-card border-border shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base font-bold flex items-center gap-2">
+            <CreditCard className="size-4 text-[#f5551d]" /> Subscription Status &amp; Tier
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {subscription ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
+              <div>
+                <span className="text-muted-foreground block text-[10px] uppercase">Status</span>
+                <span className={`font-bold capitalize ${
+                  subscription.status === "active" ? "text-emerald-400" :
+                  subscription.status === "trialing" ? "text-amber-400" : "text-muted-foreground"
                 }`}>
-                  {p.status}
+                  {subscription.status}
                 </span>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
-function CreditCardIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect width="20" height="14" x="2" y="5" rx="2" />
-      <line x1="2" x2="22" y1="10" y2="10" />
-    </svg>
+              <div>
+                <span className="text-muted-foreground block text-[10px] uppercase">Plan Name</span>
+                <span className="font-bold text-foreground">{plan?.name || "Starter"}</span>
+              </div>
+
+              <div>
+                <span className="text-muted-foreground block text-[10px] uppercase">Price</span>
+                <span className="font-bold text-primary">${((plan?.priceCents || 0) / 100).toFixed(0)}/mo</span>
+              </div>
+
+              <div>
+                <span className="text-muted-foreground block text-[10px] uppercase">Currency</span>
+                <span className="font-bold text-foreground">{subscription.currency}</span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground font-mono">No subscription record provisioned yet.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Projects List */}
+      <Card className="bg-card border-border shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base font-bold flex items-center gap-2">
+            <FileText className="size-4 text-primary" /> Delivery Projects ({projects.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {projects.length === 0 ? (
+            <p className="text-xs text-muted-foreground font-mono">No projects created in this workspace yet.</p>
+          ) : (
+            <div className="divide-y divide-border/60">
+              {projects.map((p) => (
+                <div key={p.id} className="flex items-center justify-between py-3">
+                  <div>
+                    <p className="text-xs font-bold text-foreground">{p.title}</p>
+                    <p className="text-[11px] text-muted-foreground font-mono">
+                      Token: {p.shareToken} · Created {new Date(p.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] font-mono capitalize ${
+                      p.status === "approved" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" :
+                      p.status === "in_review" ? "bg-[#f5551d]/10 text-[#f5551d] border-[#f5551d]/30" :
+                      "bg-muted text-muted-foreground border-border"
+                    }`}
+                  >
+                    {p.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

@@ -16,6 +16,30 @@ export class AssetService {
     return this.assetRepo.create(params);
   }
 
+  async getAssetById(id: string): Promise<Asset | null> {
+    return this.assetRepo.findById(id);
+  }
+
+  async listAssets(projectId: string): Promise<Asset[]> {
+    return this.assetRepo.listByProjectId(projectId);
+  }
+
+  async getListAssets(projectId: string): Promise<Asset[]> {
+    return this.assetRepo.listByProjectId(projectId);
+  }
+
+  async listProjectAssets(projectId: string): Promise<Asset[]> {
+    return this.assetRepo.listByProjectId(projectId);
+  }
+
+  async getActiveVersion(assetId: string): Promise<AssetVersion | null> {
+    return this.assetVersionRepo.findActiveVersion(assetId);
+  }
+
+  async listVersions(assetId: string): Promise<AssetVersion[]> {
+    return this.assetVersionRepo.listByAssetId(assetId);
+  }
+
   async addVersion(params: {
     assetId: string;
     rawFileUrl: string;
@@ -58,10 +82,6 @@ export class AssetService {
     if (thumbnailUrl !== undefined) updates.thumbnailUrl = thumbnailUrl;
 
     return this.assetVersionRepo.update(versionId, updates);
-  }
-
-  async listProjectAssets(projectId: string): Promise<Asset[]> {
-    return this.assetRepo.listByProjectId(projectId);
   }
 
   async deleteAsset(id: string): Promise<void> {

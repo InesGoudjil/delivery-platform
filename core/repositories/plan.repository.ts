@@ -18,6 +18,8 @@ export interface IPlanRepository {
     stripePriceId?: string | null;
   }): Promise<Plan>;
   update(id: string, data: Partial<Plan>): Promise<Plan>;
+  listAllPlans(): Promise<Plan[]>;
+  delete(id: string): Promise<void>;
 }
 
 export class SupabasePlanRepository implements IPlanRepository {
@@ -123,5 +125,24 @@ export class SupabasePlanRepository implements IPlanRepository {
 
     if (error) throw new Error(`Error updating plan: ${error.message}`);
     return this.mapRowToEntity(updated);
+  }
+
+  async listAllPlans(): Promise<Plan[]> {
+    const { data, error } = await (this.supabase as any)
+      .from('plans')
+      .select('*')
+      .order('sort_order', { ascending: true });
+
+    if (error) throw new Error(`Error listing all plans: ${error.message}`);
+    return (data || []).map((row: any) => this.mapRowToEntity(row));
+  }
+
+  async delete(id: string): Promise<void> {
+    const { error } = await (this.supabase as any)
+      .from('plans')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw new Error(`Error deleting plan: ${error.message}`);
   }
 }

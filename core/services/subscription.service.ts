@@ -18,6 +18,66 @@ export class SubscriptionService {
     return this.planRepo.listActivePlans();
   }
 
+  async listAllPlans(): Promise<Plan[]> {
+    return this.planRepo.listAllPlans();
+  }
+
+  async createPlan(data: {
+    name: string;
+    slug: string;
+    priceCents: number;
+    currency?: string;
+    billingInterval?: 'month' | 'year';
+    sortOrder?: number;
+    features?: WorkspaceFeatureConfig;
+    stripePriceId?: string | null;
+  }): Promise<Plan> {
+    const existing = await this.planRepo.findBySlug(data.slug);
+    if (existing) {
+      throw new Error(`A plan with slug "${data.slug}" already exists.`);
+    }
+
+    return this.planRepo.create(data);
+  }
+
+  async deletePlan(
+    planId: string
+  ): Promise<{ action: 'archived' | 'deleted'; message: string }> {
+    const plan = await this.planRepo.findById(planId);
+    if (!plan) {
+      throw new Error('Plan not found.');
+    }
+
+    // Safety Condition 1: Protected starter plan
+    if (plan.slug === 'starter') {
+      throw new Error('System protected plan "starter" cannot be deleted.');
+    }
+
+    // Safety Condition 2: Active subscriber count check
+    const allSubs = await this.subscriptionRepo.listAllSubscriptions();
+    const activeSubscribersCount = allSubs.filter((s) => s.planId === planId).length;
+
+    if (activeSubscribersCount > 0) {
+      // Soft-delete / Archive plan
+      await this.planRepo.update(planId, { isActive: false });
+      return {
+        action: 'archived',
+        message: `Plan "${plan.name}" has ${activeSubscribersCount} active subscriber(s). It has been archived (deactivated) instead of hard deleted to protect active accounts.`,
+      };
+    }
+
+    // Hard Delete if 0 subscribers
+    await this.planRepo.delete(planId);
+    return {
+      action: 'deleted',
+      message: `Plan "${plan.name}" had 0 subscribers and has been permanently deleted.`,
+    };
+  }
+
+  async listAllSubscriptions(): Promise<Subscription[]> {
+    return this.subscriptionRepo.listAllSubscriptions();
+  }
+
   async getPlanById(id: string): Promise<Plan | null> {
     return this.planRepo.findById(id);
   }
@@ -115,6 +175,35 @@ export class SubscriptionService {
     return this.subscriptionRepo.update(currentSub.id, {
       status: 'canceled',
     });
+  }
+
+  async adminChangeWorkspacePlan(
+    workspaceId: string,
+    planId: string,
+    status: SubscriptionStatus = 'active'
+  ): Promise<Subscription> {
+    const plan = await this.planRepo.findById(planId);
+    if (!plan) throw new Error(`Plan with ID ${planId} not found`);
+
+    const currentSub = await this.subscriptionRepo.findByWorkspaceId(workspaceId);
+
+    let sub: Subscription;
+    if (!currentSub) {
+      sub = await this.subscriptionRepo.create({
+        workspaceId,
+        planId: plan.id,
+        status,
+        currency: plan.currency,
+      });
+    } else {
+      sub = await this.subscriptionRepo.update(currentSub.id, {
+        planId: plan.id,
+        status,
+      });
+    }
+
+    await this.featuresRepo.upsertFeatures(workspaceId, plan.features);
+    return sub;
   }
 
   async canCreateProject(workspaceId: string): Promise<{

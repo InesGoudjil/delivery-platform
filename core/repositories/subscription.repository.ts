@@ -19,6 +19,7 @@ export interface ISubscriptionRepository {
   create(dto: CreateSubscriptionDTO): Promise<Subscription>;
   update(id: string, data: Partial<Subscription>): Promise<Subscription>;
   delete(id: string): Promise<void>;
+  listAllSubscriptions(): Promise<Subscription[]>;
 }
 
 export class SupabaseSubscriptionRepository implements ISubscriptionRepository {
@@ -110,5 +111,15 @@ export class SupabaseSubscriptionRepository implements ISubscriptionRepository {
       .eq('id', id);
 
     if (error) throw new Error(`Error deleting subscription: ${error.message}`);
+  }
+
+  async listAllSubscriptions(): Promise<Subscription[]> {
+    const { data, error } = await (this.supabase as any)
+      .from('subscriptions')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(`Error listing subscriptions: ${error.message}`);
+    return (data || []).map((row: any) => this.mapRowToEntity(row));
   }
 }

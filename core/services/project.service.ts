@@ -96,6 +96,20 @@ export class ProjectService {
     return this.projectRepo.updateStatus(id, 'approved', approvedByName || 'Client Guest');
   }
 
+  /**
+   * Archives project to "THE SILO" cold storage, freeing up active quota for the workspace.
+   */
+  async archiveToSilo(id: string): Promise<Project> {
+    return this.projectRepo.updateStatus(id, 'archived');
+  }
+
+  /**
+   * Restores project from "THE SILO" back into active workspace review rooms.
+   */
+  async restoreFromSilo(id: string): Promise<Project> {
+    return this.projectRepo.updateStatus(id, 'in_review');
+  }
+
   async deleteProject(id: string): Promise<void> {
     return this.projectRepo.delete(id);
   }
