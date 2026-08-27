@@ -1,78 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import {
-  Star,
   Check,
-  Zap,
-  Sparkles,
-  Shield,
   CreditCard,
-  CheckCircle2,
-  ArrowRight,
+  Loader2,
+  ShieldCheck,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 
-interface PlanTier {
+interface DBPlan {
   id: string;
   name: string;
-  priceMonthlyAED: number;
-  priceYearlyAED: number;
-  storageGB: number;
-  seats: number;
-  features: string[];
-  isPopular?: boolean;
+  slug: string;
+  price_cents: number;
+  currency: string;
+  billing_interval: string;
+  stripe_price_id: string | null;
+  features: Record<string, any>;
 }
-
-const TIERS: PlanTier[] = [
-  {
-    id: "starter",
-    name: "Starter",
-    priceMonthlyAED: 49,
-    priceYearlyAED: 39,
-    storageGB: 100,
-    seats: 1,
-    features: [
-      "100 GB Cloudflare 4K streaming",
-      "5 active client delivery links",
-      "Clean public video portfolio",
-      "Timecoded client comments",
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro Filmmaker",
-    priceMonthlyAED: 119,
-    priceYearlyAED: 95,
-    storageGB: 1000,
-    seats: 2,
-    features: [
-      "1 TB Cloudflare 4K streaming",
-      "Unlimited client delivery links",
-      "Custom domain & custom branding",
-      "Passcode-protected delivery rooms",
-      "Direct ProRes file downloads",
-    ],
-  },
-  {
-    id: "studio",
-    name: "Studio",
-    priceMonthlyAED: 249,
-    priceYearlyAED: 199,
-    storageGB: 5000,
-    seats: 5,
-    isPopular: true,
-    features: [
-      "5 TB High-speed Cloudflare storage",
-      "5 Team collaborator seats",
-      "1 TB The Silo cold archive included",
-      "WhatsApp automated client deliveries",
-      "100% White-label custom branding",
-      "Priority 24/7 filmmaker Gulf support",
-    ],
-  },
-];
 
 export default function SubscriptionPage() {
   const params = useParams();
@@ -80,10 +29,127 @@ export default function SubscriptionPage() {
 
   const [yearly, setYearly] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [plans, setPlans] = useState<DBPlan[]>([]);
+  const [currentPlanSlug, setCurrentPlanSlug] = useState<string>("starter");
+  const [subStatus, setSubStatus] = useState<string>("trialing");
+  const [periodEnd, setPeriodEnd] = useState<string | null>(null);
 
   const showFlash = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 2500);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const supabase = createClient();
+
+        // Fetch workspace by slug
+        const { data: ws } = await supabase
+          .from("workspaces")
+          .select("id")
+          .eq("slug", workspaceSlug)
+          .maybeSingle();
+
+        if (ws) {
+          setWorkspaceId(ws.id);
+
+          // Fetch current subscription
+          const { data: sub } = await supabase
+            .from("subscriptions")
+            .select("status, current_period_end, plans(slug)")
+            .eq("workspace_id", ws.id)
+            .maybeSingle();
+
+          if (sub) {
+            setSubStatus(sub.status || "active");
+            setPeriodEnd(sub.current_period_end);
+            if ((sub as any).plans?.slug) {
+              setCurrentPlanSlug((sub as any).plans.slug);
+            }
+          }
+        }
+
+        // Fetch active plans
+        const { data: dbPlans } = await supabase
+          .from("plans")
+          .select("*")
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true });
+
+        if (dbPlans) {
+          setPlans(dbPlans as DBPlan[]);
+        }
+      } catch (err: any) {
+        console.error("Failed loading subscription details:", err);
+      }
+    }
+
+    loadData();
+  }, [workspaceSlug]);
+
+  const handleCheckout = async (plan: DBPlan) => {
+    if (!workspaceId) {
+      showFlash("Workspace ID not loaded yet");
+      return;
+    }
+
+    if (!plan.stripe_price_id) {
+      showFlash(`Plan '${plan.name}' has no Stripe Price ID configured.`);
+      return;
+    }
+
+    try {
+      setLoadingAction(`checkout_${plan.id}`);
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId,
+          planId: plan.id,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to start checkout");
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err: any) {
+      showFlash(`Checkout Error: ${err.message}`);
+      setLoadingAction(null);
+    }
+  };
+
+  const handleOpenPortal = async () => {
+    if (!workspaceId) return;
+
+    try {
+      setLoadingAction("portal");
+      const res = await fetch("/api/stripe/portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to open billing portal");
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err: any) {
+      showFlash(err.message);
+      setLoadingAction(null);
+    }
   };
 
   return (
@@ -142,46 +208,45 @@ export default function SubscriptionPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-primary/15 text-primary border border-primary/30">
-                ACTIVE PLAN
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-primary/15 text-primary border border-primary/30 uppercase">
+                {subStatus} PLAN
               </span>
-              <span className="text-xs text-muted-foreground font-mono">
-                Renews on Sept 17, 2026
-              </span>
+              {periodEnd && (
+                <span className="text-xs text-muted-foreground font-mono">
+                  Renews on {new Date(periodEnd).toLocaleDateString()}
+                </span>
+              )}
             </div>
-            <h2 className="text-2xl font-bold font-heading text-card-foreground">
-              Studio Plan
+            <h2 className="text-2xl font-bold font-heading text-card-foreground capitalize">
+              {currentPlanSlug} Tier
             </h2>
             <p className="text-xs text-muted-foreground max-w-xl">
-              5 TB active Cloudflare 4K streaming storage, 5 team seats, custom brand white-labeling, and automated WhatsApp client delivery rooms.
+              Enjoy all feature inclusions for your current studio plan level.
             </p>
           </div>
 
           <div className="text-right shrink-0">
-            <div className="text-3xl font-bold font-mono text-foreground">
-              {yearly ? "199 AED" : "249 AED"}
-              <span className="text-xs font-normal text-muted-foreground"> /mo</span>
-            </div>
-            <div className="text-xs text-muted-foreground font-mono mt-0.5">
-              Billed {yearly ? "annually" : "monthly"} via Visa •••• 6411
+            <div className="text-xs text-muted-foreground font-mono">
+              Billed securely via Stripe
             </div>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-border/80">
           <Button
-            onClick={() => showFlash("Opening Stripe Billing Portal...")}
+            onClick={handleOpenPortal}
+            disabled={loadingAction === "portal"}
             className="rounded-full bg-primary text-black font-bold hover:bg-primary/90 shadow-md shadow-primary/20 text-xs cursor-pointer"
           >
-            <CreditCard className="size-3.5 mr-1.5" /> Manage Billing in Stripe
-          </Button>
-
-          <Button
-            variant="outline"
-            onClick={() => showFlash("Invoices sent to registered email")}
-            className="rounded-full text-xs font-semibold cursor-pointer"
-          >
-            Download Latest Tax Invoice
+            {loadingAction === "portal" ? (
+              <>
+                <Loader2 className="size-3.5 mr-1.5 animate-spin" /> Redirecting to Stripe...
+              </>
+            ) : (
+              <>
+                <CreditCard className="size-3.5 mr-1.5" /> Manage Billing &amp; Payment Methods
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -192,14 +257,14 @@ export default function SubscriptionPage() {
           Compare Available Tiers
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {TIERS.map((tier) => {
-            const isCurrent = tier.id === "studio";
-            const price = yearly ? tier.priceYearlyAED : tier.priceMonthlyAED;
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {plans.map((plan) => {
+            const isCurrent = plan.slug === currentPlanSlug;
+            const price = (plan.price_cents / 100).toFixed(0);
 
             return (
               <div
-                key={tier.id}
+                key={plan.id}
                 className={`rounded-2xl p-6 flex flex-col justify-between transition-all duration-200 ${
                   isCurrent
                     ? "bg-card border-2 border-primary shadow-lg ring-1 ring-primary/20"
@@ -209,32 +274,50 @@ export default function SubscriptionPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h4 className="font-heading text-lg font-bold text-card-foreground">
-                      {tier.name}
+                      {plan.name}
                     </h4>
                     {isCurrent && (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-primary text-black">
-                        Current
+                        Active
                       </span>
                     )}
                   </div>
 
                   <div>
                     <div className="text-2xl font-bold font-mono text-foreground">
-                      {price} AED
+                      ${price}
                       <span className="text-xs font-normal text-muted-foreground"> /mo</span>
                     </div>
                     <div className="text-[11px] text-muted-foreground font-mono">
-                      {yearly ? "Billed yearly" : "Billed monthly"}
+                      Billed monthly
                     </div>
                   </div>
 
                   <div className="space-y-2 pt-2 border-t border-border">
-                    {tier.features.map((feat, i) => (
-                      <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <Check className="size-3.5 text-primary shrink-0 mt-0.5" />
+                      <span>{plan.features?.storage_gb || 2} GB Storage</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <Check className="size-3.5 text-primary shrink-0 mt-0.5" />
+                      <span>
+                        {plan.features?.client_links === -1
+                          ? "Unlimited client links"
+                          : `${plan.features?.client_links || 1} client links`}
+                      </span>
+                    </div>
+                    {plan.features?.whatsapp_delivery && (
+                      <div className="flex items-start gap-2 text-xs text-muted-foreground">
                         <Check className="size-3.5 text-primary shrink-0 mt-0.5" />
-                        <span>{feat}</span>
+                        <span>WhatsApp Client Delivery</span>
                       </div>
-                    ))}
+                    )}
+                    {plan.features?.white_label && (
+                      <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                        <Check className="size-3.5 text-primary shrink-0 mt-0.5" />
+                        <span>White-Label Branding</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -246,13 +329,27 @@ export default function SubscriptionPage() {
                     >
                       Active Plan
                     </Button>
-                  ) : (
+                  ) : plan.slug === "starter" ? (
                     <Button
                       variant="outline"
-                      onClick={() => showFlash(`Selected ${tier.name} tier upgrade`)}
-                      className="w-full rounded-full text-xs font-semibold cursor-pointer hover:bg-accent"
+                      disabled
+                      className="w-full rounded-full text-xs font-semibold text-muted-foreground"
                     >
-                      Switch to {tier.name}
+                      Free Tier
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => handleCheckout(plan)}
+                      disabled={loadingAction === `checkout_${plan.id}`}
+                      className="w-full rounded-full text-xs font-semibold bg-primary text-black hover:bg-primary/90 cursor-pointer"
+                    >
+                      {loadingAction === `checkout_${plan.id}` ? (
+                        <>
+                          <Loader2 className="size-3.5 mr-1.5 animate-spin" /> Loading Stripe...
+                        </>
+                      ) : (
+                        `Upgrade to ${plan.name}`
+                      )}
                     </Button>
                   )}
                 </div>

@@ -82,6 +82,14 @@ export class SubscriptionService {
     return this.planRepo.findById(id);
   }
 
+  async updatePlan(id: string, data: Partial<Plan>): Promise<Plan> {
+    return this.planRepo.update(id, data);
+  }
+
+  async getSubscriptionByWorkspaceId(workspaceId: string): Promise<Subscription | null> {
+    return this.subscriptionRepo.findByWorkspaceId(workspaceId);
+  }
+
   async getPlanBySlug(slug: PlanSlug): Promise<Plan | null> {
     return this.planRepo.findBySlug(slug);
   }

@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerServices } from "@/core/server";
-import { createStripeProductAndPrice } from "@/lib/stripe/client";
 
 export async function updateUserRoleAction(userId: string, role: "admin" | "user") {
   try {
@@ -140,10 +139,7 @@ export async function updatePlanAction(
       return { success: false, error: "Plan not found." };
     }
 
-    // Direct update on planRepo via container/services if exposed or container repositories
-    // We can use planRepo via server container or repo
-    const { repositories } = await (await import("@/core/container")).createCoreServices(await (await import("@/lib/supabase/server")).createClient());
-    const plan = await repositories.plan.update(planId, data as any);
+    const plan = await services.subscription.updatePlan(planId, data as any);
 
     revalidatePath("/admin/subscriptions");
     revalidatePath("/admin");
@@ -179,8 +175,13 @@ export async function createPlanAction(formData: FormData) {
 
     const slug = rawSlug.replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
 
-    // 1. Create automatic counterpart in Stripe API
-    const { stripePriceId } = await createStripeProductAndPrice(name, priceCents, "USD", "month");
+    // 1. Create automatic counterpart in Stripe API via core StripeService
+    const { stripePriceId } = await services.stripe.createStripeProductAndPrice({
+      name,
+      priceCents,
+      currency: "USD",
+      billingInterval: "month",
+    });
 
     // 2. Save plan to database
     const plan = await services.subscription.createPlan({
@@ -234,8 +235,7 @@ export async function deletePlanAction(planId: string) {
 
     // 1. Archive counterpart in Stripe API if present
     if (plan.stripePriceId) {
-      const { archiveStripeProductAndPrice } = await import("@/lib/stripe/client");
-      await archiveStripeProductAndPrice(plan.stripePriceId).catch((err) =>
+      await services.stripe.archiveStripeProductAndPrice(plan.stripePriceId).catch((err) =>
         console.warn("Stripe archive notice:", err.message)
       );
     }

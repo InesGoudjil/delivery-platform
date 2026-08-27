@@ -48,13 +48,13 @@ export function PricingSection({ onSelectPlan }: PricingSectionProps) {
         </TypographyP>
 
         {/* Monthly / Annual Billing Toggle */}
-        <div className="inline-flex items-center gap-3 mt-8 p-1 rounded-full bg-[#141416] border border-white/10 shadow-lg">
+        <div className="inline-flex items-center gap-3 mt-8 p-1 rounded-full glass-pill shadow-lg">
           <button
             onClick={() => setBilling("monthly")}
             className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
               billing === "monthly"
-                ? "bg-[#f5551d] text-[#160a03] shadow-md"
-                : "text-[#9a9a9f] hover:text-[#f6f3ec]"
+                ? "glass-btn text-white shadow-md"
+                : "text-[#aeaeb4] hover:text-[#f6f3ec]"
             }`}
           >
             Monthly Billing
@@ -63,8 +63,8 @@ export function PricingSection({ onSelectPlan }: PricingSectionProps) {
             onClick={() => setBilling("annual")}
             className={`px-5 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
               billing === "annual"
-                ? "bg-[#f5551d] text-[#160a03] shadow-md"
-                : "text-[#9a9a9f] hover:text-[#f6f3ec]"
+                ? "glass-btn text-white shadow-md"
+                : "text-[#aeaeb4] hover:text-[#f6f3ec]"
             }`}
           >
             Annual Billing{" "}
@@ -78,13 +78,13 @@ export function PricingSection({ onSelectPlan }: PricingSectionProps) {
       {/* Pricing Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
         {/* Tier 1: Solo */}
-        <Card className="bg-[#141416] border-white/10 rounded-2xl p-8 flex flex-col justify-between hover:border-white/20 transition-all duration-300 shadow-xl">
+        <div className="liquid-glass rounded-2xl p-8 flex flex-col justify-between transition-all duration-300 shadow-xl">
           <div>
             <CardHeader className="p-0">
-              <CardTitle className="text-2xl font-bold text-[#f6f3ec]">
+              <CardTitle className="text-2xl font-bold text-[#f6f3ec] font-display">
                 Solo
               </CardTitle>
-              <CardDescription className="text-xs text-[#9a9a9f] mt-1">
+              <CardDescription className="text-xs text-[#aeaeb4] mt-1 font-sans">
                 For independent videographers
               </CardDescription>
             </CardHeader>
@@ -93,11 +93,11 @@ export function PricingSection({ onSelectPlan }: PricingSectionProps) {
               <span className="font-heading text-4xl font-extrabold text-[#f6f3ec]">
                 {billing === "monthly" ? "39" : "31"}
               </span>
-              <span className="text-sm text-[#9a9a9f]"> AED / month</span>
+              <span className="text-sm text-[#aeaeb4]"> AED / month</span>
             </div>
 
             <CardContent className="p-0">
-              <ul className="space-y-3 text-xs text-[#9a9a9f]">
+              <ul className="space-y-3 text-xs text-[#aeaeb4]">
                 <li className="flex items-center gap-2">
                   <Check className="size-4 text-[#f5551d]" /> 5 Active client
                   projects
@@ -118,25 +118,23 @@ export function PricingSection({ onSelectPlan }: PricingSectionProps) {
             </CardContent>
           </div>
 
-          <CardFooter className="p-0 border-none bg-transparent pt-8">
-            <Button
+          <div className="pt-8">
+            <button
               onClick={() => handleSelect("Solo")}
-              variant="outline"
-              className="w-full rounded-full border-white/20 text-[#f6f3ec] hover:bg-white/10 cursor-pointer bg-white/[0.04]"
+              className="w-full glass-btn-ghost btn-glass-layer cursor-pointer py-3 text-xs font-semibold"
             >
               Start 7-Day Free Trial
-            </Button>
-          </CardFooter>
-        </Card>
+            </button>
+          </div>
+        </div>
 
         {/* Tier 2: Studio (Most Popular) */}
-        <Card className="bg-[#141416] border-2 border-[#f5551d] rounded-2xl p-8 flex flex-col justify-between relative shadow-2xl shadow-[#f5551d]/15 transition-all duration-300">
-          <Badge
-            variant="orange"
-            className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 text-[10px] font-extrabold uppercase tracking-widest bg-[#f5551d] text-black border-none shadow-md"
+        <div className="liquid-glass border-2 border-[#f5551d] rounded-2xl p-8 flex flex-col justify-between relative shadow-2xl glow-orange transition-all duration-300">
+          <span
+            className="absolute -top-3.5 left-1/2 -translate-x-1/2 glass-badge px-4 py-1 text-[10px] font-extrabold uppercase tracking-widest bg-[#f5551d] text-white border-none shadow-md"
           >
             MOST POPULAR
-          </Badge>
+          </span>
 
           <div>
             <CardHeader className="p-0">
@@ -181,24 +179,24 @@ export function PricingSection({ onSelectPlan }: PricingSectionProps) {
             </CardContent>
           </div>
 
-          <CardFooter className="p-0 border-none bg-transparent pt-8">
-            <Button
+          <div className="pt-8">
+            <button
               onClick={() => handleSelect("Studio")}
-              className="w-full rounded-full bg-[#f5551d] hover:bg-[#ff8a45] text-[#160a03] font-bold shadow-lg shadow-[#f5551d]/20 cursor-pointer transition-all hover:-translate-y-0.5"
+              className="w-full glass-btn btn-glass-layer cursor-pointer py-3 text-xs font-bold shadow-lg"
             >
               Start 7-Day Free Trial
-            </Button>
-          </CardFooter>
-        </Card>
+            </button>
+          </div>
+        </div>
 
         {/* Tier 3: Agency */}
-        <Card className="bg-[#141416] border-white/10 rounded-2xl p-8 flex flex-col justify-between hover:border-white/20 transition-all duration-300 shadow-xl">
+        <div className="liquid-glass rounded-2xl p-8 flex flex-col justify-between transition-all duration-300 shadow-xl">
           <div>
             <CardHeader className="p-0">
-              <CardTitle className="text-2xl font-bold text-[#f6f3ec]">
+              <CardTitle className="text-2xl font-bold text-[#f6f3ec] font-display">
                 Agency
               </CardTitle>
-              <CardDescription className="text-xs text-[#9a9a9f] mt-1">
+              <CardDescription className="text-xs text-[#aeaeb4] mt-1 font-sans">
                 For production houses & media agencies
               </CardDescription>
             </CardHeader>
@@ -207,11 +205,11 @@ export function PricingSection({ onSelectPlan }: PricingSectionProps) {
               <span className="font-heading text-4xl font-extrabold text-[#f6f3ec]">
                 {billing === "monthly" ? "199" : "159"}
               </span>
-              <span className="text-sm text-[#9a9a9f]"> AED / month</span>
+              <span className="text-sm text-[#aeaeb4]"> AED / month</span>
             </div>
 
             <CardContent className="p-0">
-              <ul className="space-y-3 text-xs text-[#9a9a9f]">
+              <ul className="space-y-3 text-xs text-[#aeaeb4]">
                 <li className="flex items-center gap-2">
                   <Check className="size-4 text-[#f5551d]" /> Everything in
                   Studio plan
@@ -232,16 +230,15 @@ export function PricingSection({ onSelectPlan }: PricingSectionProps) {
             </CardContent>
           </div>
 
-          <CardFooter className="p-0 border-none bg-transparent pt-8">
-            <Button
+          <div className="pt-8">
+            <button
               onClick={() => handleSelect("Agency")}
-              variant="outline"
-              className="w-full rounded-full border-white/20 text-[#f6f3ec] hover:bg-white/10 cursor-pointer bg-white/[0.04]"
+              className="w-full glass-btn-ghost btn-glass-layer cursor-pointer py-3 text-xs font-semibold"
             >
               Start 7-Day Free Trial
-            </Button>
-          </CardFooter>
-        </Card>
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   );

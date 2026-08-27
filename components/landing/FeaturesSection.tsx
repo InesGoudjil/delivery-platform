@@ -91,13 +91,13 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
 
       {/* Feature Tabs Selector */}
       <div className="flex justify-center mb-10">
-        <div className="inline-flex p-1.5 rounded-full bg-[#141416] border border-white/10 shadow-lg">
+        <div className="inline-flex p-1.5 rounded-full glass-pill shadow-lg">
           <button
             onClick={() => setActiveFeatureTab("review")}
             className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${
               activeFeatureTab === "review"
-                ? "bg-[#f5551d] text-[#160a03] shadow-md"
-                : "text-[#9a9a9f] hover:text-[#f6f3ec]"
+                ? "glass-btn text-white shadow-md"
+                : "text-[#aeaeb4] hover:text-[#f6f3ec]"
             }`}
           >
             <MessageCircle className="size-4" /> Client Review Room
@@ -106,8 +106,8 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
             onClick={() => setActiveFeatureTab("portfolio")}
             className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${
               activeFeatureTab === "portfolio"
-                ? "bg-[#f5551d] text-[#160a03] shadow-md"
-                : "text-[#9a9a9f] hover:text-[#f6f3ec]"
+                ? "glass-btn text-white shadow-md"
+                : "text-[#aeaeb4] hover:text-[#f6f3ec]"
             }`}
           >
             <Film className="size-4" /> Video Portfolio
@@ -116,8 +116,8 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
             onClick={() => setActiveFeatureTab("whatsapp")}
             className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${
               activeFeatureTab === "whatsapp"
-                ? "bg-[#f5551d] text-[#160a03] shadow-md"
-                : "text-[#9a9a9f] hover:text-[#f6f3ec]"
+                ? "glass-btn text-white shadow-md"
+                : "text-[#aeaeb4] hover:text-[#f6f3ec]"
             }`}
           >
             <Send className="size-4" /> WhatsApp Delivery
@@ -126,7 +126,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
       </div>
 
       {/* Feature Display Content Container */}
-      <Card className="bg-[#141416] border-white/10 rounded-3xl p-6 sm:p-10 shadow-2xl">
+      <div className="liquid-glass rounded-3xl p-6 sm:p-10 shadow-2xl">
         <CardContent className="p-0">
           {/* TAB 1: CLIENT REVIEW ROOM */}
           {activeFeatureTab === "review" && (
@@ -362,7 +362,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
             </div>
           )}
         </CardContent>
-      </Card>
+      </div>
     </section>
   );
 }

@@ -49,7 +49,7 @@ export default async function PortfolioPage({
       return {
         id: p.id,
         title: p.title,
-        category: p.clientName || "Commercial",
+        category: (p as { clientName?: string }).clientName || "Commercial",
         type: "project" as const,
         assetCount: assets.length || 1,
         thumbnailUrl:

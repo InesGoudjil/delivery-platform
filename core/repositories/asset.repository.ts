@@ -3,7 +3,8 @@ import { Database } from '@/types/database.types';
 import { Asset, AssetVersion, AssetType, TranscodingStatus } from '@/core/entities/asset';
 
 export interface CreateAssetDTO {
-  projectId: string;
+  workspaceId: string;
+  projectId?: string | null;
   title: string;
   type?: AssetType;
   sortOrder?: number;
@@ -24,8 +25,11 @@ export interface CreateAssetVersionDTO {
 
 export interface IAssetRepository {
   findById(id: string): Promise<Asset | null>;
+  listByWorkspaceId(workspaceId: string): Promise<Asset[]>;
+  listUnassignedByWorkspaceId(workspaceId: string): Promise<Asset[]>;
   listByProjectId(projectId: string): Promise<Asset[]>;
   create(dto: CreateAssetDTO): Promise<Asset>;
+  assignToProject(assetId: string, projectId: string | null): Promise<Asset>;
   update(id: string, data: Partial<Asset>): Promise<Asset>;
   delete(id: string): Promise<void>;
 }
@@ -46,7 +50,8 @@ export class SupabaseAssetRepository implements IAssetRepository {
   private mapRowToEntity(row: any): Asset {
     return {
       id: row.id,
-      projectId: row.project_id,
+      workspaceId: row.workspace_id,
+      projectId: row.project_id ?? null,
       title: row.title,
       type: row.type as AssetType,
       sortOrder: row.sort_order ?? 0,
@@ -67,6 +72,30 @@ export class SupabaseAssetRepository implements IAssetRepository {
     return data ? this.mapRowToEntity(data) : null;
   }
 
+  async listByWorkspaceId(workspaceId: string): Promise<Asset[]> {
+    const { data, error } = await (this.supabase as any)
+      .from('assets')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(`Error listing workspace assets: ${error.message}`);
+    return data ? data.map((r: any) => this.mapRowToEntity(r)) : [];
+  }
+
+  async listUnassignedByWorkspaceId(workspaceId: string): Promise<Asset[]> {
+    const { data, error } = await (this.supabase as any)
+      .from('assets')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .is('project_id', null)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(`Error listing unassigned assets: ${error.message}`);
+    return data ? data.map((r: any) => this.mapRowToEntity(r)) : [];
+  }
+
   async listByProjectId(projectId: string): Promise<Asset[]> {
     const { data, error } = await (this.supabase as any)
       .from('assets')
@@ -83,7 +112,8 @@ export class SupabaseAssetRepository implements IAssetRepository {
     const { data, error } = await (this.supabase as any)
       .from('assets')
       .insert({
-        project_id: dto.projectId,
+        workspace_id: dto.workspaceId,
+        project_id: dto.projectId ?? null,
         title: dto.title,
         type: dto.type || 'video',
         sort_order: dto.sortOrder ?? 0,
@@ -96,8 +126,22 @@ export class SupabaseAssetRepository implements IAssetRepository {
     return this.mapRowToEntity(data);
   }
 
+  async assignToProject(assetId: string, projectId: string | null): Promise<Asset> {
+    const { data, error } = await (this.supabase as any)
+      .from('assets')
+      .update({ project_id: projectId })
+      .eq('id', assetId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to assign asset to project: ${error.message}`);
+    return this.mapRowToEntity(data);
+  }
+
   async update(id: string, data: Partial<Asset>): Promise<Asset> {
     const payload: any = {};
+    if (data.workspaceId !== undefined) payload.workspace_id = data.workspaceId;
+    if (data.projectId !== undefined) payload.project_id = data.projectId;
     if (data.title !== undefined) payload.title = data.title;
     if (data.type !== undefined) payload.type = data.type;
     if (data.sortOrder !== undefined) payload.sort_order = data.sortOrder;

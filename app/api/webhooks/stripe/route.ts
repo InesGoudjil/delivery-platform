@@ -1,63 +1,107 @@
-import { NextResponse } from "next/server";
-import Stripe from "stripe";
-import { createClient } from "@/lib/supabase/server";
+import { NextResponse } from 'next/server';
+import Stripe from 'stripe';
+import { createAdminClient } from '@/lib/supabase/server';
+import { createCoreServices } from '@/core/container';
 
 export async function POST(req: Request) {
-  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-  if (!stripeSecretKey || !webhookSecret) {
-    return NextResponse.json({ error: "Stripe configuration is missing on server" }, { status: 500 });
+  if (!webhookSecret) {
+    return NextResponse.json({ error: 'Stripe webhook secret configuration is missing' }, { status: 500 });
   }
 
-  const signature = req.headers.get("stripe-signature");
+  const signature = req.headers.get('stripe-signature');
   if (!signature) {
-    return NextResponse.json({ error: "Missing stripe-signature header" }, { status: 400 });
+    return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 });
   }
-
-  const stripe = new Stripe(stripeSecretKey, {
-    apiVersion: "2025-01-27.acacia" as any,
-  });
 
   const body = await req.text();
-  let event: Stripe.Event;
+  const { services } = createCoreServices(createAdminClient());
 
+  let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+    event = services.stripe.constructWebhookEvent(body, signature, webhookSecret);
   } catch (err: any) {
+    console.error(`[Stripe Webhook Error]: Signature verification failed: ${err.message}`);
     return NextResponse.json({ error: `Webhook Signature Error: ${err.message}` }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const workspaceId = session.client_reference_id || session.metadata?.workspace_id;
+        const stripeSubId = session.subscription as string;
+        const customerId = session.customer as string;
 
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.client_reference_id;
+        if (workspaceId && stripeSubId) {
+          const stripeSub = await services.stripe.retrieveSubscription(stripeSubId);
+          const priceId = stripeSub.items.data[0]?.price?.id;
 
-      if (userId) {
-        await supabase
-          .from("profiles")
-          .update({ subscription_status: "active" })
-          .eq("id", userId);
+          let planId = session.metadata?.plan_id;
+          let targetPlan = planId ? await services.subscription.getPlanById(planId) : null;
+
+          if (!targetPlan && priceId) {
+            const allPlans = await services.subscription.listAllPlans();
+            targetPlan = allPlans.find((p) => p.stripePriceId === priceId) || null;
+          }
+
+          if (targetPlan) {
+            await services.subscription.upgradePlan(
+              workspaceId,
+              targetPlan.slug as any,
+              stripeSubId,
+              customerId
+            );
+            console.log(`[Stripe Webhook] Successfully updated subscription for workspace: ${workspaceId}`);
+          }
+        }
+        break;
       }
-      break;
-    }
-    case "customer.subscription.deleted": {
-      const subscription = event.data.object as Stripe.Subscription;
-      const userId = subscription.metadata?.userId;
 
-      if (userId) {
-        await supabase
-          .from("profiles")
-          .update({ subscription_status: "canceled" })
-          .eq("id", userId);
+      case 'customer.subscription.updated': {
+        const stripeSub = event.data.object as Stripe.Subscription;
+        const priceId = stripeSub.items.data[0]?.price?.id;
+
+        if (priceId) {
+          const allPlans = await services.subscription.listAllPlans();
+          const plan = allPlans.find((p) => p.stripePriceId === priceId);
+
+          if (plan) {
+            const allSubs = await services.subscription.listAllSubscriptions();
+            const matchingSub = allSubs.find((s) => s.paymentProviderSubId === stripeSub.id);
+            if (matchingSub) {
+              await services.subscription.adminChangeWorkspacePlan(
+                matchingSub.workspaceId,
+                plan.id,
+                stripeSub.status === 'active' ? 'active' : (stripeSub.status as any)
+              );
+              console.log(`[Stripe Webhook] Updated subscription status to '${stripeSub.status}' for sub: ${stripeSub.id}`);
+            }
+          }
+        }
+        break;
       }
-      break;
+
+      case 'customer.subscription.deleted': {
+        const stripeSub = event.data.object as Stripe.Subscription;
+        const allSubs = await services.subscription.listAllSubscriptions();
+        const matchingSub = allSubs.find((s) => s.paymentProviderSubId === stripeSub.id);
+
+        if (matchingSub) {
+          await services.subscription.cancelSubscription(matchingSub.workspaceId);
+          console.log(`[Stripe Webhook] Canceled subscription for workspace: ${matchingSub.workspaceId}`);
+        }
+        break;
+      }
+
+      default:
+        console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
     }
-    default:
-      console.log(`Unhandled Stripe event type: ${event.type}`);
+
+    return NextResponse.json({ received: true });
+  } catch (err: any) {
+    console.error(`[Stripe Webhook Handler Error]:`, err);
+    return NextResponse.json({ error: err.message || 'Server error processing webhook' }, { status: 500 });
   }
-
-  return NextResponse.json({ received: true });
 }

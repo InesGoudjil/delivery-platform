@@ -16,7 +16,6 @@ export function PartnershipSection() {
     <section className="py-10 border-b border-white/[0.08] text-center">
       <TypographyMuted
         as="p"
-        variant="subtle"
         className="uppercase tracking-widest font-semibold text-[#5e5e64] mb-6 text-xs"
       >
         Trusted by independent filmmakers & boutique studios across the Gulf

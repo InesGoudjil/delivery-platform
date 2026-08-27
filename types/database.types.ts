@@ -385,7 +385,8 @@ export interface Database {
       assets: {
         Row: {
           id: string;
-          project_id: string;
+          workspace_id: string;
+          project_id: string | null;
           title: string;
           type: 'video' | 'photo_gallery';
           sort_order: number;
@@ -395,7 +396,8 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          project_id: string;
+          workspace_id: string;
+          project_id?: string | null;
           title: string;
           type?: 'video' | 'photo_gallery';
           sort_order?: number;
@@ -405,7 +407,8 @@ export interface Database {
         };
         Update: {
           id?: string;
-          project_id?: string;
+          workspace_id?: string;
+          project_id?: string | null;
           title?: string;
           type?: 'video' | 'photo_gallery';
           sort_order?: number;

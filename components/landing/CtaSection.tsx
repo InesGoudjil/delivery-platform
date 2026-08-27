@@ -28,23 +28,22 @@ export function CtaSection({ onStartTrial }: CtaSectionProps) {
 
         {/* Content */}
         <div className="relative z-10 text-center">
-          <TypographyH2 className="text-3xl sm:text-5xl font-black text-white leading-tight">
+          <TypographyH2 className="text-3xl sm:text-5xl font-black text-white leading-tight font-display">
             Ready to elevate your video delivery?
           </TypographyH2>
 
-          <TypographyLead className="mx-auto mt-4 max-w-xl text-base sm:text-lg font-medium text-white/80">
+          <TypographyLead className="mx-auto mt-4 max-w-xl text-base sm:text-lg font-medium text-white/90 font-sans">
             Join top filmmakers in Dubai, Abu Dhabi, and across the Gulf sending
             polished cuts today.
           </TypographyLead>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <Button
+            <button
               onClick={onStartTrial}
-              size="lg"
-              className="rounded-full bg-[#f5551d] px-8 py-4 text-base font-bold text-[#160a03] shadow-2xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#ff8a45] cursor-pointer"
+              className="glass-btn btn-glass-layer cursor-pointer px-8 py-4 text-base font-bold"
             >
               Start Your 7-Day Free Trial
-            </Button>
+            </button>
           </div>
         </div>
       </div>

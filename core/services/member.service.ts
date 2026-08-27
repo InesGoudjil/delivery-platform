@@ -18,6 +18,10 @@ export class MemberService {
     return Boolean(member);
   }
 
+  async getMember(workspaceId: string, userId: string): Promise<WorkspaceMember | null> {
+    return this.memberRepo.findByWorkspaceAndUserId(workspaceId, userId);
+  }
+
   async inviteMember(
     workspaceId: string,
     inviterId: string,

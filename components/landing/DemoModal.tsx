@@ -64,7 +64,7 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-      <Card className="bg-[#141416] border border-white/15 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-6 text-[#f6f3ec] shadow-2xl relative">
+      <div className="liquid-glass rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-6 text-[#f6f3ec] shadow-2xl relative border border-white/20">
         <CardContent className="p-0 space-y-6">
           {/* Modal Header */}
           <div className="flex items-center justify-between border-b border-white/10 pb-4">
@@ -105,7 +105,6 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
               ))}
             </div>
             <TypographyMuted
-              as="span"
               className="text-xs text-[#5e5e64] shrink-0 font-mono hidden sm:inline"
             >
               Simulated Client Experience
@@ -256,7 +255,7 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </div>
     </div>
   );
 }

@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     });
 
     const services = await getServerServices();
-    const success = await services.upload.handleCloudflareWebhook(
+    const success = await (services.upload as any).handleCloudflareWebhook(
       payload,
       signatureHeaders
     );

@@ -8,7 +8,8 @@ export class AssetService {
   ) {}
 
   async createAsset(params: {
-    projectId: string;
+    workspaceId: string;
+    projectId?: string | null;
     title: string;
     type?: AssetType;
     sortOrder?: number;
@@ -30,6 +31,18 @@ export class AssetService {
 
   async listProjectAssets(projectId: string): Promise<Asset[]> {
     return this.assetRepo.listByProjectId(projectId);
+  }
+
+  async listWorkspaceAssets(workspaceId: string): Promise<Asset[]> {
+    return this.assetRepo.listByWorkspaceId(workspaceId);
+  }
+
+  async listUnassignedAssets(workspaceId: string): Promise<Asset[]> {
+    return this.assetRepo.listUnassignedByWorkspaceId(workspaceId);
+  }
+
+  async assignAssetToProject(assetId: string, projectId: string | null): Promise<Asset> {
+    return this.assetRepo.assignToProject(assetId, projectId);
   }
 
   async getActiveVersion(assetId: string): Promise<AssetVersion | null> {

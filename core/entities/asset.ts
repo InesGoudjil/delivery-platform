@@ -3,7 +3,8 @@ export type TranscodingStatus = 'pending' | 'processing' | 'ready' | 'failed';
 
 export interface Asset {
   id: string;
-  projectId: string;
+  workspaceId: string;
+  projectId?: string | null;
   title: string;
   type: AssetType;
   sortOrder: number;
