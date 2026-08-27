@@ -39,7 +39,7 @@ const typographyVariants = cva("transition-colors", {
 type ElementType = React.ElementType;
 
 export interface TypographyProps<T extends ElementType = "p">
-  extends React.HTMLAttributes<HTMLElement>,
+  extends Omit<React.HTMLAttributes<HTMLElement>, "color">,
     VariantProps<typeof typographyVariants> {
   as?: T;
 }

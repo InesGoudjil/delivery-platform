@@ -40,6 +40,7 @@ import {
   AssetUploadService,
   FeedbackService,
   NotificationService,
+  StripeService,
 } from './services';
 
 export interface CoreServices {
@@ -73,6 +74,7 @@ export interface CoreServices {
     upload: AssetUploadService;
     feedback: FeedbackService;
     notification: NotificationService;
+    stripe: StripeService;
   };
 }
 
@@ -157,6 +159,11 @@ export function createCoreServices(
     projectRepo,
     workspaceRepo
   );
+  const stripeService = new StripeService(
+    subscriptionRepo,
+    planRepo,
+    workspaceMemberRepo
+  );
 
   return {
     storageProvider,
@@ -189,6 +196,7 @@ export function createCoreServices(
       upload: uploadService,
       feedback: feedbackService,
       notification: notificationService,
+      stripe: stripeService,
     },
   };
 }

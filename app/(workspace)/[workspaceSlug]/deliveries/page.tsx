@@ -34,7 +34,7 @@ export default async function DeliveriesPage({
           ? await services.asset.getActiveVersion(assets[0].id)
           : null;
 
-      let clientName = project.clientName || "Private Client";
+      let clientName = (project as { clientName?: string }).clientName || "Private Client";
       if (project.clientId) {
         const client = await services.client.getClientById(project.clientId);
         if (client) clientName = client.name;

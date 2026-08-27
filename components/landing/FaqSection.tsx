@@ -51,31 +51,29 @@ export function FaqSection() {
         {FAQS.map((faq, idx) => {
           const isOpen = faqOpen === idx;
           return (
-            <Card
+            <div
               key={idx}
-              className="bg-[#141416] border-white/10 rounded-2xl overflow-hidden transition-all duration-200 shadow-md"
+              className="glass-card rounded-2xl overflow-hidden transition-all duration-200 shadow-md"
             >
-              <CardContent className="p-0">
-                <button
-                  onClick={() => setFaqOpen(isOpen ? null : idx)}
-                  className="w-full px-6 py-5 text-left font-bold text-base sm:text-lg text-[#f6f3ec] flex items-center justify-between gap-4 cursor-pointer hover:text-[#f5551d] transition-colors"
-                >
-                  <span>{faq.q}</span>
-                  <ChevronDown
-                    className={`size-5 text-[#9a9a9f] transition-transform duration-200 shrink-0 ${
-                      isOpen ? "rotate-180 text-[#f5551d]" : ""
-                    }`}
-                  />
-                </button>
-                {isOpen && (
-                  <div className="px-6 pb-5 text-sm text-[#9a9a9f] leading-relaxed border-t border-white/5 pt-3 animate-in fade-in-50 duration-200">
-                    <TypographyP className="text-[#9a9a9f] text-sm leading-relaxed">
-                      {faq.a}
-                    </TypographyP>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              <button
+                onClick={() => setFaqOpen(isOpen ? null : idx)}
+                className="w-full px-6 py-5 text-left font-bold text-base sm:text-lg text-[#f6f3ec] flex items-center justify-between gap-4 cursor-pointer hover:text-[#f5551d] transition-colors font-display"
+              >
+                <span>{faq.q}</span>
+                <ChevronDown
+                  className={`size-5 text-[#aeaeb4] transition-transform duration-200 shrink-0 ${
+                    isOpen ? "rotate-180 text-[#f5551d]" : ""
+                  }`}
+                />
+              </button>
+              {isOpen && (
+                <div className="px-6 pb-5 text-sm text-[#aeaeb4] leading-relaxed border-t border-white/5 pt-3 animate-in fade-in-50 duration-200 font-sans">
+                  <TypographyP className="text-[#aeaeb4] text-sm leading-relaxed">
+                    {faq.a}
+                  </TypographyP>
+                </div>
+              )}
+            </div>
           );
         })}
       </div>

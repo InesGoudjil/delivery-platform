@@ -13,7 +13,7 @@ interface UIProject extends Project {
   g?: string;
 }
 
-const INITIAL_PROJECTS: UIProject[] = [
+const INITIAL_PROJECTS: any[] = [
   {
     id: "1",
     workspaceId: "w1",

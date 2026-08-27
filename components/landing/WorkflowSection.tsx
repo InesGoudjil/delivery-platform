@@ -49,24 +49,24 @@ export function WorkflowSection() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {STEPS.map((item) => (
-          <Card
+          <div
             key={item.step}
-            className="bg-[#141416] border-white/10 rounded-2xl p-8 space-y-4 hover:border-white/20 transition-all duration-300 shadow-xl"
+            className="liquid-glass rounded-2xl p-8 space-y-4 transition-all duration-300 shadow-xl"
           >
             <CardHeader className="p-0 space-y-3">
-              <span className="font-heading text-4xl font-extrabold text-[#f5551d]">
+              <span className="font-heading text-4xl font-extrabold text-[#f5551d] font-display">
                 {item.step}
               </span>
-              <CardTitle className="text-xl font-bold text-[#f6f3ec]">
+              <CardTitle className="text-xl font-bold text-[#f6f3ec] font-display">
                 {item.title}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <TypographyP className="text-sm text-[#9a9a9f] leading-relaxed">
+              <TypographyP className="text-sm text-[#aeaeb4] leading-relaxed font-sans">
                 {item.description}
               </TypographyP>
             </CardContent>
-          </Card>
+          </div>
         ))}
       </div>
     </section>

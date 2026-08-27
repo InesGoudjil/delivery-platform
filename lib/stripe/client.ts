@@ -5,7 +5,7 @@ import Stripe from 'stripe';
  */
 export function getStripeClient(): Stripe | null {
   const secretKey = process.env.STRIPE_SECRET_KEY;
-  if (!secretKey || secretKey.startsWith('sk_test_...')) {
+  if (!secretKey || secretKey === 'sk_test_...' || secretKey.trim() === '') {
     return null;
   }
 

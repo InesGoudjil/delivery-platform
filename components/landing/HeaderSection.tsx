@@ -53,7 +53,7 @@ export function HeaderSection({
     <header
       className={`sticky top-0 z-50 w-full transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
         scrolled
-          ? "translate-y-0 bg-background/80 backdrop-blur-xl shadow-lg shadow-black/10 dark:shadow-black/30 border-b border-border"
+          ? "translate-y-0 glass-panel shadow-2xl border-b border-white/10"
           : "-translate-y-1 bg-transparent"
       }`}
     >

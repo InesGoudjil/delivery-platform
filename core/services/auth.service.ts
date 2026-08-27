@@ -37,7 +37,7 @@ export class AuthService {
   async getCurrentSessionData(): Promise<UserSessionData> {
     const user = await this.getCurrentUser();
 
-    console.log("user",user)
+    // console.log("user",user)
     if (!user) {
       return { user: null, profile: null, workspace: null };
     }

@@ -16,7 +16,6 @@ export function FooterSection() {
             CineSpace<span className="text-[#f5551d]">.</span>
           </Link>
           <TypographySmall
-            as="span"
             className="text-xs text-[#5e5e64]"
           >
             © {new Date().getFullYear()} CineSpace Platform. Built for Gulf filmmakers.

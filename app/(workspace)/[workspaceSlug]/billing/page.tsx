@@ -1,17 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import {
   CreditCard,
   Download,
-  Receipt,
   Building2,
-  CheckCircle2,
-  ExternalLink,
   ShieldCheck,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 
 interface Invoice {
   id: string;
@@ -28,7 +27,7 @@ const INVOICES: Invoice[] = [
     number: "INV-2026-0817",
     date: "Aug 17, 2026",
     description: "Studio Plan (Monthly)",
-    amount: "249.00 AED",
+    amount: "$69.00",
     status: "paid",
   },
   {
@@ -36,15 +35,7 @@ const INVOICES: Invoice[] = [
     number: "INV-2026-0717",
     date: "Jul 17, 2026",
     description: "Studio Plan (Monthly)",
-    amount: "249.00 AED",
-    status: "paid",
-  },
-  {
-    id: "inv_3",
-    number: "INV-2026-0617",
-    date: "Jun 17, 2026",
-    description: "Studio Plan (Monthly)",
-    amount: "249.00 AED",
+    amount: "$69.00",
     status: "paid",
   },
 ];
@@ -52,11 +43,58 @@ const INVOICES: Invoice[] = [
 export default function BillingPage() {
   const params = useParams();
   const workspaceSlug = (params?.workspaceSlug as string) || "studio";
+  
   const [toast, setToast] = useState<string | null>(null);
+  const [loadingPortal, setLoadingPortal] = useState(false);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
 
   const showFlash = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2500);
+  };
+
+  useEffect(() => {
+    async function getWorkspace() {
+      const supabase = createClient();
+      const { data: ws } = await supabase
+        .from("workspaces")
+        .select("id")
+        .eq("slug", workspaceSlug)
+        .maybeSingle();
+
+      if (ws) {
+        setWorkspaceId(ws.id);
+      }
+    }
+    getWorkspace();
+  }, [workspaceSlug]);
+
+  const handleOpenPortal = async () => {
+    if (!workspaceId) {
+      showFlash("Workspace ID loading...");
+      return;
+    }
+
+    try {
+      setLoadingPortal(true);
+      const res = await fetch("/api/stripe/portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to open Stripe portal");
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err: any) {
+      showFlash(err.message);
+      setLoadingPortal(false);
+    }
   };
 
   return (
@@ -91,24 +129,31 @@ export default function BillingPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-heading text-base font-bold text-card-foreground">
-                  Visa ending in 6411
+                  Stripe Payment Methods
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                  Primary
+                  Secured
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Expires 08/2028 · Billed to pedro@cinespace.film
+                Managed safely via Stripe Customer Portal
               </p>
             </div>
           </div>
 
           <Button
             variant="outline"
-            onClick={() => showFlash("Opening card update modal...")}
+            onClick={handleOpenPortal}
+            disabled={loadingPortal}
             className="rounded-full text-xs font-semibold cursor-pointer"
           >
-            Update Payment Method
+            {loadingPortal ? (
+              <>
+                <Loader2 className="size-3.5 mr-1.5 animate-spin" /> Opening Portal...
+              </>
+            ) : (
+              "Update Payment Method & Invoices"
+            )}
           </Button>
         </div>
 
@@ -159,11 +204,11 @@ export default function BillingPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => showFlash(`Downloaded invoice ${inv.number}`)}
+                  onClick={handleOpenPortal}
                   className="text-xs text-muted-foreground hover:text-foreground h-8 gap-1.5 cursor-pointer rounded-xl"
                 >
                   <Download className="size-3.5 text-[#f5551d]" />
-                  <span>PDF</span>
+                  <span>PDF / Stripe Portal</span>
                 </Button>
               </div>
             </div>
