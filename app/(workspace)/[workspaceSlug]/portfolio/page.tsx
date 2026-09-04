@@ -28,59 +28,69 @@ export default async function PortfolioPage({
   );
 
 
-  // // 2. Query workspace projects & featured links
-  const [dbProjects, featuredRelations] = await Promise.all([
+  // 2. Query workspace projects, standalone assets, and featured items
+  const [dbProjects, standaloneAssets, featuredRelations] = await Promise.all([
     services.project.listWorkspaceProjects(workspace.id),
+    services.asset.listUnassignedAssets(workspace.id),
     services.portfolio.getFeaturedProjects(portfolio.id),
   ]);
 
-    // console.log("here",portfolio,dbProjects)
-
-
-  // 3. Map DB projects with assets
+  // 3. Map DB projects
   const mappedDbProjects: PortfolioItem[] = await Promise.all(
     dbProjects.map(async (p) => {
       const assets = await services.asset.listAssets(p.id);
-      const activeVersion =
-        assets.length > 0
-          ? await services.asset.getActiveVersion(assets[0].id)
-          : null;
+      let thumbnailUrl = "";
+      if (assets.length > 0) {
+        const activeVersion = await services.asset.getActiveVersion(assets[0].id);
+        thumbnailUrl = activeVersion?.thumbnailUrl || activeVersion?.rawFileUrl || "";
+      }
 
       return {
         id: p.id,
         title: p.title,
-        category: (p as { clientName?: string }).clientName || "Commercial",
+        category: (p as { clientName?: string }).clientName || "Commercial Project",
         type: "project" as const,
         assetCount: assets.length || 1,
-        thumbnailUrl:
-          activeVersion?.thumbnailUrl ||
-          "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1200&q=80",
+        thumbnailUrl,
         isFeatured: featuredRelations.some((fr) => fr.projectId === p.id),
       };
     })
   );
 
-  // Default Cinematic Showcase items from screenshot if database is fresh
+  // 4. Map Standalone Workspace Assets (Films & Stills)
+  const mappedStandaloneAssets: PortfolioItem[] = await Promise.all(
+    standaloneAssets.map(async (asset) => {
+      const activeVersion = await services.asset.getActiveVersion(asset.id);
+      const itemType = asset.type === "photo_gallery" ? ("still" as const) : ("film" as const);
+      const thumbnailUrl = activeVersion?.thumbnailUrl || activeVersion?.rawFileUrl || "";
 
+      return {
+        id: asset.id,
+        title: asset.title,
+        category: asset.type === "photo_gallery" ? "Photo Gallery" : "Film Cut",
+        type: itemType,
+        assetCount: 1,
+        thumbnailUrl,
+        isFeatured: featuredRelations.some((fr) => fr.assetId === asset.id),
+      };
+    })
+  );
 
-  // Merge real DB projects with showcase items
-  const projects =
-    mappedDbProjects.length > 0
-      ? mappedDbProjects
-      : [];
+  // Unified portfolio showcase containing EVERYTHING (Projects + Standalone Films + Standalone Stills)
+  const allPortfolioItems = [...mappedDbProjects, ...mappedStandaloneAssets];
 
   const initialFeaturedIds =
     featuredRelations.length > 0
-      ? featuredRelations.map((fr) => fr.projectId)
-      : projects.map((p) => p.id);
+      ? featuredRelations
+          .map((fr) => fr.projectId || fr.assetId)
+          .filter((id): id is string => Boolean(id))
+      : allPortfolioItems.map((p) => p.id);
 
-
-  // return (<>aqzd</>)
   return (
     <PortfolioClient
       workspace={workspace}
       portfolio={portfolio}
-      initialProjects={projects}
+      initialProjects={allPortfolioItems}
       initialFeaturedIds={initialFeaturedIds}
     />
   );

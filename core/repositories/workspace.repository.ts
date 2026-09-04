@@ -72,14 +72,29 @@ export class SupabaseWorkspaceRepository implements IWorkspaceRepository {
   }
 
   async findBySlug(slug: string): Promise<Workspace | null> {
-    const { data, error } = await (this.supabase as any)
+    const { data: bySlug, error: slugErr } = await (this.supabase as any)
       .from('workspaces')
       .select('*')
       .eq('slug', slug)
       .maybeSingle();
 
-    if (error) throw new Error(`Error fetching workspace by slug: ${error.message}`);
-    return data ? this.mapRowToEntity(data) : null;
+    if (slugErr) throw new Error(`Error fetching workspace by slug: ${slugErr.message}`);
+    if (bySlug) return this.mapRowToEntity(bySlug);
+
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
+    if (isUuid) {
+      const { data: byId, error: idErr } = await (this.supabase as any)
+        .from('workspaces')
+        .select('*')
+        .eq('id', slug)
+        .maybeSingle();
+
+      if (idErr) throw new Error(`Error fetching workspace by id: ${idErr.message}`);
+      if (byId) return this.mapRowToEntity(byId);
+    }
+
+    return null;
   }
 
   async findByCustomDomain(customDomain: string): Promise<Workspace | null> {

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AppImage } from "@/components/ui/app-image";
 import { signupAction } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/client";
 
@@ -60,10 +61,10 @@ export function SignupForm({
   return (
     <div className="relative flex min-h-screen items-center justify-center p-3 sm:p-4 lg:p-6">
       {/* Full-Screen Background Image */}
-      <img
+      <AppImage
         src="/images/hero.jpg"
         alt="Hero"
-        className="absolute inset-0 h-full w-full object-cover"
+        containerClassName="absolute inset-0 h-full w-full"
       />
       <div className="absolute inset-0 bg-black/60" />
       <div className="absolute inset-0 bg-gradient-to-br from-[#ff9a4e]/10 via-transparent to-[#7a2109]/50" />
@@ -73,10 +74,13 @@ export function SignupForm({
         <div className="flex w-full flex-col items-center">
           {/* Logo */}
           <a href="/" className="mb-5">
-            <img
+            <AppImage
               src="/images/logo.svg"
               alt="CineSpace"
-              className="h-8 w-auto"
+              fill={false}
+              width={130}
+              height={32}
+              containerClassName="h-8 w-auto border-0 bg-transparent"
             />
           </a>
 

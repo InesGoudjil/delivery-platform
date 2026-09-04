@@ -9,3 +9,4 @@ export * from './project.repository';
 export * from './asset.repository';
 export * from './feedback.repository';
 export * from './notification.repository';
+export * from './invoice.repository';

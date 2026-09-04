@@ -38,7 +38,7 @@ export async function POST(req: Request) {
           const stripeSub = await services.stripe.retrieveSubscription(stripeSubId);
           const priceId = stripeSub.items.data[0]?.price?.id;
 
-          let planId = session.metadata?.plan_id;
+          let planId = session.metadata?.plan_id || stripeSub.metadata?.plan_id;
           let targetPlan = planId ? await services.subscription.getPlanById(planId) : null;
 
           if (!targetPlan && priceId) {
@@ -49,35 +49,58 @@ export async function POST(req: Request) {
           if (targetPlan) {
             await services.subscription.upgradePlan(
               workspaceId,
-              targetPlan.slug as any,
+              targetPlan.id,
               stripeSubId,
               customerId
             );
+            await services.subscription.recordInvoice({
+              workspaceId,
+              amountCents: targetPlan.priceCents,
+              currency: targetPlan.currency,
+              description: `${targetPlan.name} Plan (${targetPlan.billingInterval === 'year' ? 'Annual' : 'Monthly'})`,
+              stripeCustomerId: customerId,
+              status: 'paid',
+            });
             console.log(`[Stripe Webhook] Successfully updated subscription for workspace: ${workspaceId}`);
           }
         }
         break;
       }
 
+      case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const stripeSub = event.data.object as Stripe.Subscription;
         const priceId = stripeSub.items.data[0]?.price?.id;
+        const workspaceId = stripeSub.metadata?.workspace_id;
+        const customerId = stripeSub.customer as string;
 
-        if (priceId) {
+        let planId = stripeSub.metadata?.plan_id;
+        let plan = planId ? await services.subscription.getPlanById(planId) : null;
+
+        if (!plan && priceId) {
           const allPlans = await services.subscription.listAllPlans();
-          const plan = allPlans.find((p) => p.stripePriceId === priceId);
+          plan = allPlans.find((p) => p.stripePriceId === priceId) || null;
+        }
 
-          if (plan) {
+        if (plan) {
+          let targetWorkspaceId = workspaceId;
+
+          if (!targetWorkspaceId) {
             const allSubs = await services.subscription.listAllSubscriptions();
-            const matchingSub = allSubs.find((s) => s.paymentProviderSubId === stripeSub.id);
-            if (matchingSub) {
-              await services.subscription.adminChangeWorkspacePlan(
-                matchingSub.workspaceId,
-                plan.id,
-                stripeSub.status === 'active' ? 'active' : (stripeSub.status as any)
-              );
-              console.log(`[Stripe Webhook] Updated subscription status to '${stripeSub.status}' for sub: ${stripeSub.id}`);
-            }
+            const matchingSub = allSubs.find(
+              (s) => s.paymentProviderSubId === stripeSub.id || s.paymentProviderCustId === customerId
+            );
+            targetWorkspaceId = matchingSub?.workspaceId;
+          }
+
+          if (targetWorkspaceId) {
+            await services.subscription.upgradePlan(
+              targetWorkspaceId,
+              plan.id,
+              stripeSub.id,
+              customerId
+            );
+            console.log(`[Stripe Webhook] Updated subscription status to '${stripeSub.status}' for workspace: ${targetWorkspaceId}`);
           }
         }
         break;
@@ -85,12 +108,48 @@ export async function POST(req: Request) {
 
       case 'customer.subscription.deleted': {
         const stripeSub = event.data.object as Stripe.Subscription;
+        const workspaceId = stripeSub.metadata?.workspace_id;
+
+        let targetWorkspaceId = workspaceId;
+        if (!targetWorkspaceId) {
+          const allSubs = await services.subscription.listAllSubscriptions();
+          const matchingSub = allSubs.find((s) => s.paymentProviderSubId === stripeSub.id);
+          targetWorkspaceId = matchingSub?.workspaceId;
+        }
+
+        if (targetWorkspaceId) {
+          await services.subscription.cancelSubscription(targetWorkspaceId);
+          console.log(`[Stripe Webhook] Canceled subscription for workspace: ${targetWorkspaceId}`);
+        }
+        break;
+      }
+
+      case 'invoice.payment_succeeded': {
+        const invoiceObj = event.data.object as Stripe.Invoice;
+        const customerId = invoiceObj.customer as string;
+        const amountCents = invoiceObj.amount_paid;
+        const currency = invoiceObj.currency;
+        const pdfUrl = invoiceObj.invoice_pdf;
+        const hostedUrl = invoiceObj.hosted_invoice_url;
+        const stripeInvoiceId = invoiceObj.id;
+
         const allSubs = await services.subscription.listAllSubscriptions();
-        const matchingSub = allSubs.find((s) => s.paymentProviderSubId === stripeSub.id);
+        const matchingSub = allSubs.find((s) => s.paymentProviderCustId === customerId);
 
         if (matchingSub) {
-          await services.subscription.cancelSubscription(matchingSub.workspaceId);
-          console.log(`[Stripe Webhook] Canceled subscription for workspace: ${matchingSub.workspaceId}`);
+          const currentPlan = await services.subscription.getPlanById(matchingSub.planId);
+          await services.subscription.recordInvoice({
+            workspaceId: matchingSub.workspaceId,
+            stripeInvoiceId,
+            stripeCustomerId: customerId,
+            amountCents,
+            currency: (currency || 'USD').toUpperCase(),
+            description: currentPlan ? `${currentPlan.name} Plan Renewal` : 'Subscription Payment',
+            hostedInvoiceUrl: hostedUrl,
+            pdfUrl,
+            status: 'paid',
+          });
+          console.log(`[Stripe Webhook] Logged invoice ${stripeInvoiceId} for workspace ${matchingSub.workspaceId}`);
         }
         break;
       }

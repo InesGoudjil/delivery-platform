@@ -1,10 +1,11 @@
 import Stripe from 'stripe';
+import { env } from '@/lib/env';
 
 /**
  * Returns an initialized Stripe client instance or null if secret key is missing.
  */
 export function getStripeClient(): Stripe | null {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const secretKey = env.STRIPE_SECRET_KEY;
   if (!secretKey || secretKey === 'sk_test_...' || secretKey.trim() === '') {
     return null;
   }

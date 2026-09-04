@@ -46,6 +46,9 @@ export class SupabaseProjectRepository implements IProjectRepository {
   }
 
   async findById(id: string): Promise<Project | null> {
+    const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id);
+    if (!isUuid) return null;
+
     const { data, error } = await (this.supabase as any)
       .from('projects')
       .select('*')

@@ -32,31 +32,35 @@ export default async function WorkspaceLayout({
     redirect("/");
   }
 
-  const [profile, plan] = await Promise.all([
+  const [profile, plan, allWorkspaces] = await Promise.all([
     services.profile.getProfile(user.id),
     services.subscription.getCurrentPlan(workspace.id),
+    services.workspace.listAllWorkspaces(),
   ]);
+
+  const userWorkspaces = allWorkspaces.filter((w) => w.ownerId === user.id);
 
   return (
     <SidebarProvider defaultOpen={true}>
       <WorkspaceSidebar
         workspace={workspace}
-        workspaces={[workspace]}
+        workspaces={userWorkspaces}
         user={user}
         profile={profile}
         plan={plan}
       />
-      <SidebarInset className="bg-[#09090b] text-[#f6f3ec] min-h-screen flex flex-col">
+      <SidebarInset className="bg-background text-foreground min-h-screen flex flex-col transition-colors duration-200">
         {/* Top Header matching CineSpace Dashboard with LIVE PREVIEW */}
         <WorkspaceHeader
           workspace={workspace}
+          workspaces={userWorkspaces}
           user={user}
           profile={profile}
           plan={plan}
         />
 
         {/* Main Content View */}
-        <main className="flex-1 p-6 md:p-10 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto">
           {children}
         </main>
       </SidebarInset>

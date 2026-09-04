@@ -1,6 +1,7 @@
 "use server";
 
-import { getServerServices } from "@/core/server";
+import { getServerServices, getServerAdminServices, getServerCore } from "@/core/server";
+import { AssetType } from "@/core/entities/asset";
 
 export interface RequestUploadInput {
   workspaceId: string;
@@ -8,24 +9,27 @@ export interface RequestUploadInput {
   title: string;
   filename: string;
   fileSizeBytes: number;
+  assetType?: AssetType;
   maxDurationSeconds?: number;
 }
 
-export async function requestVideoUploadAction(input: RequestUploadInput) {
+export async function requestAssetUploadAction(input: RequestUploadInput) {
   try {
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
+    const userServices = await getServerServices();
+    const user = await userServices.auth.getCurrentUser();
 
     if (!user) {
       return { success: false, error: "Unauthorized. Please sign in." };
     }
 
-    const result = await services.upload.requestVideoUpload({
+    const adminServices = await getServerAdminServices();
+    const result = await adminServices.upload.requestAssetUpload({
       workspaceId: input.workspaceId,
       projectId: input.projectId,
       title: input.title,
       filename: input.filename,
       fileSizeBytes: input.fileSizeBytes,
+      assetType: input.assetType || "video",
       maxDurationSeconds: input.maxDurationSeconds,
     });
 
@@ -38,9 +42,13 @@ export async function requestVideoUploadAction(input: RequestUploadInput) {
   } catch (error: any) {
     return {
       success: false,
-      error: error.message || "Failed to initiate direct video upload.",
+      error: error.message || "Failed to initiate direct upload.",
     };
   }
+}
+
+export async function requestVideoUploadAction(input: RequestUploadInput) {
+  return requestAssetUploadAction({ ...input, assetType: "video" });
 }
 
 export interface ConfirmUploadInput {
@@ -52,14 +60,15 @@ export interface ConfirmUploadInput {
 
 export async function confirmUploadCompletedAction(input: ConfirmUploadInput) {
   try {
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
+    const userServices = await getServerServices();
+    const user = await userServices.auth.getCurrentUser();
 
     if (!user) {
       return { success: false, error: "Unauthorized. Please sign in." };
     }
 
-    const updatedVersion = await services.upload.confirmUploadCompleted({
+    const adminServices = await getServerAdminServices();
+    const updatedVersion = await adminServices.upload.confirmUploadCompleted({
       assetVersionId: input.assetVersionId,
       providerUid: input.providerUid,
       durationSeconds: input.durationSeconds,
@@ -75,5 +84,15 @@ export async function confirmUploadCompletedAction(input: ConfirmUploadInput) {
       success: false,
       error: error.message || "Failed to confirm upload completion.",
     };
+  }
+}
+
+export async function checkAssetStatusAction(providerUid: string) {
+  try {
+    const core = await getServerCore();
+    const status = await core.storageProvider.getAssetStatus(providerUid);
+    return { success: true, status };
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
 }

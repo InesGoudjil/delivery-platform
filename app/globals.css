@@ -67,14 +67,14 @@
 
 @layer base {
   :root {
-    --bg: #0a0a0b;
-    --bg2: #141416;
-    --bg3: #1c1c20;
-    --line: rgba(255, 255, 255, 0.08);
-    --line2: rgba(255, 255, 255, 0.15);
-    --ink: #f6f3ec;
-    --dim: #edebe6;
-    --faint: #aeaeb4;
+    --bg: #f8fafc;
+    --bg2: #ffffff;
+    --bg3: #f1f5f9;
+    --line: rgba(0, 0, 0, 0.08);
+    --line2: rgba(0, 0, 0, 0.15);
+    --ink: #0f172a;
+    --dim: #334155;
+    --faint: #64748b;
     --orange: #f5551d;
     --orange2: #ff8a45;
     --sage: #86b98f;
@@ -84,37 +84,45 @@
     --acc-dk-rgb: 200, 60, 20;
 
     /* Default Light Mode Tokens */
-    --background: #ffffff;
-    --foreground: #0a0a0b;
+    --background: #fafafa;
+    --foreground: #0f172a;
     --card: #ffffff;
-    --card-foreground: #0a0a0b;
+    --card-foreground: #0f172a;
     --popover: #ffffff;
-    --popover-foreground: #0a0a0b;
+    --popover-foreground: #0f172a;
     --primary: #f5551d;
     --primary-foreground: #ffffff;
-    --secondary: #f4f4f5;
-    --secondary-foreground: #18181b;
-    --muted: #f4f4f5;
-    --muted-foreground: #71717a;
-    --accent: #f4f4f5;
-    --accent-foreground: #18181b;
+    --secondary: #f1f5f9;
+    --secondary-foreground: #0f172a;
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+    --accent: #f1f5f9;
+    --accent-foreground: #0f172a;
     --destructive: #ef4444;
-    --border: #e4e4e7;
-    --input: #e4e4e7;
+    --border: #e2e8f0;
+    --input: #e2e8f0;
     --ring: #f5551d;
     --radius: 0.625rem;
-    --sidebar: #fafafa;
-    --sidebar-foreground: #18181b;
+    --sidebar: #ffffff;
+    --sidebar-foreground: #0f172a;
     --sidebar-primary: #f5551d;
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #f4f4f5;
-    --sidebar-accent-foreground: #18181b;
-    --sidebar-border: #e4e4e7;
+    --sidebar-accent: #f1f5f9;
+    --sidebar-accent-foreground: #0f172a;
+    --sidebar-border: #e2e8f0;
     --sidebar-ring: #f5551d;
   }
 
   .dark {
     /* Dark Mode CineSpace Theme */
+    --bg: #0a0a0b;
+    --bg2: #141416;
+    --bg3: #1c1c20;
+    --line: rgba(255, 255, 255, 0.08);
+    --line2: rgba(255, 255, 255, 0.15);
+    --ink: #f6f3ec;
+    --dim: #edebe6;
+    --faint: #aeaeb4;
     --background: #0a0a0b;
     --foreground: #f6f3ec;
     --card: #141416;
@@ -133,7 +141,7 @@
     --border: rgba(255, 255, 255, 0.08);
     --input: rgba(255, 255, 255, 0.12);
     --ring: #f5551d;
-    --sidebar: #141416;
+    --sidebar: #0c0c0e;
     --sidebar-foreground: #f6f3ec;
     --sidebar-primary: #f5551d;
     --sidebar-primary-foreground: #ffffff;

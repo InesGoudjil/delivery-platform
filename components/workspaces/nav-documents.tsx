@@ -30,9 +30,9 @@ export function NavDocuments({
   const { isMobile } = useSidebar();
 
   return (
-    <SidebarGroup className="group-data-[collapsible=icon]:hidden p-0">
+    <SidebarGroup className="p-0">
       {title && (
-        <SidebarGroupLabel className="text-[10px] font-mono font-semibold uppercase tracking-widest text-[#5e5e64] px-3 mb-1.5 h-auto">
+        <SidebarGroupLabel className="text-[10px] font-mono font-semibold uppercase tracking-widest text-muted-foreground/70 px-3 mb-1.5 h-auto group-data-[collapsible=icon]:hidden">
           {title}
         </SidebarGroupLabel>
       )}
@@ -49,10 +49,10 @@ export function NavDocuments({
                 tooltip={item.name}
                 isActive={isActive}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 h-auto",
+                  "flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 h-auto group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2",
                   isActive
-                    ? "bg-white/[0.08] text-[#f6f3ec] font-semibold"
-                    : "text-[#8e8e93] hover:text-[#f6f3ec] hover:bg-white/[0.04]"
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
                 )}
               >
                 <Link href={item.url}>
@@ -60,11 +60,11 @@ export function NavDocuments({
                     <item.icon
                       className={cn(
                         "size-4 shrink-0 transition-colors",
-                        isActive ? "text-[#f5551d]" : "text-[#8e8e93]"
+                        isActive ? "text-primary" : "text-muted-foreground"
                       )}
                     />
                   )}
-                  <span className="truncate">{item.name}</span>
+                  <span className="truncate group-data-[collapsible=icon]:hidden">{item.name}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

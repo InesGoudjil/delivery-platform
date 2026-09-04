@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AppImage } from "@/components/ui/app-image";
 import { loginAction } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/client";
 
@@ -49,10 +50,10 @@ export function LoginForm({
       <div className="grid w-full max-w-6xl overflow-hidden rounded-3xl border border-white/10 bg-[#141416] shadow-2xl lg:grid-cols-2">
         {/* ================= Left Side ================= */}
         <div className="relative hidden lg:block">
-          <img
+          <AppImage
             src="/images/hero.jpg"
             alt="Hero"
-            className="absolute inset-0 h-full w-full object-cover"
+            containerClassName="absolute inset-0 h-full w-full"
           />
 
           <div className="absolute inset-0 bg-black/45" />
@@ -77,10 +78,13 @@ export function LoginForm({
           <div className="flex w-full max-w-md flex-col items-center">
             {/* Logo */}
             <a href="/" className="mb-5">
-              <img
+              <AppImage
                 src="/images/logo.svg"
                 alt="CineSpace"
-                className="h-8 w-auto"
+                fill={false}
+                width={130}
+                height={32}
+                containerClassName="h-8 w-auto border-0 bg-transparent"
               />
             </a>
 
