@@ -24,6 +24,7 @@ import {
   SupabaseAssetVersionRepository,
   SupabaseFeedbackRepository,
   SupabaseNotificationLogRepository,
+  SupabaseInvoiceRepository,
 } from './repositories';
 
 // Services
@@ -108,6 +109,7 @@ export function createCoreServices(
   const assetVersionRepo = new SupabaseAssetVersionRepository(supabase);
   const feedbackRepo = new SupabaseFeedbackRepository(supabase);
   const notificationRepo = new SupabaseNotificationLogRepository(supabase);
+  const invoiceRepo = new SupabaseInvoiceRepository(supabase);
 
   // 2. Services (Injected with Repository Interfaces & Storage Provider)
   const authService = new AuthService(supabase, workspaceRepo, userProfileRepo);
@@ -127,7 +129,8 @@ export function createCoreServices(
     subscriptionRepo,
     planRepo,
     workspaceFeaturesRepo,
-    projectRepo
+    projectRepo,
+    invoiceRepo
   );
   const clientService = new ClientService(clientRepo);
   const portfolioService = new PortfolioService(

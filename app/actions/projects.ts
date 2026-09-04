@@ -3,6 +3,32 @@
 import { revalidatePath } from "next/cache";
 import { getServerServices } from "@/core/server";
 
+export async function createWorkspaceProjectAction(
+  workspaceId: string,
+  title: string,
+  description?: string
+) {
+  try {
+    const services = await getServerServices();
+    const user = await services.auth.getCurrentUser();
+
+    if (!user) {
+      return { error: "User is not authenticated." };
+    }
+
+    const project = await services.project.createProject({
+      workspaceId,
+      title: title || "Untitled Project",
+      description: description || undefined,
+    });
+
+    revalidatePath("/portfolio");
+    return { success: true, project };
+  } catch (err: any) {
+    return { error: err.message || "Failed to create project." };
+  }
+}
+
 export async function createProjectAction(formData: FormData) {
   try {
     const services = await getServerServices();

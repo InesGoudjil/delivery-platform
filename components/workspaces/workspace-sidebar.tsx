@@ -29,6 +29,8 @@ import {
 import { signOutAction } from "@/app/actions/auth";
 import { NavDocuments } from "./nav-documents";
 
+import { WorkspaceSwitcher, WorkspaceItem } from "./workspace-switcher";
+
 export interface WorkspaceSidebarProps extends React.ComponentProps<
   typeof Sidebar
 > {
@@ -95,12 +97,6 @@ export function WorkspaceSidebar({
   const data = {
     documents: [
       {
-        name: "Profile",
-        url: `/${workspaceSlug}/settings`,
-        icon: Pencil,
-        exact: true,
-      },
-      {
         name: "Portfolio",
         url: `/${workspaceSlug}/portfolio`,
         icon: LayoutGrid,
@@ -123,14 +119,9 @@ export function WorkspaceSidebar({
         icon: Pencil,
       },
       {
-        name: "Subscription",
+        name: "Subscription & Billing",
         url: `/${workspaceSlug}/subscription`,
         icon: Star,
-      },
-      {
-        name: "Billing",
-        url: `/${workspaceSlug}/billing`,
-        icon: Download,
       },
       {
         name: "Security",
@@ -143,50 +134,50 @@ export function WorkspaceSidebar({
         icon: MessageSquare,
       },
     ],
-    support: [
-      {
-        name: "Help Center",
-        url: `/${workspaceSlug}/help`,
-        icon: MessageCircle,
-      },
-      {
-        name: "Contact Us",
-        url: `/${workspaceSlug}/help#contact`,
-        icon: Send,
-      },
-      {
-        name: "Documentation",
-        url: `/${workspaceSlug}/docs`,
-        icon: BookOpen,
-      },
-    ],
   };
+
+  const brandName = workspace?.brandName || "Pedro Concreato";
+  const planName = plan?.name || "Studio";
+
+  const listToMap = workspaces.length > 0 ? workspaces : workspace ? [workspace] : [];
+  const workspaceItems: WorkspaceItem[] = listToMap.map((w) => ({
+    id: w.id,
+    name: w.brandName,
+    slug: w.slug,
+    plan: planName ? `${planName} plan` : "Studio plan",
+  }));
 
   return (
     <Sidebar
       collapsible="icon"
-      className="border-r border-white/[0.08] bg-[#0c0c0e] text-[#f6f3ec]"
+      className="border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-colors duration-200"
       {...props}
     >
-      <SidebarHeader className="hidden" />
+      <SidebarHeader className="p-3 border-b border-sidebar-border">
+        <WorkspaceSwitcher
+          workspaces={workspaceItems}
+          activeSlug={workspaceSlug}
+        />
+      </SidebarHeader>
 
-      <SidebarContent className="px-3 py-6 space-y-6">
+      <SidebarContent className="px-3 py-4 space-y-6">
         <NavDocuments title="WORKSPACE" items={data.documents} />
         <NavDocuments title="ACCOUNT" items={data.account} />
-        <NavDocuments title="SUPPORT" items={data.support} />
       </SidebarContent>
 
-      <SidebarFooter className="p-3 border-t border-white/[0.08]">
+      <SidebarFooter className="p-3 border-t border-sidebar-border">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={handleLogout}
               disabled={isPending}
               tooltip="Log out"
-              className="flex items-center gap-3 px-3 py-2 text-xs font-medium text-[#f5551d] hover:text-[#ff8a45] hover:bg-white/[0.04] transition-colors cursor-pointer"
+              className="flex items-center gap-3 px-3 py-2 text-xs font-medium text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2"
             >
-              <ArrowRight className="size-4 shrink-0 text-[#f5551d] rtl:rotate-180" />
-              <span>{isPending ? "Logging out..." : "Log out"}</span>
+              <ArrowRight className="size-4 shrink-0 text-destructive rtl:rotate-180" />
+              <span className="group-data-[collapsible=icon]:hidden">
+                {isPending ? "Logging out..." : "Log out"}
+              </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

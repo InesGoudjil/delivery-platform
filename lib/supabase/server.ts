@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { cache } from 'react';
+import { env } from '@/lib/env';
 
 /**
  * Request-scoped singleton Supabase Server Client.
@@ -11,8 +12,8 @@ export const createClient = cache(async () => {
   const cookieStore = await cookies();
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {
@@ -36,8 +37,15 @@ export const createClient = cache(async () => {
  * Admin Supabase client using SUPABASE_SERVICE_ROLE_KEY to bypass RLS in backend operations like Webhooks.
  */
 export function createAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  const url = env.NEXT_PUBLIC_SUPABASE_URL;
+  const hasValidServiceKey =
+    Boolean(env.SUPABASE_SERVICE_ROLE_KEY) &&
+    env.SUPABASE_SERVICE_ROLE_KEY !== 'your-supabase-service-role-key' &&
+    env.SUPABASE_SERVICE_ROLE_KEY.trim() !== '';
+
+  const key = hasValidServiceKey
+    ? env.SUPABASE_SERVICE_ROLE_KEY
+    : env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   return createSupabaseClient(url, key, {
     auth: {

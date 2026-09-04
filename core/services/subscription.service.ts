@@ -1,17 +1,20 @@
 import { Subscription, SubscriptionStatus } from '@/core/entities/subscription';
 import { Plan, PlanSlug } from '@/core/entities/plan';
+import { Invoice, InvoiceStatus } from '@/core/entities/invoice';
 import { WorkspaceFeatureConfig } from '@/core/entities/workspace';
 import { ISubscriptionRepository } from '@/core/repositories/subscription.repository';
 import { IPlanRepository } from '@/core/repositories/plan.repository';
 import { IWorkspaceFeaturesRepository } from '@/core/repositories/workspace.repository';
 import { IProjectRepository } from '@/core/repositories/project.repository';
+import { IInvoiceRepository } from '@/core/repositories/invoice.repository';
 
 export class SubscriptionService {
   constructor(
     private readonly subscriptionRepo: ISubscriptionRepository,
     private readonly planRepo: IPlanRepository,
     private readonly featuresRepo: IWorkspaceFeaturesRepository,
-    private readonly projectRepo: IProjectRepository
+    private readonly projectRepo: IProjectRepository,
+    private readonly invoiceRepo?: IInvoiceRepository
   ) {}
 
   async listAvailablePlans(): Promise<Plan[]> {
@@ -133,12 +136,15 @@ export class SubscriptionService {
 
   async upgradePlan(
     workspaceId: string,
-    planSlug: PlanSlug,
+    planSlugOrId: string,
     paymentProviderSubId?: string,
     paymentProviderCustId?: string
   ): Promise<Subscription> {
-    const plan = await this.planRepo.findBySlug(planSlug);
-    if (!plan) throw new Error(`Plan ${planSlug} not found`);
+    let plan = await this.planRepo.findBySlug(planSlugOrId as any);
+    if (!plan) {
+      plan = await this.planRepo.findById(planSlugOrId);
+    }
+    if (!plan) throw new Error(`Plan "${planSlugOrId}" not found`);
 
     const currentSub = await this.subscriptionRepo.findByWorkspaceId(workspaceId);
 
@@ -264,5 +270,30 @@ export class SubscriptionService {
   async isWhiteLabelAllowed(workspaceId: string): Promise<boolean> {
     const features = await this.getFeatures(workspaceId);
     return Boolean(features.white_label);
+  }
+
+  async listInvoices(workspaceId: string): Promise<Invoice[]> {
+    if (!this.invoiceRepo) return [];
+    return this.invoiceRepo.findByWorkspaceId(workspaceId);
+  }
+
+  async recordInvoice(data: {
+    workspaceId: string;
+    invoiceNumber?: string;
+    stripeInvoiceId?: string | null;
+    stripeCustomerId?: string | null;
+    amountCents: number;
+    currency?: string;
+    status?: InvoiceStatus;
+    description: string;
+    hostedInvoiceUrl?: string | null;
+    pdfUrl?: string | null;
+  }): Promise<Invoice | null> {
+    if (!this.invoiceRepo) return null;
+    if (data.stripeInvoiceId) {
+      const existing = await this.invoiceRepo.findByStripeInvoiceId(data.stripeInvoiceId);
+      if (existing) return existing;
+    }
+    return this.invoiceRepo.create(data);
   }
 }

@@ -1,4 +1,4 @@
-import { IStorageProvider, DirectUploadResult } from "@/core/providers/storage";
+import { IStorageProvider, DirectUploadResult, StorageAssetType } from "@/core/providers/storage";
 import { IWorkspaceRepository } from "@/core/repositories/workspace.repository";
 import { IProjectRepository } from "@/core/repositories/project.repository";
 import {
@@ -7,29 +7,41 @@ import {
 } from "@/core/repositories/asset.repository";
 import { ISubscriptionRepository } from "@/core/repositories/subscription.repository";
 import { IPlanRepository } from "@/core/repositories/plan.repository";
-import { Asset, AssetVersion } from "@/core/entities/asset";
+import { Asset, AssetVersion, AssetType, TranscodingStatus } from "@/core/entities/asset";
 
-export interface RequestVideoUploadDTO {
+export interface RequestAssetUploadDTO {
   workspaceId: string;
   projectId?: string | null;
   title: string;
   filename: string;
   fileSizeBytes: number;
+  assetType?: AssetType;
   maxDurationSeconds?: number;
   metadata?: Record<string, string>;
 }
 
-export interface RequestVideoUploadResult {
+export interface RequestVideoUploadDTO extends RequestAssetUploadDTO {}
+
+export interface RequestUploadResult {
   asset: Asset;
   assetVersion: AssetVersion;
   directUpload: DirectUploadResult;
 }
+
+export type RequestVideoUploadResult = RequestUploadResult;
 
 export interface ConfirmUploadDTO {
   assetVersionId: string;
   providerUid: string;
   durationSeconds?: number;
   fileSizeBytes?: number;
+}
+
+function mapStorageStatusToTranscodingStatus(status?: string): TranscodingStatus {
+  if (status === "ready") return "ready";
+  if (status === "processing") return "processing";
+  if (status === "error" || status === "failed") return "failed";
+  return "pending";
 }
 
 export class AssetUploadService {
@@ -44,11 +56,13 @@ export class AssetUploadService {
   ) {}
 
   /**
-   * Validates storage limits and generates a direct client upload URL (up to 5GB).
+   * Validates storage limits and generates a direct client upload URL for video or photo assets.
    */
-  async requestVideoUpload(
-    dto: RequestVideoUploadDTO
-  ): Promise<RequestVideoUploadResult> {
+  async requestAssetUpload(
+    dto: RequestAssetUploadDTO
+  ): Promise<RequestUploadResult> {
+    const assetType: AssetType = dto.assetType || "video";
+
     // 1. Resolve Workspace (by ID or slug)
     let workspace = await this.workspaceRepo.findById(dto.workspaceId);
     if (!workspace) {
@@ -61,7 +75,7 @@ export class AssetUploadService {
 
     // 2. Resolve Project (if provided, by ID or share token)
     let resolvedProjectId: string | null = null;
-    if (dto.projectId) {
+    if (dto.projectId && dto.projectId.trim() !== "" && dto.projectId !== "new") {
       let project = await this.projectRepo.findById(dto.projectId);
       if (!project) {
         project = await this.projectRepo.findByShareToken(dto.projectId);
@@ -97,7 +111,7 @@ export class AssetUploadService {
         ((storageLimitBytes - currentUsageBytes) / (1024 * 1024 * 1024)).toFixed(1) as any
       );
       throw new Error(
-        `Storage quota exceeded. Your plan allows ${storageLimitGB} GB (Available: ${availableGB} GB). Please upgrade your subscription or delete old cuts.`
+        `Storage quota exceeded. Your plan allows ${storageLimitGB} GB (Available: ${availableGB} GB). Please upgrade your subscription or delete old assets.`
       );
     }
 
@@ -113,7 +127,7 @@ export class AssetUploadService {
       workspaceId: resolvedWorkspaceId,
       projectId: resolvedProjectId,
       title: dto.title,
-      type: "video",
+      type: assetType,
       sortOrder: existingAssets.length,
     });
 
@@ -124,16 +138,21 @@ export class AssetUploadService {
         ? Math.max(...existingVersions.map((v) => v.versionNumber)) + 1
         : 1;
 
-    // 6. Request Direct Upload URL from Storage Provider (Cloudflare Stream / Mock)
+    const storageAssetType: StorageAssetType = assetType === "photo_gallery" ? "image" : "video";
+
+    // 6. Request Direct Upload URL from Storage Provider (Cloudflare Stream / R2 / Mock)
     const directUpload = await this.storageProvider.createDirectUploadUrl({
       workspaceId: resolvedWorkspaceId,
       projectId: resolvedProjectId || "standalone",
       assetTitle: dto.title,
-      assetType: "video",
+      assetType: storageAssetType,
       fileSizeBytes: dto.fileSizeBytes,
       filename: dto.filename,
       maxDurationSeconds: dto.maxDurationSeconds,
-      metadata: dto.metadata,
+      metadata: {
+        assetId: asset.id,
+        ...(dto.metadata || {}),
+      },
     });
 
     // 7. Create Pending AssetVersion Record
@@ -142,7 +161,7 @@ export class AssetUploadService {
       versionNumber: nextVersionNumber,
       rawFileUrl: directUpload.uploadUrl,
       fileSizeBytes: dto.fileSizeBytes,
-      transcodingStatus: "pending",
+      transcodingStatus: assetType === "photo_gallery" ? "ready" : "pending",
       isActiveVersion: true,
     });
 
@@ -151,6 +170,13 @@ export class AssetUploadService {
       assetVersion,
       directUpload,
     };
+  }
+
+  /**
+   * Alias for requestAssetUpload for backward compatibility.
+   */
+  async requestVideoUpload(dto: RequestVideoUploadDTO): Promise<RequestVideoUploadResult> {
+    return this.requestAssetUpload({ ...dto, assetType: "video" });
   }
 
   /**
@@ -178,12 +204,12 @@ export class AssetUploadService {
 
     // 2. Update AssetVersion record
     const updatedVersion = await this.assetVersionRepo.update(version.id, {
-      rawFileUrl: (playbackInfo as any).rawDownloadUrl || version.rawFileUrl,
-      hlsManifestUrl: playbackInfo.hlsManifestUrl,
-      thumbnailUrl: playbackInfo.thumbnailUrl,
-      durationSeconds: dto.durationSeconds ?? playbackInfo.durationSeconds,
+      rawFileUrl: (playbackInfo as any)?.rawDownloadUrl || version.rawFileUrl,
+      hlsManifestUrl: playbackInfo?.hlsManifestUrl || version.hlsManifestUrl,
+      thumbnailUrl: playbackInfo?.thumbnailUrl || version.thumbnailUrl,
+      durationSeconds: dto.durationSeconds ?? playbackInfo?.durationSeconds ?? version.durationSeconds,
       fileSizeBytes: dto.fileSizeBytes ?? version.fileSizeBytes,
-      transcodingStatus: (playbackInfo as any).transcodingStatus ?? 'ready',
+      transcodingStatus: mapStorageStatusToTranscodingStatus(playbackInfo?.status),
       isActiveVersion: true,
     });
 
@@ -204,18 +230,20 @@ export class AssetUploadService {
    * Cloudflare Stream Webhook handler: called asynchronously when 4K transcoding is complete.
    */
   async handleTranscodeWebhook(event: any): Promise<void> {
-    const parsed = await (this.storageProvider as any).parseWebhookEvent(event);
-    if (!parsed || !parsed.providerUid) return;
+    const providerUid = event?.data?.uid || event?.uid || event?.providerUid;
+    if (!providerUid) return;
 
-    const playbackInfo = await this.storageProvider.getPlaybackInfo(parsed.providerUid);
+    const playbackInfo = await this.storageProvider.getPlaybackInfo(providerUid);
+    if (!playbackInfo) return;
 
-    // If metadata contains assetVersionId, update directly
-    if (parsed.metadata && parsed.metadata.assetVersionId) {
-      await this.assetVersionRepo.update(parsed.metadata.assetVersionId, {
+    const assetVersionId = event?.data?.meta?.assetVersionId || event?.meta?.assetVersionId;
+
+    if (assetVersionId) {
+      await this.assetVersionRepo.update(assetVersionId, {
         hlsManifestUrl: playbackInfo.hlsManifestUrl,
         thumbnailUrl: playbackInfo.thumbnailUrl,
         durationSeconds: playbackInfo.durationSeconds,
-        transcodingStatus: parsed.status,
+        transcodingStatus: mapStorageStatusToTranscodingStatus(playbackInfo.status),
       });
     }
   }

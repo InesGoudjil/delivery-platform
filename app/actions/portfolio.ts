@@ -8,7 +8,11 @@ export async function updatePortfolioAction(
   data: {
     title?: string;
     bio?: string | null;
+    coverAssetUrl?: string | null;
+    socialLinks?: Record<string, string | undefined>;
     isPublished?: boolean;
+    appearance?: any;
+    experience?: any[];
   }
 ) {
   try {
@@ -26,9 +30,10 @@ export async function updatePortfolioAction(
   }
 }
 
-export async function toggleFeaturedProjectAction(
+export async function toggleFeaturedItemAction(
   portfolioId: string,
-  projectId: string,
+  itemId: string,
+  itemType: "project" | "asset",
   isFeatured: boolean
 ) {
   try {
@@ -39,14 +44,31 @@ export async function toggleFeaturedProjectAction(
       return { success: false, error: "Unauthorized." };
     }
 
+    const repo = (services as any).portfolioRepo || (services as any).portfolio?.portfolioRepo;
     if (isFeatured) {
-      await services.portfolio.featureProject(portfolioId, projectId);
+      if (repo && typeof repo.addFeaturedItem === "function") {
+        await repo.addFeaturedItem(portfolioId, itemId, itemType);
+      } else {
+        await services.portfolio.featureProject(portfolioId, itemId);
+      }
     } else {
-      await services.portfolio.unfeatureProject(portfolioId, projectId);
+      if (repo && typeof repo.removeFeaturedItem === "function") {
+        await repo.removeFeaturedItem(portfolioId, itemId, itemType);
+      } else {
+        await services.portfolio.unfeatureProject(portfolioId, itemId);
+      }
     }
 
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message || "Failed to update featured project." };
+    return { success: false, error: error.message || "Failed to update featured item." };
   }
+}
+
+export async function toggleFeaturedProjectAction(
+  portfolioId: string,
+  projectId: string,
+  isFeatured: boolean
+) {
+  return toggleFeaturedItemAction(portfolioId, projectId, "project", isFeatured);
 }

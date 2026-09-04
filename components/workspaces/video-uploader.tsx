@@ -7,14 +7,12 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
-  Play,
-  Share2,
-  HardDrive,
+  Image as ImageIcon,
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  requestVideoUploadAction,
+  requestAssetUploadAction,
   confirmUploadCompletedAction,
 } from "@/app/actions/upload";
 
@@ -32,6 +30,7 @@ export function VideoUploader({
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
+  const [assetType, setAssetType] = useState<"video" | "photo_gallery">("video");
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState("");
@@ -46,6 +45,14 @@ export function VideoUploader({
     const file = files[0];
     setSelectedFile(file);
     setTitle(file.name.replace(/\.[^/.]+$/, ""));
+    
+    // Auto-detect asset type based on mime type
+    if (file.type.startsWith("image/")) {
+      setAssetType("photo_gallery");
+    } else {
+      setAssetType("video");
+    }
+
     setErrorMessage(null);
     setCompletedAsset(null);
     setProgress(0);
@@ -88,22 +95,23 @@ export function VideoUploader({
 
     try {
       // 1. Request direct upload URL from server (validates storage quota)
-      const initRes = await requestVideoUploadAction({
+      const initRes = await requestAssetUploadAction({
         workspaceId,
         projectId,
         title: title || selectedFile.name,
         filename: selectedFile.name,
         fileSizeBytes: selectedFile.size,
+        assetType,
       });
 
       if (!initRes.success || !initRes.directUpload) {
         throw new Error(initRes.error || "Failed to initialize upload.");
       }
 
-      const { uploadUrl, providerUid } = initRes.directUpload;
+      const { uploadUrl, providerUid, uploadType, headers } = initRes.directUpload;
       const assetVersionId = initRes.assetVersion.id;
 
-      setStatusText("Uploading directly to Cloudflare Stream...");
+      setStatusText(`Uploading directly to Cloudflare (${uploadType})...`);
 
       // 2. Perform direct upload from client to Cloudflare (bypasses Next.js server limits)
       await new Promise<void>((resolve, reject) => {
@@ -131,11 +139,18 @@ export function VideoUploader({
         xhr.onerror = () => reject(new Error("Network error during direct upload."));
         xhr.onabort = () => reject(new Error("Upload cancelled by user."));
 
-        // If mock or simple direct post:
-        xhr.open("POST", uploadUrl, true);
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-        xhr.send(formData);
+        if (uploadType === "presigned_put") {
+          xhr.open("PUT", uploadUrl, true);
+          if (headers) {
+            Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+          }
+          xhr.send(selectedFile);
+        } else {
+          xhr.open("POST", uploadUrl, true);
+          const formData = new FormData();
+          formData.append("file", selectedFile);
+          xhr.send(formData);
+        }
       });
 
       // 3. Confirm upload on backend and fetch HLS manifest & thumbnail
@@ -151,7 +166,7 @@ export function VideoUploader({
       }
 
       setProgress(100);
-      setStatusText("Upload complete & ready for 4K streaming!");
+      setStatusText("Upload complete & ready!");
       setCompletedAsset(initRes.asset);
 
       if (onUploadComplete) {
@@ -188,14 +203,14 @@ export function VideoUploader({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20">
-            <Film className="size-5" />
+            {assetType === "photo_gallery" ? <ImageIcon className="size-5" /> : <Film className="size-5" />}
           </div>
           <div>
             <h3 className="font-heading text-base font-bold text-card-foreground">
-              Direct Cloudflare 4K Video Upload
+              Direct Cloudflare Media Upload
             </h3>
             <p className="text-xs text-muted-foreground">
-              Direct-to-edge uploads up to 5GB (ProRes 422, DNxHR, H.264, MP4/MOV)
+              Direct-to-edge 4K HLS video stream & high-res image gallery upload up to 5GB
             </p>
           </div>
         </div>
@@ -225,17 +240,19 @@ export function VideoUploader({
         <div className="p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 space-y-3 animate-in fade-in">
           <div className="flex items-center gap-2 font-bold text-sm">
             <CheckCircle2 className="size-5" />
-            <span>Master Cut Uploaded Successfully!</span>
+            <span>Master Asset Uploaded Successfully!</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Your cut is being encoded into adaptive multi-bitrate HLS streams across Cloudflare edge nodes.
+            {assetType === "video"
+              ? "Your cut is being encoded into adaptive multi-bitrate HLS streams across Cloudflare edge nodes."
+              : "Your photo gallery asset is now optimized and served globally via Cloudflare CDN."}
           </p>
           <div className="flex items-center gap-3 pt-2">
             <Button
               onClick={resetForm}
               className="rounded-full bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-600 cursor-pointer"
             >
-              Upload Another Version
+              Upload Another Asset
             </Button>
           </div>
         </div>
@@ -258,7 +275,7 @@ export function VideoUploader({
           <input
             ref={fileInputRef}
             type="file"
-            accept="video/*,.mov,.mp4,.mkv,.m4v"
+            accept="video/*,image/*,.mov,.mp4,.mkv,.m4v,.png,.jpg,.jpeg,.webp"
             className="hidden"
             onChange={(e) => handleFiles(e.target.files)}
           />
@@ -269,10 +286,10 @@ export function VideoUploader({
 
           <div className="space-y-1">
             <div className="text-sm font-bold text-card-foreground">
-              Click to select or drag and drop your cut
+              Click to select or drag and drop your video cut or photo asset
             </div>
             <p className="text-xs text-muted-foreground">
-              Supports ProRes 422/4444, H.265, H.264 up to 5.0 GB
+              Supports ProRes 422/4444, MP4, MOV, PNG, JPG, WEBP up to 5.0 GB
             </p>
           </div>
         </div>
@@ -287,7 +304,7 @@ export function VideoUploader({
                 {selectedFile.name}
               </div>
               <div className="text-[11px] font-mono text-muted-foreground">
-                Size: {formatBytes(selectedFile.size)} · Type: {selectedFile.type || "Video Cut"}
+                Size: {formatBytes(selectedFile.size)} · Type: {assetType === "video" ? "4K Video Cut" : "Photo Gallery Asset"}
               </div>
             </div>
 
@@ -296,7 +313,7 @@ export function VideoUploader({
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Cut Title (e.g. v2_Director_Cut)"
+                placeholder="Asset Title (e.g. v2_Director_Cut)"
                 disabled={uploading}
                 className="bg-background border border-border rounded-xl px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary w-48"
               />
@@ -335,7 +352,7 @@ export function VideoUploader({
                 onClick={startDirectUpload}
                 className="rounded-full bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] shadow-md shadow-[#f5551d]/20 cursor-pointer"
               >
-                <Upload className="size-3.5 mr-1.5" /> Start Direct 4K Upload
+                <Upload className="size-3.5 mr-1.5" /> Start Direct Upload
               </Button>
             )}
           </div>

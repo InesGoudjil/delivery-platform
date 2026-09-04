@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { AppImage } from "@/components/ui/app-image";
 import { ArrowRight, LayoutDashboard } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -66,12 +66,14 @@ export function HeaderSection({
             onClick={handleLogoClick}
             className="flex items-center group transition-transform duration-200 hover:scale-[1.02]"
           >
-            <Image
+            <AppImage
               src="/images/logo.svg"
               alt="CineSpace"
+              fill={false}
               width={130}
               height={42}
               priority
+              fallbackIcon="film"
             />
           </Link>
 
