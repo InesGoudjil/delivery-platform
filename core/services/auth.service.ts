@@ -19,35 +19,46 @@ export class AuthService {
   ) {}
 
   async getCurrentUser(): Promise<User | null> {
-    const {
-      data: { user },
-      error,
-    } = await this.supabase.auth.getUser();
+    try {
+      const {
+        data: { user },
+        error,
+      } = await this.supabase.auth.getUser();
 
-    if (error || !user) return null;
-    return user;
+      if (error || !user) return null;
+      return user;
+    } catch {
+      return null;
+    }
   }
 
   async getCurrentUserProfile(): Promise<UserProfile | null> {
-    const user = await this.getCurrentUser();
-    if (!user) return null;
-    return this.profileRepo.findById(user.id);
+    try {
+      const user = await this.getCurrentUser();
+      if (!user) return null;
+      return await this.profileRepo.findById(user.id);
+    } catch {
+      return null;
+    }
   }
 
   async getCurrentSessionData(): Promise<UserSessionData> {
-    const user = await this.getCurrentUser();
+    try {
+      const user = await this.getCurrentUser();
 
-    // console.log("user",user)
-    if (!user) {
+      if (!user) {
+        return { user: null, profile: null, workspace: null };
+      }
+
+      const [profile, workspace] = await Promise.all([
+        this.profileRepo.findById(user.id).catch(() => null),
+        this.workspaceRepo.findByOwnerId(user.id).catch(() => null),
+      ]);
+
+      return { user, profile, workspace };
+    } catch {
       return { user: null, profile: null, workspace: null };
     }
-
-    const [profile, workspace] = await Promise.all([
-      this.profileRepo.findById(user.id),
-      this.workspaceRepo.findByOwnerId(user.id),
-    ]);
-
-    return { user, profile, workspace };
   }
 
   async signInWithPassword(email: string, password: string) {
