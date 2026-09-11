@@ -10,7 +10,7 @@ export interface SocialLinks {
 
 export interface PortfolioAppearance {
   cardSize: "S" | "M" | "L";
-  aspectRatio: "16:9" | "9:16" | "1:1" | "4:3";
+  aspectRatio: "16:9" | "9:16" | "1:1" | "4:3" | "grid";
   thumbnailScale: "fit" | "fill";
   showClientInfo: boolean;
 }

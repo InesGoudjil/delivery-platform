@@ -17,18 +17,26 @@ export async function loginAction(prevState: AuthState | null, formData: FormDat
     return { error: 'Please fill in all required fields.' };
   }
 
-  const services = await getServerServices();
-  const { error } = await services.auth.signInWithPassword(email, password);
+  try {
+    const services = await getServerServices();
+    const { error } = await services.auth.signInWithPassword(email, password);
 
-  if (error) {
-    return { error: error.message };
+    if (error) {
+      return { error: error.message };
+    }
+
+    const user = await services.auth.getCurrentUser();
+    const workspace = user ? await services.workspace.getWorkspaceByOwnerId(user.id).catch(() => null) : null;
+
+    revalidatePath('/', 'layout');
+    redirect(workspace?.slug ? `/${workspace.slug}` : '/');
+  } catch (err: any) {
+    // Next.js redirect() works by throwing an internal NEXT_REDIRECT error. We must rethrow it.
+    if (err?.message === 'NEXT_REDIRECT' || err?.digest?.startsWith('NEXT_REDIRECT')) {
+      throw err;
+    }
+    return { error: err?.message || 'Login failed due to a network connection error. Please check your Supabase URL & keys.' };
   }
-
-  const user = await services.auth.getCurrentUser();
-  const workspace = user ? await services.workspace.getWorkspaceByOwnerId(user.id) : null;
-
-  revalidatePath('/', 'layout');
-  redirect(workspace?.slug ? `/${workspace.slug}` : '/');
 }
 
 export async function signupAction(prevState: AuthState | null, formData: FormData): Promise<AuthState> {
@@ -49,23 +57,30 @@ export async function signupAction(prevState: AuthState | null, formData: FormDa
     return { error: 'Passwords do not match.' };
   }
 
-  const services = await getServerServices();
-  const { data, error } = await services.auth.signUp(email, password, name);
+  try {
+    const services = await getServerServices();
+    const { data, error } = await services.auth.signUp(email, password, name);
 
-  if (error) {
-    return { error: error.message };
+    if (error) {
+      return { error: error.message };
+    }
+
+    if (data.session && data.user) {
+      const workspace = await services.workspace.getOrCreateWorkspace(data.user.id, name);
+
+      revalidatePath('/', 'layout');
+      redirect(`/${workspace.slug}`);
+    }
+
+    return {
+      success: 'Account created! Please check your email to confirm your subscription.',
+    };
+  } catch (err: any) {
+    if (err?.message === 'NEXT_REDIRECT' || err?.digest?.startsWith('NEXT_REDIRECT')) {
+      throw err;
+    }
+    return { error: err?.message || 'Sign up failed due to a network connection error. Please check your Supabase URL & keys.' };
   }
-
-  if (data.session && data.user) {
-    const workspace = await services.workspace.getOrCreateWorkspace(data.user.id, name);
-
-    revalidatePath('/', 'layout');
-    redirect(`/${workspace.slug}`);
-  }
-
-  return {
-    success: 'Account created! Please check your email to confirm your subscription.',
-  };
 }
 
 export async function signOutAction() {
