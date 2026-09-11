@@ -15,6 +15,15 @@ import {
   requestAssetUploadAction,
   confirmUploadCompletedAction,
 } from "@/app/actions/upload";
+import {
+  Attachment,
+  AttachmentContent,
+  AttachmentDescription,
+  AttachmentMedia,
+  AttachmentTitle,
+  AttachmentActions,
+  AttachmentAction,
+} from "@/components/ui/attachment";
 
 export interface VideoUploaderProps {
   workspaceId: string;
@@ -298,24 +307,48 @@ export function VideoUploader({
       {/* File Details & Upload Trigger */}
       {selectedFile && !completedAsset && (
         <div className="space-y-4">
-          <div className="p-4 rounded-xl bg-muted/60 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="space-y-0.5">
-              <div className="text-xs font-bold text-foreground truncate max-w-md">
-                {selectedFile.name}
-              </div>
-              <div className="text-[11px] font-mono text-muted-foreground">
-                Size: {formatBytes(selectedFile.size)} · Type: {assetType === "video" ? "4K Video Cut" : "Photo Gallery Asset"}
-              </div>
-            </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <Attachment
+              state={uploading ? "uploading" : errorMessage ? "error" : progress === 100 ? "done" : "idle"}
+              size="default"
+              orientation="horizontal"
+              className="w-full sm:flex-1"
+            >
+              <AttachmentMedia variant={assetType === "photo_gallery" ? "image" : "icon"}>
+                {assetType === "photo_gallery" ? (
+                  <ImageIcon className="size-4" />
+                ) : (
+                  <Film className="size-4 text-primary" />
+                )}
+              </AttachmentMedia>
+              <AttachmentContent>
+                <AttachmentTitle>{selectedFile.name}</AttachmentTitle>
+                <AttachmentDescription>
+                  {formatBytes(selectedFile.size)} · {assetType === "video" ? "4K Video Cut" : "Photo Gallery Asset"}
+                </AttachmentDescription>
+              </AttachmentContent>
+              {!uploading && (
+                <AttachmentActions>
+                  <AttachmentAction
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={resetForm}
+                    title="Remove file"
+                  >
+                    <X className="size-3.5" />
+                  </AttachmentAction>
+                </AttachmentActions>
+              )}
+            </Attachment>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Asset Title (e.g. v2_Director_Cut)"
                 disabled={uploading}
-                className="bg-background border border-border rounded-xl px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary w-48"
+                className="bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary w-full sm:w-56"
               />
             </div>
           </div>

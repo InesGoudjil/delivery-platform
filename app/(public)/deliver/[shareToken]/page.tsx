@@ -19,6 +19,8 @@ import {
   X,
   FileVideo,
   CheckCircle2,
+  Video,
+  ImageIcon,
 } from "lucide-react";
 
 interface CommentItem {
@@ -38,39 +40,76 @@ interface DeliveryAsset {
   res: string;
   version: "V1" | "V2" | "Final";
   status: "review" | "approved";
-  thumbnailGradient: string;
+  type: "video" | "photo";
+  src: string;
 }
 
 const INITIAL_ASSETS: DeliveryAsset[] = [
   {
     id: "a1",
-    title: "Omakase Teaser — Master Cut",
+    title: "Championship Bout — Opening Bell",
     aspect: "16:9",
     duration: "00:47",
     res: "4K 60fps",
     version: "V2",
     status: "review",
-    thumbnailGradient: "linear-gradient(135deg, #3a1a10, #7a2f18)",
+    type: "video",
+    src: "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=1200&auto=format&fit=crop&q=80",
   },
   {
     id: "a2",
-    title: "Vertical Story & Reels Cut",
+    title: "Corner Walkout — Fighter Prep",
     aspect: "9:16",
-    duration: "00:30",
-    res: "1080p 60fps",
+    duration: "STILL",
+    res: "4K Still",
     version: "V2",
     status: "review",
-    thumbnailGradient: "linear-gradient(135deg, #1c2230, #38404e)",
+    type: "photo",
+    src: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&auto=format&fit=crop&q=80",
   },
   {
     id: "a3",
-    title: "Social Highlight Teaser",
-    aspect: "1:1",
-    duration: "00:15",
-    res: "1080p 30fps",
+    title: "Ring Entrance — High Energy",
+    aspect: "16:9",
+    duration: "STILL",
+    res: "4K Still",
     version: "Final",
     status: "approved",
-    thumbnailGradient: "linear-gradient(135deg, #101a1c, #20403f)",
+    type: "photo",
+    src: "https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=1200&auto=format&fit=crop&q=80",
+  },
+  {
+    id: "a4",
+    title: "Fighter Spotlight Pose",
+    aspect: "9:16",
+    duration: "STILL",
+    res: "4K Still",
+    version: "V2",
+    status: "review",
+    type: "photo",
+    src: "https://images.unsplash.com/photo-1599058945522-28d584b6f0ff?w=800&auto=format&fit=crop&q=80",
+  },
+  {
+    id: "a5",
+    title: "Cultural Ring Dancer Performance",
+    aspect: "9:16",
+    duration: "STILL",
+    res: "4K Still",
+    version: "V2",
+    status: "review",
+    type: "photo",
+    src: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&auto=format&fit=crop&q=80",
+  },
+  {
+    id: "a6",
+    title: "Mid-Round Exchange Action",
+    aspect: "16:9",
+    duration: "01:12",
+    res: "4K 60fps",
+    version: "V2",
+    status: "review",
+    type: "video",
+    src: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1200&auto=format&fit=crop&q=80",
   },
 ];
 
@@ -91,10 +130,10 @@ export default function ClientDeliveryPage() {
     {
       id: "c1",
       who: "client",
-      name: "Lost in Tokyo (Client)",
+      name: "Boxing Event (Client)",
       tc: "00:14",
       meta: "2 hours ago",
-      text: "Love this cut! Can we make the intro color grade slightly warmer?",
+      text: "Love this cut! Can we make the intro sequence slightly warmer?",
     },
     {
       id: "c2",
@@ -162,7 +201,7 @@ export default function ClientDeliveryPage() {
   // WhatsApp Share Trigger
   const handleWhatsAppShare = () => {
     const text = encodeURIComponent(
-      `Here is the client delivery link for Omakase Teaser: ${window.location.href}`
+      `Here is the client delivery link for Boxing Event: ${window.location.href}`
     );
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
@@ -190,7 +229,7 @@ export default function ClientDeliveryPage() {
             </h1>
             <p className="text-xs text-[#aeaeb4] font-sans leading-relaxed">
               Enter your client password to access the private review room & final
-              cuts for <strong className="text-[#f6f3ec]">Lost in Tokyo</strong>.
+              cuts for <strong className="text-[#f6f3ec]">Boxing Event</strong>.
             </p>
           </div>
 
@@ -242,7 +281,7 @@ export default function ClientDeliveryPage() {
                 Pedro Concreato Studio
               </h1>
               <p className="text-xs text-[#aeaeb4] mt-0.5 font-sans">
-                Client Review & Delivery Room · Lost in Tokyo
+                Client Review & Delivery Room · Boxing Event
               </p>
             </div>
           </div>
@@ -274,16 +313,14 @@ export default function ClientDeliveryPage() {
                 OFFICIAL DELIVERY
               </span>
               <span className="text-xs text-[#aeaeb4] font-mono">
-                Updated Aug 2026 · Total 1.4 GB
+                Updated Sep 2026 · Total 10 Assets
               </span>
             </div>
-            <h2 className="font-display text-2xl sm:text-4xl font-extrabold text-[#f6f3ec]">
-              Omakase Launch Campaign
+            <h2 className="font-display text-2xl sm:text-4xl font-extrabold text-[#f6f3ec] uppercase tracking-wide">
+              Boxing Event
             </h2>
             <p className="text-sm text-[#aeaeb4] font-sans max-w-2xl leading-relaxed">
-              3 cinematic video cuts created for Lost in Tokyo’s new omakase counter
-              launch. Review cuts below, leave timestamped notes, and approve for
-              high-res export.
+              A cinematic boxing project featuring films and stills captured across the event. Review cuts below, leave timestamped notes, and approve for high-res export.
             </p>
           </div>
 
@@ -303,32 +340,42 @@ export default function ClientDeliveryPage() {
           </div>
         </div>
 
-        {/* Delivered Assets Grid */}
+        {/* Delivered Assets Masonry Section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-display text-xl font-bold text-[#f6f3ec]">
               Delivered Assets ({assets.length})
             </h3>
             <span className="text-xs text-[#aeaeb4] font-mono">
-              Click any cut to play & leave timecoded notes
+              Click any asset to play & leave timecoded notes
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Seamless Responsive Masonry Column Grid */}
+          <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
             {assets.map((asset) => (
               <div
                 key={asset.id}
-                className="liquid-glass rounded-2xl p-4 flex flex-col justify-between space-y-4 border border-white/10 group hover:border-[#f5551d]/40 transition-all duration-300 shadow-xl"
+                className="break-inside-avoid liquid-glass rounded-2xl p-4 flex flex-col justify-between space-y-4 border border-white/10 group hover:border-[#f5551d]/40 transition-all duration-300 shadow-xl"
               >
                 <div
                   onClick={() => setActiveAsset(asset)}
-                  className="aspect-video rounded-xl relative overflow-hidden cursor-pointer flex items-center justify-center group"
-                  style={{ background: asset.thumbnailGradient }}
+                  className={`rounded-xl relative overflow-hidden cursor-pointer flex items-center justify-center group ${
+                    asset.aspect === "9:16" ? "aspect-[9/16]" : "aspect-video"
+                  }`}
                 >
+                  <img
+                    src={asset.src}
+                    alt={asset.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
                   <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors" />
+
+                  {/* Play Button Overlay */}
                   <div className="relative z-10 w-12 h-12 rounded-full bg-black/60 border border-white/30 backdrop-blur-md flex items-center justify-center group-hover:scale-110 group-hover:bg-[#f5551d] transition-all">
                     <Play className="size-5 text-[#f6f3ec] group-hover:text-black ml-0.5" />
                   </div>
+
                   <span className="absolute bottom-3 left-3 z-10 text-[10px] font-mono bg-black/70 px-2 py-0.5 rounded text-[#f6f3ec]">
                     {asset.duration} · {asset.res}
                   </span>
@@ -362,8 +409,7 @@ export default function ClientDeliveryPage() {
                     onClick={() => setActiveAsset(asset)}
                     className="flex-1 glass-btn-ghost btn-glass-layer cursor-pointer py-2 text-xs font-semibold flex items-center justify-center gap-1.5"
                   >
-                    <MessageCircle className="size-3.5 text-[#f5551d]" /> Review &
-                    Notes
+                    <MessageCircle className="size-3.5 text-[#f5551d]" /> Review & Notes
                   </button>
                   {asset.status !== "approved" && (
                     <button
@@ -410,10 +456,12 @@ export default function ClientDeliveryPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* Video Player Screen */}
               <div className="lg:col-span-7 space-y-4">
-                <div
-                  className="aspect-video rounded-2xl relative overflow-hidden flex flex-col justify-between p-6 shadow-2xl border border-white/15"
-                  style={{ background: activeAsset.thumbnailGradient }}
-                >
+                <div className="aspect-video rounded-2xl relative overflow-hidden flex flex-col justify-between p-6 shadow-2xl border border-white/15 bg-black">
+                  <img
+                    src={activeAsset.src}
+                    alt={activeAsset.title}
+                    className="absolute inset-0 w-full h-full object-contain"
+                  />
                   <div className="flex justify-between items-start z-10">
                     <span className="px-3 py-1 bg-black/70 rounded-full text-xs font-mono text-[#f6f3ec] border border-white/10">
                       00:24.12 / {activeAsset.duration}
@@ -423,7 +471,7 @@ export default function ClientDeliveryPage() {
                     </span>
                   </div>
 
-                  <div className="self-center w-16 h-16 rounded-full bg-black/60 border border-white/30 flex items-center justify-center backdrop-blur-md cursor-pointer hover:scale-110 hover:bg-[#f5551d] transition-all">
+                  <div className="relative z-10 self-center w-16 h-16 rounded-full bg-black/60 border border-white/30 flex items-center justify-center backdrop-blur-md cursor-pointer hover:scale-110 hover:bg-[#f5551d] transition-all">
                     <Play className="size-7 text-[#f6f3ec] ml-1" />
                   </div>
 
@@ -434,7 +482,7 @@ export default function ClientDeliveryPage() {
                     </div>
                     <div className="flex justify-between text-[11px] font-mono text-[#aeaeb4]">
                       <span>00:24 frame</span>
-                      <span>Cloudflare 4K HLS Stream</span>
+                      <span>Cloudflare 4K Stream</span>
                     </div>
                   </div>
                 </div>

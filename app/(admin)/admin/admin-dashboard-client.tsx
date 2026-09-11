@@ -223,12 +223,10 @@ export function AdminDashboardClient({
           </Dialog>
 
           <Button
-            asChild
+            render={<Link href="/admin/workspaces" />}
             className="rounded-full bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] shadow-lg shadow-[#f5551d]/20 cursor-pointer"
           >
-            <Link href="/admin/workspaces">
-              <Sliders className="size-3.5 mr-1.5" /> Manage Workspaces
-            </Link>
+            <Sliders className="size-3.5 mr-1.5" /> Manage Workspaces
           </Button>
         </div>
       </div>

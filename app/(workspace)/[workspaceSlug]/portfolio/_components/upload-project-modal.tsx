@@ -16,6 +16,16 @@ import {
   confirmUploadCompletedAction,
 } from "@/app/actions/upload";
 import { PortfolioItem } from "../portfolio-client";
+import {
+  Attachment,
+  AttachmentGroup,
+  AttachmentContent,
+  AttachmentDescription,
+  AttachmentMedia,
+  AttachmentTitle,
+  AttachmentActions,
+  AttachmentAction,
+} from "@/components/ui/attachment";
 
 interface UploadProjectModalProps {
   workspaceId: string;
@@ -307,39 +317,52 @@ export function UploadProjectModal({
             </div>
           </div>
 
-          {/* Selected File Chips (Matches Screenshot 2) */}
+          {/* Selected File Attachments */}
           {selectedFiles.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 pt-0.5">
-              {selectedFiles.map((file, idx) => {
-                const isImg = file.type.startsWith("image/");
-                return (
-                  <div
-                    key={`${file.name}-${idx}`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium border border-[#f5551d]/30 bg-[#f5551d]/10 text-orange-400 group"
-                  >
-                    {isImg ? (
-                      <ImageIcon className="size-3 text-[#f5551d]" />
-                    ) : (
-                      <Film className="size-3 text-[#f5551d]" />
-                    )}
-                    <span className="truncate max-w-[140px] text-[11px] text-zinc-200">
-                      {file.name}
-                    </span>
-                    {!uploading && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeFile(idx);
-                        }}
-                        className="text-zinc-400 hover:text-white transition-colors ml-0.5"
-                      >
-                        <X className="size-3" />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="space-y-2 pt-0.5">
+              <AttachmentGroup className="py-1">
+                {selectedFiles.map((file, idx) => {
+                  const isImg = file.type.startsWith("image/");
+                  return (
+                    <Attachment
+                      key={`${file.name}-${idx}`}
+                      size="sm"
+                      state={uploading ? "uploading" : "done"}
+                      className="bg-white/[0.04] border-white/15"
+                    >
+                      <AttachmentMedia variant={isImg ? "image" : "icon"}>
+                        {isImg ? (
+                          <ImageIcon className="size-3.5" />
+                        ) : (
+                          <Film className="size-3.5 text-[#f5551d]" />
+                        )}
+                      </AttachmentMedia>
+                      <AttachmentContent>
+                        <AttachmentTitle className="text-zinc-200">{file.name}</AttachmentTitle>
+                        <AttachmentDescription className="text-zinc-400">
+                          {(file.size / (1024 * 1024)).toFixed(1)} MB
+                        </AttachmentDescription>
+                      </AttachmentContent>
+                      {!uploading && (
+                        <AttachmentActions>
+                          <AttachmentAction
+                            variant="ghost"
+                            size="icon-xs"
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeFile(idx);
+                            }}
+                            title="Remove file"
+                          >
+                            <X className="size-3 text-zinc-400 hover:text-white" />
+                          </AttachmentAction>
+                        </AttachmentActions>
+                      )}
+                    </Attachment>
+                  );
+                })}
+              </AttachmentGroup>
 
               {!uploading && (
                 <button
@@ -348,7 +371,7 @@ export function UploadProjectModal({
                   className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border border-white/15 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white transition-all cursor-pointer"
                 >
                   <Plus className="size-3 text-[#f5551d]" />
-                  <span>Add more</span>
+                  <span>Add more files</span>
                 </button>
               )}
             </div>

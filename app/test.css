@@ -3758,8 +3758,25 @@ button.on .ar-mix {
   }
 }
 .card {
-  background: var(--bg2);
-  border: 1px solid var(--line);
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(
+      140deg,
+      rgba(255, 255, 255, 0.08),
+      rgba(255, 255, 255, 0.02) 42%,
+      rgba(255, 255, 255, 0.045) 100%
+    ),
+    rgba(14, 12, 17, 0.52) !important;
+  -webkit-backdrop-filter: blur(11px) saturate(165%) brightness(1.08)
+    contrast(1.02);
+  backdrop-filter: blur(11px) saturate(165%) brightness(1.08) contrast(1.02);
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 -18px 40px -24px rgba(0, 0, 0, 0.55),
+    0 28px 64px -30px rgba(0, 0, 0, 0.78);
   border-radius: 20px;
   overflow: hidden;
   cursor: pointer;
@@ -5259,8 +5276,25 @@ button.on .ar-mix {
 .modal {
   width: 100%;
   max-width: 400px;
-  background: var(--bg2);
-  border: 1px solid var(--line);
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(
+      140deg,
+      rgba(255, 255, 255, 0.08),
+      rgba(255, 255, 255, 0.02) 42%,
+      rgba(255, 255, 255, 0.045) 100%
+    ),
+    rgba(14, 12, 17, 0.52) !important;
+  -webkit-backdrop-filter: blur(11px) saturate(165%) brightness(1.08)
+    contrast(1.02);
+  backdrop-filter: blur(11px) saturate(165%) brightness(1.08) contrast(1.02);
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 -18px 40px -24px rgba(0, 0, 0, 0.55),
+    0 28px 64px -30px rgba(0, 0, 0, 0.78);
   border-radius: 20px;
   padding: 24px;
 }

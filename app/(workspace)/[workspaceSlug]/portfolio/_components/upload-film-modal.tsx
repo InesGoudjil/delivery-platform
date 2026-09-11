@@ -15,6 +15,15 @@ import {
   confirmUploadCompletedAction,
 } from "@/app/actions/upload";
 import { PortfolioItem } from "../portfolio-client";
+import {
+  Attachment,
+  AttachmentContent,
+  AttachmentDescription,
+  AttachmentMedia,
+  AttachmentTitle,
+  AttachmentActions,
+  AttachmentAction,
+} from "@/components/ui/attachment";
 
 interface UploadFilmModalProps {
   workspaceId: string;
@@ -275,45 +284,79 @@ export function UploadFilmModal({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Dropzone Area */}
-          <div
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`border border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-2 ${
-              dragActive
-                ? "border-[#f5551d] bg-[#f5551d]/10 scale-[1.01]"
-                : selectedFile
-                ? "border-[#f5551d]/60 bg-white/[0.03]"
-                : "border-white/15 bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.04]"
-            }`}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="video/*,image/*,.mp4,.mov,.mkv,.m4v,.png,.jpg,.jpeg,.webp"
-              className="hidden"
-              onChange={(e) => handleFiles(e.target.files)}
-              disabled={uploading}
-            />
+          {/* Dropzone & Attachment Display Area */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="video/*,image/*,.mp4,.mov,.mkv,.m4v,.png,.jpg,.jpeg,.webp"
+            className="hidden"
+            onChange={(e) => handleFiles(e.target.files)}
+            disabled={uploading}
+          />
 
-            <div className="size-10 rounded-full flex items-center justify-center text-[#f5551d]">
-              <Upload className="size-5" />
-            </div>
+          {selectedFile ? (
+            <Attachment
+              state={uploading ? "uploading" : errorMessage ? "error" : "done"}
+              size="default"
+              className="w-full bg-white/[0.04] border-white/15 p-3"
+            >
+              <AttachmentMedia variant={selectedFile.type.startsWith("image/") ? "image" : "icon"}>
+                {selectedFile.type.startsWith("image/") ? (
+                  <ImageIcon className="size-4" />
+                ) : (
+                  <Film className="size-4 text-[#f5551d]" />
+                )}
+              </AttachmentMedia>
+              <AttachmentContent>
+                <AttachmentTitle className="text-zinc-100">{selectedFile.name}</AttachmentTitle>
+                <AttachmentDescription className="text-zinc-400">
+                  {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB · Ready for upload
+                </AttachmentDescription>
+              </AttachmentContent>
+              {!uploading && (
+                <AttachmentActions>
+                  <AttachmentAction
+                    variant="ghost"
+                    size="icon-xs"
+                    type="button"
+                    onClick={() => {
+                      setSelectedFile(null);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                    title="Remove file"
+                  >
+                    <X className="size-3.5 text-zinc-400 hover:text-white" />
+                  </AttachmentAction>
+                </AttachmentActions>
+              )}
+            </Attachment>
+          ) : (
+            <div
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-2 ${
+                dragActive
+                  ? "border-[#f5551d] bg-[#f5551d]/10 scale-[1.01]"
+                  : "border-white/15 bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.04]"
+              }`}
+            >
+              <div className="size-10 rounded-full flex items-center justify-center text-[#f5551d]">
+                <Upload className="size-5" />
+              </div>
 
-            <div className="space-y-0.5">
-              <div className="text-xs font-semibold text-zinc-200">
-                {selectedFile ? selectedFile.name : "Drop a video here or click to browse"}
-              </div>
-              <div className="text-[11px] text-zinc-500">
-                {selectedFile
-                  ? `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB · Click to choose different file`
-                  : "MP4, MOV · up to 5 GB"}
+              <div className="space-y-0.5">
+                <div className="text-xs font-semibold text-zinc-200">
+                  Drop a video here or click to browse
+                </div>
+                <div className="text-[11px] text-zinc-500">
+                  MP4, MOV · up to 5 GB
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Title Field */}
           <div className="space-y-1.5">
