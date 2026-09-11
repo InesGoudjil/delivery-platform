@@ -2,8 +2,7 @@
 
 import React, { useState, useTransition } from "react";
 import Link from "next/link";
-import { Star, Play } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Star, Play, Film, Image as ImageIcon, FolderKanban } from "lucide-react";
 import { AppImage } from "@/components/ui/app-image";
 import { toggleFeaturedItemAction } from "@/app/actions/portfolio";
 import { PortfolioAppearance } from "@/core/entities/portfolio";
@@ -28,7 +27,8 @@ export function ShowcaseGrid({
 }: ShowcaseGridProps) {
   const [isPending, startTransition] = useTransition();
 
-  const [activeTab, setActiveTab] = useState<"all" | "films" | "stills" | "projects">("all");
+  // Filter tabs matching Screenshot 4: "Films", "Stills", "Projects"
+  const [activeTab, setActiveTab] = useState<"films" | "stills" | "projects">("films");
   const [featuredIds, setFeaturedIds] = useState<string[]>(
     initialFeaturedIds.length > 0
       ? initialFeaturedIds
@@ -60,10 +60,9 @@ export function ShowcaseGrid({
   };
 
   const filteredProjects = projects.filter((p) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "projects") return p.type === "project";
     if (activeTab === "films") return p.type === "film";
     if (activeTab === "stills") return p.type === "still";
+    if (activeTab === "projects") return p.type === "project";
     return true;
   });
 
@@ -71,10 +70,10 @@ export function ShowcaseGrid({
   const cardSize = appearance.cardSize || "M";
   const gridClasses =
     cardSize === "S"
-      ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
+      ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5"
       : cardSize === "M"
-      ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-      : "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6";
+      ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-5"
+      : "grid-cols-1 sm:grid-cols-2 gap-6";
 
   // Dynamic Aspect Ratio classes
   const aspectRatio = appearance.aspectRatio || "16:9";
@@ -85,25 +84,33 @@ export function ShowcaseGrid({
       ? "aspect-[9/16]"
       : aspectRatio === "1:1"
       ? "aspect-square"
+      : aspectRatio === "grid"
+      ? "aspect-[4/3]"
       : "aspect-[4/3]";
 
   return (
-    <section className="rounded-2xl bg-[#141416]/90 border border-white/[0.08] p-5 md:p-6 shadow-sm space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="text-sm font-bold text-[#f6f3ec]">
+    <section
+      className="rounded-2xl bg-[#141416]/75 backdrop-blur-2xl border border-white/10 p-5 sm:p-6 shadow-xl space-y-6"
+      style={{
+        boxShadow:
+          "0 20px 40px -20px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
+      }}
+    >
+      <div className="space-y-4">
+        <h2 className="text-sm font-bold text-white font-heading tracking-wide">
           Portfolio work — shown to visitors
-        </div>
+        </h2>
 
-        {/* Filter Pills: All / Projects / Films / Stills */}
-        <div className="flex items-center bg-[#0c0c0e] p-1 rounded-xl border border-white/10 self-start">
-          {(["all", "projects", "films", "stills"] as const).map((tab) => (
+        {/* Filter Pills matching Screenshot 4: Films | Stills | Projects */}
+        <div className="inline-flex items-center bg-[#0c0c0e]/90 p-1 rounded-full border border-white/10 gap-1">
+          {(["films", "stills", "projects"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-3.5 py-1 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
+              className={`px-5 py-1.5 rounded-full text-xs font-bold capitalize transition-all cursor-pointer ${
                 activeTab === tab
-                  ? "bg-[#f5551d] text-black font-bold"
-                  : "text-[#8e8e93] hover:text-white"
+                  ? "bg-[#f5551d] text-white shadow-sm"
+                  : "text-zinc-400 hover:text-white"
               }`}
             >
               {tab}
@@ -116,12 +123,14 @@ export function ShowcaseGrid({
       <div className={`grid ${gridClasses}`}>
         {filteredProjects.map((item) => {
           const isFeatured = featuredIds.includes(item.id);
+          const isVideo = item.type === "film" || item.type === "project";
 
           return (
             <div
               key={item.id}
-              className="group relative rounded-2xl bg-[#0c0c0e] border border-white/[0.08] overflow-hidden transition-all duration-300 hover:border-white/20 hover:shadow-2xl shadow-black/40"
+              className="group relative rounded-2xl bg-[#0c0c0e] border border-white/10 overflow-hidden transition-all duration-300 hover:border-white/30 hover:shadow-2xl shadow-black/50"
             >
+              {/* Media Image / Thumbnail */}
               <AppImage
                 src={item.thumbnailUrl}
                 alt={item.title}
@@ -130,50 +139,67 @@ export function ShowcaseGrid({
                 containerClassName={`relative w-full ${aspectClasses}`}
               />
 
-              <div className="absolute top-2.5 right-2.5 z-10">
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-black/60 backdrop-blur-md text-[#f6f3ec] border border-white/10">
-                  {item.type === "project"
-                    ? `${item.assetCount} assets`
-                    : item.type === "still"
-                    ? "Photo Gallery"
-                    : "Film Cut"}
+              {/* Top-Left Badge (FILM / STILL / PROJECT) */}
+              <div className="absolute top-3 left-3 z-10">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/15 text-[10px] font-mono font-bold text-white uppercase tracking-wider">
+                  {item.type === "still" ? (
+                    <>
+                      <ImageIcon className="size-3 text-zinc-300" />
+                      <span>STILL</span>
+                    </>
+                  ) : item.type === "project" ? (
+                    <>
+                      <FolderKanban className="size-3 text-zinc-300" />
+                      <span>PROJECT</span>
+                    </>
+                  ) : (
+                    <>
+                      <Film className="size-3 text-zinc-300" />
+                      <span>FILM</span>
+                    </>
+                  )}
                 </span>
               </div>
 
-              {/* Hover Overlay */}
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => handleToggleFeature(item)}
-                  className={`rounded-full size-8 p-0 cursor-pointer ${
-                    isFeatured
-                      ? "bg-[#f5551d] text-black hover:bg-[#ff8a45]"
-                      : "bg-white/20 text-white hover:bg-white/30 backdrop-blur-md"
-                  }`}
-                  title={isFeatured ? "Unfeature" : "Feature"}
-                >
-                  <Star className="size-4 fill-current" />
-                </Button>
+              {/* Top-Right Star Pin Button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleFeature(item);
+                }}
+                className={`absolute top-3 right-3 z-10 size-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                  isFeatured
+                    ? "bg-[#f5551d] text-white shadow-md shadow-[#f5551d]/30 opacity-100"
+                    : "bg-black/50 backdrop-blur-md text-zinc-400 hover:text-white border border-white/10 opacity-0 group-hover:opacity-100"
+                }`}
+                title={isFeatured ? "Unpin from featured reel" : "Pin to featured reel"}
+              >
+                <Star className={`size-4 ${isFeatured ? "fill-current" : ""}`} />
+              </button>
 
-                <Button
-                  asChild
-                  size="sm"
-                  className="rounded-full size-8 p-0 bg-white text-black hover:bg-white/90 shadow-md cursor-pointer"
-                  title="View Project"
-                >
-                  <Link href={`/${workspaceSlug}/deliveries/${item.id}`}>
-                    <Play className="size-3.5 fill-black ml-0.5" />
-                  </Link>
-                </Button>
-              </div>
+              {/* Center Play Button for Video Cuts / Projects (Screenshot 4) */}
+              {isVideo && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="size-11 rounded-full bg-black/50 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:bg-[#f5551d] group-hover:text-black transition-all">
+                    <Play className="size-4.5 ml-0.5 fill-current" />
+                  </div>
+                </div>
+              )}
 
-              {/* Bottom Label Overlay */}
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3.5 pt-8 flex flex-col justify-end">
-                <span className="text-xs font-bold text-white tracking-tight leading-snug truncate">
+              {/* Click link overlay */}
+              <Link
+                href={`/${workspaceSlug}/deliveries/${item.id}`}
+                className="absolute inset-0 z-0"
+              />
+
+              {/* Bottom Label Overlay (Always rendered smoothly with client info toggle) */}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3.5 pt-8 pointer-events-none flex flex-col justify-end">
+                <span className="text-xs font-bold text-white tracking-tight leading-snug truncate font-heading">
                   {item.title}
                 </span>
                 {appearance.showClientInfo && (
-                  <span className="text-[10px] text-[#9a9a9f] font-mono truncate">
+                  <span className="text-[10px] text-zinc-400 font-mono truncate">
                     {item.category}
                   </span>
                 )}
@@ -181,6 +207,12 @@ export function ShowcaseGrid({
             </div>
           );
         })}
+
+        {filteredProjects.length === 0 && (
+          <div className="col-span-full py-12 text-center text-zinc-500 text-xs italic">
+            No {activeTab} yet. Click the upload button above to add your first {activeTab.slice(0, -1)}.
+          </div>
+        )}
       </div>
     </section>
   );

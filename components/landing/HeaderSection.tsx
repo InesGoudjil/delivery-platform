@@ -2,10 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { AppImage } from "@/components/ui/app-image";
-import { ArrowRight, LayoutDashboard } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import { UserNavMenu, type UserNavMenuProps } from "@/components/landing/UserNavMenu";
 import { ModeToggle } from "@/components/mode-toggle";
 import { LanguageToggle } from "@/components/language-toggle";
@@ -25,7 +21,7 @@ export function HeaderSection({
   onStartTrial,
 }: HeaderSectionProps) {
   const [scrolled, setScrolled] = useState(false);
-  const { t, dict } = useTranslation();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -33,120 +29,82 @@ export function HeaderSection({
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
-
-  const dashboardUrl = workspace?.slug ? `/${workspace.slug}` : "/login";
 
   return (
     <header
-      className={`sticky top-0 z-50 w-full transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
         scrolled
-          ? "translate-y-0 glass-panel shadow-2xl border-b border-white/10"
-          : "-translate-y-1 bg-transparent"
+          ? "bg-[#070709]/90 backdrop-blur-md border-b border-white/10 shadow-2xl py-3"
+          : "bg-transparent py-5"
       }`}
     >
-      {/* Navbar */}
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <nav className="flex items-center justify-between py-4 sm:py-5">
+      <div className="mx-auto max-w-7xl px-4 sm:px-8">
+        <nav className="flex items-center justify-between">
           {/* Logo */}
           <Link
             href="/"
             onClick={handleLogoClick}
-            className="flex items-center group transition-transform duration-200 hover:scale-[1.02]"
+            className="flex items-center gap-1 text-2xl font-black tracking-tight text-white transition-opacity hover:opacity-90 font-display"
           >
-            <AppImage
-              src="/images/logo.svg"
-              alt="CineSpace"
-              fill={false}
-              width={130}
-              height={42}
-              priority
-              fallbackIcon="film"
-            />
+            <span>Cine</span>
+            <span className="text-[#f5551d]">Space</span>
           </Link>
 
           {/* Navigation Links */}
-          <div className="hidden items-center gap-8 text-sm font-medium text-muted-foreground md:flex">
+          <div className="hidden items-center gap-8 text-sm font-medium text-[#aeaeb4] md:flex">
             <a
               href="#features"
-              className="transition-colors duration-300 hover:text-foreground"
+              className="transition-colors duration-200 hover:text-white"
             >
-              {dict.nav.portfolio || "Features"}
-            </a>
-            <a
-              href="#workflow"
-              className="transition-colors duration-300 hover:text-foreground"
-            >
-              {dict.landing.workflowTitle || "How It Works"}
+              Features
             </a>
             <a
               href="#pricing"
-              className="transition-colors duration-300 hover:text-foreground"
+              className="transition-colors duration-200 hover:text-white"
             >
-              {dict.nav.subscription || "Pricing (AED)"}
+              Pricing
+            </a>
+            <a
+              href="#features"
+              className="transition-colors duration-200 hover:text-white"
+            >
+              Partnership
             </a>
             <a
               href="#faq"
-              className="transition-colors duration-300 hover:text-foreground"
+              className="transition-colors duration-200 hover:text-white"
             >
-              {dict.landing.faqTitle || "FAQ"}
+              Contact
             </a>
+            {/* <Link
+              href="/login"
+              className="transition-colors duration-200 hover:text-white"
+            >
+              Login
+            </Link> */}
           </div>
 
-          {/* Action Buttons / User Menu / Theme Toggle / Language Switcher */}
-          <div className="flex items-center gap-2 sm:gap-2.5">
+          {/* Action Buttons */}
+          <div className="flex items-center gap-3">
             <LanguageToggle />
             <ModeToggle />
 
             {user ? (
-              // Authenticated User State
-              <div className="flex items-center gap-3">
-                <UserNavMenu user={user} workspace={workspace} />
-              </div>
+              <UserNavMenu user={user} workspace={workspace} />
             ) : (
-              // Guest / Unauthenticated State
-              <div className="flex items-center gap-2 sm:gap-3">
-                {onOpenDemo && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onOpenDemo}
-                    className="hidden text-xs cursor-pointer font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:inline-flex sm:text-sm rounded-full"
-                  >
-                    {dict.landing.testClientRoom || "Test Client Room"}
-                  </Button>
-                )}
-
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-full"
-                >
-                  <Link href="/login">{dict.common.signIn || "Sign In"}</Link>
-                </Button>
-
-                <Button
-                  asChild
-                  className="rounded-full cursor-pointer bg-[#f5551d] px-5 py-2 text-xs font-semibold text-[#160a03] shadow-lg shadow-[#f5551d]/20 transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#ff8a45] sm:text-sm"
-                >
-                  <Link href="/signup">
-                    {dict.common.getStarted || "Get Started"} <ArrowRight className="size-3.5 ml-1 inline rtl:rotate-180" />
-                  </Link>
-                </Button>
-              </div>
+              <Link
+                href="/signup"
+                className="rounded-full bg-gradient-to-r from-[#f5551d] to-[#e0430e] px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-[#f5551d]/30 transition-all duration-200 hover:shadow-[#f5551d]/50 hover:scale-[1.03] active:scale-[0.98]"
+              >
+                GET STARTED
+              </Link>
             )}
           </div>
         </nav>

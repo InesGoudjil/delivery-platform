@@ -53,26 +53,28 @@ export function FeaturedReel({
   };
 
   return (
-    <section className="rounded-2xl bg-[#141416]/90 border border-white/[0.08] p-5 shadow-sm space-y-3">
+    <section
+      className="rounded-2xl bg-[#141416]/75 backdrop-blur-2xl border border-white/10 p-5 sm:p-6 shadow-xl space-y-3"
+      style={{
+        boxShadow:
+          "0 20px 40px -20px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
+      }}
+    >
       <div className="flex items-center justify-between">
-        <div className="text-xs font-bold text-[#f6f3ec]">
-          Featured on your Work page ({featuredItems.length})
-        </div>
-        <span className="text-[11px] text-[#71717a] font-mono">
-          Click star icon on any card below to pin/unpin
+        <h2 className="text-sm font-bold text-white font-heading tracking-wide">
+          Featured on your Work page
+        </h2>
+        <span className="text-[11px] text-zinc-500 font-mono">
+          {featuredItems.length} featured
         </span>
       </div>
 
-      <div className="flex items-center gap-3 overflow-x-auto pb-2 pt-1 scrollbar-thin scrollbar-thumb-white/10">
-        {featuredItems.map((item, idx) => (
+      <div className="flex items-center gap-3.5 overflow-x-auto pb-1 pt-0.5 scrollbar-thin scrollbar-thumb-white/10">
+        {featuredItems.map((item) => (
           <div
             key={item.id}
             onClick={() => handleToggleFeature(item)}
-            className={`relative size-20 sm:w-28 sm:h-18 rounded-xl overflow-hidden shrink-0 border-2 cursor-pointer transition-all duration-200 group hover:scale-[1.03] ${
-              idx === featuredItems.length - 1
-                ? "border-[#f5551d] shadow-md shadow-[#f5551d]/20"
-                : "border-white/10 hover:border-white/30"
-            }`}
+            className="relative w-36 h-20 sm:w-44 sm:h-24 rounded-xl overflow-hidden shrink-0 border border-white/10 hover:border-white/30 cursor-pointer transition-all duration-200 group hover:scale-[1.02] bg-[#0c0c0e]"
           >
             <AppImage
               src={item.thumbnailUrl}
@@ -80,13 +82,18 @@ export function FeaturedReel({
               fallbackIcon={item.type === "still" ? "image" : "film"}
               containerClassName="size-full"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-1.5">
-              <span className="text-[10px] font-bold text-white truncate max-w-full leading-tight">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex items-end p-2.5">
+              <span className="text-xs font-bold text-white truncate max-w-full font-heading leading-tight">
                 {item.title}
               </span>
             </div>
           </div>
         ))}
+        {featuredItems.length === 0 && (
+          <div className="text-xs text-zinc-500 italic py-4">
+            No items currently featured. Star any item in the portfolio grid below to feature it here.
+          </div>
+        )}
       </div>
     </section>
   );

@@ -3,10 +3,10 @@
 import React, { useState } from "react";
 import { PortfolioAppearance, PortfolioExperience, SocialLinks } from "@/core/entities/portfolio";
 import { PortfolioHero } from "./_components/portfolio-hero";
-import { ExperienceSection } from "./_components/experience-section";
 import { AppearanceToolbar } from "./_components/appearance-toolbar";
 import { FeaturedReel } from "./_components/featured-reel";
 import { ShowcaseGrid } from "./_components/showcase-grid";
+import { ExperienceSection } from "./_components/experience-section";
 
 export interface PortfolioItem {
   id: string;
@@ -57,7 +57,7 @@ export function PortfolioClient({
 
   const showFlash = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
   };
 
   const handleProjectCreated = (newItem: PortfolioItem) => {
@@ -65,15 +65,15 @@ export function PortfolioClient({
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-200">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6 animate-in fade-in duration-200">
       {/* Toast Notification */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#f5551d] text-black font-semibold text-xs px-4 py-2.5 rounded-xl shadow-2xl animate-in fade-in slide-in-from-bottom-2">
+        <div className="fixed bottom-6 right-6 z-50 bg-[#f5551d] text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-2xl animate-in fade-in slide-in-from-bottom-2 border border-white/20">
           {toast}
         </div>
       )}
 
-      {/* 1. Profile Hero Banner & Modals */}
+      {/* 1. Header & Modals matching Screenshot 3 */}
       <PortfolioHero
         workspace={workspace}
         portfolio={portfolio}
@@ -81,14 +81,7 @@ export function PortfolioClient({
         showFlash={showFlash}
       />
 
-      {/* 2. Experience & Credentials Section */}
-      <ExperienceSection
-        portfolioId={portfolio.id}
-        initialExperiences={portfolio.experience || []}
-        showFlash={showFlash}
-      />
-
-      {/* 3. Appearance Controls Toolbar */}
+      {/* 2. Appearance Controls Card matching Screenshot 3 */}
       <AppearanceToolbar
         portfolioId={portfolio.id}
         initialAppearance={appearance}
@@ -96,7 +89,7 @@ export function PortfolioClient({
         showFlash={showFlash}
       />
 
-      {/* 4. Featured Work Reel */}
+      {/* 3. Featured Work Reel matching Screenshot 3 */}
       <FeaturedReel
         portfolioId={portfolio.id}
         initialProjects={projects}
@@ -104,13 +97,20 @@ export function PortfolioClient({
         showFlash={showFlash}
       />
 
-      {/* 5. Showcase Work Grid */}
+      {/* 4. Showcase Work Grid matching Screenshot 4 */}
       <ShowcaseGrid
         portfolioId={portfolio.id}
         workspaceSlug={workspace.slug}
         projects={projects}
         initialFeaturedIds={initialFeaturedIds}
         appearance={appearance}
+        showFlash={showFlash}
+      />
+
+      {/* 5. Experience & Credentials Section (Cleanly placed at the bottom) */}
+      <ExperienceSection
+        portfolioId={portfolio.id}
+        initialExperiences={portfolio.experience || []}
         showFlash={showFlash}
       />
     </div>

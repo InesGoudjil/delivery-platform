@@ -4,10 +4,11 @@ import React, { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { HeaderSection } from "@/components/landing/HeaderSection";
 import { HeroSection } from "@/components/landing/HeroSection";
-import { PartnershipSection } from "@/components/landing/PartnershipSection";
 import { FeaturesSection } from "@/components/landing/FeaturesSection";
 import { WorkflowSection } from "@/components/landing/WorkflowSection";
 import { PricingSection } from "@/components/landing/PricingSection";
+import { SiloSection } from "@/components/landing/SiloSection";
+import { PartnershipSection } from "@/components/landing/PartnershipSection";
 import { FaqSection } from "@/components/landing/FaqSection";
 import { CtaSection } from "@/components/landing/CtaSection";
 import { FooterSection } from "@/components/landing/FooterSection";
@@ -29,11 +30,8 @@ export default function LandingPage({ user, workspace }: LandingPageProps) {
   };
 
   return (
-    <div className="root min-h-screen bg-[#0a0a0b] text-[#f6f3ec] font-sans antialiased selection:bg-[#f5551d] selection:text-black">
-      {/* Background Subtle Film Grain Overlay */}
-      <div className="grain opacity-[0.08]" />
-
-      {/* 1. Header Section */}
+    <div className="root min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased selection:bg-[#f5551d] selection:text-white">
+      {/* 1. Header Navigation Bar */}
       <HeaderSection
         user={user}
         workspace={workspace}
@@ -41,41 +39,44 @@ export default function LandingPage({ user, workspace }: LandingPageProps) {
         onStartTrial={() => showToast("Free trial registration initiated!")}
       />
 
-      {/* 2. Hero Section */}
-      <HeroSection
-        onOpenDemo={() => setShowDemoModal(true)}
-        onStartTrial={() => showToast("Free trial registration initiated!")}
-      />
-
       {/* Main Landing Page Content Container */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6">
-        {/* 3. Partnership / Client Trust Bar Section */}
-        <PartnershipSection />
+      <main className="mx-auto max-w-7xl px-4 sm:px-8 space-y-8">
+        {/* 2. Hero Section */}
+        <HeroSection
+          onOpenDemo={() => setShowDemoModal(true)}
+          onStartTrial={() => showToast("Free trial registration initiated!")}
+        />
 
-        {/* 4. Interactive Features Section (Review, Portfolio, WhatsApp) */}
+        {/* 3. Features Section (6-Card Grid & Feature Spotlights 01, 02, 03, Client Experience) */}
         <FeaturesSection onOpenDemo={() => setShowDemoModal(true)} />
 
-        {/* 5. 3-Step Process Workflow Section */}
+        {/* 4. How It Works Section (01 Upload, 02 Share, 03 Approvals) */}
         <WorkflowSection />
 
-        {/* 6. Transparent Pricing (AED) Section */}
+        {/* 5. Pricing Section (Testimonial Quote + 4-Tier Pricing Grid + Compare Packages Matrix) */}
         <PricingSection
           onSelectPlan={(plan) => showToast(`Selected ${plan} plan trial!`)}
         />
 
-        {/* 7. FAQ Accordion Section */}
+        {/* 6. The Silo Secure Archive Section */}
+        <SiloSection />
+
+        {/* 7. Partnership Section & Application Form */}
+        <PartnershipSection onShowToast={showToast} />
+
+        {/* 8. FAQ Section */}
         <FaqSection />
 
-        {/* 8. Call to Action Banner Section */}
+        {/* 9. Call To Action Banner */}
         <CtaSection
           onStartTrial={() => showToast("Free trial registration initiated!")}
         />
       </main>
 
-      {/* 9. Footer Section */}
+      {/* 10. Multi-Column Footer */}
       <FooterSection />
 
-      {/* 10. Interactive Client Room Demo Modal */}
+      {/* Interactive Client Room Demo Modal */}
       <DemoModal
         isOpen={showDemoModal}
         onClose={() => setShowDemoModal(false)}
@@ -84,7 +85,7 @@ export default function LandingPage({ user, workspace }: LandingPageProps) {
 
       {/* Floating Toast Notification */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#141416] border border-[#f5551d] text-[#f6f3ec] px-5 py-3 rounded-full text-xs font-semibold shadow-2xl flex items-center gap-2.5 animate-in slide-in-from-bottom duration-200">
+        <div className="fixed bottom-6 right-6 z-50 bg-[#17171d] border border-[#f5551d] text-white px-5 py-3 rounded-full text-xs font-semibold shadow-2xl flex items-center gap-2.5 animate-in slide-in-from-bottom duration-200">
           <CheckCircle2 className="size-4 text-[#f5551d]" />
           <span>{toast}</span>
         </div>

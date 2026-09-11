@@ -62,31 +62,49 @@ export class AuthService {
   }
 
   async signInWithPassword(email: string, password: string) {
-    const res = await this.supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const res = await this.supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (res.data.user) {
-      await this.profileRepo.updateLoginInfo(res.data.user.id);
+      if (res.data?.user) {
+        await this.profileRepo.updateLoginInfo(res.data.user.id).catch(() => {});
+      }
+
+      return res;
+    } catch (err: any) {
+      return {
+        data: { user: null, session: null },
+        error: { message: err?.message || 'Authentication request failed. Please check network connection and Supabase URL.' },
+      };
     }
-
-    return res;
   }
 
   async signUp(email: string, password: string, fullName: string) {
-    return this.supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
+    try {
+      return await this.supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
         },
-      },
-    });
+      });
+    } catch (err: any) {
+      return {
+        data: { user: null, session: null },
+        error: { message: err?.message || 'Sign up request failed. Please check network connection and Supabase URL.' },
+      };
+    }
   }
 
   async signOut(): Promise<void> {
-    await this.supabase.auth.signOut();
+    try {
+      await this.supabase.auth.signOut();
+    } catch {
+      // Ignore signout network errors
+    }
   }
 }

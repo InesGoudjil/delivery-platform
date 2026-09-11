@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Archivo, Inter } from "next/font/google";
 import "./globals.css";
+// import "./test.css"
 
 import { Manrope } from "next/font/google";
 import localFont from "next/font/local";
