@@ -1,12 +1,12 @@
-import { SupabaseClient } from '@supabase/supabase-js';
-import { Database } from '@/types/database.types';
+import { SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "@/types/database.types";
 
 // Storage Provider
 import {
   IStorageProvider,
   StorageProviderFactory,
   StorageFactoryOptions,
-} from './providers/storage';
+} from "./providers/storage";
 
 // Repositories
 import {
@@ -19,13 +19,14 @@ import {
   SupabaseSubscriptionRepository,
   SupabaseClientRepository,
   SupabasePortfolioRepository,
+  SupabaseDeliveryRepository,
   SupabaseProjectRepository,
   SupabaseAssetRepository,
   SupabaseAssetVersionRepository,
   SupabaseFeedbackRepository,
   SupabaseNotificationLogRepository,
   SupabaseInvoiceRepository,
-} from './repositories';
+} from "./repositories";
 
 // Services
 import {
@@ -36,13 +37,14 @@ import {
   SubscriptionService,
   ClientService,
   PortfolioService,
+  DeliveryService,
   ProjectService,
   AssetService,
   AssetUploadService,
   FeedbackService,
   NotificationService,
   StripeService,
-} from './services';
+} from "./services";
 
 export interface CoreServices {
   storageProvider: IStorageProvider;
@@ -56,6 +58,7 @@ export interface CoreServices {
     subscription: SupabaseSubscriptionRepository;
     client: SupabaseClientRepository;
     portfolio: SupabasePortfolioRepository;
+    delivery: SupabaseDeliveryRepository;
     project: SupabaseProjectRepository;
     asset: SupabaseAssetRepository;
     assetVersion: SupabaseAssetVersionRepository;
@@ -70,6 +73,7 @@ export interface CoreServices {
     subscription: SubscriptionService;
     client: ClientService;
     portfolio: PortfolioService;
+    delivery: DeliveryService;
     project: ProjectService;
     asset: AssetService;
     upload: AssetUploadService;
@@ -81,6 +85,7 @@ export interface CoreServices {
 
 export interface ContainerOptions {
   storageOptions?: StorageFactoryOptions;
+  adminSupabase?: SupabaseClient<Database>;
 }
 
 /**
@@ -94,22 +99,26 @@ export function createCoreServices(
   // 0. Storage Provider
   const storageProvider = StorageProviderFactory.createProvider(options?.storageOptions);
 
+  // Privileged client to bypass RLS for system/billing tables (subscriptions, plans, features, invoices)
+  const systemClient = options?.adminSupabase || supabase;
+
   // 1. Repositories
   const workspaceRepo = new SupabaseWorkspaceRepository(supabase);
-  const workspaceFeaturesRepo = new SupabaseWorkspaceFeaturesRepository(supabase);
+  const workspaceFeaturesRepo = new SupabaseWorkspaceFeaturesRepository(systemClient);
   const userProfileRepo = new SupabaseUserProfileRepository(supabase);
   const workspaceMemberRepo = new SupabaseWorkspaceMemberRepository(supabase);
   const workspaceInvitationRepo = new SupabaseWorkspaceInvitationRepository(supabase);
-  const planRepo = new SupabasePlanRepository(supabase);
-  const subscriptionRepo = new SupabaseSubscriptionRepository(supabase);
+  const planRepo = new SupabasePlanRepository(systemClient);
+  const subscriptionRepo = new SupabaseSubscriptionRepository(systemClient);
   const clientRepo = new SupabaseClientRepository(supabase);
   const portfolioRepo = new SupabasePortfolioRepository(supabase);
+  const deliveryRepo = new SupabaseDeliveryRepository(supabase);
   const projectRepo = new SupabaseProjectRepository(supabase);
   const assetRepo = new SupabaseAssetRepository(supabase);
   const assetVersionRepo = new SupabaseAssetVersionRepository(supabase);
   const feedbackRepo = new SupabaseFeedbackRepository(supabase);
   const notificationRepo = new SupabaseNotificationLogRepository(supabase);
-  const invoiceRepo = new SupabaseInvoiceRepository(supabase);
+  const invoiceRepo = new SupabaseInvoiceRepository(systemClient);
 
   // 2. Services (Injected with Repository Interfaces & Storage Provider)
   const authService = new AuthService(supabase, workspaceRepo, userProfileRepo);
@@ -129,7 +138,7 @@ export function createCoreServices(
     subscriptionRepo,
     planRepo,
     workspaceFeaturesRepo,
-    projectRepo,
+    deliveryRepo as any,
     invoiceRepo
   );
   const clientService = new ClientService(clientRepo);
@@ -139,18 +148,24 @@ export function createCoreServices(
     assetRepo,
     assetVersionRepo
   );
-  const projectService = new ProjectService(
-    projectRepo,
+  const deliveryService = new DeliveryService(
+    deliveryRepo,
     clientRepo,
     assetRepo,
     assetVersionRepo,
-    feedbackRepo
+    feedbackRepo,
+    projectRepo
+  );
+  const projectService = new ProjectService(
+    projectRepo,
+    assetRepo,
+    assetVersionRepo
   );
   const assetService = new AssetService(assetRepo, assetVersionRepo);
   const uploadService = new AssetUploadService(
     storageProvider,
     workspaceRepo,
-    projectRepo,
+    deliveryRepo as any,
     assetRepo,
     assetVersionRepo,
     subscriptionRepo,
@@ -159,13 +174,14 @@ export function createCoreServices(
   const feedbackService = new FeedbackService(feedbackRepo);
   const notificationService = new NotificationService(
     notificationRepo,
-    projectRepo,
+    deliveryRepo,
     workspaceRepo
   );
   const stripeService = new StripeService(
     subscriptionRepo,
     planRepo,
-    workspaceMemberRepo
+    workspaceMemberRepo,
+    workspaceRepo
   );
 
   return {
@@ -180,6 +196,7 @@ export function createCoreServices(
       subscription: subscriptionRepo,
       client: clientRepo,
       portfolio: portfolioRepo,
+      delivery: deliveryRepo,
       project: projectRepo,
       asset: assetRepo,
       assetVersion: assetVersionRepo,
@@ -194,6 +211,7 @@ export function createCoreServices(
       subscription: subscriptionService,
       client: clientService,
       portfolio: portfolioService,
+      delivery: deliveryService,
       project: projectService,
       asset: assetService,
       upload: uploadService,

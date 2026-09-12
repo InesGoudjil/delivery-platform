@@ -39,25 +39,28 @@ export class MockStorageProvider implements IStorageProvider {
   }
 
   async getPlaybackInfo(providerUid: string): Promise<PlaybackInfo | null> {
+    const assetUrl = `/api/mock-upload/${providerUid}`;
     return {
       providerUid,
       hlsManifestUrl: `https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8`, // Public high-quality sample HLS stream for testing
-      thumbnailUrl: `https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1280&q=80`,
-      animatedThumbnailUrl: `https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1280&q=80`,
+      thumbnailUrl: assetUrl,
+      animatedThumbnailUrl: assetUrl,
       iframeEmbedUrl: `https://www.youtube.com/embed/dQw4w9WgXcQ`,
       durationSeconds: 120,
       status: "ready",
-    };
+      rawDownloadUrl: assetUrl,
+    } as any;
   }
 
   async getAssetStatus(providerUid: string): Promise<StorageAssetStatus> {
+    const assetUrl = `/api/mock-upload/${providerUid}`;
     return {
       providerUid,
       status: "ready",
       durationSeconds: 120,
-      fileSizeBytes: 1024 * 1024 * 500, // 500 MB mock
+      fileSizeBytes: 1024 * 1024 * 5, // 5 MB mock
       hlsManifestUrl: `https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8`,
-      thumbnailUrl: `https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1280&q=80`,
+      thumbnailUrl: assetUrl,
     };
   }
 

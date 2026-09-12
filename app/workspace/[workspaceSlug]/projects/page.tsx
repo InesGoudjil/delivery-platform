@@ -4,10 +4,10 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Plus, Film, Clock, Check, ArrowRight, Share2, MessageCircle } from "lucide-react";
-import { Project } from "@/types";
+import { Delivery } from "@/types";
 import { createProjectAction } from "@/app/actions/projects";
 
-interface UIProject extends Project {
+interface UIProject extends Delivery {
   clientName?: string;
   tc?: string;
   g?: string;
@@ -110,7 +110,7 @@ export default function ProjectsPage() {
     setCreating(false);
   };
 
-  const getStatusBadge = (status: Project["status"]) => {
+  const getStatusBadge = (status: any) => {
     switch (status) {
       case "in_review":
         return (

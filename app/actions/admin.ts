@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getServerServices } from "@/core/server";
+import { getServerServices, getServerAdminServices } from "@/core/server";
 
 export async function updateUserRoleAction(userId: string, role: "admin" | "user") {
   try {
@@ -72,7 +72,8 @@ export async function updateWorkspacePlanAction(
       return { success: false, error: "Forbidden: Super Admin privileges required." };
     }
 
-    const sub = await services.subscription.adminChangeWorkspacePlan(workspaceId, planId, status as any);
+    const adminServices = await getServerAdminServices();
+    const sub = await adminServices.subscription.adminChangeWorkspacePlan(workspaceId, planId, status as any);
 
     revalidatePath("/admin");
     revalidatePath("/admin/workspaces");
@@ -134,12 +135,13 @@ export async function updatePlanAction(
       return { success: false, error: "Forbidden: Super Admin privileges required." };
     }
 
-    const updatedPlan = await services.subscription.getPlanById(planId);
+    const adminServices = await getServerAdminServices();
+    const updatedPlan = await adminServices.subscription.getPlanById(planId);
     if (!updatedPlan) {
       return { success: false, error: "Plan not found." };
     }
 
-    const plan = await services.subscription.updatePlan(planId, data as any);
+    const plan = await adminServices.subscription.updatePlan(planId, data as any);
 
     revalidatePath("/admin/subscriptions");
     revalidatePath("/admin");
@@ -175,8 +177,10 @@ export async function createPlanAction(formData: FormData) {
 
     const slug = rawSlug.replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
 
+    const adminServices = await getServerAdminServices();
+
     // 1. Create automatic counterpart in Stripe API via core StripeService
-    const { stripePriceId } = await services.stripe.createStripeProductAndPrice({
+    const { stripePriceId } = await adminServices.stripe.createStripeProductAndPrice({
       name,
       priceCents,
       currency: "USD",
@@ -184,7 +188,7 @@ export async function createPlanAction(formData: FormData) {
     });
 
     // 2. Save plan to database
-    const plan = await services.subscription.createPlan({
+    const plan = await adminServices.subscription.createPlan({
       name,
       slug,
       priceCents,
@@ -228,20 +232,21 @@ export async function deletePlanAction(planId: string) {
       return { success: false, error: "Forbidden: Super Admin privileges required." };
     }
 
-    const plan = await services.subscription.getPlanById(planId);
+    const adminServices = await getServerAdminServices();
+    const plan = await adminServices.subscription.getPlanById(planId);
     if (!plan) {
       return { success: false, error: "Plan not found." };
     }
 
     // 1. Archive counterpart in Stripe API if present
     if (plan.stripePriceId) {
-      await services.stripe.archiveStripeProductAndPrice(plan.stripePriceId).catch((err) =>
+      await adminServices.stripe.archiveStripeProductAndPrice(plan.stripePriceId).catch((err) =>
         console.warn("Stripe archive notice:", err.message)
       );
     }
 
     // 2. Delete or Archive plan safely with protection rules
-    const result = await services.subscription.deletePlan(planId);
+    const result = await adminServices.subscription.deletePlan(planId);
 
     revalidatePath("/admin/subscriptions");
     revalidatePath("/admin");

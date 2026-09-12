@@ -1,5 +1,10 @@
-import { Asset, AssetVersion, AssetType, TranscodingStatus } from '@/core/entities/asset';
-import { IAssetRepository, IAssetVersionRepository } from '@/core/repositories/asset.repository';
+import { Asset, AssetVersion, AssetType, TranscodingStatus } from "@/core/entities/asset";
+import {
+  IAssetRepository,
+  IAssetVersionRepository,
+  CreateAssetDTO,
+  CreateAssetVersionDTO,
+} from "@/core/repositories/i-asset-repository";
 
 export class AssetService {
   constructor(
@@ -7,13 +12,7 @@ export class AssetService {
     private readonly assetVersionRepo: IAssetVersionRepository
   ) {}
 
-  async createAsset(params: {
-    workspaceId: string;
-    projectId?: string | null;
-    title: string;
-    type?: AssetType;
-    sortOrder?: number;
-  }): Promise<Asset> {
+  async createAsset(params: CreateAssetDTO): Promise<Asset> {
     return this.assetRepo.create(params);
   }
 
@@ -21,16 +20,17 @@ export class AssetService {
     return this.assetRepo.findById(id);
   }
 
-  async listAssets(projectId: string): Promise<Asset[]> {
-    return this.assetRepo.listByProjectId(projectId);
+  async listDeliveryAssets(deliveryId: string): Promise<Asset[]> {
+    return this.assetRepo.listByDeliveryId(deliveryId);
   }
 
-  async getListAssets(projectId: string): Promise<Asset[]> {
-    return this.assetRepo.listByProjectId(projectId);
+  // Alias for backward-compatibility
+  async listAssets(deliveryId: string): Promise<Asset[]> {
+    return this.listDeliveryAssets(deliveryId);
   }
 
-  async listProjectAssets(projectId: string): Promise<Asset[]> {
-    return this.assetRepo.listByProjectId(projectId);
+  async listProjectAssets(deliveryId: string): Promise<Asset[]> {
+    return this.listDeliveryAssets(deliveryId);
   }
 
   async listWorkspaceAssets(workspaceId: string): Promise<Asset[]> {
@@ -41,8 +41,12 @@ export class AssetService {
     return this.assetRepo.listUnassignedByWorkspaceId(workspaceId);
   }
 
-  async assignAssetToProject(assetId: string, projectId: string | null): Promise<Asset> {
-    return this.assetRepo.assignToProject(assetId, projectId);
+  async assignAssetToDelivery(assetId: string, deliveryId: string | null): Promise<Asset> {
+    return this.assetRepo.assignToDelivery(assetId, deliveryId);
+  }
+
+  async toggleApproval(assetId: string, isApproved: boolean): Promise<Asset> {
+    return this.assetRepo.toggleApproval(assetId, isApproved);
   }
 
   async getActiveVersion(assetId: string): Promise<AssetVersion | null> {
@@ -53,29 +57,16 @@ export class AssetService {
     return this.assetVersionRepo.listByAssetId(assetId);
   }
 
-  async addVersion(params: {
-    assetId: string;
-    rawFileUrl: string;
-    hlsManifestUrl?: string | null;
-    thumbnailUrl?: string | null;
-    fileSizeBytes?: number;
-    durationSeconds?: number | null;
-    transcodingStatus?: TranscodingStatus;
-  }): Promise<AssetVersion> {
-    const existingVersions = await this.assetVersionRepo.listByAssetId(params.assetId);
-    const nextVersionNumber = existingVersions.length > 0 ? existingVersions[0].versionNumber + 1 : 1;
+  async addVersion(params: CreateAssetVersionDTO): Promise<AssetVersion> {
+    return this.assetVersionRepo.create(params);
+  }
 
-    return this.assetVersionRepo.create({
-      assetId: params.assetId,
-      versionNumber: nextVersionNumber,
-      rawFileUrl: params.rawFileUrl,
-      hlsManifestUrl: params.hlsManifestUrl,
-      thumbnailUrl: params.thumbnailUrl,
-      fileSizeBytes: params.fileSizeBytes,
-      durationSeconds: params.durationSeconds,
-      transcodingStatus: params.transcodingStatus || 'pending',
-      isActiveVersion: true,
-    });
+  async renameVersion(versionId: string, label: string): Promise<AssetVersion> {
+    return this.assetVersionRepo.updateLabel(versionId, label);
+  }
+
+  async deleteVersion(versionId: string): Promise<void> {
+    return this.assetVersionRepo.delete(versionId);
   }
 
   async setActiveVersion(assetId: string, versionId: string): Promise<void> {
@@ -85,16 +76,16 @@ export class AssetService {
   async updateTranscodingStatus(
     versionId: string,
     status: TranscodingStatus,
-    hlsManifestUrl?: string | null,
-    thumbnailUrl?: string | null
+    hlsManifestUrl?: string,
+    thumbnailUrl?: string,
+    durationSeconds?: number
   ): Promise<AssetVersion> {
-    const updates: Partial<AssetVersion> = {
+    return this.assetVersionRepo.update(versionId, {
       transcodingStatus: status,
-    };
-    if (hlsManifestUrl !== undefined) updates.hlsManifestUrl = hlsManifestUrl;
-    if (thumbnailUrl !== undefined) updates.thumbnailUrl = thumbnailUrl;
-
-    return this.assetVersionRepo.update(versionId, updates);
+      ...(hlsManifestUrl && { hlsManifestUrl }),
+      ...(thumbnailUrl && { thumbnailUrl }),
+      ...(durationSeconds && { durationSeconds }),
+    });
   }
 
   async deleteAsset(id: string): Promise<void> {

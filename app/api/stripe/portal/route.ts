@@ -10,7 +10,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { workspaceId } = await req.json();
+    const { workspaceId, workspaceSlug } = await req.json();
 
     if (!workspaceId) {
       return NextResponse.json({ error: 'workspaceId is required' }, { status: 400 });
@@ -21,6 +21,7 @@ export async function POST(req: Request) {
     // Delegate billing portal session creation to core StripeService
     const portalSession = await services.stripe.createBillingPortalSession({
       workspaceId,
+      workspaceSlug,
       userId: user.id,
       origin,
     });

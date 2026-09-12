@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
+import { Star, Play } from "lucide-react";
 import { AppImage } from "@/components/ui/app-image";
 import { toggleFeaturedItemAction } from "@/app/actions/portfolio";
 import { PortfolioItem } from "../portfolio-client";
@@ -10,6 +11,7 @@ interface FeaturedReelProps {
   initialProjects: PortfolioItem[];
   initialFeaturedIds: string[];
   showFlash: (msg: string) => void;
+  onSelectItem?: (item: PortfolioItem) => void;
 }
 
 export function FeaturedReel({
@@ -17,7 +19,9 @@ export function FeaturedReel({
   initialProjects,
   initialFeaturedIds,
   showFlash,
+  onSelectItem,
 }: FeaturedReelProps) {
+
   const [isPending, startTransition] = useTransition();
 
   const [featuredIds, setFeaturedIds] = useState<string[]>(
@@ -73,7 +77,7 @@ export function FeaturedReel({
         {featuredItems.map((item) => (
           <div
             key={item.id}
-            onClick={() => handleToggleFeature(item)}
+            onClick={() => (onSelectItem ? onSelectItem(item) : handleToggleFeature(item))}
             className="relative w-36 h-20 sm:w-44 sm:h-24 rounded-xl overflow-hidden shrink-0 border border-white/10 hover:border-white/30 cursor-pointer transition-all duration-200 group hover:scale-[1.02] bg-[#0c0c0e]"
           >
             <AppImage
@@ -82,7 +86,30 @@ export function FeaturedReel({
               fallbackIcon={item.type === "still" ? "image" : "film"}
               containerClassName="size-full"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex items-end p-2.5">
+
+            {/* Unpin Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleFeature(item);
+              }}
+              className="absolute top-1.5 right-1.5 z-10 size-6 rounded-full bg-black/60 hover:bg-[#f5551d] text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer shadow-md"
+              title="Unpin from featured reel"
+            >
+              <Star className="size-3 fill-current text-[#f5551d] group-hover:text-white" />
+            </button>
+
+            {/* Play overlay for video/project */}
+            {(item.type === "film" || item.type === "project") && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="size-8 rounded-full bg-black/60 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-lg">
+                  <Play className="size-3.5 ml-0.5 fill-current" />
+                </div>
+              </div>
+            )}
+
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex items-end p-2.5 pointer-events-none">
               <span className="text-xs font-bold text-white truncate max-w-full font-heading leading-tight">
                 {item.title}
               </span>

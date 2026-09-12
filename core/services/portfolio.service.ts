@@ -1,16 +1,25 @@
-import { Portfolio, SocialLinks, PortfolioProject } from '@/core/entities/portfolio';
-import { Project } from '@/core/entities/project';
-import { AssetVersion } from '@/core/entities/asset';
-import { IPortfolioRepository } from '@/core/repositories/portfolio.repository';
-import { IProjectRepository } from '@/core/repositories/project.repository';
-import { IAssetRepository, IAssetVersionRepository } from '@/core/repositories/asset.repository';
+import { Portfolio, SocialLinks, PortfolioStats } from "@/core/entities/portfolio";
+import { Project } from "@/core/entities/project";
+import { Asset, AssetVersion } from "@/core/entities/asset";
+import { IPortfolioRepository, CreatePortfolioDTO } from "@/core/repositories/portfolio.repository";
+import { IProjectRepository } from "@/core/repositories/i-project-repository";
+import { IAssetRepository, IAssetVersionRepository } from "@/core/repositories/i-asset-repository";
+
+export interface PublicPortfolioItem {
+  id: string;
+  title: string;
+  category: string;
+  type: "film" | "still" | "project";
+  thumbnailUrl: string;
+  assetCount: number;
+  isFeatured?: boolean;
+}
 
 export interface PublicPortfolioView extends Portfolio {
-  projects: Array<
-    Project & {
-      activeVersion?: AssetVersion | null;
-    }
-  >;
+  projects: Project[];
+  films: Asset[];
+  stills: Asset[];
+  allItems: PublicPortfolioItem[];
 }
 
 export class PortfolioService {
@@ -39,16 +48,18 @@ export class PortfolioService {
       });
     } catch (err: any) {
       console.warn("Portfolio getOrCreate notice:", err.message);
-      // Graceful fallback entity so UI renders seamlessly even if table RLS requires migration
       return {
         id: `port_${workspaceId}`,
         workspaceId,
         slug,
         title,
-        bio: "Filmmaker & creative director based between Dubai and Sharjah. I specialize in films, commercials, and launch content for the Gulf — every frame, every cut, you don't notice.",
+        bio: "Filmmaker & creative director based in the Gulf.",
         coverAssetUrl: null,
         socialLinks: {},
         isPublished: true,
+        whatsappNumber: null,
+        stats: { projects: "80+", years: "6", location: "UAE" },
+        layoutTemplate: "grid",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -59,30 +70,64 @@ export class PortfolioService {
     const portfolio = await this.portfolioRepo.findBySlug(slug);
     if (!portfolio || !portfolio.isPublished) return null;
 
-    const featuredProjectRelations = await this.portfolioRepo.getFeaturedProjects(portfolio.id);
-    const enrichedProjects = await Promise.all(
-      featuredProjectRelations.map(async ({ projectId }) => {
-        const project = await this.projectRepo.findById(projectId);
-        if (!project || project.status === 'draft' || project.status === 'archived') {
-          return null;
-        }
+    // 1. Fetch published showcase projects
+    const showcaseProjects = await this.projectRepo.listByPortfolioId(portfolio.id);
+    const publishedProjects = showcaseProjects.filter((p) => p.isPublished);
 
-        const assets = await this.assetRepo.listByProjectId(project.id);
-        let activeVersion: AssetVersion | null = null;
-        if (assets.length > 0) {
-          activeVersion = await this.assetVersionRepo.findActiveVersion(assets[0].id);
-        }
+    // 2. Fetch standalone films and stills for this workspace
+    const workspaceAssets = await this.assetRepo.listByWorkspaceId(portfolio.workspaceId);
+    const standaloneAssets = workspaceAssets.filter((a) => !a.isArchived && a.deliveryId === null);
 
+    const films = standaloneAssets.filter((a) => a.category === "film");
+    const stills = standaloneAssets.filter((a) => a.category === "still" || a.type === "photo_gallery");
+
+    // 3. Construct unified items array matching prototype
+    const mappedProjects: PublicPortfolioItem[] = publishedProjects.map((p) => ({
+      id: p.id,
+      title: p.title,
+      category: p.category || "Commercial Project",
+      type: "project",
+      thumbnailUrl: p.coverAssetUrl || "",
+      assetCount: 1,
+      isFeatured: true,
+    }));
+
+    const mappedFilms: PublicPortfolioItem[] = await Promise.all(
+      films.map(async (f) => {
+        const activeVer = await this.assetVersionRepo.findActiveVersion(f.id);
         return {
-          ...project,
-          activeVersion,
+          id: f.id,
+          title: f.title,
+          category: f.aspectRatio === "9:16" ? "Vertical Reel" : "Film",
+          type: "film",
+          thumbnailUrl: activeVer?.thumbnailUrl || activeVer?.rawFileUrl || "",
+          assetCount: 1,
+          isFeatured: true,
+        };
+      })
+    );
+
+    const mappedStills: PublicPortfolioItem[] = await Promise.all(
+      stills.map(async (s) => {
+        const activeVer = await this.assetVersionRepo.findActiveVersion(s.id);
+        return {
+          id: s.id,
+          title: s.title,
+          category: "Photo Still",
+          type: "still",
+          thumbnailUrl: activeVer?.thumbnailUrl || activeVer?.rawFileUrl || "",
+          assetCount: 1,
+          isFeatured: true,
         };
       })
     );
 
     return {
       ...portfolio,
-      projects: enrichedProjects.filter(Boolean) as any[],
+      projects: publishedProjects,
+      films,
+      stills,
+      allItems: [...mappedProjects, ...mappedFilms, ...mappedStills],
     };
   }
 
@@ -95,24 +140,13 @@ export class PortfolioService {
       coverAssetUrl?: string | null;
       socialLinks?: SocialLinks;
       isPublished?: boolean;
+      appearance?: any;
+      experience?: any[];
+      whatsappNumber?: string | null;
+      stats?: PortfolioStats;
+      layoutTemplate?: string;
     }
   ): Promise<Portfolio> {
     return this.portfolioRepo.update(id, data);
-  }
-
-  async featureProject(portfolioId: string, projectId: string, order = 0): Promise<void> {
-    return this.portfolioRepo.addFeaturedProject(portfolioId, projectId, order);
-  }
-
-  async unfeatureProject(portfolioId: string, projectId: string): Promise<void> {
-    return this.portfolioRepo.removeFeaturedProject(portfolioId, projectId);
-  }
-
-  async reorderProjects(portfolioId: string, projectIdsInOrder: string[]): Promise<void> {
-    return this.portfolioRepo.reorderFeaturedProjects(portfolioId, projectIdsInOrder);
-  }
-
-  async getFeaturedProjects(portfolioId: string): Promise<PortfolioProject[]> {
-    return this.portfolioRepo.getFeaturedProjects(portfolioId);
   }
 }

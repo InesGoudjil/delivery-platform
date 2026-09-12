@@ -232,10 +232,18 @@ export function UploadFilmModal({
         type: isImage ? "still" : "film",
         assetCount: 1,
         thumbnailUrl:
+          (isImage && thumbnailPreview) ||
           customThumbUrl ||
           thumbnailPreview ||
           confirmRes.assetVersion?.thumbnailUrl ||
           confirmRes.assetVersion?.rawFileUrl ||
+          "",
+        mediaUrl:
+          (isImage && thumbnailPreview) ||
+          thumbnailPreview ||
+          customThumbUrl ||
+          confirmRes.assetVersion?.rawFileUrl ||
+          confirmRes.assetVersion?.hlsManifestUrl ||
           "",
       };
 

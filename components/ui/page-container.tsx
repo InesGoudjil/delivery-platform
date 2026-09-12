@@ -28,7 +28,7 @@ export function PageContainer({
   return (
     <div
       className={cn(
-        "w-full mx-auto space-y-8 p-4 sm:p-6 lg:p-8 transition-colors duration-200 text-foreground",
+        "w-full mx-auto space-y-8 transition-colors duration-200 text-foreground",
         maxWidthClasses[maxWidth],
         className
       )}

@@ -1,27 +1,7 @@
-import { SupabaseClient } from '@supabase/supabase-js';
-import { Database } from '@/types/database.types';
-import { Project, ProjectStatus } from '@/core/entities/project';
-
-export interface CreateProjectDTO {
-  workspaceId: string;
-  clientId?: string | null;
-  title: string;
-  description?: string | null;
-  passcodeHash?: string | null;
-  isDownloadAllowed?: boolean;
-  notifyOnDownload?: boolean;
-}
-
-export interface IProjectRepository {
-  findById(id: string): Promise<Project | null>;
-  findByShareToken(shareToken: string): Promise<Project | null>;
-  listByWorkspaceId(workspaceId: string): Promise<Project[]>;
-  listByClientId(clientId: string): Promise<Project[]>;
-  create(dto: CreateProjectDTO): Promise<Project>;
-  update(id: string, data: Partial<Project>): Promise<Project>;
-  updateStatus(id: string, status: ProjectStatus, approvedByName?: string): Promise<Project>;
-  delete(id: string): Promise<void>;
-}
+import { SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "@/types/database.types";
+import { Project, CreateProjectDTO, UpdateProjectDTO } from "@/core/entities/project";
+import { IProjectRepository } from "./i-project-repository";
 
 export class SupabaseProjectRepository implements IProjectRepository {
   constructor(private readonly supabase: SupabaseClient<Database>) {}
@@ -30,16 +10,17 @@ export class SupabaseProjectRepository implements IProjectRepository {
     return {
       id: row.id,
       workspaceId: row.workspace_id,
-      clientId: row.client_id,
+      portfolioId: row.portfolio_id,
       title: row.title,
+      clientName: row.client_name,
       description: row.description,
-      shareToken: row.share_token,
-      passcodeHash: row.passcode_hash,
-      status: row.status,
-      isDownloadAllowed: row.is_download_allowed ?? false,
-      notifyOnDownload: row.notify_on_download ?? false,
-      approvedAt: row.approved_at,
-      approvedByName: row.approved_by_name,
+      category: row.category || "Commercial",
+      coverAssetUrl: row.cover_asset_url,
+      year: row.year,
+      location: row.location,
+      displayOrder: row.display_order ?? 0,
+      isPublished: row.is_published ?? true,
+      sourceDeliveryId: row.source_delivery_id,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -50,115 +31,143 @@ export class SupabaseProjectRepository implements IProjectRepository {
     if (!isUuid) return null;
 
     const { data, error } = await (this.supabase as any)
-      .from('projects')
-      .select('*')
-      .eq('id', id)
+      .from("projects")
+      .select("*")
+      .eq("id", id)
       .maybeSingle();
 
     if (error) throw new Error(`Error fetching project by id: ${error.message}`);
     return data ? this.mapRowToEntity(data) : null;
   }
 
-  async findByShareToken(shareToken: string): Promise<Project | null> {
+  async listByPortfolioId(portfolioId: string): Promise<Project[]> {
     const { data, error } = await (this.supabase as any)
-      .from('projects')
-      .select('*')
-      .eq('share_token', shareToken)
-      .maybeSingle();
+      .from("projects")
+      .select("*")
+      .eq("portfolio_id", portfolioId)
+      .order("display_order", { ascending: true })
+      .order("created_at", { ascending: false });
 
-    if (error) throw new Error(`Error fetching project by token: ${error.message}`);
-    return data ? this.mapRowToEntity(data) : null;
+    if (error) throw new Error(`Error listing projects for portfolio: ${error.message}`);
+    return (data || []).map(this.mapRowToEntity);
   }
 
   async listByWorkspaceId(workspaceId: string): Promise<Project[]> {
     const { data, error } = await (this.supabase as any)
-      .from('projects')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .order('created_at', { ascending: false });
+      .from("projects")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .order("display_order", { ascending: true })
+      .order("created_at", { ascending: false });
 
-    if (error) throw new Error(`Error listing projects: ${error.message}`);
-    return data ? data.map((r: any) => this.mapRowToEntity(r)) : [];
-  }
-
-  async listByClientId(clientId: string): Promise<Project[]> {
-    const { data, error } = await (this.supabase as any)
-      .from('projects')
-      .select('*')
-      .eq('client_id', clientId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw new Error(`Error listing projects by client: ${error.message}`);
-    return data ? data.map((r: any) => this.mapRowToEntity(r)) : [];
+    if (error) throw new Error(`Error listing projects for workspace: ${error.message}`);
+    return (data || []).map(this.mapRowToEntity);
   }
 
   async create(dto: CreateProjectDTO): Promise<Project> {
+    const payload: any = {
+      workspace_id: dto.workspaceId,
+      portfolio_id: dto.portfolioId,
+      title: dto.title,
+      client_name: dto.clientName ?? null,
+      description: dto.description ?? null,
+      category: dto.category ?? "Commercial",
+      cover_asset_url: dto.coverAssetUrl ?? null,
+      year: dto.year ?? null,
+      location: dto.location ?? null,
+      display_order: dto.displayOrder ?? 0,
+      is_published: dto.isPublished ?? true,
+      source_delivery_id: dto.sourceDeliveryId ?? null,
+    };
+
     const { data, error } = await (this.supabase as any)
-      .from('projects')
-      .insert({
-        workspace_id: dto.workspaceId,
-        client_id: dto.clientId,
-        title: dto.title,
-        description: dto.description,
-        passcode_hash: dto.passcodeHash,
-        is_download_allowed: dto.isDownloadAllowed ?? false,
-        notify_on_download: dto.notifyOnDownload ?? false,
-        status: 'in_review',
-      })
+      .from("projects")
+      .insert(payload)
       .select()
       .single();
 
-    if (error) throw new Error(`Failed to create project: ${error.message}`);
+    if (error) throw new Error(`Error creating showcase project: ${error.message}`);
     return this.mapRowToEntity(data);
   }
 
-  async update(id: string, data: Partial<Project>): Promise<Project> {
-    const payload: any = {};
+  async update(id: string, data: UpdateProjectDTO): Promise<Project> {
+    const payload: any = { updated_at: new Date().toISOString() };
     if (data.title !== undefined) payload.title = data.title;
+    if (data.clientName !== undefined) payload.client_name = data.clientName;
     if (data.description !== undefined) payload.description = data.description;
-    if (data.clientId !== undefined) payload.client_id = data.clientId;
-    if (data.passcodeHash !== undefined) payload.passcode_hash = data.passcodeHash;
-    if (data.isDownloadAllowed !== undefined) payload.is_download_allowed = data.isDownloadAllowed;
-    if (data.notifyOnDownload !== undefined) payload.notify_on_download = data.notifyOnDownload;
-    if (data.status !== undefined) payload.status = data.status;
-    if (data.approvedAt !== undefined) payload.approved_at = data.approvedAt;
-    if (data.approvedByName !== undefined) payload.approved_by_name = data.approvedByName;
+    if (data.category !== undefined) payload.category = data.category;
+    if (data.coverAssetUrl !== undefined) payload.cover_asset_url = data.coverAssetUrl;
+    if (data.year !== undefined) payload.year = data.year;
+    if (data.location !== undefined) payload.location = data.location;
+    if (data.displayOrder !== undefined) payload.display_order = data.displayOrder;
+    if (data.isPublished !== undefined) payload.is_published = data.isPublished;
+    if (data.sourceDeliveryId !== undefined) payload.source_delivery_id = data.sourceDeliveryId;
 
     const { data: updated, error } = await (this.supabase as any)
-      .from('projects')
+      .from("projects")
       .update(payload)
-      .eq('id', id)
+      .eq("id", id)
       .select()
       .single();
 
-    if (error) throw new Error(`Failed to update project: ${error.message}`);
+    if (error) throw new Error(`Error updating showcase project: ${error.message}`);
     return this.mapRowToEntity(updated);
-  }
-
-  async updateStatus(id: string, status: ProjectStatus, approvedByName?: string): Promise<Project> {
-    const payload: any = { status };
-    if (status === 'approved') {
-      payload.approved_at = new Date().toISOString();
-      if (approvedByName) payload.approved_by_name = approvedByName;
-    }
-
-    const { data, error } = await (this.supabase as any)
-      .from('projects')
-      .update(payload)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw new Error(`Failed to update project status: ${error.message}`);
-    return this.mapRowToEntity(data);
   }
 
   async delete(id: string): Promise<void> {
     const { error } = await (this.supabase as any)
-      .from('projects')
+      .from("projects")
       .delete()
-      .eq('id', id);
+      .eq("id", id);
 
-    if (error) throw new Error(`Failed to delete project: ${error.message}`);
+    if (error) throw new Error(`Error deleting showcase project: ${error.message}`);
+  }
+
+  async attachAsset(projectId: string, assetId: string, displayOrder = 0): Promise<void> {
+    const { error } = await (this.supabase as any)
+      .from("project_assets")
+      .upsert({
+        project_id: projectId,
+        asset_id: assetId,
+        display_order: displayOrder,
+      });
+
+    if (error) throw new Error(`Failed to attach asset to project: ${error.message}`);
+  }
+
+  async detachAsset(projectId: string, assetId: string): Promise<void> {
+    const { error } = await (this.supabase as any)
+      .from("project_assets")
+      .delete()
+      .eq("project_id", projectId)
+      .eq("asset_id", assetId);
+
+    if (error) throw new Error(`Failed to detach asset from project: ${error.message}`);
+  }
+
+  async getProjectAssetIds(projectId: string): Promise<string[]> {
+    const { data, error } = await (this.supabase as any)
+      .from("project_assets")
+      .select("asset_id")
+      .eq("project_id", projectId)
+      .order("display_order", { ascending: true });
+
+    if (error) throw new Error(`Failed to fetch project assets: ${error.message}`);
+    return (data || []).map((r: any) => r.asset_id);
+  }
+
+  async reorderProjects(portfolioId: string, projectIdsInOrder: string[]): Promise<void> {
+    const updates = projectIdsInOrder.map((id, index) => ({
+      id,
+      portfolio_id: portfolioId,
+      display_order: index,
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error } = await (this.supabase as any)
+      .from("projects")
+      .upsert(updates);
+
+    if (error) throw new Error(`Failed to reorder projects: ${error.message}`);
   }
 }

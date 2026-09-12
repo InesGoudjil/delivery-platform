@@ -11,21 +11,18 @@ export async function createWorkspaceProjectAction(
   try {
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
+    if (!user) return { error: "User is not authenticated." };
 
-    if (!user) {
-      return { error: "User is not authenticated." };
-    }
-
-    const project = await services.project.createProject({
+    const delivery = await services.delivery.createDelivery({
       workspaceId,
-      title: title || "Untitled Project",
+      title: title || "Untitled Delivery",
       description: description || undefined,
     });
 
-    revalidatePath("/portfolio");
-    return { success: true, project };
+    revalidatePath("/deliveries");
+    return { success: true, project: delivery, delivery };
   } catch (err: any) {
-    return { error: err.message || "Failed to create project." };
+    return { error: err.message || "Failed to create delivery." };
   }
 }
 
@@ -33,53 +30,46 @@ export async function createProjectAction(formData: FormData) {
   try {
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
-
-    if (!user) {
-      return { error: "User is not authenticated." };
-    }
+    if (!user) return { error: "User is not authenticated." };
 
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
-
     const workspace = await services.workspace.getOrCreateWorkspace(user.id);
 
-    const project = await services.project.createProject({
+    const delivery = await services.delivery.createDelivery({
       workspaceId: workspace.id,
-      title: title || "Untitled Project",
+      title: title || "Untitled Delivery",
       description: description || undefined,
     });
 
-    revalidatePath("/dashboard");
-    return { success: true, project };
+    revalidatePath("/deliveries");
+    return { success: true, project: delivery, delivery };
   } catch (err: any) {
-    return { error: err.message || "Failed to create project." };
+    return { error: err.message || "Failed to create delivery." };
   }
 }
 
-export async function approveCutAction(projectId: string, approvedByName?: string) {
+export async function approveCutAction(deliveryId: string, approvedByName?: string) {
   try {
     const services = await getServerServices();
-    const project = await services.project.approveCut(projectId, approvedByName);
+    const delivery = await services.delivery.approveCut(deliveryId, approvedByName);
 
-    revalidatePath(`/deliver/${project.shareToken}`);
-    revalidatePath(`/deliver/${project.id}`);
-    return { success: true, project };
+    revalidatePath(`/deliver/${delivery.shareToken}`);
+    revalidatePath(`/deliveries/${delivery.id}`);
+    return { success: true, project: delivery, delivery };
   } catch (err: any) {
     return { error: err.message || "Failed to approve cut." };
   }
 }
 
 export async function updateProjectDetailsAction(
-  projectId: string,
-  data: { title?: string; description?: string; clientName?: string; status?: string }
+  deliveryId: string,
+  data: { title?: string; description?: string; clientName?: string; status?: any; location?: string; deliveryDate?: string }
 ) {
   try {
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
-
-    if (!user) {
-      return { error: "User is not authenticated." };
-    }
+    if (!user) return { error: "User is not authenticated." };
 
     let clientId: string | undefined = undefined;
     if (data.clientName) {
@@ -100,31 +90,62 @@ export async function updateProjectDetailsAction(
       }
     }
 
-    const updated = await services.project.updateProject(projectId, {
+    const updated = await services.delivery.updateDelivery(deliveryId, {
       ...(data.title !== undefined ? { title: data.title } : {}),
       ...(data.description !== undefined ? { description: data.description } : {}),
       ...(clientId !== undefined ? { clientId } : {}),
-      ...(data.status !== undefined ? { status: data.status as any } : {}),
+      ...(data.status !== undefined ? { status: data.status } : {}),
+      ...(data.location !== undefined ? { location: data.location } : {}),
+      ...(data.deliveryDate !== undefined ? { deliveryDate: data.deliveryDate } : {}),
     });
 
-    revalidatePath(`/deliveries/${projectId}`);
+    revalidatePath(`/deliveries/${deliveryId}`);
     revalidatePath(`/deliver/${updated.shareToken}`);
-    return { success: true, project: updated };
+    return { success: true, project: updated, delivery: updated };
   } catch (err: any) {
     return { error: err.message || "Failed to update project details." };
   }
 }
 
-export async function archiveProjectAction(projectId: string) {
+export async function archiveProjectAction(deliveryId: string) {
   try {
     const services = await getServerServices();
-    const project = await services.project.archiveToSilo(projectId);
+    const delivery = await services.delivery.updateStatus(deliveryId, "archived");
 
-    revalidatePath(`/deliveries/${projectId}`);
-    revalidatePath(`/deliveries`);
-    return { success: true, project };
+    revalidatePath(`/deliveries/${deliveryId}`);
+    revalidatePath("/deliveries");
+    return { success: true, project: delivery, delivery };
   } catch (err: any) {
-    return { error: err.message || "Failed to archive project." };
+    return { error: err.message || "Failed to archive delivery." };
   }
 }
 
+export async function createShowcaseProjectAction(
+  workspaceId: string,
+  portfolioId: string,
+  data: {
+    title: string;
+    clientName?: string;
+    description?: string;
+    category?: string;
+    coverAssetUrl?: string;
+  }
+) {
+  try {
+    const services = await getServerServices();
+    const project = await services.project.createProject({
+      workspaceId,
+      portfolioId,
+      title: data.title,
+      clientName: data.clientName,
+      description: data.description,
+      category: data.category || "Commercial",
+      coverAssetUrl: data.coverAssetUrl,
+    });
+
+    revalidatePath("/portfolio");
+    return { success: true, project };
+  } catch (err: any) {
+    return { error: err.message || "Failed to create showcase project." };
+  }
+}

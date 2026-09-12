@@ -168,34 +168,44 @@ export function ExperienceSection({
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {experiences.map((exp) => (
-          <div
-            key={exp.id}
-            className="p-4 rounded-xl bg-[#0c0c0e] border border-white/10 space-y-1.5 relative group"
-          >
-            <button
-              onClick={() => handleDeleteExperience(exp.id)}
-              className="absolute top-3 right-3 text-[#71717a] hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-              title="Remove entry"
+      {experiences.length === 0 ? (
+        <div className="text-center py-8 px-4 border border-dashed border-white/10 rounded-xl space-y-2">
+          <Briefcase className="size-6 text-zinc-600 mx-auto" />
+          <p className="text-xs text-zinc-400 font-medium">No experience credentials added yet.</p>
+          <p className="text-[11px] text-zinc-600">
+            Add commercial campaigns, studio roles, or agency work to showcase your industry credibility.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {experiences.map((exp) => (
+            <div
+              key={exp.id}
+              className="p-4 rounded-xl bg-[#0c0c0e] border border-white/10 space-y-1.5 relative group"
             >
-              <X className="size-4" />
-            </button>
-            <div className="flex items-center justify-between pr-6">
-              <span className="text-xs font-bold text-white">{exp.role}</span>
-              <span className="text-[10px] font-mono text-[#f5551d] font-semibold">
-                {exp.years}
-              </span>
+              <button
+                onClick={() => handleDeleteExperience(exp.id)}
+                className="absolute top-3 right-3 text-[#71717a] hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                title="Remove entry"
+              >
+                <X className="size-4" />
+              </button>
+              <div className="flex items-center justify-between pr-6">
+                <span className="text-xs font-bold text-white">{exp.role}</span>
+                <span className="text-[10px] font-mono text-[#f5551d] font-semibold">
+                  {exp.years}
+                </span>
+              </div>
+              <div className="text-[11px] text-[#a1a1aa] font-medium">{exp.company}</div>
+              {exp.description && (
+                <p className="text-[11px] text-[#71717a] pt-1 leading-relaxed">
+                  {exp.description}
+                </p>
+              )}
             </div>
-            <div className="text-[11px] text-[#a1a1aa] font-medium">{exp.company}</div>
-            {exp.description && (
-              <p className="text-[11px] text-[#71717a] pt-1 leading-relaxed">
-                {exp.description}
-              </p>
-            )}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerServices } from "@/core/server";
+import { resolveMediaUrl } from "@/lib/media";
 import { PortfolioClient, PortfolioItem } from "./portfolio-client";
 
 export default async function PortfolioPage({
@@ -28,31 +29,64 @@ export default async function PortfolioPage({
   );
 
 
-  // 2. Query workspace projects, standalone assets, and featured items
-  const [dbProjects, standaloneAssets, featuredRelations] = await Promise.all([
-    services.project.listWorkspaceProjects(workspace.id),
+  // 2. Query showcase projects and standalone assets
+  const [dbProjects, standaloneAssets] = await Promise.all([
+    services.project.listPortfolioProjects(portfolio.id),
     services.asset.listUnassignedAssets(workspace.id),
-    services.portfolio.getFeaturedProjects(portfolio.id),
   ]);
 
   // 3. Map DB projects
   const mappedDbProjects: PortfolioItem[] = await Promise.all(
     dbProjects.map(async (p) => {
-      const assets = await services.asset.listAssets(p.id);
+      const deliveryIdToQuery = p.sourceDeliveryId || p.id;
+      let assets = await services.asset.listAssets(deliveryIdToQuery);
+      if (assets.length === 0 && p.id !== deliveryIdToQuery) {
+        assets = await services.asset.listAssets(p.id);
+      }
+
+      const projectAssets = await Promise.all(
+        assets.map(async (a) => {
+          const activeVersion = await services.asset.getActiveVersion(a.id);
+          const isStill = a.type === "photo_gallery";
+          const rawMedia =
+            activeVersion?.rawFileUrl ||
+            activeVersion?.hlsManifestUrl ||
+            activeVersion?.thumbnailUrl ||
+            "";
+          const rawThumb =
+            activeVersion?.thumbnailUrl || activeVersion?.rawFileUrl || "";
+          return {
+            id: a.id,
+            title: a.title,
+            type: isStill ? ("still" as const) : ("film" as const),
+            url: resolveMediaUrl(rawMedia),
+            thumbnailUrl: resolveMediaUrl(rawThumb),
+            aspectRatio: a.aspectRatio || "16:9",
+            duration: activeVersion?.durationSeconds
+              ? `${Math.floor(activeVersion.durationSeconds / 60)}:${String(
+                  Math.floor(activeVersion.durationSeconds % 60)
+                ).padStart(2, "0")}`
+              : null,
+            category: isStill ? "Photo Still" : "Film Cut",
+          };
+        })
+      );
+
       let thumbnailUrl = "";
-      if (assets.length > 0) {
-        const activeVersion = await services.asset.getActiveVersion(assets[0].id);
-        thumbnailUrl = activeVersion?.thumbnailUrl || activeVersion?.rawFileUrl || "";
+      if (projectAssets.length > 0) {
+        thumbnailUrl = projectAssets[0].thumbnailUrl;
       }
 
       return {
         id: p.id,
         title: p.title,
-        category: (p as { clientName?: string }).clientName || "Commercial Project",
+        category: p.clientName || p.category || "Commercial Project",
         type: "project" as const,
-        assetCount: assets.length || 1,
-        thumbnailUrl,
-        isFeatured: featuredRelations.some((fr) => fr.projectId === p.id),
+        assetCount: projectAssets.length,
+        thumbnailUrl: resolveMediaUrl(p.coverAssetUrl) || thumbnailUrl,
+        description: p.description,
+        isFeatured: p.isPublished,
+        projectAssets,
       };
     })
   );
@@ -62,7 +96,11 @@ export default async function PortfolioPage({
     standaloneAssets.map(async (asset) => {
       const activeVersion = await services.asset.getActiveVersion(asset.id);
       const itemType = asset.type === "photo_gallery" ? ("still" as const) : ("film" as const);
-      const thumbnailUrl = activeVersion?.thumbnailUrl || activeVersion?.rawFileUrl || "";
+      const rawThumb = activeVersion?.thumbnailUrl || activeVersion?.rawFileUrl || "";
+      const rawMedia =
+        activeVersion?.rawFileUrl ||
+        activeVersion?.hlsManifestUrl ||
+        rawThumb;
 
       return {
         id: asset.id,
@@ -70,8 +108,10 @@ export default async function PortfolioPage({
         category: asset.type === "photo_gallery" ? "Photo Gallery" : "Film Cut",
         type: itemType,
         assetCount: 1,
-        thumbnailUrl,
-        isFeatured: featuredRelations.some((fr) => fr.assetId === asset.id),
+        thumbnailUrl: resolveMediaUrl(rawThumb),
+        mediaUrl: resolveMediaUrl(rawMedia),
+        aspectRatio: asset.aspectRatio || (itemType === "still" ? "1:1" : "16:9"),
+        isFeatured: true,
       };
     })
   );
@@ -79,12 +119,9 @@ export default async function PortfolioPage({
   // Unified portfolio showcase containing EVERYTHING (Projects + Standalone Films + Standalone Stills)
   const allPortfolioItems = [...mappedDbProjects, ...mappedStandaloneAssets];
 
-  const initialFeaturedIds =
-    featuredRelations.length > 0
-      ? featuredRelations
-          .map((fr) => fr.projectId || fr.assetId)
-          .filter((id): id is string => Boolean(id))
-      : allPortfolioItems.map((p) => p.id);
+  const initialFeaturedIds = allPortfolioItems
+    .filter((p) => p.isFeatured)
+    .map((p) => p.id);
 
   return (
     <PortfolioClient

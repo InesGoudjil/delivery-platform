@@ -10,7 +10,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { workspaceId, planId } = await req.json();
+    const { workspaceId, workspaceSlug, planId } = await req.json();
 
     if (!workspaceId || !planId) {
       return NextResponse.json({ error: 'workspaceId and planId are required' }, { status: 400 });
@@ -21,6 +21,7 @@ export async function POST(req: Request) {
     // Delegate session creation completely to core StripeService
     const session = await services.stripe.createCheckoutSession({
       workspaceId,
+      workspaceSlug,
       userId: user.id,
       userEmail: user.email,
       planId,

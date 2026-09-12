@@ -1,48 +1,12 @@
-import { SupabaseClient } from '@supabase/supabase-js';
-import { Database } from '@/types/database.types';
-import { Asset, AssetVersion, AssetType, TranscodingStatus } from '@/core/entities/asset';
-
-export interface CreateAssetDTO {
-  workspaceId: string;
-  projectId?: string | null;
-  title: string;
-  type?: AssetType;
-  sortOrder?: number;
-  isArchived?: boolean;
-}
-
-export interface CreateAssetVersionDTO {
-  assetId: string;
-  versionNumber: number;
-  rawFileUrl: string;
-  hlsManifestUrl?: string | null;
-  thumbnailUrl?: string | null;
-  fileSizeBytes?: number;
-  durationSeconds?: number | null;
-  transcodingStatus?: TranscodingStatus;
-  isActiveVersion?: boolean;
-}
-
-export interface IAssetRepository {
-  findById(id: string): Promise<Asset | null>;
-  listByWorkspaceId(workspaceId: string): Promise<Asset[]>;
-  listUnassignedByWorkspaceId(workspaceId: string): Promise<Asset[]>;
-  listByProjectId(projectId: string): Promise<Asset[]>;
-  create(dto: CreateAssetDTO): Promise<Asset>;
-  assignToProject(assetId: string, projectId: string | null): Promise<Asset>;
-  update(id: string, data: Partial<Asset>): Promise<Asset>;
-  delete(id: string): Promise<void>;
-}
-
-export interface IAssetVersionRepository {
-  findById(id: string): Promise<AssetVersion | null>;
-  listByAssetId(assetId: string): Promise<AssetVersion[]>;
-  findActiveVersion(assetId: string): Promise<AssetVersion | null>;
-  create(dto: CreateAssetVersionDTO): Promise<AssetVersion>;
-  update(id: string, data: Partial<AssetVersion>): Promise<AssetVersion>;
-  setActiveVersion(assetId: string, versionId: string): Promise<void>;
-  delete(id: string): Promise<void>;
-}
+import { SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "@/types/database.types";
+import { Asset, AssetVersion, AssetType, TranscodingStatus } from "@/core/entities/asset";
+import {
+  IAssetRepository,
+  IAssetVersionRepository,
+  CreateAssetDTO,
+  CreateAssetVersionDTO,
+} from "./i-asset-repository";
 
 export class SupabaseAssetRepository implements IAssetRepository {
   constructor(private readonly supabase: SupabaseClient<Database>) {}
@@ -51,11 +15,15 @@ export class SupabaseAssetRepository implements IAssetRepository {
     return {
       id: row.id,
       workspaceId: row.workspace_id,
-      projectId: row.project_id ?? null,
+      deliveryId: row.delivery_id ?? null,
       title: row.title,
       type: row.type as AssetType,
       sortOrder: row.sort_order ?? 0,
       isArchived: Boolean(row.is_archived),
+      isApproved: Boolean(row.is_approved),
+      aspectRatio: row.aspect_ratio || "16:9",
+      category: row.category || "film",
+      viewsCount: row.views_count ?? 0,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -63,108 +31,135 @@ export class SupabaseAssetRepository implements IAssetRepository {
 
   async findById(id: string): Promise<Asset | null> {
     const { data, error } = await (this.supabase as any)
-      .from('assets')
-      .select('*')
-      .eq('id', id)
+      .from("assets")
+      .select("*")
+      .eq("id", id)
       .maybeSingle();
 
-    if (error) throw new Error(`Error fetching asset: ${error.message}`);
+    if (error) throw new Error(`Error fetching asset by id: ${error.message}`);
     return data ? this.mapRowToEntity(data) : null;
   }
 
   async listByWorkspaceId(workspaceId: string): Promise<Asset[]> {
     const { data, error } = await (this.supabase as any)
-      .from('assets')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: false });
+      .from("assets")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .order("sort_order", { ascending: true });
 
-    if (error) throw new Error(`Error listing workspace assets: ${error.message}`);
-    return data ? data.map((r: any) => this.mapRowToEntity(r)) : [];
+    if (error) throw new Error(`Error listing assets for workspace: ${error.message}`);
+    return (data || []).map(this.mapRowToEntity);
   }
 
   async listUnassignedByWorkspaceId(workspaceId: string): Promise<Asset[]> {
     const { data, error } = await (this.supabase as any)
-      .from('assets')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .is('project_id', null)
-      .order('created_at', { ascending: false });
+      .from("assets")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .is("delivery_id", null)
+      .order("sort_order", { ascending: true });
 
     if (error) throw new Error(`Error listing unassigned assets: ${error.message}`);
-    return data ? data.map((r: any) => this.mapRowToEntity(r)) : [];
+    return (data || []).map(this.mapRowToEntity);
   }
 
-  async listByProjectId(projectId: string): Promise<Asset[]> {
+  async listByDeliveryId(deliveryId: string): Promise<Asset[]> {
     const { data, error } = await (this.supabase as any)
-      .from('assets')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: true });
+      .from("assets")
+      .select("*")
+      .eq("delivery_id", deliveryId)
+      .order("sort_order", { ascending: true });
 
-    if (error) throw new Error(`Error listing assets: ${error.message}`);
-    return data ? data.map((r: any) => this.mapRowToEntity(r)) : [];
+    if (error) throw new Error(`Error listing assets for delivery: ${error.message}`);
+    return (data || []).map(this.mapRowToEntity);
+  }
+
+  async listByIds(ids: string[]): Promise<Asset[]> {
+    if (!ids.length) return [];
+    const { data, error } = await (this.supabase as any)
+      .from("assets")
+      .select("*")
+      .in("id", ids);
+
+    if (error) throw new Error(`Error listing assets by IDs: ${error.message}`);
+    return (data || []).map(this.mapRowToEntity);
   }
 
   async create(dto: CreateAssetDTO): Promise<Asset> {
     const { data, error } = await (this.supabase as any)
-      .from('assets')
+      .from("assets")
       .insert({
         workspace_id: dto.workspaceId,
-        project_id: dto.projectId ?? null,
+        delivery_id: dto.deliveryId ?? null,
         title: dto.title,
-        type: dto.type || 'video',
+        type: dto.type ?? "video",
         sort_order: dto.sortOrder ?? 0,
         is_archived: dto.isArchived ?? false,
+        is_approved: dto.isApproved ?? false,
+        aspect_ratio: dto.aspectRatio ?? "16:9",
+        category: dto.category ?? "film",
       })
       .select()
       .single();
 
-    if (error) throw new Error(`Failed to create asset: ${error.message}`);
+    if (error) throw new Error(`Error creating asset: ${error.message}`);
     return this.mapRowToEntity(data);
   }
 
-  async assignToProject(assetId: string, projectId: string | null): Promise<Asset> {
+  async assignToDelivery(assetId: string, deliveryId: string | null): Promise<Asset> {
     const { data, error } = await (this.supabase as any)
-      .from('assets')
-      .update({ project_id: projectId })
-      .eq('id', assetId)
+      .from("assets")
+      .update({ delivery_id: deliveryId, updated_at: new Date().toISOString() })
+      .eq("id", assetId)
       .select()
       .single();
 
-    if (error) throw new Error(`Failed to assign asset to project: ${error.message}`);
+    if (error) throw new Error(`Error assigning asset to delivery: ${error.message}`);
+    return this.mapRowToEntity(data);
+  }
+
+  async toggleApproval(assetId: string, isApproved: boolean): Promise<Asset> {
+    const { data, error } = await (this.supabase as any)
+      .from("assets")
+      .update({ is_approved: isApproved, updated_at: new Date().toISOString() })
+      .eq("id", assetId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Error toggling asset approval: ${error.message}`);
     return this.mapRowToEntity(data);
   }
 
   async update(id: string, data: Partial<Asset>): Promise<Asset> {
-    const payload: any = {};
-    if (data.workspaceId !== undefined) payload.workspace_id = data.workspaceId;
-    if (data.projectId !== undefined) payload.project_id = data.projectId;
+    const payload: any = { updated_at: new Date().toISOString() };
     if (data.title !== undefined) payload.title = data.title;
     if (data.type !== undefined) payload.type = data.type;
     if (data.sortOrder !== undefined) payload.sort_order = data.sortOrder;
     if (data.isArchived !== undefined) payload.is_archived = data.isArchived;
+    if (data.isApproved !== undefined) payload.is_approved = data.isApproved;
+    if (data.aspectRatio !== undefined) payload.aspect_ratio = data.aspectRatio;
+    if (data.category !== undefined) payload.category = data.category;
+    if (data.viewsCount !== undefined) payload.views_count = data.viewsCount;
+    if (data.deliveryId !== undefined) payload.delivery_id = data.deliveryId;
 
     const { data: updated, error } = await (this.supabase as any)
-      .from('assets')
+      .from("assets")
       .update(payload)
-      .eq('id', id)
+      .eq("id", id)
       .select()
       .single();
 
-    if (error) throw new Error(`Failed to update asset: ${error.message}`);
+    if (error) throw new Error(`Error updating asset: ${error.message}`);
     return this.mapRowToEntity(updated);
   }
 
   async delete(id: string): Promise<void> {
     const { error } = await (this.supabase as any)
-      .from('assets')
+      .from("assets")
       .delete()
-      .eq('id', id);
+      .eq("id", id);
 
-    if (error) throw new Error(`Failed to delete asset: ${error.message}`);
+    if (error) throw new Error(`Error deleting asset: ${error.message}`);
   }
 }
 
@@ -176,22 +171,23 @@ export class SupabaseAssetVersionRepository implements IAssetVersionRepository {
       id: row.id,
       assetId: row.asset_id,
       versionNumber: row.version_number,
+      label: row.label || "V" + row.version_number,
       rawFileUrl: row.raw_file_url,
       hlsManifestUrl: row.hls_manifest_url,
       thumbnailUrl: row.thumbnail_url,
-      fileSizeBytes: Number(row.file_size_bytes || 0),
+      fileSizeBytes: Number(row.file_size_bytes ?? 0),
       durationSeconds: row.duration_seconds ? Number(row.duration_seconds) : null,
       transcodingStatus: row.transcoding_status as TranscodingStatus,
-      isActiveVersion: row.is_active_version ?? false,
+      isActiveVersion: Boolean(row.is_active_version),
       createdAt: row.created_at,
     };
   }
 
   async findById(id: string): Promise<AssetVersion | null> {
     const { data, error } = await (this.supabase as any)
-      .from('asset_versions')
-      .select('*')
-      .eq('id', id)
+      .from("asset_versions")
+      .select("*")
+      .eq("id", id)
       .maybeSingle();
 
     if (error) throw new Error(`Error fetching asset version: ${error.message}`);
@@ -200,45 +196,46 @@ export class SupabaseAssetVersionRepository implements IAssetVersionRepository {
 
   async listByAssetId(assetId: string): Promise<AssetVersion[]> {
     const { data, error } = await (this.supabase as any)
-      .from('asset_versions')
-      .select('*')
-      .eq('asset_id', assetId)
-      .order('version_number', { ascending: false });
+      .from("asset_versions")
+      .select("*")
+      .eq("asset_id", assetId)
+      .order("version_number", { ascending: false });
 
     if (error) throw new Error(`Error listing asset versions: ${error.message}`);
-    return data ? data.map((r: any) => this.mapRowToEntity(r)) : [];
+    return (data || []).map(this.mapRowToEntity);
   }
 
   async findActiveVersion(assetId: string): Promise<AssetVersion | null> {
     const { data, error } = await (this.supabase as any)
-      .from('asset_versions')
-      .select('*')
-      .eq('asset_id', assetId)
-      .eq('is_active_version', true)
+      .from("asset_versions")
+      .select("*")
+      .eq("asset_id", assetId)
+      .eq("is_active_version", true)
       .maybeSingle();
 
-    if (error) throw new Error(`Error fetching active version: ${error.message}`);
+    if (error) throw new Error(`Error fetching active asset version: ${error.message}`);
     return data ? this.mapRowToEntity(data) : null;
   }
 
   async create(dto: CreateAssetVersionDTO): Promise<AssetVersion> {
     const { data, error } = await (this.supabase as any)
-      .from('asset_versions')
+      .from("asset_versions")
       .insert({
         asset_id: dto.assetId,
         version_number: dto.versionNumber,
+        label: dto.label ?? `V${dto.versionNumber}`,
         raw_file_url: dto.rawFileUrl,
-        hls_manifest_url: dto.hlsManifestUrl,
-        thumbnail_url: dto.thumbnailUrl,
+        hls_manifest_url: dto.hlsManifestUrl ?? null,
+        thumbnail_url: dto.thumbnailUrl ?? null,
         file_size_bytes: dto.fileSizeBytes ?? 0,
-        duration_seconds: dto.durationSeconds,
-        transcoding_status: dto.transcodingStatus || 'pending',
+        duration_seconds: dto.durationSeconds ?? null,
+        transcoding_status: dto.transcodingStatus ?? "pending",
         is_active_version: dto.isActiveVersion ?? true,
       })
       .select()
       .single();
 
-    if (error) throw new Error(`Failed to create asset version: ${error.message}`);
+    if (error) throw new Error(`Error creating asset version: ${error.message}`);
     return this.mapRowToEntity(data);
   }
 
@@ -251,38 +248,43 @@ export class SupabaseAssetVersionRepository implements IAssetVersionRepository {
     if (data.durationSeconds !== undefined) payload.duration_seconds = data.durationSeconds;
     if (data.transcodingStatus !== undefined) payload.transcoding_status = data.transcodingStatus;
     if (data.isActiveVersion !== undefined) payload.is_active_version = data.isActiveVersion;
+    if (data.label !== undefined) payload.label = data.label;
 
     const { data: updated, error } = await (this.supabase as any)
-      .from('asset_versions')
+      .from("asset_versions")
       .update(payload)
-      .eq('id', id)
+      .eq("id", id)
       .select()
       .single();
 
-    if (error) throw new Error(`Failed to update asset version: ${error.message}`);
+    if (error) throw new Error(`Error updating asset version: ${error.message}`);
     return this.mapRowToEntity(updated);
   }
 
-  async setActiveVersion(assetId: string, versionId: string): Promise<void> {
-    // 1. Deactivate all versions for this asset
-    await (this.supabase as any)
-      .from('asset_versions')
-      .update({ is_active_version: false })
-      .eq('asset_id', assetId);
+  async updateLabel(versionId: string, label: string): Promise<AssetVersion> {
+    return this.update(versionId, { label });
+  }
 
-    // 2. Activate target version
+  async setActiveVersion(assetId: string, versionId: string): Promise<void> {
     await (this.supabase as any)
-      .from('asset_versions')
+      .from("asset_versions")
+      .update({ is_active_version: false })
+      .eq("asset_id", assetId);
+
+    const { error } = await (this.supabase as any)
+      .from("asset_versions")
       .update({ is_active_version: true })
-      .eq('id', versionId);
+      .eq("id", versionId);
+
+    if (error) throw new Error(`Error setting active version: ${error.message}`);
   }
 
   async delete(id: string): Promise<void> {
     const { error } = await (this.supabase as any)
-      .from('asset_versions')
+      .from("asset_versions")
       .delete()
-      .eq('id', id);
+      .eq("id", id);
 
-    if (error) throw new Error(`Failed to delete asset version: ${error.message}`);
+    if (error) throw new Error(`Error deleting asset version: ${error.message}`);
   }
 }

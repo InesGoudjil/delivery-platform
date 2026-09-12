@@ -1,10 +1,10 @@
 import { IStorageProvider, DirectUploadResult, StorageAssetType } from "@/core/providers/storage";
 import { IWorkspaceRepository } from "@/core/repositories/workspace.repository";
-import { IProjectRepository } from "@/core/repositories/project.repository";
+import { IDeliveryRepository } from "@/core/repositories/i-delivery-repository";
 import {
   IAssetRepository,
   IAssetVersionRepository,
-} from "@/core/repositories/asset.repository";
+} from "@/core/repositories/i-asset-repository";
 import { ISubscriptionRepository } from "@/core/repositories/subscription.repository";
 import { IPlanRepository } from "@/core/repositories/plan.repository";
 import { Asset, AssetVersion, AssetType, TranscodingStatus } from "@/core/entities/asset";
@@ -12,6 +12,7 @@ import { Asset, AssetVersion, AssetType, TranscodingStatus } from "@/core/entiti
 export interface RequestAssetUploadDTO {
   workspaceId: string;
   projectId?: string | null;
+  deliveryId?: string | null;
   title: string;
   filename: string;
   fileSizeBytes: number;
@@ -48,7 +49,7 @@ export class AssetUploadService {
   constructor(
     private readonly storageProvider: IStorageProvider,
     private readonly workspaceRepo: IWorkspaceRepository,
-    private readonly projectRepo: IProjectRepository,
+    private readonly deliveryRepo: IDeliveryRepository,
     private readonly assetRepo: IAssetRepository,
     private readonly assetVersionRepo: IAssetVersionRepository,
     private readonly subscriptionRepo: ISubscriptionRepository,
@@ -73,18 +74,19 @@ export class AssetUploadService {
     }
     const resolvedWorkspaceId = workspace.id;
 
-    // 2. Resolve Project (if provided, by ID or share token)
-    let resolvedProjectId: string | null = null;
-    if (dto.projectId && dto.projectId.trim() !== "" && dto.projectId !== "new") {
-      let project = await this.projectRepo.findById(dto.projectId);
-      if (!project) {
-        project = await this.projectRepo.findByShareToken(dto.projectId);
+    // 2. Resolve Delivery (if provided, by ID or share token)
+    let resolvedDeliveryId: string | null = null;
+    const targetDeliveryId = dto.deliveryId || dto.projectId;
+    if (targetDeliveryId && targetDeliveryId.trim() !== "" && targetDeliveryId !== "new") {
+      let delivery = await this.deliveryRepo.findById(targetDeliveryId);
+      if (!delivery) {
+        delivery = await this.deliveryRepo.findByShareToken(targetDeliveryId);
       }
-      if (project) {
-        if (project.workspaceId !== resolvedWorkspaceId) {
-          throw new Error("Project not found in the specified workspace.");
+      if (delivery) {
+        if (delivery.workspaceId !== resolvedWorkspaceId) {
+          throw new Error("Delivery not found in the specified workspace.");
         }
-        resolvedProjectId = project.id;
+        resolvedDeliveryId = delivery.id;
       }
     }
 
@@ -117,15 +119,15 @@ export class AssetUploadService {
 
     // 4. Create Asset Domain Record
     let existingAssets: Asset[] = [];
-    if (resolvedProjectId) {
-      existingAssets = await this.assetRepo.listByProjectId(resolvedProjectId);
+    if (resolvedDeliveryId) {
+      existingAssets = await this.assetRepo.listByDeliveryId(resolvedDeliveryId);
     } else {
       existingAssets = await this.assetRepo.listUnassignedByWorkspaceId(resolvedWorkspaceId);
     }
 
     const asset = await this.assetRepo.create({
       workspaceId: resolvedWorkspaceId,
-      projectId: resolvedProjectId,
+      deliveryId: resolvedDeliveryId,
       title: dto.title,
       type: assetType,
       sortOrder: existingAssets.length,
@@ -143,7 +145,8 @@ export class AssetUploadService {
     // 6. Request Direct Upload URL from Storage Provider (Cloudflare Stream / R2 / Mock)
     const directUpload = await this.storageProvider.createDirectUploadUrl({
       workspaceId: resolvedWorkspaceId,
-      projectId: resolvedProjectId || "standalone",
+      projectId: resolvedDeliveryId || "standalone",
+      deliveryId: resolvedDeliveryId || "standalone",
       assetTitle: dto.title,
       assetType: storageAssetType,
       fileSizeBytes: dto.fileSizeBytes,
@@ -156,10 +159,15 @@ export class AssetUploadService {
     });
 
     // 7. Create Pending AssetVersion Record
+    let cleanInitialUrl = directUpload.uploadUrl.split("?")[0];
+    if (directUpload.providerUid) {
+      cleanInitialUrl = `/api/media/${directUpload.providerUid}`;
+    }
+
     const assetVersion = await this.assetVersionRepo.create({
       assetId: asset.id,
       versionNumber: nextVersionNumber,
-      rawFileUrl: directUpload.uploadUrl,
+      rawFileUrl: cleanInitialUrl,
       fileSizeBytes: dto.fileSizeBytes,
       transcodingStatus: assetType === "photo_gallery" ? "ready" : "pending",
       isActiveVersion: true,
@@ -194,17 +202,23 @@ export class AssetUploadService {
     }
 
     let workspaceId = asset.workspaceId;
-    if (!workspaceId && asset.projectId) {
-      const project = await this.projectRepo.findById(asset.projectId);
-      if (project) workspaceId = project.workspaceId;
+    if (!workspaceId && asset.deliveryId) {
+      const delivery = await this.deliveryRepo.findById(asset.deliveryId);
+      if (delivery) workspaceId = delivery.workspaceId;
     }
 
     // 1. Get initial playback and details from Storage Provider
     const playbackInfo = await this.storageProvider.getPlaybackInfo(dto.providerUid);
 
     // 2. Update AssetVersion record
+    let cleanRawUrl = (playbackInfo as any)?.rawDownloadUrl || version.rawFileUrl.split("?")[0];
+    if (cleanRawUrl.includes("workspaces/")) {
+      const parts = cleanRawUrl.split("workspaces/");
+      cleanRawUrl = `/api/media/workspaces/${parts[1].split("?")[0]}`;
+    }
+
     const updatedVersion = await this.assetVersionRepo.update(version.id, {
-      rawFileUrl: (playbackInfo as any)?.rawDownloadUrl || version.rawFileUrl,
+      rawFileUrl: cleanRawUrl,
       hlsManifestUrl: playbackInfo?.hlsManifestUrl || version.hlsManifestUrl,
       thumbnailUrl: playbackInfo?.thumbnailUrl || version.thumbnailUrl,
       durationSeconds: dto.durationSeconds ?? playbackInfo?.durationSeconds ?? version.durationSeconds,

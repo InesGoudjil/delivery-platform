@@ -23,6 +23,13 @@ export interface PortfolioExperience {
   description?: string;
 }
 
+export interface PortfolioStats {
+  projects: string;
+  years: string;
+  location: string;
+  [key: string]: string;
+}
+
 export interface Portfolio {
   id: string;
   workspaceId: string;
@@ -34,13 +41,15 @@ export interface Portfolio {
   isPublished: boolean;
   appearance?: PortfolioAppearance;
   experience?: PortfolioExperience[];
+  whatsappNumber?: string | null;
+  stats?: PortfolioStats;
+  layoutTemplate?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface PortfolioProject {
-  portfolioId: string;
-  projectId?: string | null;
-  assetId?: string | null;
+export interface ProjectAssetRelation {
+  projectId: string;
+  assetId: string;
   displayOrder: number;
 }

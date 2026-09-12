@@ -2,7 +2,8 @@ export type StorageAssetType = "video" | "image" | "raw_file";
 
 export interface CreateUploadUrlParams {
   workspaceId: string;
-  projectId: string;
+  projectId?: string;
+  deliveryId?: string;
   assetTitle: string;
   assetType: StorageAssetType;
   fileSizeBytes: number;

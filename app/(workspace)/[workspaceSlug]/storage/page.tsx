@@ -30,10 +30,11 @@ export default async function StoragePage({
     redirect("/");
   }
 
-  // 1. Fetch real workspace projects and standalone assets
-  const [dbProjects, standaloneAssets] = await Promise.all([
+  // 1. Fetch real workspace projects, standalone assets, and active subscription plan
+  const [dbProjects, standaloneAssets, currentPlan] = await Promise.all([
     services.project.listWorkspaceProjects(workspace.id),
     services.asset.listUnassignedAssets(workspace.id),
+    services.subscription.getCurrentPlan(workspace.id),
   ]);
 
   // 2. Calculate real storage usage concurrently
@@ -70,14 +71,10 @@ export default async function StoragePage({
   const calculatedUsedBytes = totalVideoBytes + totalStillBytes + totalStreamBytes;
   const usedBytes = Math.max(workspace.storageUsedBytes || 0, calculatedUsedBytes);
 
-  // 3. Quota allocation based on account type
+  // 3. Quota allocation based on active subscription plan
   const GB_IN_BYTES = 1024 * 1024 * 1024;
-  const quotaMapGB: Record<string, number> = {
-    individual: 500,
-    team: 2048,
-    agency: 5120,
-  };
-  const totalGB = quotaMapGB[workspace.accountType || "individual"] || 500;
+  const planStorageGB = (currentPlan?.features as any)?.storage_gb;
+  const totalGB = planStorageGB || 500;
   const totalBytesQuota = totalGB * GB_IN_BYTES;
 
   const usedGB = Number((usedBytes / GB_IN_BYTES).toFixed(2));
@@ -229,7 +226,7 @@ export default async function StoragePage({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs text-[#aeaeb4]">
           <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#0c0c0e] border border-white/10">
             <CheckCircle2 className="size-4 text-emerald-400 shrink-0" />
-            <span>{quotaDisplay} included in your {workspace.accountType || "Individual"} Plan</span>
+            <span>{quotaDisplay} included in your {currentPlan?.name || "Starter"} Plan</span>
           </div>
           <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#0c0c0e] border border-white/10">
             <Shield className="size-4 text-blue-400 shrink-0" />

@@ -20,24 +20,33 @@ export default async function DeliveriesPage({
     redirect("/");
   }
 
-  // 1. Fetch real workspace projects
-  const dbProjects = await services.project.listWorkspaceProjects(workspace.id);
+  // 1. Fetch real workspace deliveries
+  const dbDeliveries = await services.delivery.listWorkspaceDeliveries(workspace.id);
 
-  console.log("projects",dbProjects)
-
-  // 2. Enrich with assets, versions, and clients
+  // 2. Enrich with assets, versions, clients, and comments
   const mappedDbDeliveries: DeliveryProjectItem[] = await Promise.all(
-    dbProjects.map(async (project) => {
-      const assets = await services.asset.listAssets(project.id);
+    dbDeliveries.map(async (delivery) => {
+      const assets = await services.asset.listAssets(delivery.id);
       const activeVersion =
         assets.length > 0
           ? await services.asset.getActiveVersion(assets[0].id)
           : null;
 
-      let clientName = (project as { clientName?: string }).clientName || "Private Client";
-      if (project.clientId) {
-        const client = await services.client.getClientById(project.clientId);
+      let clientName = (delivery as { clientName?: string }).clientName || "Private Client";
+      if (delivery.clientId) {
+        const client = await services.client.getClientById(delivery.clientId);
         if (client) clientName = client.name;
+      }
+
+      // Count comments for active version
+      let commentsCount = 0;
+      if (activeVersion) {
+        try {
+          const threads = await services.feedback.getThreadedFeedback(activeVersion.id);
+          commentsCount = threads.length;
+        } catch {
+          commentsCount = 0;
+        }
       }
 
       // Format duration (e.g. 47 -> 00:47)
@@ -50,7 +59,7 @@ export default async function DeliveriesPage({
       }
 
       // Calculate relative time
-      const updatedAt = new Date(project.updatedAt || project.createdAt);
+      const updatedAt = new Date(delivery.updatedAt || delivery.createdAt);
       const diffMins = Math.floor((Date.now() - updatedAt.getTime()) / (1000 * 60));
       let lastActivity = "Just now";
       if (diffMins > 60 * 24) {
@@ -62,16 +71,16 @@ export default async function DeliveriesPage({
       }
 
       return {
-        id: project.id,
-        title: project.title,
+        id: delivery.id,
+        title: delivery.title,
         clientName,
         version: activeVersion ? `v${activeVersion.versionNumber}_DirectorCut` : "v1_Master",
         duration: durationStr,
-        status: (project.status as any) || "in_review",
-        shareToken: project.shareToken,
-        passcodeProtected: Boolean(project.passcodeHash),
-        downloadsAllowed: Boolean(project.isDownloadAllowed),
-        commentsCount: 0,
+        status: (delivery.status as any) || "in_review",
+        shareToken: delivery.shareToken,
+        passcodeProtected: Boolean(delivery.passcodeHash),
+        downloadsAllowed: Boolean(delivery.isDownloadAllowed),
+        commentsCount,
         lastActivity,
       };
     })
