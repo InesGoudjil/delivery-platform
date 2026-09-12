@@ -44,9 +44,11 @@ import { VideoUploader } from "@/components/workspaces/video-uploader";
 import { addFeedbackAction } from "@/app/actions/feedback";
 import {
   approveCutAction,
-  updateProjectDetailsAction,
-  archiveProjectAction,
-} from "@/app/actions/projects";
+  updateDeliveryDetailsAction,
+  archiveDeliveryAction,
+  toggleAssetApprovalAction,
+  publishDeliveryToPortfolioAction,
+} from "@/app/actions/deliveries";
 
 export interface AssetVersionItem {
   id: string;
@@ -76,6 +78,11 @@ export interface DeliveryDetailClientProps {
     brandName: string;
     slug: string;
   };
+  portfolio?: {
+    id: string;
+    slug: string;
+    title: string;
+  } | null;
   project: {
     id: string;
     title: string;
@@ -92,6 +99,8 @@ export interface DeliveryDetailClientProps {
     id: string;
     title: string;
     type: string;
+    aspectRatio?: string;
+    isApproved?: boolean;
     versions: AssetVersionItem[];
     activeVersion?: AssetVersionItem | null;
   }>;
@@ -194,6 +203,7 @@ const INITIAL_DEMO_GALLERY_ITEMS = [
 
 export function DeliveryDetailClient({
   workspace,
+  portfolio,
   project,
   assets,
   initialFeedback,
@@ -203,6 +213,9 @@ export function DeliveryDetailClient({
   // Dialog States
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
+  const [publishCategory, setPublishCategory] = useState("Commercial");
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // Uploader & Toast State
   const [showUploader, setShowUploader] = useState(false);
@@ -233,10 +246,45 @@ export function DeliveryDetailClient({
   const [notifyComments, setNotifyComments] = useState(true);
   const [notifyDownloads, setNotifyDownloads] = useState(true);
 
-  // Edit Delivery Controls State (Image 2)
-  const [galleryItems, setGalleryItems] = useState(INITIAL_DEMO_GALLERY_ITEMS);
+  // Gallery items initialized from real delivery assets or demo fallbacks
+  const initialItems =
+    assets && assets.length > 0
+      ? assets.map((a) => {
+          const activeVer = a.activeVersion || a.versions[0];
+          const isPhoto = a.type === "still" || a.type === "photo";
+          let durationStr = "STILL";
+          if (!isPhoto) {
+            if (activeVer?.durationSeconds) {
+              const mins = Math.floor(activeVer.durationSeconds / 60);
+              const secs = Math.round(activeVer.durationSeconds % 60);
+              durationStr = `${mins.toString().padStart(2, "0")}:${secs
+                .toString()
+                .padStart(2, "0")}`;
+            } else {
+              durationStr = "00:45";
+            }
+          }
+          return {
+            id: a.id,
+            title: a.title,
+            type: isPhoto ? "photo" : "video",
+            aspectRatio: a.aspectRatio || "16:9",
+            duration: durationStr,
+            src:
+              activeVer?.thumbnailUrl ||
+              activeVer?.rawFileUrl ||
+              "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=1200&auto=format&fit=crop&q=80",
+            status: a.isApproved ? "approved" : "review",
+            rawUrl: activeVer?.rawFileUrl,
+            hlsUrl: activeVer?.hlsManifestUrl,
+          };
+        })
+      : INITIAL_DEMO_GALLERY_ITEMS;
+
+  const [galleryItems, setGalleryItems] = useState(initialItems);
   const [coverThumbnailUrl, setCoverThumbnailUrl] = useState(
-    "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=1200&auto=format&fit=crop&q=80"
+    galleryItems[0]?.src ||
+      "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=1200&auto=format&fit=crop&q=80"
   );
 
   // Editable Project Details State (Image 2)
@@ -285,7 +333,7 @@ export function DeliveryDetailClient({
 
   const handleSaveProjectDetails = async () => {
     setIsSavingDetails(true);
-    const res = await updateProjectDetailsAction(project.id, {
+    const res = await updateDeliveryDetailsAction(project.id, {
       title: projectTitle,
       clientName: clientName,
       description: projectDescription,
@@ -296,17 +344,75 @@ export function DeliveryDetailClient({
       setIsEditDialogOpen(false);
       triggerToast("Delivery details updated successfully");
     } else {
-      triggerToast(res.error || "Failed to update project details");
+      triggerToast(res.error || "Failed to update delivery details");
     }
   };
 
   const handleArchive = async () => {
     if (confirm("Are you sure you want to archive this delivery to the Silo?")) {
-      const res = await archiveProjectAction(project.id);
+      const res = await archiveDeliveryAction(project.id);
       if (res.success) {
         setProjectStatus("archived");
-        triggerToast("Project archived to Silo");
+        triggerToast("Delivery archived to Silo");
+      } else {
+        triggerToast(res.error || "Failed to archive delivery");
       }
+    }
+  };
+
+  const handleToggleAssetApproval = async (itemId: string, currentStatus: string) => {
+    const newIsApproved = currentStatus !== "approved";
+    const res = await toggleAssetApprovalAction(project.id, itemId, newIsApproved);
+    if (res.success) {
+      setGalleryItems((prev) =>
+        prev.map((item) =>
+          item.id === itemId
+            ? { ...item, status: newIsApproved ? "approved" : "review" }
+            : item
+        )
+      );
+      if (activeItem && activeItem.id === itemId) {
+        setActiveItem((prev: any) =>
+          prev ? { ...prev, status: newIsApproved ? "approved" : "review" } : null
+        );
+      }
+      triggerToast(newIsApproved ? "Asset approved" : "Asset marked for revision");
+    } else {
+      triggerToast(res.error || "Failed to toggle asset approval");
+    }
+  };
+
+  const handleApproveCut = async () => {
+    const res = await approveCutAction(project.id, workspace.brandName || "Filmmaker");
+    if (res.success) {
+      setProjectStatus("approved");
+      setGalleryItems((prev) =>
+        prev.map((item) => ({ ...item, status: "approved" }))
+      );
+      triggerToast("Delivery room marked as APPROVED");
+    } else {
+      triggerToast(res.error || "Failed to approve cut");
+    }
+  };
+
+  const handlePublishToPortfolio = async () => {
+    if (!portfolio?.id) {
+      triggerToast("No portfolio found for this workspace");
+      return;
+    }
+    setIsPublishing(true);
+    const res = await publishDeliveryToPortfolioAction(project.id, portfolio.id, {
+      title: projectTitle,
+      description: projectDescription,
+      category: publishCategory,
+    });
+    setIsPublishing(false);
+
+    if (res.success) {
+      setIsPublishDialogOpen(false);
+      triggerToast("✨ Published cut to your public Portfolio!");
+    } else {
+      triggerToast(res.error || "Failed to publish to portfolio");
     }
   };
 
@@ -347,7 +453,10 @@ export function DeliveryDetailClient({
   });
 
   const totalAssetsCount = galleryItems.length;
-  const approvedCount = projectStatus === "approved" ? totalAssetsCount : 0;
+  const approvedCount =
+    projectStatus === "approved"
+      ? totalAssetsCount
+      : galleryItems.filter((item) => item.status === "approved").length;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-16 animate-in fade-in duration-200 text-foreground selection:bg-[#f5551d] selection:text-black">
@@ -480,6 +589,16 @@ export function DeliveryDetailClient({
               <span>ARCHIVE TO THE SILO</span>
             </Button>
 
+            {/* PUBLISH TO PORTFOLIO Button */}
+            <Button
+              onClick={() => setIsPublishDialogOpen(true)}
+              variant="outline"
+              className="rounded-full border-[#f5551d]/40 bg-[#f5551d]/10 hover:bg-[#f5551d]/20 text-[#ff8a45] font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
+            >
+              <Sparkles className="size-3.5" />
+              <span>PUBLISH TO PORTFOLIO</span>
+            </Button>
+
             {/* Preview Room Link Icon */}
             <Button
               asChild
@@ -516,23 +635,30 @@ export function DeliveryDetailClient({
           </div>
         </div>
 
-        {/* UPLOAD ASSET Button */}
-        <Button
-          onClick={() => {
-            setShowUploader(!showUploader);
-            setUploadProgress({
-              fileName: "rolling_wide_v3.mov",
-              fileSize: "312 MB",
-              fileIndex: 1,
-              totalFiles: 3,
-              percentage: 70,
-            });
-          }}
-          className="rounded-full bg-[#f5551d] hover:bg-[#ff8a45] text-black font-extrabold text-xs px-5 py-2.5 shadow-md shrink-0 cursor-pointer flex items-center gap-1.5 w-full sm:w-auto justify-center"
-        >
-          <Plus className="size-4" />
-          <span>UPLOAD ASSET</span>
-        </Button>
+        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+          {/* MARK APPROVED / APPROVE CUT Button */}
+          {projectStatus !== "approved" && (
+            <Button
+              onClick={handleApproveCut}
+              variant="outline"
+              className="rounded-full border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-extrabold text-xs px-4 py-2.5 shadow-md cursor-pointer flex items-center gap-1.5 w-full sm:w-auto justify-center"
+            >
+              <Check className="size-4" />
+              <span>APPROVE CUT</span>
+            </Button>
+          )}
+
+          {/* UPLOAD ASSET Button */}
+          <Button
+            onClick={() => {
+              setShowUploader(!showUploader);
+            }}
+            className="rounded-full bg-[#f5551d] hover:bg-[#ff8a45] text-black font-extrabold text-xs px-5 py-2.5 shadow-md shrink-0 cursor-pointer flex items-center gap-1.5 w-full sm:w-auto justify-center"
+          >
+            <Plus className="size-4" />
+            <span>UPLOAD ASSET</span>
+          </Button>
+        </div>
       </div>
 
       {/* Direct Cloudflare Video Uploader Area */}
@@ -797,7 +923,15 @@ export function DeliveryDetailClient({
                   <h4 className="text-xs font-bold text-white truncate">{item.title}</h4>
                   <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground">
                     <span>Aspect: {item.aspectRatio}</span>
-                    <span className="text-[#f5551d] font-semibold">In Review</span>
+                    <span
+                      className={`font-semibold ${
+                        item.status === "approved"
+                          ? "text-emerald-400 flex items-center gap-1"
+                          : "text-[#f5551d]"
+                      }`}
+                    >
+                      {item.status === "approved" ? "✓ Approved" : "In Review"}
+                    </span>
                   </div>
                 </div>
               )}
@@ -1239,12 +1373,26 @@ export function DeliveryDetailClient({
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setActiveItem(null)}
-                className="size-9 rounded-full bg-white/10 text-muted-foreground hover:text-white flex items-center justify-center cursor-pointer"
-              >
-                <X className="size-5" />
-              </button>
+              <div className="flex items-center gap-2.5">
+                <Button
+                  onClick={() => handleToggleAssetApproval(activeItem.id, activeItem.status)}
+                  size="sm"
+                  className={`rounded-full text-xs font-bold px-3.5 py-1.5 cursor-pointer flex items-center gap-1.5 ${
+                    activeItem.status === "approved"
+                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30"
+                      : "bg-white/10 text-white hover:bg-white/20"
+                  }`}
+                >
+                  <Check className="size-3.5" />
+                  <span>{activeItem.status === "approved" ? "Approved" : "Mark Approved"}</span>
+                </Button>
+                <button
+                  onClick={() => setActiveItem(null)}
+                  className="size-9 rounded-full bg-white/10 text-muted-foreground hover:text-white flex items-center justify-center cursor-pointer"
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -1307,6 +1455,71 @@ export function DeliveryDetailClient({
           </div>
         </div>
       )}
+
+      {/* 🟢 Publish to Portfolio Dialog */}
+      <Dialog open={isPublishDialogOpen} onOpenChange={setIsPublishDialogOpen}>
+        <DialogContent className="bg-[#121215] text-white border-white/20 rounded-3xl p-6 sm:p-8 max-w-md">
+          <DialogHeader className="space-y-2">
+            <span className="text-[11px] font-mono font-bold text-[#f5551d] uppercase tracking-wider">
+              SHOWCASE SPOTLIGHT
+            </span>
+            <DialogTitle className="text-xl font-bold font-heading text-white">
+              Publish Cut to Portfolio
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Instantly promote this approved delivery cut into your public portfolio showcase without re-uploading files.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <label className="text-[11px] font-mono text-muted-foreground uppercase tracking-wider block">
+                Showcase Category
+              </label>
+              <select
+                value={publishCategory}
+                onChange={(e) => setPublishCategory(e.target.value)}
+                className="w-full bg-[#1a1a1e] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#f5551d]"
+              >
+                <option value="Commercial">Commercial / Brand</option>
+                <option value="Narrative">Narrative / Short Film</option>
+                <option value="Music Video">Music Video</option>
+                <option value="Documentary">Documentary</option>
+                <option value="Automotive">Automotive</option>
+                <option value="Fashion">Fashion / Editorial</option>
+              </select>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-1.5 text-xs">
+              <div className="text-[11px] font-mono text-muted-foreground uppercase">Target Showcase:</div>
+              <div className="font-bold text-white">{projectTitle}</div>
+              <div className="text-muted-foreground text-[11px]">Client: {clientName}</div>
+              <div className="text-[#f5551d] text-[11px] font-mono">
+                {portfolio ? `Publishes to /${workspace.slug}/portfolio` : "Creates your public portfolio showcase"}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsPublishDialogOpen(false)}
+                className="rounded-full text-xs text-muted-foreground hover:text-white"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handlePublishToPortfolio}
+                disabled={isPublishing}
+                className="rounded-full bg-[#f5551d] hover:bg-[#ff8a45] text-black font-extrabold text-xs px-5 py-2.5 cursor-pointer shadow-lg shadow-[#f5551d]/20 flex items-center gap-2"
+              >
+                <Sparkles className="size-3.5" />
+                <span>{isPublishing ? "Publishing..." : "Publish to Portfolio"}</span>
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Floating Toast Notification */}
       {toastMessage && (

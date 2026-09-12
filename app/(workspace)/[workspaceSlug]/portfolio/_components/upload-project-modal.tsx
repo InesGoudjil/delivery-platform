@@ -15,7 +15,8 @@ import {
   requestAssetUploadAction,
   confirmUploadCompletedAction,
 } from "@/app/actions/upload";
-import { PortfolioItem } from "../portfolio-client";
+import { PortfolioItem, ProjectAsset } from "../portfolio-client";
+
 import {
   Attachment,
   AttachmentGroup,
@@ -137,6 +138,7 @@ export function UploadProjectModal({
 
       const createdProject = projRes.project;
       let primaryThumbnailUrl = coverPreview || "";
+      const uploadedAssets: ProjectAsset[] = [];
 
       // 2. Upload Selected Files sequentially
       if (selectedFiles.length > 0) {
@@ -190,6 +192,28 @@ export function UploadProjectModal({
                 fileSizeBytes: file.size,
               });
 
+              const localBlobUrl = isImage ? URL.createObjectURL(file) : "";
+              const assetMediaUrl =
+                (isImage && localBlobUrl) ||
+                confirmRes.assetVersion?.rawFileUrl ||
+                confirmRes.assetVersion?.hlsManifestUrl ||
+                confirmRes.assetVersion?.thumbnailUrl ||
+                "";
+              const assetThumbUrl =
+                (isImage && localBlobUrl) ||
+                confirmRes.assetVersion?.thumbnailUrl ||
+                assetMediaUrl;
+
+              uploadedAssets.push({
+                id: initRes.asset.id,
+                title: file.name.replace(/\.[^/.]+$/, ""),
+                type: isImage ? "still" : "film",
+                url: assetMediaUrl,
+                thumbnailUrl: assetThumbUrl,
+                aspectRatio: isImage ? "1:1" : "16:9",
+                category: isImage ? "Photo Still" : "Film Cut",
+              });
+
               if (!primaryThumbnailUrl && confirmRes.assetVersion?.thumbnailUrl) {
                 primaryThumbnailUrl = confirmRes.assetVersion.thumbnailUrl;
               }
@@ -233,7 +257,10 @@ export function UploadProjectModal({
         type: "project",
         assetCount: selectedFiles.length || 0,
         thumbnailUrl: primaryThumbnailUrl,
+        description: description.trim() || undefined,
+        projectAssets: uploadedAssets,
       };
+
 
       onProjectCreated(newItem);
       showFlash(`Project "${createdProject.title}" created with ${selectedFiles.length} file(s)!`);

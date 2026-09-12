@@ -5,7 +5,7 @@ import { WorkspaceFeatureConfig } from '@/core/entities/workspace';
 import { ISubscriptionRepository } from '@/core/repositories/subscription.repository';
 import { IPlanRepository } from '@/core/repositories/plan.repository';
 import { IWorkspaceFeaturesRepository } from '@/core/repositories/workspace.repository';
-import { IProjectRepository } from '@/core/repositories/project.repository';
+import { IDeliveryRepository } from '@/core/repositories/i-delivery-repository';
 import { IInvoiceRepository } from '@/core/repositories/invoice.repository';
 
 export class SubscriptionService {
@@ -13,7 +13,7 @@ export class SubscriptionService {
     private readonly subscriptionRepo: ISubscriptionRepository,
     private readonly planRepo: IPlanRepository,
     private readonly featuresRepo: IWorkspaceFeaturesRepository,
-    private readonly projectRepo: IProjectRepository,
+    private readonly deliveryRepo: IDeliveryRepository,
     private readonly invoiceRepo?: IInvoiceRepository
   ) {}
 
@@ -229,8 +229,8 @@ export class SubscriptionService {
     const features = await this.getFeatures(workspaceId);
     const clientLinksLimit = features.client_links ?? 1;
 
-    const projects = await this.projectRepo.listByWorkspaceId(workspaceId);
-    const activeProjects = projects.filter((p) => p.status !== 'archived');
+    const deliveries = await this.deliveryRepo.listByWorkspaceId(workspaceId);
+    const activeProjects = deliveries.filter((p) => p.status !== 'archived');
 
     if (clientLinksLimit === -1) {
       return { allowed: true, currentCount: activeProjects.length, maxAllowed: -1 };

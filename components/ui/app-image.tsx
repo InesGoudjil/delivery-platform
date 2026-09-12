@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image, { ImageProps } from "next/image";
 import { Camera, Film, Image as ImageIcon } from "lucide-react";
+import { resolveMediaUrl } from "@/lib/media";
 
 export interface AppImageProps extends Omit<ImageProps, "src" | "alt"> {
   src?: string | null;
@@ -29,7 +30,14 @@ export function AppImage({
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const isValidSrc = Boolean(src && typeof src === "string" && src.trim().length > 0 && !hasError);
+  const resolvedSrc = resolveMediaUrl(src);
+
+  useEffect(() => {
+    setHasError(false);
+    setIsLoading(true);
+  }, [resolvedSrc]);
+
+  const isValidSrc = Boolean(resolvedSrc && typeof resolvedSrc === "string" && resolvedSrc.trim().length > 0 && !hasError);
 
   const renderFallbackIcon = () => {
     switch (fallbackIcon) {
@@ -55,7 +63,7 @@ export function AppImage({
             </div>
           )}
           <Image
-            src={src!}
+            src={resolvedSrc}
             alt={alt}
             fill={fill}
             onError={() => setHasError(true)}

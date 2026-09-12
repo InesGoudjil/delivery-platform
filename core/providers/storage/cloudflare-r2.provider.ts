@@ -56,18 +56,30 @@ export class CloudflareR2StorageProvider implements IStorageProvider {
     };
   }
 
+  private getAssetUrl(providerUid: string): string {
+    if (
+      this.publicDomain &&
+      !this.publicDomain.includes("pub-xxxx") &&
+      !this.publicDomain.includes("r2.cloudflarestorage.com")
+    ) {
+      return `${this.publicDomain}/${providerUid}`;
+    }
+    return `/api/media/${providerUid}`;
+  }
+
   async getPlaybackInfo(providerUid: string): Promise<PlaybackInfo | null> {
-    const assetUrl = `${this.publicDomain}/${providerUid}`;
+    const assetUrl = this.getAssetUrl(providerUid);
     return {
       providerUid,
       hlsManifestUrl: assetUrl,
       thumbnailUrl: assetUrl,
       status: "ready",
-    };
+      rawDownloadUrl: assetUrl,
+    } as any;
   }
 
   async getAssetStatus(providerUid: string): Promise<StorageAssetStatus> {
-    const assetUrl = `${this.publicDomain}/${providerUid}`;
+    const assetUrl = this.getAssetUrl(providerUid);
     return {
       providerUid,
       status: "ready",

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Archivo, Inter } from "next/font/google";
 import "./globals.css";
-// import "./test.css"
 
 import { Manrope } from "next/font/google";
 import localFont from "next/font/local";
@@ -43,6 +42,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
+      data-scroll-behavior="smooth"
       className={`${manrope.variable} ${satoshi.variable}`}
     >
       <body className="min-h-screen bg-background text-foreground antialiased selection:bg-[#f5551d] selection:text-black">

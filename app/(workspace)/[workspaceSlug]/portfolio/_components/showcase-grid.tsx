@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import Link from "next/link";
-import { Star, Play, Film, Image as ImageIcon, FolderKanban } from "lucide-react";
+import { Star, Play, Film, Image as ImageIcon, FolderKanban, Maximize2 } from "lucide-react";
 import { AppImage } from "@/components/ui/app-image";
 import { toggleFeaturedItemAction } from "@/app/actions/portfolio";
 import { PortfolioAppearance } from "@/core/entities/portfolio";
@@ -15,7 +14,9 @@ interface ShowcaseGridProps {
   initialFeaturedIds: string[];
   appearance: PortfolioAppearance;
   showFlash: (msg: string) => void;
+  onSelectItem: (item: PortfolioItem) => void;
 }
+
 
 export function ShowcaseGrid({
   portfolioId,
@@ -24,6 +25,7 @@ export function ShowcaseGrid({
   initialFeaturedIds,
   appearance,
   showFlash,
+  onSelectItem,
 }: ShowcaseGridProps) {
   const [isPending, startTransition] = useTransition();
 
@@ -128,7 +130,8 @@ export function ShowcaseGrid({
           return (
             <div
               key={item.id}
-              className="group relative rounded-2xl bg-[#0c0c0e] border border-white/10 overflow-hidden transition-all duration-300 hover:border-white/30 hover:shadow-2xl shadow-black/50"
+              onClick={() => onSelectItem(item)}
+              className="group relative rounded-2xl bg-[#0c0c0e] border border-white/10 overflow-hidden transition-all duration-300 hover:border-white/30 hover:shadow-2xl shadow-black/50 cursor-pointer"
             >
               {/* Media Image / Thumbnail */}
               <AppImage
@@ -178,20 +181,21 @@ export function ShowcaseGrid({
                 <Star className={`size-4 ${isFeatured ? "fill-current" : ""}`} />
               </button>
 
-              {/* Center Play Button for Video Cuts / Projects (Screenshot 4) */}
-              {isVideo && (
+              {/* Center Action Button for Video Cuts / Projects or Zoom for Stills */}
+              {isVideo ? (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="size-11 rounded-full bg-black/50 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:bg-[#f5551d] group-hover:text-black transition-all">
                     <Play className="size-4.5 ml-0.5 fill-current" />
                   </div>
                 </div>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="size-11 rounded-full bg-black/50 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-xl scale-90 group-hover:scale-110 group-hover:bg-[#f5551d] group-hover:text-black transition-all">
+                    <Maximize2 className="size-4.5 stroke-[2.5]" />
+                  </div>
+                </div>
               )}
 
-              {/* Click link overlay */}
-              <Link
-                href={`/${workspaceSlug}/deliveries/${item.id}`}
-                className="absolute inset-0 z-0"
-              />
 
               {/* Bottom Label Overlay (Always rendered smoothly with client info toggle) */}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3.5 pt-8 pointer-events-none flex flex-col justify-end">

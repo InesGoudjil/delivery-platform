@@ -187,7 +187,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
 
               <DropdownMenuItem asChild>
                 <Link
-                  href={`/${workspaceSlug}/billing`}
+                  href={`/${workspaceSlug}/subscription`}
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#f6f3ec] hover:bg-white/10 hover:text-white cursor-pointer transition-colors"
                 >
                   <Download className="size-4 text-[#86b98f]" />

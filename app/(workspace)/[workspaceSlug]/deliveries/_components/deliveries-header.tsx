@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createProjectAction } from "@/app/actions/projects";
+import { createDeliveryAction } from "@/app/actions/deliveries";
 
 interface DeliveriesHeaderProps {
   workspace: {
@@ -29,17 +29,19 @@ export function DeliveriesHeader({ workspace }: DeliveriesHeaderProps) {
     setCreating(true);
     setErrorMessage(null);
 
-    const formData = new FormData();
-    formData.set("title", newTitle.trim());
-    formData.set("description", newClient.trim() || "");
+    const res = await createDeliveryAction(
+      workspace.id,
+      newTitle.trim(),
+      undefined,
+      newClient.trim() || undefined
+    );
 
-    const res = await createProjectAction(formData);
-
-    if (res?.success && res.project) {
+    if (res?.success && (res.delivery || res.project)) {
+      const createdId = res.delivery?.id || res.project?.id;
       setShowCreateModal(false);
       setNewTitle("");
       setNewClient("");
-      router.push(`/${workspace.slug}/deliveries/${res.project.id}`);
+      router.push(`/${workspace.slug}/deliveries/${createdId}`);
     } else {
       setErrorMessage(res?.error || "Failed to create project delivery room.");
     }

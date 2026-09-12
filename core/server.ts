@@ -8,7 +8,13 @@ import { env } from '@/lib/env';
  */
 export async function getServerServices(): Promise<CoreServices['services']> {
   const supabase = await createClient();
-  const { services } = createCoreServices(supabase);
+  const hasServiceKey =
+    Boolean(env.SUPABASE_SERVICE_ROLE_KEY) &&
+    env.SUPABASE_SERVICE_ROLE_KEY !== 'your-supabase-service-role-key' &&
+    env.SUPABASE_SERVICE_ROLE_KEY.trim() !== '';
+
+  const adminSupabase = hasServiceKey ? createAdminClient() : undefined;
+  const { services } = createCoreServices(supabase, { adminSupabase });
   return services;
 }
 
@@ -32,5 +38,11 @@ export async function getServerAdminServices(): Promise<CoreServices['services']
  */
 export async function getServerCore(): Promise<CoreServices> {
   const supabase = await createClient();
-  return createCoreServices(supabase);
+  const hasServiceKey =
+    Boolean(env.SUPABASE_SERVICE_ROLE_KEY) &&
+    env.SUPABASE_SERVICE_ROLE_KEY !== 'your-supabase-service-role-key' &&
+    env.SUPABASE_SERVICE_ROLE_KEY.trim() !== '';
+
+  const adminSupabase = hasServiceKey ? createAdminClient() : undefined;
+  return createCoreServices(supabase, { adminSupabase });
 }

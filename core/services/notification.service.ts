@@ -1,11 +1,11 @@
-import { NotificationLog, NotificationChannel, NotificationStatus } from '@/core/entities/notification';
-import { INotificationLogRepository } from '@/core/repositories/notification.repository';
-import { IProjectRepository } from '@/core/repositories/project.repository';
-import { IWorkspaceRepository } from '@/core/repositories/workspace.repository';
+import { NotificationLog, NotificationChannel, NotificationStatus } from "@/core/entities/notification";
+import { INotificationLogRepository } from "@/core/repositories/notification.repository";
+import { IDeliveryRepository } from "@/core/repositories/i-delivery-repository";
+import { IWorkspaceRepository } from "@/core/repositories/workspace.repository";
 
 export interface DispatchWhatsAppParams {
   workspaceId: string;
-  projectId: string;
+  deliveryId: string;
   clientId?: string | null;
   recipientPhone: string;
   customMessage?: string;
@@ -15,7 +15,7 @@ export interface DispatchWhatsAppParams {
 export class NotificationService {
   constructor(
     private readonly notificationRepo: INotificationLogRepository,
-    private readonly projectRepo: IProjectRepository,
+    private readonly deliveryRepo: IDeliveryRepository,
     private readonly workspaceRepo: IWorkspaceRepository
   ) {}
 
@@ -24,33 +24,28 @@ export class NotificationService {
     whatsappShareUrl: string;
     messageText: string;
   }> {
-    const project = await this.projectRepo.findById(params.projectId);
-    if (!project) throw new Error('Project not found');
+    const delivery = await this.deliveryRepo.findById(params.deliveryId);
+    if (!delivery) throw new Error("Delivery not found");
 
     const workspace = await this.workspaceRepo.findById(params.workspaceId);
-    const brandName = workspace?.brandName || 'Studio';
+    const brandName = workspace?.brandName || "Studio";
 
-    const baseUrl = params.origin || 'https://cut.app';
-    const reviewLink = `${baseUrl}/deliver/${project.shareToken}`;
+    const baseUrl = params.origin || "https://cut.app";
+    const reviewLink = `${baseUrl}/deliver/${delivery.shareToken}`;
 
-    const defaultMessage = `🎬 *${brandName}* shared a new video cut for review:\n\n*${project.title}*\n\n👉 Watch & leave timecoded feedback here (no login required):\n${reviewLink}`;
-
+    const defaultMessage = `🎬 *${brandName}* shared a new video cut for review:\n\n*${delivery.title}*\n\n👉 Watch & leave timecoded feedback here (no login required):\n${reviewLink}`;
     const finalMessage = params.customMessage || defaultMessage;
 
-    // Clean phone number
-    const cleanPhone = params.recipientPhone.replace(/[^0-9]/g, '');
-
-    // Encode for WhatsApp Web / Mobile API
+    const cleanPhone = params.recipientPhone.replace(/[^0-9]/g, "");
     const whatsappShareUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(finalMessage)}`;
 
-    // Log the dispatch attempt
     const log = await this.notificationRepo.create({
       workspaceId: params.workspaceId,
-      projectId: params.projectId,
+      projectId: params.deliveryId, // maps to delivery_id in db
       clientId: params.clientId,
-      channel: 'whatsapp',
+      channel: "whatsapp",
       recipientPhone: params.recipientPhone,
-      status: 'delivered',
+      status: "delivered",
     });
 
     return {
@@ -68,8 +63,8 @@ export class NotificationService {
     id: string,
     status: NotificationStatus,
     providerMessageId?: string,
-    error?: string
+    errorMessage?: string
   ): Promise<NotificationLog> {
-    return this.notificationRepo.updateStatus(id, status, providerMessageId, error);
+    return this.notificationRepo.updateStatus(id, status, providerMessageId, errorMessage);
   }
 }

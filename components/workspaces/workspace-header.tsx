@@ -110,7 +110,7 @@ export function WorkspaceHeader({
   }));
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border bg-background/80 backdrop-blur-xl px-6 sticky top-0 z-40 text-foreground transition-colors duration-200">
+    <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border bg-background/80 backdrop-blur-xl px-4 sm:px-6 lg:px-8 sticky top-0 z-40 text-foreground transition-colors duration-200">
       {/* Left: Trigger + Logo + Workspace Switcher Pill */}
       <div className="flex items-center gap-3.5">
         <SidebarTrigger className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer" />

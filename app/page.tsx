@@ -1,6 +1,5 @@
 import LandingPage from "@/components/landing/LandingPage";
 import { getServerServices } from "@/core/server";
-import CineSpaceApp from "@/components/cinaspace"
 export default async function Home() {
   try {
     // Fetch authentication & workspace details purely via Core Domain Services

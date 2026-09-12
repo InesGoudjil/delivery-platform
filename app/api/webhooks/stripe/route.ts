@@ -127,6 +127,7 @@ export async function POST(req: Request) {
       case 'invoice.payment_succeeded': {
         const invoiceObj = event.data.object as Stripe.Invoice;
         const customerId = invoiceObj.customer as string;
+        const stripeSubId = (invoiceObj as any).subscription as string | undefined;
         const amountCents = invoiceObj.amount_paid;
         const currency = invoiceObj.currency;
         const pdfUrl = invoiceObj.invoice_pdf;
@@ -134,22 +135,40 @@ export async function POST(req: Request) {
         const stripeInvoiceId = invoiceObj.id;
 
         const allSubs = await services.subscription.listAllSubscriptions();
-        const matchingSub = allSubs.find((s) => s.paymentProviderCustId === customerId);
+        let matchingSub = allSubs.find(
+          (s) => (customerId && s.paymentProviderCustId === customerId) || (stripeSubId && s.paymentProviderSubId === stripeSubId)
+        );
 
-        if (matchingSub) {
-          const currentPlan = await services.subscription.getPlanById(matchingSub.planId);
+        let targetWorkspaceId = matchingSub?.workspaceId;
+        let planId = matchingSub?.planId;
+
+        // Fallback: If DB subscription record isn't updated yet, fetch Stripe subscription metadata
+        if (!targetWorkspaceId && stripeSubId) {
+          try {
+            const stripeSub = await services.stripe.retrieveSubscription(stripeSubId);
+            targetWorkspaceId = stripeSub.metadata?.workspace_id;
+            planId = stripeSub.metadata?.plan_id;
+          } catch (e) {
+            console.error('[Stripe Webhook] Failed to retrieve subscription metadata for invoice:', e);
+          }
+        }
+
+        if (targetWorkspaceId) {
+          const currentPlan = planId ? await services.subscription.getPlanById(planId) : null;
           await services.subscription.recordInvoice({
-            workspaceId: matchingSub.workspaceId,
+            workspaceId: targetWorkspaceId,
             stripeInvoiceId,
             stripeCustomerId: customerId,
             amountCents,
             currency: (currency || 'USD').toUpperCase(),
-            description: currentPlan ? `${currentPlan.name} Plan Renewal` : 'Subscription Payment',
+            description: currentPlan ? `${currentPlan.name} Plan Payment` : 'Subscription Payment',
             hostedInvoiceUrl: hostedUrl,
             pdfUrl,
             status: 'paid',
           });
-          console.log(`[Stripe Webhook] Logged invoice ${stripeInvoiceId} for workspace ${matchingSub.workspaceId}`);
+          console.log(`[Stripe Webhook] Logged invoice ${stripeInvoiceId} for workspace ${targetWorkspaceId}`);
+        } else {
+          console.warn(`[Stripe Webhook] Could not resolve workspaceId for invoice ${stripeInvoiceId}`);
         }
         break;
       }

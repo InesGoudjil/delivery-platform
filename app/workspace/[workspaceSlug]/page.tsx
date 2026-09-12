@@ -17,7 +17,7 @@ export default async function WorkspaceDashboardPage({
     redirect("/");
   }
 
-  const projects = await services.project.listWorkspaceProjects(workspace.id);
+  const projects = await services.delivery.listWorkspaceDeliveries(workspace.id);
 
   const draftCount = projects.filter((p) => p.status === "draft").length;
   const inReviewCount = projects.filter((p) => p.status === "in_review").length;

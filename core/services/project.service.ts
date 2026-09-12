@@ -1,19 +1,12 @@
-import { Project, ProjectStatus } from '@/core/entities/project';
-import { Client } from '@/core/entities/client';
-import { Asset, AssetVersion } from '@/core/entities/asset';
-import { Feedback } from '@/core/entities/feedback';
-import { IProjectRepository, CreateProjectDTO } from '@/core/repositories/project.repository';
-import { IClientRepository } from '@/core/repositories/client.repository';
-import { IAssetRepository, IAssetVersionRepository } from '@/core/repositories/asset.repository';
-import { IFeedbackRepository } from '@/core/repositories/feedback.repository';
+import { Project, CreateProjectDTO, UpdateProjectDTO } from "@/core/entities/project";
+import { Asset, AssetVersion } from "@/core/entities/asset";
+import { IProjectRepository } from "@/core/repositories/i-project-repository";
+import { IAssetRepository, IAssetVersionRepository } from "@/core/repositories/i-asset-repository";
 
-export interface ProjectWithDetails extends Project {
-  client?: Client | null;
+export interface ShowcaseProjectWithAssets extends Project {
   assets: Array<
     Asset & {
-      versions: AssetVersion[];
       activeVersion?: AssetVersion | null;
-      feedback: Feedback[];
     }
   >;
 }
@@ -21,10 +14,8 @@ export interface ProjectWithDetails extends Project {
 export class ProjectService {
   constructor(
     private readonly projectRepo: IProjectRepository,
-    private readonly clientRepo: IClientRepository,
     private readonly assetRepo: IAssetRepository,
-    private readonly assetVersionRepo: IAssetVersionRepository,
-    private readonly feedbackRepo: IFeedbackRepository
+    private readonly assetVersionRepo: IAssetVersionRepository
   ) {}
 
   async createProject(dto: CreateProjectDTO): Promise<Project> {
@@ -35,82 +26,54 @@ export class ProjectService {
     return this.projectRepo.findById(id);
   }
 
-  async getProjectByShareToken(shareToken: string): Promise<Project | null> {
-    return this.projectRepo.findByShareToken(shareToken);
+  async listPortfolioProjects(portfolioId: string): Promise<Project[]> {
+    return this.projectRepo.listByPortfolioId(portfolioId);
   }
 
   async listWorkspaceProjects(workspaceId: string): Promise<Project[]> {
     return this.projectRepo.listByWorkspaceId(workspaceId);
   }
 
-  async getProjectWithFullDetails(identifier: string): Promise<ProjectWithDetails | null> {
-    // Try finding by shareToken first, then by ID
-    let project = await this.projectRepo.findByShareToken(identifier);
-    if (!project) {
-      project = await this.projectRepo.findById(identifier);
-    }
+  async getProjectWithAssets(id: string): Promise<ShowcaseProjectWithAssets | null> {
+    const project = await this.projectRepo.findById(id);
     if (!project) return null;
 
-    let client: Client | null = null;
-    if (project.clientId) {
-      client = await this.clientRepo.findById(project.clientId);
-    }
-
-    const assets = await this.assetRepo.listByProjectId(project.id);
+    const assetIds = await this.projectRepo.getProjectAssetIds(project.id);
+    const rawAssets = await this.assetRepo.listByIds(assetIds);
 
     const enrichedAssets = await Promise.all(
-      assets.map(async (asset) => {
-        const versions = await this.assetVersionRepo.listByAssetId(asset.id);
-        const activeVersion = versions.find((v) => v.isActiveVersion) || versions[0] || null;
-
-        let feedback: Feedback[] = [];
-        if (activeVersion) {
-          feedback = await this.feedbackRepo.listByAssetVersionId(activeVersion.id);
-        }
-
+      rawAssets.map(async (asset) => {
+        const activeVersion = await this.assetVersionRepo.findActiveVersion(asset.id);
         return {
           ...asset,
-          versions,
           activeVersion,
-          feedback,
         };
       })
     );
 
     return {
       ...project,
-      client,
       assets: enrichedAssets,
     };
   }
 
-  async updateProject(id: string, data: Partial<Project>): Promise<Project> {
+  async updateProject(id: string, data: UpdateProjectDTO): Promise<Project> {
     return this.projectRepo.update(id, data);
-  }
-
-  async updateStatus(id: string, status: ProjectStatus, approvedByName?: string): Promise<Project> {
-    return this.projectRepo.updateStatus(id, status, approvedByName);
-  }
-
-  async approveCut(id: string, approvedByName?: string): Promise<Project> {
-    return this.projectRepo.updateStatus(id, 'approved', approvedByName || 'Client Guest');
-  }
-
-  /**
-   * Archives project to "THE SILO" cold storage, freeing up active quota for the workspace.
-   */
-  async archiveToSilo(id: string): Promise<Project> {
-    return this.projectRepo.updateStatus(id, 'archived');
-  }
-
-  /**
-   * Restores project from "THE SILO" back into active workspace review rooms.
-   */
-  async restoreFromSilo(id: string): Promise<Project> {
-    return this.projectRepo.updateStatus(id, 'in_review');
   }
 
   async deleteProject(id: string): Promise<void> {
     return this.projectRepo.delete(id);
+  }
+
+  async attachAssetToProject(projectId: string, assetId: string, order?: number): Promise<void> {
+    return this.projectRepo.attachAsset(projectId, assetId, order);
+  }
+
+  async detachAssetFromProject(projectId: string, assetId: string): Promise<void> {
+    return this.projectRepo.detachAsset(projectId, assetId);
+  }
+
+  async reorderProjects(portfolioId: string, projectIdsInOrder: string[]): Promise<void> {
+    return this.projectRepo.reorderProjects(portfolioId, projectIdsInOrder);
   }
 }
