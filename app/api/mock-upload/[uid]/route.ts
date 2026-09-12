@@ -65,9 +65,9 @@ export async function GET(
     });
   }
 
-  // If not found in store, fallback to photography visual
+  // If not found in store, fallback to sample video stream
   return NextResponse.redirect(
-    "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1280&q=80"
+    "https://files.vidstack.io/sprite-fight/720p.mp4"
   );
 }
 

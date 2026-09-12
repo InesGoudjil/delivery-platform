@@ -49,6 +49,8 @@ import {
   toggleAssetApprovalAction,
   publishDeliveryToPortfolioAction,
 } from "@/app/actions/deliveries";
+import { CutReviewPlayer, type CutReviewPlayerRef } from "@/components/video/cut-review-player";
+import { formatTimecode } from "@/lib/timecode";
 
 export interface AssetVersionItem {
   id: string;
@@ -116,6 +118,7 @@ const INITIAL_DEMO_GALLERY_ITEMS = [
     aspectRatio: "16:9",
     duration: "00:47",
     src: "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=1200&auto=format&fit=crop&q=80",
+    videoUrl: "https://files.vidstack.io/sprite-fight/hls/stream.m3u8",
     status: "review",
   },
   {
@@ -161,6 +164,7 @@ const INITIAL_DEMO_GALLERY_ITEMS = [
     aspectRatio: "16:9",
     duration: "01:12",
     src: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=1200&auto=format&fit=crop&q=80",
+    videoUrl: "https://files.vidstack.io/sprite-fight/hls/stream.m3u8",
     status: "review",
   },
   {
@@ -197,6 +201,7 @@ const INITIAL_DEMO_GALLERY_ITEMS = [
     aspectRatio: "16:9",
     duration: "00:30",
     src: "https://images.unsplash.com/photo-1599058945522-28d584b6f0ff?w=1200&auto=format&fit=crop&q=80",
+    videoUrl: "https://files.vidstack.io/sprite-fight/hls/stream.m3u8",
     status: "review",
   },
 ];
@@ -266,6 +271,7 @@ export function DeliveryDetailClient({
           }
           return {
             id: a.id,
+            versionId: activeVer?.id,
             title: a.title,
             type: isPhoto ? "photo" : "video",
             aspectRatio: a.aspectRatio || "16:9",
@@ -277,6 +283,10 @@ export function DeliveryDetailClient({
             status: a.isApproved ? "approved" : "review",
             rawUrl: activeVer?.rawFileUrl,
             hlsUrl: activeVer?.hlsManifestUrl,
+            videoUrl:
+              activeVer?.hlsManifestUrl ||
+              activeVer?.rawFileUrl ||
+              (isPhoto ? undefined : "https://files.vidstack.io/sprite-fight/hls/stream.m3u8"),
           };
         })
       : INITIAL_DEMO_GALLERY_ITEMS;
@@ -311,7 +321,10 @@ export function DeliveryDetailClient({
   // Feedback / Comments
   const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>(initialFeedback);
   const [replyText, setReplyText] = useState("");
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const cutPlayerRef = useRef<CutReviewPlayerRef | null>(null);
+  const [currentCutTime, setCurrentCutTime] = useState(0);
+  const [currentCutTimecode, setCurrentCutTimecode] = useState("00:00:00");
+  const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
 
   const projectDetailsRef = useRef<HTMLDivElement | null>(null);
 
@@ -428,16 +441,29 @@ export function DeliveryDetailClient({
     const newCommentText = replyText.trim();
     setReplyText("");
 
+    const capturedTime = cutPlayerRef.current?.getCurrentTime() ?? currentCutTime;
+    const roundedTime = Math.round(capturedTime * 100) / 100;
+
     const tempFeedback: FeedbackItem = {
       id: `temp_${Date.now()}`,
       authorName: workspace.brandName || "Filmmaker",
       commentText: newCommentText,
-      timestampSeconds: videoRef.current ? Math.floor(videoRef.current.currentTime) : null,
+      timestampSeconds: roundedTime,
       createdAt: new Date().toISOString(),
     };
 
     setFeedbackList((prev) => [...prev, tempFeedback]);
-    triggerToast("Note added to cut");
+    setActiveCommentId(tempFeedback.id);
+    triggerToast(`Note tagged at [${formatTimecode(roundedTime, 24)}]`);
+
+    if (activeItem?.versionId) {
+      addFeedbackAction({
+        assetVersionId: activeItem.versionId,
+        authorName: workspace.brandName || "Filmmaker",
+        commentText: newCommentText,
+        timestampSeconds: roundedTime,
+      }).catch((err) => console.error("Error saving feedback note:", err));
+    }
   };
 
   const scrollToProjectDetails = () => {
@@ -1396,58 +1422,122 @@ export function DeliveryDetailClient({
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              <div className="lg:col-span-7 space-y-4">
-                <div className="aspect-video bg-black rounded-2xl border border-white/10 relative overflow-hidden flex items-center justify-center">
-                  <img
-                    src={activeItem.src}
-                    alt={activeItem.title}
-                    className="w-full h-full object-contain"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                    <div className="size-16 rounded-full bg-[#f5551d] text-black flex items-center justify-center shadow-2xl">
-                      <Play className="size-6 fill-current ml-0.5" />
-                    </div>
-                  </div>
-                </div>
+              <div className="lg:col-span-7 space-y-3">
+                <CutReviewPlayer
+                  ref={cutPlayerRef}
+                  isPhoto={activeItem.type === "photo"}
+                  src={
+                    activeItem.type === "photo"
+                      ? activeItem.src
+                      : activeItem.hlsUrl ||
+                        activeItem.videoUrl ||
+                        (activeItem.rawUrl &&
+                        !activeItem.rawUrl.includes("unsplash.com") &&
+                        (activeItem.rawUrl.endsWith(".mp4") ||
+                          activeItem.rawUrl.endsWith(".m3u8") ||
+                          activeItem.rawUrl.startsWith("/api/mock-upload"))
+                          ? activeItem.rawUrl
+                          : "https://files.vidstack.io/sprite-fight/hls/stream.m3u8")
+                  }
+                  title={activeItem.title}
+                  poster={activeItem.src}
+                  aspectRatio={activeItem.aspectRatio || "16:9"}
+                  fps={24}
+                  comments={feedbackList.map((f) => ({
+                    id: f.id,
+                    timestampSeconds: f.timestampSeconds,
+                    authorName: f.authorName,
+                    commentText: f.commentText,
+                    isResolved: f.isResolved,
+                  }))}
+                  activeCommentId={activeCommentId}
+                  onCommentSelect={(commentId, timestamp) => {
+                    setActiveCommentId(commentId);
+                    cutPlayerRef.current?.seekTo(timestamp);
+                  }}
+                  onTimeChange={(time, tc) => {
+                    setCurrentCutTime(time);
+                    setCurrentCutTimecode(tc);
+                  }}
+                />
               </div>
 
-              <div className="lg:col-span-5 bg-[#1a1a1e] p-5 rounded-2xl border border-white/10 flex flex-col justify-between h-[380px]">
+              <div className="lg:col-span-5 bg-[#1a1a1e] p-5 rounded-2xl border border-white/10 flex flex-col justify-between h-[450px]">
                 <div className="space-y-3 overflow-hidden flex flex-col h-full">
-                  <h4 className="font-bold text-sm flex items-center gap-2 border-b border-white/10 pb-2">
-                    <MessageCircle className="size-4 text-[#f5551d]" /> Timecoded Notes (
-                    {feedbackList.length})
-                  </h4>
-
-                  <div className="space-y-2 overflow-y-auto pr-1 flex-1">
-                    {feedbackList.map((f) => (
-                      <div
-                        key={f.id}
-                        className="p-3 rounded-xl text-xs space-y-1 bg-black/40 border border-white/10"
-                      >
-                        <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-                          <span className="font-semibold text-white">{f.authorName}</span>
-                          <span className="text-[#f5551d]">00:14</span>
-                        </div>
-                        <p className="text-white/90">{f.commentText}</p>
-                      </div>
-                    ))}
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5 shrink-0">
+                    <h4 className="font-bold text-sm flex items-center gap-2 text-white">
+                      <MessageCircle className="size-4 text-[#f5551d]" /> Timecoded Notes (
+                      {feedbackList.length})
+                    </h4>
+                    <span className="text-[11px] font-mono text-[#ff8a45] bg-[#f5551d]/10 px-2 py-0.5 rounded border border-[#f5551d]/20">
+                      Playhead: {currentCutTimecode}
+                    </span>
                   </div>
 
-                  <form onSubmit={handleSendFeedback} className="pt-2 flex gap-2 shrink-0">
-                    <input
-                      type="text"
-                      placeholder="Add timestamped note..."
-                      value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                      className="flex-1 bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#f5551d]"
-                    />
-                    <Button
-                      type="submit"
-                      size="sm"
-                      className="size-8 p-0 rounded-xl bg-[#f5551d] text-black font-bold hover:bg-[#ff8a45]"
-                    >
-                      <Send className="size-3.5" />
-                    </Button>
+                  <div className="space-y-2 overflow-y-auto pr-1 flex-1">
+                    {feedbackList.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
+                        <MessageCircle className="size-8 opacity-30 mb-2" />
+                        <p className="text-xs">No timecoded notes yet.</p>
+                        <p className="text-[11px] text-muted-foreground/60">
+                          Pause the video at any frame and leave a precise comment.
+                        </p>
+                      </div>
+                    ) : (
+                      feedbackList.map((f) => {
+                        const tcDisplay =
+                          f.timestampSeconds !== undefined && f.timestampSeconds !== null
+                            ? formatTimecode(f.timestampSeconds, 24)
+                            : "General";
+                        const isSelected = activeCommentId === f.id;
+
+                        return (
+                          <div
+                            key={f.id}
+                            onClick={() => {
+                              if (f.timestampSeconds !== undefined && f.timestampSeconds !== null) {
+                                cutPlayerRef.current?.seekTo(f.timestampSeconds);
+                                setActiveCommentId(f.id);
+                              }
+                            }}
+                            className={`p-3 rounded-xl text-xs space-y-1 border transition-all cursor-pointer ${
+                              isSelected
+                                ? "bg-[#f5551d]/15 border-[#f5551d] text-white ring-1 ring-[#f5551d]"
+                                : "bg-black/40 border-white/10 text-white/90 hover:bg-black/60 hover:border-white/20"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
+                              <span className="font-semibold text-white">{f.authorName}</span>
+                              <span className="text-[#ff8a45] font-bold">[{tcDisplay}]</span>
+                            </div>
+                            <p className="text-white/90 leading-snug">{f.commentText}</p>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <form onSubmit={handleSendFeedback} className="pt-2 border-t border-white/10 flex flex-col gap-2 shrink-0">
+                    <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+                      <span>Tagging at:</span>
+                      <span className="text-[#ff8a45] font-bold">[{currentCutTimecode}]</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder={`Add note at ${currentCutTimecode}...`}
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        className="flex-1 bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#f5551d] text-white"
+                      />
+                      <Button
+                        type="submit"
+                        size="sm"
+                        className="size-8 p-0 rounded-xl bg-[#f5551d] text-black font-bold hover:bg-[#ff8a45] cursor-pointer"
+                      >
+                        <Send className="size-3.5" />
+                      </Button>
+                    </div>
                   </form>
                 </div>
               </div>

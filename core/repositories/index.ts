@@ -15,3 +15,4 @@ export * from "./asset.repository";
 export * from "./feedback.repository";
 export * from "./notification.repository";
 export * from "./invoice.repository";
+export * from "./waitlist.repository";

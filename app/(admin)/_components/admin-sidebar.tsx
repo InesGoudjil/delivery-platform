@@ -47,6 +47,12 @@ export function AdminSidebar() {
       icon: CreditCard,
       badge: "Stripe",
     },
+    {
+      href: "/admin/waitlist",
+      label: "Waitlist & Beta",
+      icon: Sparkles,
+      badge: "Viral",
+    },
   ];
 
   return (

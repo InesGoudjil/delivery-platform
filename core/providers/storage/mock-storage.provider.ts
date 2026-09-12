@@ -42,10 +42,10 @@ export class MockStorageProvider implements IStorageProvider {
     const assetUrl = `/api/mock-upload/${providerUid}`;
     return {
       providerUid,
-      hlsManifestUrl: `https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8`, // Public high-quality sample HLS stream for testing
-      thumbnailUrl: assetUrl,
-      animatedThumbnailUrl: assetUrl,
-      iframeEmbedUrl: `https://www.youtube.com/embed/dQw4w9WgXcQ`,
+      hlsManifestUrl: `https://files.vidstack.io/sprite-fight/hls/stream.m3u8`,
+      thumbnailUrl: `https://files.vidstack.io/sprite-fight/poster.webp`,
+      animatedThumbnailUrl: `https://files.vidstack.io/sprite-fight/poster.webp`,
+      iframeEmbedUrl: `https://iframe.videodelivery.net/${providerUid}`,
       durationSeconds: 120,
       status: "ready",
       rawDownloadUrl: assetUrl,
@@ -59,8 +59,8 @@ export class MockStorageProvider implements IStorageProvider {
       status: "ready",
       durationSeconds: 120,
       fileSizeBytes: 1024 * 1024 * 5, // 5 MB mock
-      hlsManifestUrl: `https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8`,
-      thumbnailUrl: assetUrl,
+      hlsManifestUrl: `https://files.vidstack.io/sprite-fight/hls/stream.m3u8`,
+      thumbnailUrl: `https://files.vidstack.io/sprite-fight/poster.webp`,
     };
   }
 

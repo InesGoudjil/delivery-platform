@@ -13,15 +13,19 @@ import { FaqSection } from "@/components/landing/FaqSection";
 import { CtaSection } from "@/components/landing/CtaSection";
 import { FooterSection } from "@/components/landing/FooterSection";
 import { DemoModal } from "@/components/landing/DemoModal";
+import { WaitlistSection } from "@/components/waitlist/WaitlistSection";
+import { WaitlistModal } from "@/components/waitlist/WaitlistModal";
 import type { UserNavMenuProps } from "@/components/landing/UserNavMenu";
 
 interface LandingPageProps {
   user?: UserNavMenuProps["user"] | null;
   workspace?: UserNavMenuProps["workspace"] | null;
+  referralCode?: string;
 }
 
-export default function LandingPage({ user, workspace }: LandingPageProps) {
+export default function LandingPage({ user, workspace, referralCode }: LandingPageProps) {
   const [showDemoModal, setShowDemoModal] = useState(false);
+  const [showWaitlistModal, setShowWaitlistModal] = useState(Boolean(referralCode));
   const [toast, setToast] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -67,7 +71,10 @@ export default function LandingPage({ user, workspace }: LandingPageProps) {
         {/* 8. FAQ Section */}
         <FaqSection />
 
-        {/* 9. Call To Action Banner */}
+        {/* 9. Exclusive Beta Waitlist Section */}
+        <WaitlistSection initialReferralCode={referralCode} />
+
+        {/* 10. Call To Action Banner */}
         <CtaSection
           onStartTrial={() => showToast("Free trial registration initiated!")}
         />
@@ -81,6 +88,13 @@ export default function LandingPage({ user, workspace }: LandingPageProps) {
         isOpen={showDemoModal}
         onClose={() => setShowDemoModal(false)}
         onShowToast={showToast}
+      />
+
+      {/* Waitlist Modal (Auto opens on referral link visit or manual trigger) */}
+      <WaitlistModal
+        isOpen={showWaitlistModal}
+        onClose={() => setShowWaitlistModal(false)}
+        initialReferralCode={referralCode}
       />
 
       {/* Floating Toast Notification */}

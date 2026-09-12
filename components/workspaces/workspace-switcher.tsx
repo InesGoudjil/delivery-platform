@@ -26,6 +26,7 @@ export interface WorkspaceItem {
   name: string
   slug?: string
   plan?: string
+  accountType?: string
   logo?: React.ElementType | string | null
   accentColor?: string | null
 }
@@ -136,8 +137,15 @@ export function WorkspaceSwitcher({
                     {wsInitials}
                   </div>
                   <div className="flex flex-col flex-1 truncate">
-                    <span className="font-semibold text-foreground">{ws.name}</span>
-                    <span className="text-[10px] text-muted-foreground">{ws.plan || "Studio plan"}</span>
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="font-semibold text-foreground truncate">{ws.name}</span>
+                      {ws.accountType === "studio" && (
+                        <span className="text-[9px] bg-primary/20 text-primary font-bold px-1 rounded">
+                          Studio
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">{ws.plan || (ws.accountType === "studio" ? "Studio • 5 Seats" : "Personal")}</span>
                   </div>
                   {isCurrent && <Check className="size-3.5 text-primary ml-auto" />}
                   <DropdownMenuShortcut className="text-[10px] font-mono text-muted-foreground">

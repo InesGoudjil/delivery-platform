@@ -21,3 +21,10 @@ export interface WorkspaceInvitation {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface EnrichedWorkspaceMember extends WorkspaceMember {
+  name: string;
+  email?: string | null;
+  avatarUrl?: string | null;
+  isOwner?: boolean;
+}

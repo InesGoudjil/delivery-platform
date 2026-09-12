@@ -26,7 +26,9 @@ import {
   SupabaseFeedbackRepository,
   SupabaseNotificationLogRepository,
   SupabaseInvoiceRepository,
+  SupabaseWaitlistRepository,
 } from "./repositories";
+import { ResendEmailProvider } from "./providers/email";
 
 // Services
 import {
@@ -44,6 +46,7 @@ import {
   FeedbackService,
   NotificationService,
   StripeService,
+  WaitlistService,
 } from "./services";
 
 export interface CoreServices {
@@ -64,6 +67,7 @@ export interface CoreServices {
     assetVersion: SupabaseAssetVersionRepository;
     feedback: SupabaseFeedbackRepository;
     notification: SupabaseNotificationLogRepository;
+    waitlist: SupabaseWaitlistRepository;
   };
   services: {
     auth: AuthService;
@@ -80,6 +84,7 @@ export interface CoreServices {
     feedback: FeedbackService;
     notification: NotificationService;
     stripe: StripeService;
+    waitlist: WaitlistService;
   };
 }
 
@@ -119,6 +124,10 @@ export function createCoreServices(
   const feedbackRepo = new SupabaseFeedbackRepository(supabase);
   const notificationRepo = new SupabaseNotificationLogRepository(supabase);
   const invoiceRepo = new SupabaseInvoiceRepository(systemClient);
+  const waitlistRepo = new SupabaseWaitlistRepository(systemClient);
+
+  // Email Provider
+  const emailProvider = new ResendEmailProvider();
 
   // 2. Services (Injected with Repository Interfaces & Storage Provider)
   const authService = new AuthService(supabase, workspaceRepo, userProfileRepo);
@@ -126,13 +135,16 @@ export function createCoreServices(
     workspaceRepo,
     workspaceFeaturesRepo,
     subscriptionRepo,
-    planRepo
+    planRepo,
+    workspaceMemberRepo
   );
   const profileService = new ProfileService(userProfileRepo);
   const memberService = new MemberService(
     workspaceMemberRepo,
     workspaceInvitationRepo,
-    workspaceFeaturesRepo
+    workspaceFeaturesRepo,
+    workspaceRepo,
+    userProfileRepo
   );
   const subscriptionService = new SubscriptionService(
     subscriptionRepo,
@@ -183,6 +195,7 @@ export function createCoreServices(
     workspaceMemberRepo,
     workspaceRepo
   );
+  const waitlistService = new WaitlistService(waitlistRepo, emailProvider);
 
   return {
     storageProvider,
@@ -202,6 +215,7 @@ export function createCoreServices(
       assetVersion: assetVersionRepo,
       feedback: feedbackRepo,
       notification: notificationRepo,
+      waitlist: waitlistRepo,
     },
     services: {
       auth: authService,
@@ -218,6 +232,7 @@ export function createCoreServices(
       feedback: feedbackService,
       notification: notificationService,
       stripe: stripeService,
+      waitlist: waitlistService,
     },
   };
 }

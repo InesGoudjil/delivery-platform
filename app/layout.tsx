@@ -1,22 +1,11 @@
 import type { Metadata } from "next";
-import { Archivo, Inter } from "next/font/google";
 import "./globals.css";
-
-import { Manrope } from "next/font/google";
 import localFont from "next/font/local";
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/i18n/context";
 
-const archivo = Archivo({
-  subsets: ["latin"],
-  weight: ["600", "700", "800", "900"],
-  variable: "--font-archivo",
-  display: "swap",
-});
-
-const manrope = Manrope({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+const manrope = localFont({
+  src: "../public/fonts/Manrope-Regular.otf",
   variable: "--font-manrope",
   display: "swap",
 });
@@ -45,6 +34,24 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
       className={`${manrope.variable} ${satoshi.variable}`}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined' && window.performance && window.performance.measure) {
+                const _orig = window.performance.measure.bind(window.performance);
+                window.performance.measure = function(name, startOrOptions, endMark) {
+                  try {
+                    return _orig(name, startOrOptions, endMark);
+                  } catch (err) {
+                    // Silently ignore negative timestamp/duration DOMExceptions from profilers
+                  }
+                };
+              }
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-screen bg-background text-foreground antialiased selection:bg-[#f5551d] selection:text-black">
         <ThemeProvider
           attribute="class"

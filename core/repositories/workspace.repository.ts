@@ -22,6 +22,8 @@ export interface IWorkspaceRepository {
   update(id: string, data: Partial<Workspace>): Promise<Workspace>;
   delete(id: string): Promise<void>;
   listAllWorkspaces(): Promise<Workspace[]>;
+  listByOwnerId(ownerId: string): Promise<Workspace[]>;
+  listByIds(ids: string[]): Promise<Workspace[]>;
 }
 
 export interface IWorkspaceFeaturesRepository {
@@ -166,6 +168,28 @@ export class SupabaseWorkspaceRepository implements IWorkspaceRepository {
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(`Error listing workspaces: ${error.message}`);
+    return (data || []).map((row: any) => this.mapRowToEntity(row));
+  }
+
+  async listByOwnerId(ownerId: string): Promise<Workspace[]> {
+    const { data, error } = await (this.supabase as any)
+      .from('workspaces')
+      .select('*')
+      .eq('owner_id', ownerId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw new Error(`Error listing workspaces by owner: ${error.message}`);
+    return (data || []).map((row: any) => this.mapRowToEntity(row));
+  }
+
+  async listByIds(ids: string[]): Promise<Workspace[]> {
+    if (!ids.length) return [];
+    const { data, error } = await (this.supabase as any)
+      .from('workspaces')
+      .select('*')
+      .in('id', ids);
+
+    if (error) throw new Error(`Error listing workspaces by IDs: ${error.message}`);
     return (data || []).map((row: any) => this.mapRowToEntity(row));
   }
 }

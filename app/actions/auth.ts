@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getServerServices } from '@/core/server';
+import { loginSchema, signupSchema } from '@/lib/validations/auth';
 
 export interface AuthState {
   error?: string | null;
@@ -13,8 +14,9 @@ export async function loginAction(prevState: AuthState | null, formData: FormDat
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
 
-  if (!email || !password) {
-    return { error: 'Please fill in all required fields.' };
+  const parsed = loginSchema.safeParse({ email, password });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message || 'Please fill in all required fields.' };
   }
 
   try {
@@ -26,7 +28,11 @@ export async function loginAction(prevState: AuthState | null, formData: FormDat
     }
 
     const user = await services.auth.getCurrentUser();
-    const workspace = user ? await services.workspace.getWorkspaceByOwnerId(user.id).catch(() => null) : null;
+    let workspace = null;
+    if (user) {
+      const userWorkspaces = await services.workspace.getUserWorkspaces(user.id);
+      workspace = userWorkspaces[0] || await services.workspace.getOrCreateWorkspace(user.id, user.user_metadata?.full_name || 'My Studio').catch(() => null);
+    }
 
     revalidatePath('/', 'layout');
     redirect(workspace?.slug ? `/${workspace.slug}` : '/');
@@ -45,16 +51,15 @@ export async function signupAction(prevState: AuthState | null, formData: FormDa
   const password = formData.get('password') as string;
   const confirmPassword = formData.get('confirm-password') as string;
 
-  if (!email || !password || !name) {
-    return { error: 'Please fill in all required fields.' };
-  }
+  const parsed = signupSchema.safeParse({
+    name,
+    email,
+    password,
+    confirmPassword,
+  });
 
-  if (password.length < 8) {
-    return { error: 'Password must be at least 8 characters long.' };
-  }
-
-  if (confirmPassword && password !== confirmPassword) {
-    return { error: 'Passwords do not match.' };
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message || 'Please fill in all required fields.' };
   }
 
   try {
@@ -66,6 +71,15 @@ export async function signupAction(prevState: AuthState | null, formData: FormDa
     }
 
     if (data.session && data.user) {
+      const waitlistToken = formData.get('waitlist_token') as string | null;
+      if (waitlistToken) {
+        try {
+          await services.waitlist.claimInvite(waitlistToken);
+        } catch (e) {
+          console.warn("Could not claim waitlist token:", e);
+        }
+      }
+
       const workspace = await services.workspace.getOrCreateWorkspace(data.user.id, name);
 
       revalidatePath('/', 'layout');
