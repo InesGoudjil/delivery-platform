@@ -21,6 +21,7 @@ export interface WorkspaceHeaderItem {
   name: string;
   slug?: string;
   plan?: string;
+  accountType?: string;
   accentColor?: string | null;
 }
 
@@ -107,11 +108,18 @@ export function WorkspaceHeaderSwitcher({
                   {wsInitials}
                 </div>
                 <div className="flex flex-col flex-1 truncate">
-                  <span className="truncate text-xs font-semibold text-foreground">
-                    {ws.name}
-                  </span>
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="truncate text-xs font-semibold text-foreground">
+                      {ws.name}
+                    </span>
+                    {ws.accountType === "studio" && (
+                      <span className="text-[9px] bg-primary/20 text-primary font-bold px-1 rounded">
+                        Studio
+                      </span>
+                    )}
+                  </div>
                   <span className="truncate text-[10px] text-muted-foreground font-mono">
-                    {ws.plan || "Studio"}
+                    {ws.plan || (ws.accountType === "studio" ? "Studio • 5 Seats" : "Personal")}
                   </span>
                 </div>
                 {isCurrent && <Check className="size-3.5 text-primary shrink-0 ml-auto" />}
@@ -126,7 +134,7 @@ export function WorkspaceHeaderSwitcher({
           asChild
           className="flex items-center gap-2.5 p-2 rounded-xl text-xs font-semibold text-primary hover:bg-primary/15 cursor-pointer transition-colors"
         >
-          <Link href="/signup">
+          <Link href="/new-workspace">
             <div className="flex size-6 items-center justify-center rounded-lg border border-primary/40 bg-primary/10 shrink-0">
               <Plus className="size-3.5 text-primary" />
             </div>

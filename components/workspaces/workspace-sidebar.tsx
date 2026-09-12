@@ -14,6 +14,7 @@ import {
   Send,
   BookOpen,
   ArrowRight,
+  Users,
 } from "lucide-react";
 
 import {
@@ -124,6 +125,11 @@ export function WorkspaceSidebar({
         icon: Star,
       },
       {
+        name: "Team Collaborators",
+        url: `/${workspaceSlug}/members`,
+        icon: Users,
+      },
+      {
         name: "Security",
         url: `/${workspaceSlug}/security`,
         icon: Lock,
@@ -144,7 +150,10 @@ export function WorkspaceSidebar({
     id: w.id,
     name: w.brandName,
     slug: w.slug,
-    plan: planName ? `${planName} plan` : "Studio plan",
+    accountType: w.accountType,
+    plan: w.accountType === "studio"
+      ? "Studio • 5 Seats"
+      : (w.slug === workspace?.slug && planName ? `${planName} plan` : "Personal (1 Seat)"),
   }));
 
   return (

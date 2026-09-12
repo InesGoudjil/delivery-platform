@@ -4,6 +4,7 @@ import { WorkspaceMember, WorkspaceInvitation, WorkspaceRole, InvitationStatus }
 
 export interface IWorkspaceMemberRepository {
   listByWorkspaceId(workspaceId: string): Promise<WorkspaceMember[]>;
+  listByUserId(userId: string): Promise<WorkspaceMember[]>;
   findByWorkspaceAndUserId(workspaceId: string, userId: string): Promise<WorkspaceMember | null>;
   addMember(workspaceId: string, userId: string, role?: WorkspaceRole): Promise<WorkspaceMember>;
   updateRole(workspaceId: string, userId: string, role: WorkspaceRole): Promise<WorkspaceMember>;
@@ -12,9 +13,11 @@ export interface IWorkspaceMemberRepository {
 
 export interface IWorkspaceInvitationRepository {
   create(dto: { workspaceId: string; inviterId: string; email: string; role?: 'admin' | 'editor' | 'viewer' }): Promise<WorkspaceInvitation>;
+  findById(id: string): Promise<WorkspaceInvitation | null>;
   findByToken(token: string): Promise<WorkspaceInvitation | null>;
   listPendingByWorkspaceId(workspaceId: string): Promise<WorkspaceInvitation[]>;
   updateStatus(id: string, status: InvitationStatus): Promise<WorkspaceInvitation>;
+  delete(id: string): Promise<void>;
 }
 
 export class SupabaseWorkspaceMemberRepository implements IWorkspaceMemberRepository {
@@ -37,6 +40,16 @@ export class SupabaseWorkspaceMemberRepository implements IWorkspaceMemberReposi
       .eq('workspace_id', workspaceId);
 
     if (error) throw new Error(`Error fetching workspace members: ${error.message}`);
+    return (data || []).map(this.mapRowToEntity);
+  }
+
+  async listByUserId(userId: string): Promise<WorkspaceMember[]> {
+    const { data, error } = await (this.supabase as any)
+      .from('workspace_members')
+      .select('*')
+      .eq('user_id', userId);
+
+    if (error) throw new Error(`Error fetching memberships by user: ${error.message}`);
     return (data || []).map(this.mapRowToEntity);
   }
 
@@ -125,6 +138,17 @@ export class SupabaseWorkspaceInvitationRepository implements IWorkspaceInvitati
     return this.mapRowToEntity(data);
   }
 
+  async findById(id: string): Promise<WorkspaceInvitation | null> {
+    const { data, error } = await (this.supabase as any)
+      .from('workspace_invitations')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) throw new Error(`Error finding invitation: ${error.message}`);
+    return data ? this.mapRowToEntity(data) : null;
+  }
+
   async findByToken(token: string): Promise<WorkspaceInvitation | null> {
     const { data, error } = await (this.supabase as any)
       .from('workspace_invitations')
@@ -157,5 +181,14 @@ export class SupabaseWorkspaceInvitationRepository implements IWorkspaceInvitati
 
     if (error) throw new Error(`Error updating invitation status: ${error.message}`);
     return this.mapRowToEntity(data);
+  }
+
+  async delete(id: string): Promise<void> {
+    const { error } = await (this.supabase as any)
+      .from('workspace_invitations')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw new Error(`Error deleting invitation: ${error.message}`);
   }
 }

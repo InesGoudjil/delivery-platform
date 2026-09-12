@@ -10,3 +10,4 @@ export * from "./project";
 export * from "./asset";
 export * from "./feedback";
 export * from "./notification";
+export * from "./waitlist";

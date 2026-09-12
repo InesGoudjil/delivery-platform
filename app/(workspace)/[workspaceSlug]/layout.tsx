@@ -22,23 +22,36 @@ export default async function WorkspaceLayout({
     redirect(`/login?redirect=/${workspaceSlug}`);
   }
 
-  const workspace = await services.workspace.getWorkspaceBySlug(workspaceSlug);
+  let workspace = await services.workspace.getWorkspaceBySlug(workspaceSlug);
 
   if (!workspace) {
+    const userWorkspaces = await services.workspace.getUserWorkspaces(user.id);
+    if (userWorkspaces.length > 0 && userWorkspaces[0].slug !== workspaceSlug) {
+      redirect(`/${userWorkspaces[0].slug}`);
+    }
+    const created = await services.workspace.getOrCreateWorkspace(
+      user.id,
+      user.user_metadata?.full_name || "My Studio"
+    );
+    redirect(`/${created.slug}`);
+  }
+
+  const isOwner = workspace.ownerId === user.id;
+  const isMember = await services.member.isMember(workspace.id, user.id);
+
+  if (!isOwner && !isMember) {
+    const userWorkspaces = await services.workspace.getUserWorkspaces(user.id);
+    if (userWorkspaces.length > 0 && userWorkspaces[0].slug !== workspaceSlug) {
+      redirect(`/${userWorkspaces[0].slug}`);
+    }
     redirect("/");
   }
 
-  if (workspace.ownerId !== user.id) {
-    redirect("/");
-  }
-
-  const [profile, plan, allWorkspaces] = await Promise.all([
+  const [profile, plan, userWorkspaces] = await Promise.all([
     services.profile.getProfile(user.id),
     services.subscription.getCurrentPlan(workspace.id),
-    services.workspace.listAllWorkspaces(),
+    services.workspace.getUserWorkspaces(user.id),
   ]);
-
-  const userWorkspaces = allWorkspaces.filter((w) => w.ownerId === user.id);
 
   return (
     <SidebarProvider defaultOpen={true}>

@@ -161,7 +161,11 @@ export class AssetUploadService {
     // 7. Create Pending AssetVersion Record
     let cleanInitialUrl = directUpload.uploadUrl.split("?")[0];
     if (directUpload.providerUid) {
-      cleanInitialUrl = `/api/media/${directUpload.providerUid}`;
+      if (directUpload.uploadUrl.startsWith("/api/mock-upload")) {
+        cleanInitialUrl = `/api/mock-upload/${directUpload.providerUid}`;
+      } else {
+        cleanInitialUrl = `/api/media/${directUpload.providerUid}`;
+      }
     }
 
     const assetVersion = await this.assetVersionRepo.create({

@@ -149,11 +149,11 @@ export function PortfolioClient({
       />
 
       {/* 5. Experience & Credentials Section */}
-      <ExperienceSection
+      {/* <ExperienceSection
         portfolioId={portfolio.id}
         initialExperiences={portfolio.experience || []}
         showFlash={showFlash}
-      />
+      /> */}
 
       {/* 6. Still Lightbox Modal */}
       {selectedStill && (

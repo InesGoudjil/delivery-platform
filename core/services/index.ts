@@ -12,3 +12,4 @@ export * from "./asset-upload.service";
 export * from "./feedback.service";
 export * from "./notification.service";
 export * from "./stripe.service";
+export * from "./waitlist.service";

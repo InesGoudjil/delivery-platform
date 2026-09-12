@@ -37,6 +37,10 @@ const envSchema = z.object({
   // App & Storage Options
   STORAGE_PROVIDER: z.enum(["cloudflare", "mock", "auto"]).default("auto"),
   NEXT_PUBLIC_APP_URL: z.string().optional().default("http://localhost:3000"),
+
+  // Resend Email Configuration
+  RESEND_API_KEY: z.string().optional().default(""),
+  RESEND_FROM_EMAIL: z.string().optional().default("onboarding@resend.dev"),
 });
 
 export type Env = z.infer<typeof envSchema> & {
