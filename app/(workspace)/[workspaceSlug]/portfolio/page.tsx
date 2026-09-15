@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerServices } from "@/core/server";
-import { resolveMediaUrl } from "@/lib/media";
+import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 import { PortfolioClient, PortfolioItem } from "./portfolio-client";
 
 export default async function PortfolioPage({
@@ -35,6 +35,10 @@ export default async function PortfolioPage({
     services.asset.listUnassignedAssets(workspace.id),
   ]);
 
+  const featuredItemIds: string[] = Array.isArray(portfolio.appearance?.featuredItemIds)
+    ? portfolio.appearance.featuredItemIds
+    : [];
+
   // 3. Map DB projects
   const mappedDbProjects: PortfolioItem[] = await Promise.all(
     dbProjects.map(async (p) => {
@@ -53,14 +57,17 @@ export default async function PortfolioPage({
             activeVersion?.hlsManifestUrl ||
             activeVersion?.thumbnailUrl ||
             "";
-          const rawThumb =
-            activeVersion?.thumbnailUrl || activeVersion?.rawFileUrl || "";
+          const resolvedThumb = resolveThumbnailUrl(
+            activeVersion?.thumbnailUrl,
+            rawMedia,
+            isStill
+          );
           return {
             id: a.id,
             title: a.title,
             type: isStill ? ("still" as const) : ("film" as const),
             url: resolveMediaUrl(rawMedia),
-            thumbnailUrl: resolveMediaUrl(rawThumb),
+            thumbnailUrl: resolveMediaUrl(resolvedThumb),
             aspectRatio: a.aspectRatio || "16:9",
             duration: activeVersion?.durationSeconds
               ? `${Math.floor(activeVersion.durationSeconds / 60)}:${String(
@@ -77,15 +84,19 @@ export default async function PortfolioPage({
         thumbnailUrl = projectAssets[0].thumbnailUrl;
       }
 
+      const projectThumb = resolveThumbnailUrl(p.coverAssetUrl, thumbnailUrl, false);
+
+      const isFeatured = featuredItemIds.includes(p.id);
+
       return {
         id: p.id,
         title: p.title,
         category: p.clientName || p.category || "Commercial Project",
         type: "project" as const,
         assetCount: projectAssets.length,
-        thumbnailUrl: resolveMediaUrl(p.coverAssetUrl) || thumbnailUrl,
+        thumbnailUrl: projectThumb || thumbnailUrl,
         description: p.description,
-        isFeatured: p.isPublished,
+        isFeatured,
         projectAssets,
       };
     })
@@ -96,22 +107,28 @@ export default async function PortfolioPage({
     standaloneAssets.map(async (asset) => {
       const activeVersion = await services.asset.getActiveVersion(asset.id);
       const itemType = asset.type === "photo_gallery" ? ("still" as const) : ("film" as const);
-      const rawThumb = activeVersion?.thumbnailUrl || activeVersion?.rawFileUrl || "";
+      const isStill = itemType === "still";
       const rawMedia =
         activeVersion?.rawFileUrl ||
         activeVersion?.hlsManifestUrl ||
-        rawThumb;
+        "";
+      const resolvedThumb = resolveThumbnailUrl(
+        activeVersion?.thumbnailUrl,
+        rawMedia,
+        isStill
+      );
+      const isFeatured = featuredItemIds.includes(asset.id);
 
       return {
         id: asset.id,
         title: asset.title,
-        category: asset.type === "photo_gallery" ? "Photo Gallery" : "Film Cut",
+        category: isStill ? "Photo Gallery" : "Film Cut",
         type: itemType,
         assetCount: 1,
-        thumbnailUrl: resolveMediaUrl(rawThumb),
-        mediaUrl: resolveMediaUrl(rawMedia),
-        aspectRatio: asset.aspectRatio || (itemType === "still" ? "1:1" : "16:9"),
-        isFeatured: true,
+        thumbnailUrl: resolveMediaUrl(resolvedThumb),
+        mediaUrl: resolveMediaUrl(rawMedia || resolvedThumb),
+        aspectRatio: asset.aspectRatio || (isStill ? "1:1" : "16:9"),
+        isFeatured,
       };
     })
   );
@@ -119,9 +136,9 @@ export default async function PortfolioPage({
   // Unified portfolio showcase containing EVERYTHING (Projects + Standalone Films + Standalone Stills)
   const allPortfolioItems = [...mappedDbProjects, ...mappedStandaloneAssets];
 
-  const initialFeaturedIds = allPortfolioItems
-    .filter((p) => p.isFeatured)
-    .map((p) => p.id);
+  const initialFeaturedIds = featuredItemIds.filter((id) =>
+    allPortfolioItems.some((item) => item.id === id)
+  );
 
   return (
     <PortfolioClient

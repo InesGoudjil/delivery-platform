@@ -11,6 +11,18 @@ export interface PortfolioAsset {
   resolution?: string;
 }
 
+export interface PublicFeaturedItem {
+  id: string;
+  title: string;
+  category: string;
+  type: "project" | "film" | "still";
+  thumbnailUrl: string;
+  videoUrl?: string;
+  aspectRatio?: string;
+  project?: PortfolioProject;
+  asset?: PortfolioAsset;
+}
+
 export interface PortfolioProject {
   id: string | number;
   title: string;

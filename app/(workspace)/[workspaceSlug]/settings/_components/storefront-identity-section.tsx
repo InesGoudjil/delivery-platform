@@ -52,7 +52,7 @@ export function StorefrontIdentitySection({
               value={brandName}
               onChange={(e) => onBrandNameChange(e.target.value)}
               placeholder="e.g. Pedro Concreato"
-              className="w-full bg-[#0c0c0e] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-[#f6f3ec] focus:outline-none focus:border-[#f5551d] transition-colors"
+              className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
             />
           </div>
 
@@ -61,14 +61,14 @@ export function StorefrontIdentitySection({
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Public Showcase Handle
             </label>
-            <div className="flex items-center bg-[#0c0c0e] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-muted-foreground">
+            <div className="flex items-center bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm text-muted-foreground">
               <span className="font-mono text-xs">cinespace.film/p/</span>
               <input
                 type="text"
                 required
                 value={handle}
                 onChange={(e) => onHandleChange(e.target.value)}
-                className="bg-transparent text-[#f6f3ec] focus:outline-none ml-1 font-bold w-full text-sm"
+                className="bg-transparent text-foreground focus:outline-none ml-1 font-bold w-full text-sm"
               />
             </div>
           </div>
@@ -86,7 +86,7 @@ export function StorefrontIdentitySection({
               value={whatsapp}
               onChange={(e) => onWhatsappChange(e.target.value)}
               placeholder="+971501234567"
-              className="w-full bg-[#0c0c0e] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-[#f6f3ec] focus:outline-none focus:border-[#f5551d] transition-colors font-mono"
+              className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary transition-colors font-mono"
             />
             <p className="text-[11px] text-muted-foreground">
               Powers one-click WhatsApp client inquiries and rapid review links across the Gulf.

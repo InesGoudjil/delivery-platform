@@ -8,6 +8,7 @@ import {
 import { ISubscriptionRepository } from "@/core/repositories/subscription.repository";
 import { IPlanRepository } from "@/core/repositories/plan.repository";
 import { Asset, AssetVersion, AssetType, TranscodingStatus } from "@/core/entities/asset";
+import { isPlaceholderUrl } from "@/lib/media";
 
 export interface RequestAssetUploadDTO {
   workspaceId: string;
@@ -221,10 +222,22 @@ export class AssetUploadService {
       cleanRawUrl = `/api/media/workspaces/${parts[1].split("?")[0]}`;
     }
 
+    const isImage =
+      asset.type === "photo_gallery" ||
+      /\.(jpe?g|png|avif|webp|gif|svg|bmp)$/i.test(cleanRawUrl || "") ||
+      /\.(jpe?g|png|avif|webp|gif|svg|bmp)$/i.test(dto.providerUid || "");
+
+    let resolvedThumbnailUrl = playbackInfo?.thumbnailUrl || version.thumbnailUrl;
+    if (isImage) {
+      if (!resolvedThumbnailUrl || isPlaceholderUrl(resolvedThumbnailUrl)) {
+        resolvedThumbnailUrl = cleanRawUrl;
+      }
+    }
+
     const updatedVersion = await this.assetVersionRepo.update(version.id, {
       rawFileUrl: cleanRawUrl,
       hlsManifestUrl: playbackInfo?.hlsManifestUrl || version.hlsManifestUrl,
-      thumbnailUrl: playbackInfo?.thumbnailUrl || version.thumbnailUrl,
+      thumbnailUrl: resolvedThumbnailUrl,
       durationSeconds: dto.durationSeconds ?? playbackInfo?.durationSeconds ?? version.durationSeconds,
       fileSizeBytes: dto.fileSizeBytes ?? version.fileSizeBytes,
       transcodingStatus: mapStorageStatusToTranscodingStatus(playbackInfo?.status),

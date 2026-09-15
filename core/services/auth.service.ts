@@ -100,6 +100,32 @@ export class AuthService {
     }
   }
 
+  async resetPasswordForEmail(email: string, redirectTo: string) {
+    try {
+      return await this.supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
+    } catch (err: any) {
+      return {
+        data: null,
+        error: { message: err?.message || 'Failed to send password reset email.' },
+      };
+    }
+  }
+
+  async updateUserPassword(newPassword: string) {
+    try {
+      return await this.supabase.auth.updateUser({
+        password: newPassword,
+      });
+    } catch (err: any) {
+      return {
+        data: { user: null },
+        error: { message: err?.message || 'Failed to update password.' },
+      };
+    }
+  }
+
   async signOut(): Promise<void> {
     try {
       await this.supabase.auth.signOut();

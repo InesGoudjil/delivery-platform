@@ -13,6 +13,7 @@ export interface PortfolioAppearance {
   aspectRatio: "16:9" | "9:16" | "1:1" | "4:3" | "grid";
   thumbnailScale: "fit" | "fill";
   showClientInfo: boolean;
+  featuredItemIds?: string[];
 }
 
 export interface PortfolioExperience {

@@ -62,10 +62,22 @@ export function SignupForm({
       setError(null);
       setSuccess(null);
       const supabase = createClient();
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get("redirect") || params.get("next") || "/";
+      const callbackUrl = new URL(`${window.location.origin}/api/auth/callback`);
+      callbackUrl.searchParams.set("next", next);
+      if (params.get("invite_token")) {
+        callbackUrl.searchParams.set("invite_token", params.get("invite_token")!);
+      }
+      const token = params.get("waitlist_token") || waitlistToken;
+      if (token) {
+        callbackUrl.searchParams.set("waitlist_token", token);
+      }
+
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/api/auth/callback`,
+          redirectTo: callbackUrl.toString(),
         },
       });
       if (oauthError) setError(oauthError.message);

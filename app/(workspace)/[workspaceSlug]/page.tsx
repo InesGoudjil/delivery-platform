@@ -42,9 +42,9 @@ export default async function WorkspaceDashboardPage({
 
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-xl font-bold">Recent Projects</h2>
+          <h2 className="font-display text-xl font-bold">Recent Deliveries</h2>
           <Link
-            href={`/${workspaceSlug}/projects`}
+            href={`/${workspaceSlug}/deliveries`}
             className="text-xs font-semibold text-orange hover:underline flex items-center gap-1"
           >
             View all <ArrowRight className="w-3.5 h-3.5" />

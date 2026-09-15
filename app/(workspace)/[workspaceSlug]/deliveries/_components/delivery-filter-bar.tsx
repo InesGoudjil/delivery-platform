@@ -24,7 +24,7 @@ export function DeliveryFilterBar({
         className={`px-4 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
           activeFilter === "all"
             ? "glass-btn text-white shadow-md"
-            : "text-[#aeaeb4] hover:text-[#f6f3ec]"
+            : "text-muted-foreground hover:text-foreground"
         }`}
       >
         All Projects ({totalCount})
@@ -34,7 +34,7 @@ export function DeliveryFilterBar({
         className={`px-4 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
           activeFilter === "in_review"
             ? "glass-btn text-white shadow-md"
-            : "text-[#aeaeb4] hover:text-[#f6f3ec]"
+            : "text-muted-foreground hover:text-foreground"
         }`}
       >
         Active In-Review ({inReviewCount})
@@ -44,7 +44,7 @@ export function DeliveryFilterBar({
         className={`px-4 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
           activeFilter === "approved"
             ? "glass-btn text-white shadow-md"
-            : "text-[#aeaeb4] hover:text-[#f6f3ec]"
+            : "text-muted-foreground hover:text-foreground"
         }`}
       >
         Approved &amp; Ready ({approvedCount})

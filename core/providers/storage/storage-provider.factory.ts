@@ -43,7 +43,20 @@ class CompositeStorageProvider implements IStorageProvider {
     return provider.createDirectUploadUrl(params);
   }
 
+  private isR2Asset(providerUid: string): boolean {
+    return (
+      providerUid.startsWith("workspaces/") ||
+      providerUid.includes("/") ||
+      /\.(jpe?g|png|avif|webp|gif|svg|bmp|tiff)$/i.test(providerUid)
+    );
+  }
+
   async getPlaybackInfo(providerUid: string): Promise<PlaybackInfo | null> {
+    // If providerUid is clearly an R2 key or image file, route directly to R2
+    if (this.isR2Asset(providerUid)) {
+      return this.r2Provider.getPlaybackInfo(providerUid);
+    }
+
     // Attempt Stream provider first, then fall back to R2
     try {
       const streamInfo = await this.streamProvider.getPlaybackInfo(providerUid);
@@ -55,6 +68,10 @@ class CompositeStorageProvider implements IStorageProvider {
   }
 
   async getAssetStatus(providerUid: string): Promise<StorageAssetStatus> {
+    if (this.isR2Asset(providerUid)) {
+      return this.r2Provider.getAssetStatus(providerUid);
+    }
+
     try {
       const status = await this.streamProvider.getAssetStatus(providerUid);
       if (status && status.status !== "error") return status;
@@ -65,6 +82,11 @@ class CompositeStorageProvider implements IStorageProvider {
   }
 
   async deleteAsset(providerUid: string): Promise<void> {
+    if (this.isR2Asset(providerUid)) {
+      await this.r2Provider.deleteAsset(providerUid);
+      return;
+    }
+
     try {
       await this.streamProvider.deleteAsset(providerUid);
     } catch {

@@ -26,6 +26,7 @@ export function AppearanceToolbar({
   onAppearanceChange,
   showFlash,
 }: AppearanceToolbarProps) {
+  console.log("apparance",initialAppearance)
   const [isPending, startTransition] = useTransition();
 
   const [cardSize, setCardSize] = useState<"S" | "M" | "L">(
@@ -43,10 +44,12 @@ export function AppearanceToolbar({
 
   const persistAppearance = (updates: Partial<PortfolioAppearance>) => {
     const updatedAppearance: PortfolioAppearance = {
+      ...initialAppearance,
       cardSize,
       aspectRatio,
       thumbnailScale,
       showClientInfo,
+      featuredItemIds:initialAppearance.featuredItemIds,
       ...updates,
     };
 

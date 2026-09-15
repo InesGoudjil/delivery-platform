@@ -68,49 +68,49 @@ export function DeliveryCardGrid({
         return (
           <div
             key={item.id}
-            className="liquid-glass rounded-2xl p-6 border border-white/10 hover:border-[#f5551d]/40 transition-all duration-300 flex flex-col justify-between group shadow-xl"
+            className="bg-card rounded-2xl p-6 border border-border hover:border-primary/50 transition-all duration-300 flex flex-col justify-between group shadow-sm"
           >
             <div className="space-y-4">
               {/* Status + Version Header */}
               <div className="flex items-center justify-between gap-2">
                 {getStatusBadge(item.status)}
-                <span className="text-[11px] font-mono text-[#f6f3ec] bg-black/50 px-2.5 py-0.5 rounded-full border border-white/10">
+                <span className="text-[11px] font-mono text-foreground bg-muted px-2.5 py-0.5 rounded-full border border-border">
                   {item.version}
                 </span>
               </div>
 
               {/* Title & Client */}
               <Link href={`/${workspaceSlug}/deliveries/${item.id}`} className="block group">
-                <h3 className="font-display text-xl font-bold text-[#f6f3ec] group-hover:text-[#ff8a45] transition-colors flex items-center justify-between">
+                <h3 className="font-display text-xl font-bold text-card-foreground group-hover:text-primary transition-colors flex items-center justify-between">
                   <span>{item.title}</span>
-                  <ArrowRight className="size-4 text-[#aeaeb4] group-hover:text-[#f5551d] opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1" />
+                  <ArrowRight className="size-4 text-muted-foreground group-hover:text-primary opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1" />
                 </h3>
               </Link>
-              <p className="text-xs text-[#aeaeb4] font-sans">
-                Client: <strong className="text-[#f6f3ec]">{item.clientName}</strong>
+              <p className="text-xs text-muted-foreground font-sans">
+                Client: <strong className="text-foreground">{item.clientName}</strong>
               </p>
 
               {/* Specs / Badges */}
-              <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#aeaeb4] font-mono pt-1">
-                <span className="flex items-center gap-1 bg-black/40 px-2.5 py-1 rounded-md border border-white/5">
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground font-mono pt-1">
+                <span className="flex items-center gap-1 bg-muted/50 text-foreground px-2.5 py-1 rounded-md border border-border">
                   <Clock className="size-3 text-[#f5551d]" /> {item.duration}
                 </span>
                 {item.passcodeProtected && (
-                  <span className="flex items-center gap-1 bg-blue-500/15 text-blue-300 border border-blue-500/30 px-2.5 py-1 rounded-md">
+                  <span className="flex items-center gap-1 bg-blue-500/15 text-blue-500 border border-blue-500/30 px-2.5 py-1 rounded-md">
                     <Lock className="size-3" /> Password Gate
                   </span>
                 )}
                 {item.downloadsAllowed ? (
-                  <span className="flex items-center gap-1 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-md">
+                  <span className="flex items-center gap-1 bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 px-2.5 py-1 rounded-md">
                     <Download className="size-3" /> Downloads On
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1 bg-black/40 text-[#aeaeb4] px-2.5 py-1 rounded-md border border-white/5">
+                  <span className="flex items-center gap-1 bg-muted/50 text-muted-foreground px-2.5 py-1 rounded-md border border-border">
                     Stream Only
                   </span>
                 )}
                 {item.commentsCount > 0 && (
-                  <span className="flex items-center gap-1 bg-[#f5551d]/15 text-[#ff8a45] border border-[#f5551d]/30 px-2.5 py-1 rounded-md">
+                  <span className="flex items-center gap-1 bg-[#f5551d]/15 text-[#f5551d] border border-[#f5551d]/30 px-2.5 py-1 rounded-md">
                     <MessageCircle className="size-3" /> {item.commentsCount} notes
                   </span>
                 )}
@@ -118,10 +118,10 @@ export function DeliveryCardGrid({
             </div>
 
             {/* Bottom Actions */}
-            <div className="pt-4 mt-6 border-t border-white/10 flex items-center justify-between gap-2">
+            <div className="pt-4 mt-6 border-t border-border flex items-center justify-between gap-2">
               <Link
                 href={`/${workspaceSlug}/deliveries/${item.id}`}
-                className="text-xs font-semibold text-[#f5551d] hover:underline flex items-center gap-1 font-mono"
+                className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 font-mono"
               >
                 Manage Cut <ArrowRight className="size-3" />
               </Link>
@@ -129,16 +129,16 @@ export function DeliveryCardGrid({
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleCopyLink(item.shareToken, item.id)}
-                  className="glass-btn-ghost btn-glass-layer cursor-pointer text-xs px-3 py-1.5 flex items-center gap-1.5"
+                  className="rounded-xl border border-border bg-muted/40 hover:bg-muted text-foreground cursor-pointer text-xs px-3 py-1.5 flex items-center gap-1.5 transition-colors"
                 >
                   {isCopied ? (
                     <>
-                      <Check className="size-3.5 text-emerald-400" />
-                      <span className="text-emerald-400 font-semibold">Copied</span>
+                      <Check className="size-3.5 text-emerald-500" />
+                      <span className="text-emerald-500 font-semibold">Copied</span>
                     </>
                   ) : (
                     <>
-                      <Copy className="size-3.5 text-[#aeaeb4]" />
+                      <Copy className="size-3.5 text-muted-foreground" />
                       <span>Copy Link</span>
                     </>
                   )}
@@ -148,7 +148,7 @@ export function DeliveryCardGrid({
                   href={`https://wa.me/?text=${encodeURIComponent(`Hi ${item.clientName}, your review cut for ${item.title} is ready: ${typeof window !== "undefined" ? window.location.origin : ""}/deliver/${item.shareToken}`)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="glass-btn-ghost btn-glass-layer cursor-pointer p-2 text-xs text-[#86b98f]"
+                  className="rounded-xl border border-border bg-muted/40 hover:bg-muted text-emerald-500 cursor-pointer p-2 text-xs transition-colors"
                   title="Send via WhatsApp"
                 >
                   <MessageCircle className="size-4" />
@@ -157,7 +157,7 @@ export function DeliveryCardGrid({
                 <Link
                   href={shareUrl}
                   target="_blank"
-                  className="glass-btn-ghost btn-glass-layer cursor-pointer p-2 text-xs text-[#f6f3ec]"
+                  className="rounded-xl border border-border bg-muted/40 hover:bg-muted text-foreground cursor-pointer p-2 text-xs transition-colors"
                   title="Open Live Review Room"
                 >
                   <ExternalLink className="size-4" />
