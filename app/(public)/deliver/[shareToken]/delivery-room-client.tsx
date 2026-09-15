@@ -13,14 +13,15 @@ import {
   ShieldCheck,
   X,
   FileVideo,
-  CheckCircle2,
   AlertCircle,
   Clock,
   Layers,
   Sparkles,
   ExternalLink,
   ShieldAlert,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { CutReviewPlayer, type CutReviewPlayerRef } from "@/components/video/cut-review-player";
 import { formatTimecode, parseTimecodeToSeconds } from "@/lib/timecode";
 import {
@@ -133,12 +134,9 @@ export function DeliveryRoomClient({
   const [currentPlayheadTime, setCurrentPlayheadTime] = useState(0);
   const [currentPlayheadTc, setCurrentPlayheadTc] = useState("00:00:00");
 
-  // Global flash toast
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
-  };
+  // Loading states for approvals
+  const [approvingAssetId, setApprovingAssetId] = useState<string | null>(null);
+  const [isApprovingAll, setIsApprovingAll] = useState(false);
 
   // Find active asset & version
   const activeAsset = assets.find((a) => a.id === activeAssetId) || null;
@@ -175,7 +173,7 @@ export function DeliveryRoomClient({
       const res = await verifyDeliveryPasscodeAction(delivery.shareToken, passwordInput);
       if (res.success) {
         setIsLocked(false);
-        showToast("Access granted to review room");
+        toast.success("Access granted to review room");
       } else {
         setPasscodeError(res.error || "Incorrect passcode. Please try again.");
       }
@@ -193,22 +191,27 @@ export function DeliveryRoomClient({
       prev.map((a) => (a.id === assetId ? { ...a, isApproved: nextApproved } : a))
     );
 
-    const res = await toggleAssetApprovalAction(delivery.id, assetId, nextApproved);
-    if (res.success) {
-      if (nextApproved) {
-        showToast(`"${asset.title}" approved!`);
+    setApprovingAssetId(assetId);
+    try {
+      const res = await toggleAssetApprovalAction(delivery.id, assetId, nextApproved);
+      if (res.success) {
+        if (nextApproved) {
+          toast.success(`"${asset.title}" approved!`);
+        } else {
+          toast.info(`Approval removed for "${asset.title}"`);
+        }
+        if (res.delivery?.status) {
+          setDeliveryStatus(res.delivery.status);
+        }
       } else {
-        showToast(`Approval removed for "${asset.title}"`);
+        // Revert on error
+        setAssets((prev) =>
+          prev.map((a) => (a.id === assetId ? { ...a, isApproved: asset.isApproved } : a))
+        );
+        toast.error(res.error || "Failed to update asset approval.");
       }
-      if (res.delivery?.status) {
-        setDeliveryStatus(res.delivery.status);
-      }
-    } else {
-      // Revert on error
-      setAssets((prev) =>
-        prev.map((a) => (a.id === assetId ? { ...a, isApproved: asset.isApproved } : a))
-      );
-      showToast(res.error || "Failed to update asset approval.");
+    } finally {
+      setApprovingAssetId(null);
     }
   };
 
@@ -217,11 +220,16 @@ export function DeliveryRoomClient({
     setAssets((prev) => prev.map((a) => ({ ...a, isApproved: true })));
     setDeliveryStatus("approved");
 
-    const res = await approveAllAssetsAction(delivery.id, commentAuthor);
-    if (res.success) {
-      showToast("All delivery cuts approved & locked!");
-    } else {
-      showToast(res.error || "Failed to approve all cuts.");
+    setIsApprovingAll(true);
+    try {
+      const res = await approveAllAssetsAction(delivery.id, commentAuthor);
+      if (res.success) {
+        toast.success("All delivery cuts approved & locked!");
+      } else {
+        toast.error(res.error || "Failed to approve all cuts.");
+      }
+    } finally {
+      setIsApprovingAll(false);
     }
   };
 
@@ -259,7 +267,7 @@ export function DeliveryRoomClient({
     );
     setCommentText("");
     setActiveCommentId(tempId);
-    showToast(`Timecoded note added at [${formattedTc}]`);
+    toast.success(`Timecoded note added at [${formattedTc}]`);
 
     startCommentTransition(async () => {
       const res = await addFeedbackAction({
@@ -385,41 +393,50 @@ export function DeliveryRoomClient({
   return (
     <div className="min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased selection:bg-[#f5551d] selection:text-black">
       {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-[#070709]/80 backdrop-blur-xl border-b border-white/10 shadow-xl">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-40 bg-[#070709]/90 backdrop-blur-xl border-b border-white/10 shadow-xl">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 py-2.5 sm:py-0 min-h-[4rem] sm:h-20 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-4">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             {workspace.logoUrl ? (
               <img
                 src={workspace.logoUrl}
                 alt={workspace.brandName}
-                className="w-10 h-10 rounded-full object-cover border border-white/10"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border border-white/10 shrink-0"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#f5551d] to-[#ff8a45] text-black font-extrabold flex items-center justify-center font-display text-sm shadow-md">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-[#f5551d] to-[#ff8a45] text-black font-extrabold flex items-center justify-center font-display text-xs sm:text-sm shadow-md shrink-0">
                 {workspace.brandName.slice(0, 2).toUpperCase()}
               </div>
             )}
-            <div>
-              <h1 className="font-display font-bold text-base sm:text-lg leading-none text-[#f6f3ec]">
+            <div className="min-w-0">
+              <h1 className="font-display font-bold text-sm sm:text-lg leading-tight text-[#f6f3ec] truncate">
                 {workspace.brandName}
               </h1>
-              <p className="text-xs text-[#aeaeb4] mt-0.5 font-sans truncate max-w-[200px] sm:max-w-md">
+              <p className="text-[11px] sm:text-xs text-[#aeaeb4] mt-0.5 font-sans truncate max-w-[170px] sm:max-w-md">
                 Client Review · {delivery.title}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {allApproved ? (
-              <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-full font-bold px-4 py-2 text-xs flex items-center gap-2">
-                <Lock className="size-3.5" /> All Cuts Approved &amp; Locked
+              <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-full font-bold px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs flex items-center gap-1.5 sm:gap-2">
+                <Lock className="size-3.5" /> All Cuts Approved
               </span>
             ) : (
               <button
                 onClick={handleApproveAll}
-                className="bg-[#f5551d] hover:bg-[#e0440d] text-black rounded-full cursor-pointer text-xs px-5 py-2.5 font-bold flex items-center gap-2 transition-colors shadow-md"
+                disabled={isApprovingAll}
+                className="bg-[#f5551d] hover:bg-[#e0440d] text-black rounded-full cursor-pointer text-[11px] sm:text-xs px-3.5 sm:px-5 py-2 sm:py-2.5 font-bold flex items-center gap-1.5 sm:gap-2 transition-colors shadow-md disabled:opacity-60"
               >
-                <Check className="size-4" /> Approve All Cuts
+                {isApprovingAll ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" /> Approving...
+                  </>
+                ) : (
+                  <>
+                    <Check className="size-3.5 sm:size-4" /> Approve All Cuts
+                  </>
+                )}
               </button>
             )}
           </div>
@@ -465,9 +482,9 @@ export function DeliveryRoomClient({
                     firstWithUrl?.versions[0]?.rawFileUrl;
                   if (downloadUrl) {
                     window.open(downloadUrl, "_blank");
-                    showToast("Opening master cut download...");
+                    toast.success("Opening master cut download...");
                   } else {
-                    showToast("No direct master file attached to download.");
+                    toast.error("No direct master file attached to download.");
                   }
                 }}
                 className="bg-white/10 hover:bg-white/15 text-white border border-white/15 rounded-full cursor-pointer px-5 py-3 text-xs font-semibold flex items-center gap-2 transition-colors"
@@ -603,14 +620,19 @@ export function DeliveryRoomClient({
                       </button>
                       <button
                         onClick={() => handleToggleAssetApproval(asset.id)}
-                        className={`px-3 py-2 text-xs font-bold rounded-xl transition-colors cursor-pointer ${
+                        disabled={approvingAssetId === asset.id}
+                        className={`px-3 py-2 text-xs font-bold rounded-xl transition-colors cursor-pointer disabled:opacity-60 ${
                           asset.isApproved
                             ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                             : "bg-[#f5551d] hover:bg-[#e0440d] text-black"
                         }`}
                         title={asset.isApproved ? "Approved (Click to revert)" : "Approve this cut"}
                       >
-                        <Check className="size-4" />
+                        {approvingAssetId === asset.id ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Check className="size-4" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -623,33 +645,34 @@ export function DeliveryRoomClient({
 
       {/* 📹 3. INTERACTIVE VIDEO REVIEW LIGHTBOX MODAL */}
       {activeAsset && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-[#111115] rounded-3xl w-full max-w-5xl max-h-[92vh] overflow-y-auto p-6 sm:p-8 space-y-6 text-[#f6f3ec] shadow-2xl relative border border-white/15">
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-2.5 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-[#111115] rounded-2xl sm:rounded-3xl w-full max-w-5xl max-h-[96vh] sm:max-h-[92vh] overflow-y-auto p-4 sm:p-8 space-y-4 sm:space-y-6 text-[#f6f3ec] shadow-2xl relative border border-white/15">
             {/* Modal Top Bar */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <div className="flex items-center gap-3">
-                <FileVideo className="size-6 text-[#f5551d]" />
-                <div>
-                  <h3 className="font-display font-bold text-lg text-[#f6f3ec]">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3 sm:pb-4">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <FileVideo className="size-5 sm:size-6 text-[#f5551d] shrink-0" />
+                <div className="min-w-0">
+                  <h3 className="font-display font-bold text-base sm:text-lg text-[#f6f3ec] truncate">
                     {activeAsset.title}
                   </h3>
-                  <p className="text-xs text-[#aeaeb4] font-mono">
+                  <p className="text-[11px] sm:text-xs text-[#aeaeb4] font-mono truncate">
                     Aspect: {activeAsset.aspectRatio || "16:9"} · {activeFeedback.length} timecoded notes
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setActiveAssetId(null)}
-                className="w-9 h-9 rounded-full bg-white/10 text-[#aeaeb4] hover:text-[#f6f3ec] hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer"
+                className="size-9 rounded-full bg-white/10 text-[#aeaeb4] hover:text-[#f6f3ec] hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer shrink-0 ml-2"
+                title="Close modal"
               >
                 <X className="size-5" />
               </button>
             </div>
 
             {/* Video Player Stage & Comment Sidebar */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
               {/* Player Column */}
-              <div className="lg:col-span-7 space-y-4">
+              <div className="lg:col-span-7 space-y-3 sm:space-y-4">
                 {activeVersion ? (
                   <CutReviewPlayer
                     ref={cutPlayerRef}
@@ -699,7 +722,7 @@ export function DeliveryRoomClient({
                           <button
                             key={v.id}
                             onClick={() => setSelectedVersionId(v.id)}
-                            className={`px-3 py-1 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer ${
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer ${
                               isSelected
                                 ? "bg-[#f5551d] text-black shadow-md"
                                 : "bg-white/5 text-[#aeaeb4] hover:text-[#f6f3ec]"
@@ -715,8 +738,8 @@ export function DeliveryRoomClient({
               </div>
 
               {/* Timestamped Comment Drawer */}
-              <div className="lg:col-span-5 bg-white/5 p-5 rounded-2xl flex flex-col justify-between h-[450px] border border-white/10">
-                <div className="space-y-4 overflow-hidden flex flex-col h-full">
+              <div className="lg:col-span-5 bg-white/5 p-4 sm:p-5 rounded-2xl flex flex-col justify-between min-h-[360px] sm:min-h-[420px] lg:h-[480px] border border-white/10">
+                <div className="space-y-3 sm:space-y-4 overflow-hidden flex flex-col h-full">
                   <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
                     <h4 className="font-display font-bold text-sm text-[#f6f3ec] flex items-center gap-2">
                       <MessageCircle className="size-4 text-[#f5551d]" /> Notes ({activeFeedback.length})
@@ -727,7 +750,7 @@ export function DeliveryRoomClient({
                   </div>
 
                   {/* Comments Feed */}
-                  <div className="space-y-3 overflow-y-auto pr-1 flex-1">
+                  <div className="space-y-2.5 sm:space-y-3 overflow-y-auto pr-1 flex-1">
                     {activeFeedback.length === 0 ? (
                       <div className="h-full flex flex-col items-center justify-center text-center p-4 text-xs text-[#aeaeb4] space-y-1">
                         <p>No comments on this version yet.</p>
@@ -766,7 +789,7 @@ export function DeliveryRoomClient({
                             <div className="flex items-center justify-end pt-1">
                               <button
                                 onClick={(e) => {
-                                  e.stopPropagation();
+                                   e.stopPropagation();
                                   handleToggleResolve(c.id, c.isResolved);
                                 }}
                                 className={`text-[10px] font-mono px-2 py-0.5 rounded cursor-pointer transition-colors ${
@@ -790,14 +813,14 @@ export function DeliveryRoomClient({
                     className="pt-3 border-t border-white/10 flex flex-col gap-2 shrink-0"
                   >
                     <div className="flex items-center justify-between text-[10px] font-mono text-[#aeaeb4]">
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
                         <span>As:</span>
                         <input
                           type="text"
                           value={commentAuthor}
                           onChange={(e) => setCommentAuthor(e.target.value)}
                           placeholder="Your Name"
-                          className="bg-transparent text-white font-semibold underline underline-offset-2 outline-none max-w-[120px]"
+                          className="bg-transparent text-white font-semibold underline underline-offset-2 outline-none max-w-[130px] text-xs"
                         />
                       </div>
                       <span className="text-[#ff8a45] font-bold">[{currentPlayheadTc}]</span>
@@ -809,14 +832,15 @@ export function DeliveryRoomClient({
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
                         disabled={isSubmittingComment}
-                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#f5551d] text-white placeholder:text-neutral-500"
+                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#f5551d] text-white placeholder:text-neutral-500 min-h-[44px]"
                       />
                       <button
                         type="submit"
                         disabled={isSubmittingComment || !commentText.trim()}
-                        className="bg-[#f5551d] hover:bg-[#e0440d] text-black font-bold px-3.5 py-2 rounded-xl text-xs cursor-pointer transition-colors disabled:opacity-40"
+                        className="bg-[#f5551d] hover:bg-[#e0440d] text-black font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer transition-colors disabled:opacity-40 min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0"
+                        title="Post timecoded note"
                       >
-                        <Send className="size-3.5" />
+                        <Send className="size-4" />
                       </button>
                     </div>
                   </form>
@@ -824,14 +848,6 @@ export function DeliveryRoomClient({
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Floating Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#111115] border border-[#f5551d] text-[#f6f3ec] px-5 py-3 rounded-full text-xs font-semibold shadow-2xl flex items-center gap-2.5 animate-in slide-in-from-bottom duration-200">
-          <CheckCircle2 className="size-4 text-[#f5551d]" />
-          <span>{toastMessage}</span>
         </div>
       )}
     </div>

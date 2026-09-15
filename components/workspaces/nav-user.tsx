@@ -12,6 +12,7 @@ import {
   Bell,
   HardDrive,
   MessageCircle,
+  BookOpen,
   ArrowRight,
   ExternalLink,
   Users,
@@ -232,11 +233,21 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
             <DropdownMenuGroup className="space-y-0.5">
               <DropdownMenuItem asChild>
                 <Link
+                  href={`/${workspaceSlug}/docs`}
+                  className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#f6f3ec] hover:bg-white/10 hover:text-white cursor-pointer transition-colors"
+                >
+                  <BookOpen className="size-4 text-[#38bdf8]" />
+                  <span>Studio Documentation</span>
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem asChild>
+                <Link
                   href={`/${workspaceSlug}/help`}
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#f6f3ec] hover:bg-white/10 hover:text-white cursor-pointer transition-colors"
                 >
                   <MessageCircle className="size-4 text-[#a78bfa]" />
-                  <span>Help &amp; Support</span>
+                  <span>Help &amp; Shortcuts</span>
                 </Link>
               </DropdownMenuItem>
 

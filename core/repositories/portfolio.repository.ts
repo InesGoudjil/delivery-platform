@@ -33,6 +33,7 @@ export class SupabasePortfolioRepository implements IPortfolioRepository {
       aspectRatio: "16:9",
       thumbnailScale: "fill",
       showClientInfo: true,
+      featuredItemIds: [],
     };
 
     return {
@@ -117,7 +118,18 @@ export class SupabasePortfolioRepository implements IPortfolioRepository {
     if (data.coverAssetUrl !== undefined) payload.cover_asset_url = data.coverAssetUrl;
     if (data.socialLinks !== undefined) payload.social_links = data.socialLinks;
     if (data.isPublished !== undefined) payload.is_published = data.isPublished;
-    if (data.appearance !== undefined) payload.appearance = data.appearance;
+    if (data.appearance !== undefined) {
+      const existing = await this.findById(id);
+      const existingAppearance: any = existing?.appearance || {};
+      payload.appearance = {
+        ...existingAppearance,
+        ...data.appearance,
+        featuredItemIds:
+          data.appearance.featuredItemIds !== undefined
+            ? data.appearance.featuredItemIds
+            : (existingAppearance.featuredItemIds || []),
+      };
+    }
     if (data.experience !== undefined) payload.experience = data.experience;
     if (data.whatsappNumber !== undefined) payload.whatsapp_number = data.whatsappNumber;
     if (data.stats !== undefined) payload.stats = data.stats;

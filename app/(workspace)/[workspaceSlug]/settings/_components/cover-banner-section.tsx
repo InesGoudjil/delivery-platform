@@ -56,7 +56,7 @@ export function CoverBannerSection({
         </p>
       </div>
 
-      <div className="rounded-2xl bg-[#141416]/90 border border-white/[0.08] p-5 md:p-6 shadow-sm space-y-6">
+      <div className="rounded-2xl bg-card border border-border p-5 md:p-6 shadow-sm space-y-6">
         {/* Live Cover Preview Stage */}
         <div className="relative rounded-2xl overflow-hidden aspect-[21/9] sm:aspect-[24/8] border border-white/10 shadow-2xl bg-black/60 group">
           {coverUrl ? (
@@ -133,7 +133,7 @@ export function CoverBannerSection({
         {/* Preset Covers Grid & Upload Area */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#f6f3ec] uppercase tracking-wider font-mono">
+            <span className="text-xs font-semibold text-foreground uppercase tracking-wider font-mono">
               Select from Cinematic Presets
             </span>
             <span className="text-[11px] text-muted-foreground">
@@ -152,7 +152,7 @@ export function CoverBannerSection({
                   className={`relative rounded-xl overflow-hidden aspect-[16/9] border-2 transition-all group cursor-pointer text-left shadow-sm ${
                     isSelected
                       ? "border-[#f5551d] scale-[1.02] shadow-[#f5551d]/20 shadow-lg"
-                      : "border-white/10 hover:border-white/30 opacity-75 hover:opacity-100"
+                      : "border-border hover:border-primary/40 opacity-75 hover:opacity-100"
                   }`}
                 >
                   <img
@@ -185,13 +185,13 @@ export function CoverBannerSection({
             />
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="rounded-xl border border-dashed border-white/20 hover:border-[#f5551d]/60 bg-[#0c0c0e]/60 hover:bg-white/[0.03] p-4 text-center cursor-pointer transition-all flex items-center justify-center gap-3"
+              className="rounded-xl border border-dashed border-border hover:border-[#f5551d]/60 bg-muted/40 hover:bg-muted/60 p-4 text-center cursor-pointer transition-all flex items-center justify-center gap-3"
             >
-              <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-[#f5551d]">
+              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-[#f5551d]">
                 <Upload className="size-4" />
               </div>
               <div className="text-left">
-                <div className="text-xs font-bold text-[#f6f3ec]">
+                <div className="text-xs font-bold text-foreground">
                   Upload Custom Cover Visual
                 </div>
                 <div className="text-[11px] text-muted-foreground">

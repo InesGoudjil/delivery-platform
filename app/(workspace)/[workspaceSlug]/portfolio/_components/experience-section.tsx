@@ -73,78 +73,78 @@ export function ExperienceSection({
       {/* Add Experience Modal */}
       {showExperienceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
-          <div className="w-full max-w-lg bg-[#141416] border border-white/15 rounded-2xl p-6 shadow-2xl space-y-4 relative">
+          <div className="w-full max-w-md bg-card rounded-3xl p-6 border border-border shadow-2xl space-y-4 relative">
             <button
               onClick={() => setShowExperienceModal(false)}
-              className="absolute top-4 right-4 text-[#8e8e93] hover:text-white transition-colors"
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground cursor-pointer"
             >
               <X className="size-5" />
             </button>
-            <h3 className="text-base font-bold text-[#f6f3ec] flex items-center gap-2">
+            <h3 className="text-base font-bold text-card-foreground flex items-center gap-2">
               <Briefcase className="size-4 text-[#f5551d]" />
               Add Experience / Credential
             </h3>
 
             <form onSubmit={handleAddExperience} className="space-y-3 text-xs">
               <div>
-                <label className="text-[#8e8e93] font-medium">Role / Title</label>
+                <label className="text-muted-foreground font-medium">Role / Title</label>
                 <input
                   type="text"
                   placeholder="e.g. Lead Colorist & Director"
                   value={newExpRole}
                   onChange={(e) => setNewExpRole(e.target.value)}
-                  className="w-full bg-[#0c0c0e] border border-white/10 rounded-xl px-3.5 py-2 text-[#f6f3ec] focus:outline-none focus:border-[#f5551d]"
+                  className="w-full bg-muted/50 border border-border rounded-xl px-3.5 py-2 text-foreground focus:outline-none focus:border-primary"
                   required
                 />
               </div>
 
               <div>
-                <label className="text-[#8e8e93] font-medium">Company / Agency / Freelance</label>
+                <label className="text-muted-foreground font-medium">Company / Agency / Freelance</label>
                 <input
                   type="text"
                   placeholder="e.g. Red Bull Media House"
                   value={newExpCompany}
                   onChange={(e) => setNewExpCompany(e.target.value)}
-                  className="w-full bg-[#0c0c0e] border border-white/10 rounded-xl px-3.5 py-2 text-[#f6f3ec] focus:outline-none focus:border-[#f5551d]"
+                  className="w-full bg-muted/50 border border-border rounded-xl px-3.5 py-2 text-foreground focus:outline-none focus:border-primary"
                   required
                 />
               </div>
 
               <div>
-                <label className="text-[#8e8e93] font-medium">Years / Duration</label>
+                <label className="text-muted-foreground font-medium">Years / Duration</label>
                 <input
                   type="text"
                   placeholder="e.g. 2022 - Present"
                   value={newExpYears}
                   onChange={(e) => setNewExpYears(e.target.value)}
-                  className="w-full bg-[#0c0c0e] border border-white/10 rounded-xl px-3.5 py-2 text-[#f6f3ec] focus:outline-none focus:border-[#f5551d]"
+                  className="w-full bg-muted/50 border border-border rounded-xl px-3.5 py-2 text-foreground focus:outline-none focus:border-primary"
                 />
               </div>
 
               <div>
-                <label className="text-[#8e8e93] font-medium">Description</label>
+                <label className="text-muted-foreground font-medium">Description</label>
                 <textarea
                   rows={2}
                   placeholder="Brief summary of responsibilities or featured campaigns..."
                   value={newExpDesc}
                   onChange={(e) => setNewExpDesc(e.target.value)}
-                  className="w-full bg-[#0c0c0e] border border-white/10 rounded-xl px-3.5 py-2 text-[#f6f3ec] focus:outline-none focus:border-[#f5551d] resize-none"
+                  className="w-full bg-muted/50 border border-border rounded-xl px-3.5 py-2 text-foreground focus:outline-none focus:border-primary resize-none"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
+              <div className="flex justify-end gap-2 pt-2 border-t border-border">
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={() => setShowExperienceModal(false)}
-                  className="rounded-xl text-xs text-[#8e8e93]"
+                  className="rounded-xl text-xs text-muted-foreground"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={isPending}
-                  className="rounded-xl bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45]"
+                  className="rounded-xl bg-primary text-black font-bold text-xs hover:bg-primary/90"
                 >
                   {isPending ? "Saving..." : "Save Entry"}
                 </Button>
@@ -154,15 +154,15 @@ export function ExperienceSection({
         </div>
       )}
 
-      <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-        <div className="flex items-center gap-2 text-xs font-bold text-[#f6f3ec]">
+      <div className="flex items-center justify-between border-b border-border pb-3">
+        <div className="flex items-center gap-2 text-xs font-bold text-foreground">
           <Briefcase className="size-4 text-[#f5551d]" />
           <span>Experience &amp; Client Roster</span>
         </div>
         <Button
           size="sm"
           onClick={() => setShowExperienceModal(true)}
-          className="rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-[#f6f3ec] border border-white/10 h-7 px-3 cursor-pointer"
+          className="rounded-xl bg-muted hover:bg-muted/80 text-xs font-medium text-foreground border border-border h-7 px-3 cursor-pointer"
         >
           <Plus className="size-3 mr-1 text-[#f5551d]" /> Add Experience
         </Button>

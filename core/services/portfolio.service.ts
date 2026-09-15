@@ -34,6 +34,10 @@ export class PortfolioService {
     return this.portfolioRepo.findByWorkspaceId(workspaceId);
   }
 
+  async getPortfolioById(id: string): Promise<Portfolio | null> {
+    return this.portfolioRepo.findById(id);
+  }
+
   async getOrCreatePortfolio(workspaceId: string, title: string, slug: string): Promise<Portfolio> {
     try {
       const existing = await this.portfolioRepo.findByWorkspaceId(workspaceId);

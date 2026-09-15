@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useTransition } from "react";
 import { PortfolioAppearance, PortfolioExperience, SocialLinks } from "@/core/entities/portfolio";
+import { toggleFeaturedItemAction } from "@/app/actions/portfolio";
 import { PortfolioHero } from "./_components/portfolio-hero";
 import { AppearanceToolbar } from "./_components/appearance-toolbar";
 import { FeaturedReel } from "./_components/featured-reel";
@@ -12,6 +13,7 @@ import {
   ProjectExplorerModal,
 } from "./_components/portfolio-modals";
 import { ExperienceSection } from "./_components/experience-section";
+import { toast } from "sonner";
 
 
 
@@ -67,8 +69,33 @@ export function PortfolioClient({
   initialProjects,
   initialFeaturedIds,
 }: PortfolioClientProps) {
-  const [toast, setToast] = useState<string | null>(null);
   const [projects, setProjects] = useState<PortfolioItem[]>(initialProjects);
+  const [featuredIds, setFeaturedIds] = useState<string[]>(initialFeaturedIds);
+  const [isPending, startTransition] = useTransition();
+
+  const handleToggleFeature = (item: PortfolioItem) => {
+    const isCurrentlyFeatured = featuredIds.includes(item.id);
+    const updatedIds = isCurrentlyFeatured
+      ? featuredIds.filter((id) => id !== item.id)
+      : [...featuredIds, item.id];
+
+    setFeaturedIds(updatedIds);
+
+    startTransition(async () => {
+      const itemType = item.type === "project" ? "project" : "asset";
+      await toggleFeaturedItemAction(
+        portfolio.id,
+        item.id,
+        itemType,
+        !isCurrentlyFeatured
+      );
+      showFlash(
+        isCurrentlyFeatured
+          ? `Removed "${item.title}" from featured reel`
+          : `Pinned "${item.title}" to featured reel`
+      );
+    });
+  };
 
   const initialApp: PortfolioAppearance = portfolio.appearance || {
     cardSize: "M",
@@ -95,8 +122,7 @@ export function PortfolioClient({
   };
 
   const showFlash = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3500);
+    toast.success(msg);
   };
 
   const handleProjectCreated = (newItem: PortfolioItem) => {
@@ -105,13 +131,6 @@ export function PortfolioClient({
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-200">
-      {/* Toast Notification */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#f5551d] text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-2xl animate-in fade-in slide-in-from-bottom-2 border border-white/20">
-          {toast}
-        </div>
-      )}
-
       {/* 1. Header & Modals matching Screenshot 3 */}
       <PortfolioHero
         workspace={workspace}
@@ -133,6 +152,8 @@ export function PortfolioClient({
         portfolioId={portfolio.id}
         initialProjects={projects}
         initialFeaturedIds={initialFeaturedIds}
+        featuredIds={featuredIds}
+        onToggleFeature={handleToggleFeature}
         showFlash={showFlash}
         onSelectItem={handleSelectItem}
       />
@@ -143,6 +164,8 @@ export function PortfolioClient({
         workspaceSlug={workspace.slug}
         projects={projects}
         initialFeaturedIds={initialFeaturedIds}
+        featuredIds={featuredIds}
+        onToggleFeature={handleToggleFeature}
         appearance={appearance}
         showFlash={showFlash}
         onSelectItem={handleSelectItem}

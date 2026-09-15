@@ -10,6 +10,8 @@ interface FeaturedReelProps {
   portfolioId: string;
   initialProjects: PortfolioItem[];
   initialFeaturedIds: string[];
+  featuredIds?: string[];
+  onToggleFeature?: (item: PortfolioItem) => void;
   showFlash: (msg: string) => void;
   onSelectItem?: (item: PortfolioItem) => void;
 }
@@ -18,27 +20,33 @@ export function FeaturedReel({
   portfolioId,
   initialProjects,
   initialFeaturedIds,
+  featuredIds: propFeaturedIds,
+  onToggleFeature: propOnToggleFeature,
   showFlash,
   onSelectItem,
 }: FeaturedReelProps) {
 
   const [isPending, startTransition] = useTransition();
 
-  const [featuredIds, setFeaturedIds] = useState<string[]>(
-    initialFeaturedIds.length > 0
-      ? initialFeaturedIds
-      : initialProjects.map((p) => p.id)
-  );
+  const [localFeaturedIds, setLocalFeaturedIds] = useState<string[]>(initialFeaturedIds);
+  const featuredIds = propFeaturedIds ?? localFeaturedIds;
 
-  const featuredItems = initialProjects.filter((p) => featuredIds.includes(p.id));
+  const featuredItems = featuredIds
+    .map((id) => initialProjects.find((p) => p.id === id))
+    .filter((item): item is PortfolioItem => Boolean(item));
 
   const handleToggleFeature = (item: PortfolioItem) => {
+    if (propOnToggleFeature) {
+      propOnToggleFeature(item);
+      return;
+    }
+
     const isCurrentlyFeatured = featuredIds.includes(item.id);
     const updatedIds = isCurrentlyFeatured
       ? featuredIds.filter((fId) => fId !== item.id)
       : [...featuredIds, item.id];
 
-    setFeaturedIds(updatedIds);
+    setLocalFeaturedIds(updatedIds);
 
     startTransition(async () => {
       const itemType = item.type === "project" ? "project" : "asset";

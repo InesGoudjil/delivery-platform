@@ -21,6 +21,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Avatar,
   AvatarFallback,
@@ -80,12 +81,6 @@ export function MembersClient({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [loadingActionId, setLoadingActionId] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; type?: "success" | "error" } | null>(null);
-
-  const showFlash = (message: string, type: "success" | "error" = "success") => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,12 +90,12 @@ export function MembersClient({
     const res = await inviteWorkspaceMemberAction(workspace.slug, inviteEmail.trim(), inviteRole);
 
     if (!res.success) {
-      showFlash(res.error || "Failed to send invitation.", "error");
+      toast.error(res.error || "Failed to send invitation.");
       setIsSubmitting(false);
       return;
     }
 
-    showFlash(`Invitation sent to ${inviteEmail.trim()}`);
+    toast.success(`Invitation sent to ${inviteEmail.trim()}`);
     setInviteEmail("");
     setShowInviteModal(false);
     setIsSubmitting(false);
@@ -112,9 +107,9 @@ export function MembersClient({
     const res = await updateWorkspaceMemberRoleAction(workspace.slug, memberUserId, newRole);
 
     if (!res.success) {
-      showFlash(res.error || "Failed to update role.", "error");
+      toast.error(res.error || "Failed to update role.");
     } else {
-      showFlash("Collaborator role updated successfully.");
+      toast.success("Collaborator role updated successfully.");
       router.refresh();
     }
     setLoadingActionId(null);
@@ -129,9 +124,9 @@ export function MembersClient({
     const res = await removeWorkspaceMemberAction(workspace.slug, memberUserId);
 
     if (!res.success) {
-      showFlash(res.error || "Failed to remove member.", "error");
+      toast.error(res.error || "Failed to remove member.");
     } else {
-      showFlash(`Removed ${memberName} from workspace.`);
+      toast.success(`Removed ${memberName} from workspace.`);
       router.refresh();
     }
     setLoadingActionId(null);
@@ -142,9 +137,9 @@ export function MembersClient({
     const res = await revokeWorkspaceInvitationAction(workspace.slug, invitationId);
 
     if (!res.success) {
-      showFlash(res.error || "Failed to revoke invitation.", "error");
+      toast.error(res.error || "Failed to revoke invitation.");
     } else {
-      showFlash(`Revoked invitation for ${email}.`);
+      toast.success(`Revoked invitation for ${email}.`);
       router.refresh();
     }
     setLoadingActionId(null);
@@ -155,9 +150,9 @@ export function MembersClient({
     const res = await acceptWorkspaceInvitationAction(token);
 
     if (!res.success) {
-      showFlash(res.error || "Failed to simulate invitation acceptance.", "error");
+      toast.error(res.error || "Failed to simulate invitation acceptance.");
     } else {
-      showFlash(`Collaborator invitation accepted for ${email}!`);
+      toast.success(`Collaborator invitation accepted for ${email}!`);
       router.refresh();
     }
     setLoadingActionId(null);
@@ -168,7 +163,7 @@ export function MembersClient({
     const inviteUrl = `${origin}/invite/${token}`;
     navigator.clipboard.writeText(inviteUrl);
     setCopiedToken(token);
-    showFlash("Invitation link copied to clipboard!");
+    toast.success("Invitation link copied to clipboard!");
     setTimeout(() => setCopiedToken(null), 2500);
   };
 
@@ -176,19 +171,6 @@ export function MembersClient({
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-200">
-      {/* Toast Notification */}
-      {toast && (
-        <div
-          className={`fixed bottom-6 right-6 z-50 text-xs font-semibold px-4 py-2.5 rounded-xl shadow-2xl animate-in fade-in slide-in-from-bottom-2 ${
-            toast.type === "error"
-              ? "bg-destructive text-destructive-foreground"
-              : "bg-primary text-black"
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
         <div>
@@ -284,10 +266,11 @@ export function MembersClient({
                 <input
                   type="email"
                   required
+                  disabled={isSubmitting}
                   placeholder="editor@posthouse.film"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  className="w-full bg-muted border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:border-primary"
+                  className="w-full bg-muted border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:border-primary disabled:opacity-50"
                 />
               </div>
 
@@ -297,8 +280,9 @@ export function MembersClient({
                 </label>
                 <select
                   value={inviteRole}
+                  disabled={isSubmitting}
                   onChange={(e) => setInviteRole(e.target.value as any)}
-                  className="w-full bg-muted border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:border-primary cursor-pointer"
+                  className="w-full bg-muted border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:border-primary cursor-pointer disabled:opacity-50"
                 >
                   <option value="editor">Editor (Upload cuts &amp; reply to client comments)</option>
                   <option value="admin">Admin (Manage team seats &amp; workspace branding)</option>

@@ -12,6 +12,8 @@ interface ShowcaseGridProps {
   workspaceSlug: string;
   projects: PortfolioItem[];
   initialFeaturedIds: string[];
+  featuredIds?: string[];
+  onToggleFeature?: (item: PortfolioItem) => void;
   appearance: PortfolioAppearance;
   showFlash: (msg: string) => void;
   onSelectItem: (item: PortfolioItem) => void;
@@ -23,6 +25,8 @@ export function ShowcaseGrid({
   workspaceSlug,
   projects,
   initialFeaturedIds,
+  featuredIds: propFeaturedIds,
+  onToggleFeature: propOnToggleFeature,
   appearance,
   showFlash,
   onSelectItem,
@@ -31,19 +35,21 @@ export function ShowcaseGrid({
 
   // Filter tabs matching Screenshot 4: "Films", "Stills", "Projects"
   const [activeTab, setActiveTab] = useState<"films" | "stills" | "projects">("films");
-  const [featuredIds, setFeaturedIds] = useState<string[]>(
-    initialFeaturedIds.length > 0
-      ? initialFeaturedIds
-      : projects.map((p) => p.id)
-  );
+  const [localFeaturedIds, setLocalFeaturedIds] = useState<string[]>(initialFeaturedIds);
+  const featuredIds = propFeaturedIds ?? localFeaturedIds;
 
   const handleToggleFeature = (item: PortfolioItem) => {
+    if (propOnToggleFeature) {
+      propOnToggleFeature(item);
+      return;
+    }
+
     const isCurrentlyFeatured = featuredIds.includes(item.id);
     const updatedIds = isCurrentlyFeatured
       ? featuredIds.filter((fId) => fId !== item.id)
       : [...featuredIds, item.id];
 
-    setFeaturedIds(updatedIds);
+    setLocalFeaturedIds(updatedIds);
 
     startTransition(async () => {
       const itemType = item.type === "project" ? "project" : "asset";
@@ -67,6 +73,8 @@ export function ShowcaseGrid({
     if (activeTab === "projects") return p.type === "project";
     return true;
   });
+
+  console.log("here",filteredProjects)
 
   // Dynamic Grid Classes based on Card Size
   const cardSize = appearance.cardSize || "M";

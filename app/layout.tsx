@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import localFont from "next/font/local";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/i18n/context";
 
 const manrope = localFont({
@@ -62,6 +63,7 @@ export default function RootLayout({
           <I18nProvider initialLocale="en">
             {children}
           </I18nProvider>
+          <Toaster position="bottom-right" richColors closeButton />
         </ThemeProvider>
       </body>
     </html>

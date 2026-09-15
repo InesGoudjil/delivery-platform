@@ -2,13 +2,146 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { getServerServices } from '@/core/server';
-import { loginSchema, signupSchema } from '@/lib/validations/auth';
+import {
+  loginSchema,
+  signupSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  changePasswordSchema,
+} from '@/lib/validations/auth';
 
 export interface AuthState {
   error?: string | null;
   success?: string | null;
 }
+
+export async function requestPasswordResetAction(
+  prevState: AuthState | null,
+  formData: FormData
+): Promise<AuthState> {
+  const email = formData.get('email') as string;
+
+  const parsed = forgotPasswordSchema.safeParse({ email });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message || 'Please enter a valid email address.' };
+  }
+
+  try {
+    const headersList = await headers();
+    const host = headersList.get('x-forwarded-host') || headersList.get('host') || 'localhost:3000';
+    const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+    const origin = `${protocol}://${host}`;
+
+    const services = await getServerServices();
+    const redirectTo = `${origin}/api/auth/callback?next=/reset-password`;
+
+    const { error } = await services.auth.resetPasswordForEmail(email, redirectTo);
+    if (error) {
+      return { error: error.message };
+    }
+
+    return {
+      success: 'Password reset instructions have been sent to your email. Please check your inbox.',
+    };
+  } catch (err: any) {
+    return {
+      error: err?.message || 'Failed to send reset link. Please try again later.',
+    };
+  }
+}
+
+export async function resetPasswordAction(
+  prevState: AuthState | null,
+  formData: FormData
+): Promise<AuthState> {
+  const password = formData.get('password') as string;
+  const confirmPassword = formData.get('confirm-password') as string;
+
+  const parsed = resetPasswordSchema.safeParse({ password, confirmPassword });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message || 'Please fill in all required fields.' };
+  }
+
+  try {
+    const services = await getServerServices();
+    const { error } = await services.auth.updateUserPassword(password);
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    const user = await services.auth.getCurrentUser();
+    let workspaceSlug = 'studio';
+    if (user) {
+      const userWorkspaces = await services.workspace.getUserWorkspaces(user.id);
+      if (userWorkspaces.length > 0) {
+        workspaceSlug = userWorkspaces[0].slug;
+      }
+    }
+
+    revalidatePath('/', 'layout');
+    redirect(`/${workspaceSlug}`);
+  } catch (err: any) {
+    if (err?.message === 'NEXT_REDIRECT' || err?.digest?.startsWith('NEXT_REDIRECT')) {
+      throw err;
+    }
+    return {
+      error: err?.message || 'Failed to reset password. The recovery link may have expired.',
+    };
+  }
+}
+
+export async function changePasswordAction(
+  prevState: AuthState | null,
+  formData: FormData
+): Promise<AuthState> {
+  const currentPassword = formData.get('current-password') as string;
+  const newPassword = formData.get('new-password') as string;
+  const confirmPassword = formData.get('confirm-password') as string;
+
+  const parsed = changePasswordSchema.safeParse({
+    currentPassword,
+    newPassword,
+    confirmPassword,
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message || 'Please check your password inputs.' };
+  }
+
+  try {
+    const services = await getServerServices();
+    const user = await services.auth.getCurrentUser();
+    if (!user || !user.email) {
+      return { error: 'You must be signed in to change your password.' };
+    }
+
+    // Verify current password by signing in
+    const { error: signInError } = await services.auth.signInWithPassword(
+      user.email,
+      currentPassword
+    );
+
+    if (signInError) {
+      return { error: 'Your current password is incorrect.' };
+    }
+
+    // Apply new password
+    const { error: updateError } = await services.auth.updateUserPassword(newPassword);
+    if (updateError) {
+      return { error: updateError.message };
+    }
+
+    return { success: 'Account password updated successfully!' };
+  } catch (err: any) {
+    return {
+      error: err?.message || 'Failed to update password. Please try again.',
+    };
+  }
+}
+
 
 export async function loginAction(prevState: AuthState | null, formData: FormData): Promise<AuthState> {
   const email = formData.get('email') as string;

@@ -36,8 +36,13 @@ export function LoginForm({
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      if (params.get("error") === "auth-callback-failed") {
-        setError("Social login could not be completed. Please try again.");
+      const errorParam = params.get("error");
+      if (errorParam) {
+        if (errorParam === "auth-callback-failed") {
+          setError("Social login could not be completed. Please try again or use your password.");
+        } else {
+          setError(decodeURIComponent(errorParam));
+        }
       }
     }
   }, []);
@@ -46,10 +51,21 @@ export function LoginForm({
     try {
       setError(null);
       const supabase = createClient();
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get("redirect") || params.get("next") || "/";
+      const callbackUrl = new URL(`${window.location.origin}/api/auth/callback`);
+      callbackUrl.searchParams.set("next", next);
+      if (params.get("invite_token")) {
+        callbackUrl.searchParams.set("invite_token", params.get("invite_token")!);
+      }
+      if (params.get("waitlist_token")) {
+        callbackUrl.searchParams.set("waitlist_token", params.get("waitlist_token")!);
+      }
+
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/api/auth/callback`,
+          redirectTo: callbackUrl.toString(),
         },
       });
       if (oauthError) setError(oauthError.message);
@@ -133,12 +149,12 @@ export function LoginForm({
         <Field data-invalid={!!fieldErrors.password}>
           <div className="flex items-center">
             <FieldLabel htmlFor="password">Password</FieldLabel>
-            <a
-              href="#"
+            <Link
+              href="/forgot-password"
               className="ml-auto text-xs text-muted-foreground underline-offset-4 hover:underline hover:text-foreground"
             >
               Forgot your password?
-            </a>
+            </Link>
           </div>
           <div className="relative">
             <Input

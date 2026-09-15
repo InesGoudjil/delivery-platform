@@ -2,7 +2,7 @@
 
 import { getServerServices } from "@/core/server";
 import { revalidatePath } from "next/cache";
-import { resolveMediaUrl } from "@/lib/media";
+import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 
 export async function updatePortfolioAction(
   portfolioId: string,
@@ -27,7 +27,31 @@ export async function updatePortfolioAction(
       return { success: false, error: "Unauthorized. Please log in." };
     }
 
+    const current = await services.portfolio.getPortfolioById(portfolioId);
+    if (!current) {
+      return { success: false, error: "Portfolio not found." };
+    }
+
+    if (data.appearance) {
+      const existingAppearance: any = current.appearance || {};
+      data.appearance = {
+        ...existingAppearance,
+        ...data.appearance,
+        featuredItemIds:
+          data.appearance.featuredItemIds !== undefined
+            ? data.appearance.featuredItemIds
+            : (existingAppearance.featuredItemIds || []),
+      };
+    }
+
     const updated = await services.portfolio.updatePortfolio(portfolioId, data);
+
+    if (current.slug) {
+      revalidatePath(`/${current.slug}/portfolio`);
+      revalidatePath(`/p/${current.slug}`);
+    }
+    revalidatePath("/portfolio");
+
     return { success: true, portfolio: updated };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to update portfolio." };
@@ -48,14 +72,94 @@ export async function toggleFeaturedItemAction(
       return { success: false, error: "Unauthorized." };
     }
 
-    if (itemType === "project") {
-      await services.project.updateProject(itemId, { isPublished: isFeatured });
+    const portfolio = await services.portfolio.getPortfolioById(portfolioId);
+    if (!portfolio) {
+      return { success: false, error: "Portfolio not found." };
     }
 
+    const currentAppearance = portfolio.appearance || {
+      cardSize: "M",
+      aspectRatio: "16:9",
+      thumbnailScale: "fill",
+      showClientInfo: true,
+      featuredItemIds: [],
+    };
+
+    const currentFeaturedIds = Array.isArray(currentAppearance.featuredItemIds)
+      ? [...currentAppearance.featuredItemIds]
+      : [];
+
+    let updatedFeaturedIds: string[];
+    if (isFeatured) {
+      if (!currentFeaturedIds.includes(itemId)) {
+        updatedFeaturedIds = [...currentFeaturedIds, itemId];
+      } else {
+        updatedFeaturedIds = currentFeaturedIds;
+      }
+    } else {
+      updatedFeaturedIds = currentFeaturedIds.filter((id) => id !== itemId);
+    }
+
+    await services.portfolio.updatePortfolio(portfolioId, {
+      appearance: {
+        ...currentAppearance,
+        featuredItemIds: updatedFeaturedIds,
+      },
+    });
+
+    if (portfolio.slug) {
+      revalidatePath(`/${portfolio.slug}/portfolio`);
+      revalidatePath(`/p/${portfolio.slug}`);
+    }
     revalidatePath("/portfolio");
-    return { success: true };
+
+    return { success: true, featuredItemIds: updatedFeaturedIds };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to update featured item." };
+  }
+}
+
+export async function reorderFeaturedItemsAction(
+  portfolioId: string,
+  itemIds: string[]
+) {
+  try {
+    const services = await getServerServices();
+    const user = await services.auth.getCurrentUser();
+
+    if (!user) {
+      return { success: false, error: "Unauthorized." };
+    }
+
+    const portfolio = await services.portfolio.getPortfolioById(portfolioId);
+    if (!portfolio) {
+      return { success: false, error: "Portfolio not found." };
+    }
+
+    const currentAppearance = portfolio.appearance || {
+      cardSize: "M",
+      aspectRatio: "16:9",
+      thumbnailScale: "fill",
+      showClientInfo: true,
+      featuredItemIds: [],
+    };
+
+    await services.portfolio.updatePortfolio(portfolioId, {
+      appearance: {
+        ...currentAppearance,
+        featuredItemIds: itemIds,
+      },
+    });
+
+    if (portfolio.slug) {
+      revalidatePath(`/${portfolio.slug}/portfolio`);
+      revalidatePath(`/p/${portfolio.slug}`);
+    }
+    revalidatePath("/portfolio");
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to reorder featured items." };
   }
 }
 
@@ -137,14 +241,17 @@ export async function getProjectAssetsAction(projectId: string) {
           activeVersion?.hlsManifestUrl ||
           activeVersion?.thumbnailUrl ||
           "";
-        const rawThumb =
-          activeVersion?.thumbnailUrl || activeVersion?.rawFileUrl || "";
+        const resolvedThumb = resolveThumbnailUrl(
+          activeVersion?.thumbnailUrl,
+          rawMedia,
+          isStill
+        );
         return {
           id: a.id,
           title: a.title,
           type: isStill ? ("still" as const) : ("film" as const),
           url: resolveMediaUrl(rawMedia),
-          thumbnailUrl: resolveMediaUrl(rawThumb),
+          thumbnailUrl: resolveMediaUrl(resolvedThumb),
           aspectRatio: a.aspectRatio || "16:9",
           duration: activeVersion?.durationSeconds
             ? `${Math.floor(activeVersion.durationSeconds / 60)}:${String(
