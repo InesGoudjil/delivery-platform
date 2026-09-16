@@ -6,6 +6,7 @@ import { AssetType } from "@/core/entities/asset";
 export interface RequestUploadInput {
   workspaceId: string;
   projectId: string;
+  assetId?: string | null;
   title: string;
   filename: string;
   fileSizeBytes: number;
@@ -26,6 +27,7 @@ export async function requestAssetUploadAction(input: RequestUploadInput) {
     const result = await adminServices.upload.requestAssetUpload({
       workspaceId: input.workspaceId,
       projectId: input.projectId,
+      assetId: input.assetId,
       title: input.title,
       filename: input.filename,
       fileSizeBytes: input.fileSizeBytes,

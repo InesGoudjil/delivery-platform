@@ -51,7 +51,7 @@ export function WorkflowSection() {
         {STEPS.map((item) => (
           <div
             key={item.step}
-            className="group rounded-[28px] border border-white/10 bg-[#121217] p-5 shadow-2xl transition-all duration-300 hover:border-white/20 flex flex-col justify-between"
+            className=" card group rounded-[28px] border border-white/10 bg-[#121217] p-5 shadow-2xl transition-all duration-300 hover:border-white/20 flex flex-col justify-between"
           >
             {/* Top Mockup Box with Orange Warm Backglow */}
             <div className="relative aspect-[16/10] rounded-2xl overflow-hidden bg-gradient-to-tr from-[#ce3909] via-[#e64713] to-[#88179f] p-3 flex items-center justify-center border border-white/10">

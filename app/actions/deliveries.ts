@@ -5,7 +5,11 @@ import { cookies } from "next/headers";
 import { createHash } from "crypto";
 import { getServerServices } from "@/core/server";
 
-export async function verifyDeliveryPasscodeAction(shareToken: string, passcode: string) {
+export async function verifyDeliveryPasscodeAction(
+  shareToken: string,
+  passcode: string,
+  isCreatorBypass: boolean = false
+) {
   try {
     const services = await getServerServices();
     const delivery = await services.delivery.getDeliveryByShareToken(shareToken);
@@ -13,31 +17,122 @@ export async function verifyDeliveryPasscodeAction(shareToken: string, passcode:
       return { success: false, error: "Delivery not found or link has expired." };
     }
 
-    if (!delivery.passcodeHash) {
-      return { success: true };
+    let isAuthorized = !delivery.passcodeHash;
+
+    if (!isAuthorized && isCreatorBypass) {
+      const user = await services.auth.getCurrentUser();
+      if (user) {
+        const isMember = await services.member.isMember(delivery.workspaceId, user.id).catch(() => false);
+        if (isMember) {
+          isAuthorized = true;
+        }
+      }
     }
 
-    const cleanPasscode = passcode.trim();
-    const hashed = createHash("sha256").update(cleanPasscode).digest("hex");
-
-    const isMatch = delivery.passcodeHash === cleanPasscode || delivery.passcodeHash === hashed;
-    if (!isMatch) {
-      return { success: false, error: "Incorrect passcode. Please try again." };
+    if (!isAuthorized) {
+      const cleanPasscode = passcode.trim();
+      if (!cleanPasscode) {
+        return { success: false, error: "Please enter the client passcode." };
+      }
+      const hashed = createHash("sha256").update(cleanPasscode).digest("hex");
+      const isMatch = delivery.passcodeHash === cleanPasscode || delivery.passcodeHash === hashed;
+      if (!isMatch) {
+        return { success: false, error: "Incorrect passcode. Please try again." };
+      }
+      isAuthorized = true;
     }
 
-    // Set HTTP-only cookie valid for 7 days
+    // Set HTTP-only cookie valid for 7 days across site
     const cookieStore = await cookies();
     cookieStore.set(`delivery_access_${shareToken}`, "verified", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7,
-      path: `/deliver/${shareToken}`,
+      path: "/",
     });
 
-    return { success: true };
+    // Retrieve and map full assets & versions to return immediately upon unlock
+    const fullDetails = await services.delivery.getDeliveryWithFullDetails(shareToken);
+    const mappedAssets = (fullDetails?.assets || []).map((asset) => {
+      const mappedVersions = (asset.versions || []).map((v) => ({
+        id: v.id,
+        versionNumber: v.versionNumber,
+        rawFileUrl: v.rawFileUrl,
+        hlsManifestUrl: v.hlsManifestUrl || null,
+        thumbnailUrl: v.thumbnailUrl || null,
+        fileSizeBytes: v.fileSizeBytes || null,
+        durationSeconds: v.durationSeconds ? Number(v.durationSeconds) : null,
+        transcodingStatus: v.transcodingStatus || null,
+        isActiveVersion: v.isActiveVersion,
+      }));
+
+      const activeVersion =
+        mappedVersions.find((v) => v.isActiveVersion) ||
+        mappedVersions[0] ||
+        null;
+
+      const mappedFeedback = (asset.feedback || []).map((f) => ({
+        id: f.id,
+        assetVersionId: f.assetVersionId,
+        authorName: f.authorName,
+        commentText: f.commentText,
+        timestampSeconds: f.timestampSeconds ? Number(f.timestampSeconds) : null,
+        isResolved: f.isResolved,
+        createdAt: f.createdAt,
+      }));
+
+      return {
+        id: asset.id,
+        title: asset.title,
+        type: asset.type,
+        aspectRatio: "16:9",
+        isApproved: asset.isApproved,
+        sortOrder: asset.sortOrder,
+        versions: mappedVersions,
+        activeVersion,
+        feedback: mappedFeedback,
+      };
+    });
+
+    revalidatePath(`/deliver/${shareToken}`);
+    return { success: true, assets: mappedAssets };
   } catch (err: any) {
     return { success: false, error: err.message || "Failed to verify passcode." };
+  }
+}
+
+export async function verifyPassphraseWithTokenAction(shareToken: string, candidatePassphrase: string) {
+  try {
+    const services = await getServerServices();
+    const delivery = await services.delivery.getDeliveryByShareToken(shareToken);
+    if (!delivery) {
+      return { success: false, error: "Delivery not found." };
+    }
+
+    if (!delivery.passcodeHash) {
+      return { success: true, isProtected: false, message: "Link is public (no passphrase required)." };
+    }
+
+    const clean = candidatePassphrase.trim();
+    if (!clean) {
+      return { success: false, isProtected: true, error: "Please enter a passphrase to verify." };
+    }
+
+    const hashed = createHash("sha256").update(clean).digest("hex");
+    const isMatch = delivery.passcodeHash === clean || delivery.passcodeHash === hashed;
+
+    if (!isMatch) {
+      return { success: false, isProtected: true, error: "Passphrase does not match the token security key." };
+    }
+
+    return {
+      success: true,
+      isProtected: true,
+      message: "Passphrase verified successfully with delivery token.",
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to verify passphrase." };
   }
 }
 
@@ -219,6 +314,50 @@ export async function archiveDeliveryAction(deliveryId: string) {
     return { success: true, delivery: updated, project: updated };
   } catch (err: any) {
     return { error: err.message || "Failed to archive delivery." };
+  }
+}
+
+export async function updateDeliverySecurityAction(
+  deliveryId: string,
+  data: {
+    passphrase?: string | null;
+    isDownloadAllowed?: boolean;
+    notifyOnDownload?: boolean;
+    expiresAt?: string | null;
+  }
+) {
+  try {
+    const services = await getServerServices();
+    const user = await services.auth.getCurrentUser();
+    if (!user) return { error: "User is not authenticated." };
+
+    let passcodeHash: string | null | undefined = undefined;
+    if (data.passphrase !== undefined) {
+      if (data.passphrase && data.passphrase.trim().length > 0) {
+        const clean = data.passphrase.trim();
+        passcodeHash = createHash("sha256").update(clean).digest("hex");
+      } else {
+        passcodeHash = null;
+      }
+    }
+
+    const updated = await services.delivery.updateDelivery(deliveryId, {
+      ...(passcodeHash !== undefined ? { passcodeHash } : {}),
+      ...(data.isDownloadAllowed !== undefined ? { isDownloadAllowed: data.isDownloadAllowed } : {}),
+      ...(data.notifyOnDownload !== undefined ? { notifyOnDownload: data.notifyOnDownload } : {}),
+      ...(data.expiresAt !== undefined ? { expiresAt: data.expiresAt } : {}),
+    });
+
+    revalidatePath(`/deliveries/${deliveryId}`);
+    revalidatePath(`/deliver/${updated.shareToken}`);
+
+    return {
+      success: true,
+      delivery: updated,
+      passcodeProtected: Boolean(updated.passcodeHash),
+    };
+  } catch (err: any) {
+    return { error: err.message || "Failed to update delivery security." };
   }
 }
 

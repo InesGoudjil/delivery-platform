@@ -7,7 +7,9 @@ export interface NotificationLog {
   clientId?: string | null;
   projectId?: string | null;
   channel: NotificationChannel;
-  recipientPhone: string;
+  recipientPhone?: string | null;
+  recipientEmail?: string | null;
+  subject?: string | null;
   status: NotificationStatus;
   providerMessageId?: string | null;
   errorMessage?: string | null;

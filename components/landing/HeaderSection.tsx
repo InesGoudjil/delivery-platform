@@ -33,8 +33,10 @@ export function HeaderSection({
   }, []);
 
   const handleLogoClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (typeof window !== "undefined" && window.location.pathname === "/") {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   return (
@@ -59,36 +61,38 @@ export function HeaderSection({
 
           {/* Navigation Links */}
           <div className="hidden items-center gap-8 text-sm font-medium text-[#aeaeb4] md:flex">
-            <a
-              href="#features"
+            <Link
+              href="/#features"
               className="transition-colors duration-200 hover:text-white"
             >
               Features
-            </a>
-            <a
-              href="#pricing"
+            </Link>
+            <Link
+              href="/#pricing"
               className="transition-colors duration-200 hover:text-white"
             >
               Pricing
-            </a>
-            <a
-              href="#features"
+            </Link>
+            <Link
+              href="/#partnership"
               className="transition-colors duration-200 hover:text-white"
             >
               Partnership
-            </a>
-            <a
-              href="#faq"
+            </Link>
+            <Link
+              href="/contact"
               className="transition-colors duration-200 hover:text-white"
             >
               Contact
-            </a>
-            {/* <Link
-              href="/login"
-              className="transition-colors duration-200 hover:text-white"
-            >
-              Login
-            </Link> */}
+            </Link>
+            {!user && (
+              <Link
+                href="/login"
+                className="transition-colors duration-200 hover:text-white"
+              >
+                Login
+              </Link>
+            )}
           </div>
 
           {/* Action Buttons */}

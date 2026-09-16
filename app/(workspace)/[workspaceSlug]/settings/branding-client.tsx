@@ -4,7 +4,7 @@ import React, { useState, useTransition } from "react";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { updateBrandingAction } from "@/app/actions/portfolio";
-import { PortfolioExperience } from "@/core/entities/portfolio";
+import { PortfolioExperience, PortfolioStats } from "@/core/entities/portfolio";
 import { COVER_PRESETS } from "./_components/constants";
 import { BrandingHeader } from "./_components/branding-header";
 import { CoverBannerSection } from "./_components/cover-banner-section";
@@ -17,6 +17,7 @@ interface BrandingClientProps {
     id: string;
     brandName: string;
     slug: string;
+    logoUrl?: string | null;
     accentColor?: string | null;
   };
   portfolio: {
@@ -26,6 +27,7 @@ interface BrandingClientProps {
     coverAssetUrl?: string | null;
     whatsappNumber?: string | null;
     experience?: PortfolioExperience[];
+    stats?: PortfolioStats;
   };
 }
 
@@ -38,6 +40,23 @@ export function BrandingClient({ workspace, portfolio }: BrandingClientProps) {
   const [handle, setHandle] = useState(workspace.slug);
   const [accent, setAccent] = useState(workspace.accentColor || "#F5551D");
   const [whatsapp, setWhatsapp] = useState(portfolio.whatsappNumber || "+971501234567");
+
+  // Profile image / avatar
+  const [logoUrl, setLogoUrl] = useState<string | null>(workspace.logoUrl || null);
+
+  // Showcase Stats
+  const [stats, setStats] = useState<PortfolioStats>(
+    portfolio.stats || {
+      projects: "",
+      years: "",
+      location: "",
+    }
+  );
+
+  // Experiences list
+  const [experiences, setExperiences] = useState<PortfolioExperience[]>(
+    portfolio.experience || []
+  );
 
   // Bio
   const [bio, setBio] = useState(
@@ -80,6 +99,27 @@ export function BrandingClient({ workspace, portfolio }: BrandingClientProps) {
     reader.readAsDataURL(file);
   };
 
+  const handleProfileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const result = uploadEvent.target?.result as string;
+      if (result) {
+        setLogoUrl(result);
+        showFlash("Profile photo uploaded! Click Save to apply changes.");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveProfile = () => {
+    setLogoUrl(null);
+    showFlash("Profile photo removed.");
+  };
+
   const handleRemoveCover = () => {
     setCoverUrl(COVER_PRESETS[0].url);
     setIsCustomCover(false);
@@ -92,14 +132,17 @@ export function BrandingClient({ workspace, portfolio }: BrandingClientProps) {
       const res = await updateBrandingAction(workspace.id, portfolio.id, {
         brandName,
         accentColor: accent,
+        logoUrl,
         bio,
         coverAssetUrl: coverUrl,
         whatsappNumber: whatsapp,
+        experience: experiences,
+        stats,
         slug: workspace.slug,
       });
 
       if (res.success) {
-        showFlash("Brand, cover, and bio settings updated successfully!");
+        showFlash("Brand, profile photo, cover, credentials & bio updated successfully!");
       } else {
         showFlash(res.error || "Failed to update branding settings.");
       }
@@ -129,9 +172,11 @@ export function BrandingClient({ workspace, portfolio }: BrandingClientProps) {
         brandName={brandName}
         handle={handle}
         accent={accent}
+        logoUrl={logoUrl}
         onSelectPreset={handleSelectPreset}
         onCustomUpload={handleCustomUpload}
         onRemoveCover={handleRemoveCover}
+        onProfileUpload={handleProfileUpload}
       />
 
       {/* 2. Brand & Storefront Identity */}
@@ -144,6 +189,11 @@ export function BrandingClient({ workspace, portfolio }: BrandingClientProps) {
         onWhatsappChange={setWhatsapp}
         accent={accent}
         onAccentChange={setAccent}
+        logoUrl={logoUrl}
+        onProfileUpload={handleProfileUpload}
+        onRemoveProfile={handleRemoveProfile}
+        stats={stats}
+        onStatsChange={setStats}
       />
 
       {/* 3. Bio & About Description */}
@@ -152,8 +202,9 @@ export function BrandingClient({ workspace, portfolio }: BrandingClientProps) {
       {/* 4. Experience & Credentials */}
       <ExperienceCredentialsSection
         portfolioId={portfolio.id}
-        initialExperiences={portfolio.experience || []}
+        initialExperiences={experiences}
         showFlash={showFlash}
+        onExperiencesChange={setExperiences}
       />
 
       {/* Bottom Save Action */}

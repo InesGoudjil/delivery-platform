@@ -8,12 +8,14 @@ interface ExperienceCredentialsSectionProps {
   portfolioId: string;
   initialExperiences: PortfolioExperience[];
   showFlash: (msg: string) => void;
+  onExperiencesChange?: (list: PortfolioExperience[]) => void;
 }
 
 export function ExperienceCredentialsSection({
   portfolioId,
   initialExperiences,
   showFlash,
+  onExperiencesChange,
 }: ExperienceCredentialsSectionProps) {
   return (
     <section className="space-y-4">
@@ -33,6 +35,7 @@ export function ExperienceCredentialsSection({
         portfolioId={portfolioId}
         initialExperiences={initialExperiences}
         showFlash={showFlash}
+        onExperiencesChange={onExperiencesChange}
       />
     </section>
   );

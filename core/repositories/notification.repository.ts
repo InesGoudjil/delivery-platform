@@ -7,7 +7,9 @@ export interface CreateNotificationLogDTO {
   clientId?: string | null;
   projectId?: string | null;
   channel?: NotificationChannel;
-  recipientPhone: string;
+  recipientPhone?: string | null;
+  recipientEmail?: string | null;
+  subject?: string | null;
   status?: NotificationStatus;
   providerMessageId?: string | null;
   errorMessage?: string | null;
@@ -34,9 +36,11 @@ export class SupabaseNotificationLogRepository implements INotificationLogReposi
       id: row.id,
       workspaceId: row.workspace_id,
       clientId: row.client_id,
-      projectId: row.project_id,
+      projectId: row.project_id || row.delivery_id,
       channel: row.channel as NotificationChannel,
       recipientPhone: row.recipient_phone,
+      recipientEmail: row.recipient_email,
+      subject: row.subject,
       status: row.status as NotificationStatus,
       providerMessageId: row.provider_message_id,
       errorMessage: row.error_message,
@@ -70,7 +74,7 @@ export class SupabaseNotificationLogRepository implements INotificationLogReposi
     const { data, error } = await (this.supabase as any)
       .from('notification_logs')
       .select('*')
-      .eq('project_id', projectId)
+      .or(`project_id.eq.${projectId},delivery_id.eq.${projectId}`)
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(`Error listing notification logs: ${error.message}`);
@@ -83,9 +87,11 @@ export class SupabaseNotificationLogRepository implements INotificationLogReposi
       .insert({
         workspace_id: dto.workspaceId,
         client_id: dto.clientId,
-        project_id: dto.projectId,
+        delivery_id: dto.projectId,
         channel: dto.channel || 'whatsapp',
-        recipient_phone: dto.recipientPhone,
+        recipient_phone: dto.recipientPhone || null,
+        recipient_email: dto.recipientEmail || null,
+        subject: dto.subject || null,
         status: dto.status || 'queued',
         provider_message_id: dto.providerMessageId,
         error_message: dto.errorMessage,

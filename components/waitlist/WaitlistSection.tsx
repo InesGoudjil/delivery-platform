@@ -12,7 +12,7 @@ export function WaitlistSection({ initialReferralCode }: WaitlistSectionProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
-    <section className="relative my-16 overflow-hidden rounded-3xl border border-[#f5551d]/30 bg-gradient-to-b from-[#180d09] via-[#0e0e12] to-[#070709] p-8 sm:p-12 text-center shadow-2xl">
+    <section id="waitlist" className="relative my-16 overflow-hidden rounded-3xl border border-[#f5551d]/30 bg-gradient-to-b from-[#180d09] via-[#0e0e12] to-[#070709] p-8 sm:p-12 text-center shadow-2xl scroll-mt-24">
       {/* Background ambient lighting */}
       <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-[#f5551d]/15 rounded-full blur-[100px] pointer-events-none" />
 

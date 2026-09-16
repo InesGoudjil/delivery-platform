@@ -17,9 +17,9 @@ export function PortfolioHero({
   featuredAsset,
 }: PortfolioHeroProps) {
   const bgImage =
+    profile.heroImage ||
     primaryFeatured?.thumbnailUrl ||
     featuredProject?.coverImage ||
-    profile.heroImage ||
     "/images/hero.jpg";
 
   const isStill = primaryFeatured?.type === "still";
@@ -67,8 +67,18 @@ export function PortfolioHero({
         {/* Bottom-left information */}
         <div className="absolute bottom-6 left-6 right-6 sm:bottom-10 sm:left-10 sm:right-10 z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div className="space-y-2 max-w-xl">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f5551d] text-black text-[11px] font-extrabold uppercase tracking-wider">
-              <span>{badgeTitle}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f5551d] text-black text-[11px] font-extrabold uppercase tracking-wider">
+                <span>{badgeTitle}</span>
+              </div>
+              {profile.avatar && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-white text-[11px] shadow-sm">
+                  <div className="relative size-4 rounded-full overflow-hidden shrink-0 border border-white/20">
+                    <img src={profile.avatar} alt={profile.name} className="w-full h-full object-cover" />
+                  </div>
+                  <span className="font-semibold text-xs text-zinc-200">{profile.name}</span>
+                </div>
+              )}
             </div>
             <h2 className="font-heading font-extrabold text-2xl sm:text-4xl lg:text-5xl text-white tracking-tight drop-shadow-md uppercase">
               {heroTitle}

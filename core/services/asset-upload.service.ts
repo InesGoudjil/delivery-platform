@@ -14,6 +14,7 @@ export interface RequestAssetUploadDTO {
   workspaceId: string;
   projectId?: string | null;
   deliveryId?: string | null;
+  assetId?: string | null;
   title: string;
   filename: string;
   fileSizeBytes: number;
@@ -46,6 +47,8 @@ function mapStorageStatusToTranscodingStatus(status?: string): TranscodingStatus
   return "pending";
 }
 
+import { IWorkspaceFeaturesRepository } from "@/core/repositories/workspace.repository";
+
 export class AssetUploadService {
   constructor(
     private readonly storageProvider: IStorageProvider,
@@ -54,7 +57,8 @@ export class AssetUploadService {
     private readonly assetRepo: IAssetRepository,
     private readonly assetVersionRepo: IAssetVersionRepository,
     private readonly subscriptionRepo: ISubscriptionRepository,
-    private readonly planRepo: IPlanRepository
+    private readonly planRepo: IPlanRepository,
+    private readonly featuresRepo?: IWorkspaceFeaturesRepository
   ) {}
 
   /**
@@ -118,21 +122,30 @@ export class AssetUploadService {
       );
     }
 
-    // 4. Create Asset Domain Record
-    let existingAssets: Asset[] = [];
-    if (resolvedDeliveryId) {
-      existingAssets = await this.assetRepo.listByDeliveryId(resolvedDeliveryId);
+    // 4. Resolve or Create Asset Domain Record
+    let asset: Asset;
+    if (dto.assetId) {
+      const existing = await this.assetRepo.findById(dto.assetId);
+      if (!existing) {
+        throw new Error(`Asset not found with id: ${dto.assetId}`);
+      }
+      asset = existing;
     } else {
-      existingAssets = await this.assetRepo.listUnassignedByWorkspaceId(resolvedWorkspaceId);
-    }
+      let existingAssets: Asset[] = [];
+      if (resolvedDeliveryId) {
+        existingAssets = await this.assetRepo.listByDeliveryId(resolvedDeliveryId);
+      } else {
+        existingAssets = await this.assetRepo.listUnassignedByWorkspaceId(resolvedWorkspaceId);
+      }
 
-    const asset = await this.assetRepo.create({
-      workspaceId: resolvedWorkspaceId,
-      deliveryId: resolvedDeliveryId,
-      title: dto.title,
-      type: assetType,
-      sortOrder: existingAssets.length,
-    });
+      asset = await this.assetRepo.create({
+        workspaceId: resolvedWorkspaceId,
+        deliveryId: resolvedDeliveryId,
+        title: dto.title,
+        type: assetType,
+        sortOrder: existingAssets.length,
+      });
+    }
 
     // 5. Determine Version Number
     const existingVersions = await this.assetVersionRepo.listByAssetId(asset.id);
@@ -141,7 +154,7 @@ export class AssetUploadService {
         ? Math.max(...existingVersions.map((v) => v.versionNumber)) + 1
         : 1;
 
-    const storageAssetType: StorageAssetType = assetType === "photo_gallery" ? "image" : "video";
+    const storageAssetType: StorageAssetType = (asset.type || assetType) === "photo_gallery" ? "image" : "video";
 
     // 6. Request Direct Upload URL from Storage Provider (Cloudflare Stream / R2 / Mock)
     const directUpload = await this.storageProvider.createDirectUploadUrl({
@@ -243,6 +256,9 @@ export class AssetUploadService {
       transcodingStatus: mapStorageStatusToTranscodingStatus(playbackInfo?.status),
       isActiveVersion: true,
     });
+
+    // Ensure all other versions are marked non-active and this is active
+    await this.assetVersionRepo.setActiveVersion(asset.id, version.id);
 
     // 3. Increment Workspace Storage Used
     if (dto.fileSizeBytes && workspaceId) {

@@ -17,9 +17,11 @@ interface CoverBannerSectionProps {
   brandName: string;
   handle: string;
   accent: string;
+  logoUrl?: string | null;
   onSelectPreset: (url: string) => void;
   onCustomUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveCover: () => void;
+  onProfileUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 export function CoverBannerSection({
@@ -28,11 +30,14 @@ export function CoverBannerSection({
   brandName,
   handle,
   accent,
+  logoUrl,
   onSelectPreset,
   onCustomUpload,
   onRemoveCover,
+  onProfileUpload,
 }: CoverBannerSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const profileInputRef = useRef<HTMLInputElement>(null);
 
   const initials =
     brandName
@@ -90,11 +95,36 @@ export function CoverBannerSection({
           {/* Overlaid Filmmaker Profile Identity */}
           <div className="absolute bottom-4 left-4 right-4 z-10 flex items-end justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center text-black font-extrabold text-base shadow-xl border border-white/20 backdrop-blur-md"
-                style={{ backgroundColor: accent }}
-              >
-                {initials}
+              <div className="relative group/avatar">
+                <input
+                  type="file"
+                  ref={profileInputRef}
+                  onChange={onProfileUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <div
+                  onClick={() => onProfileUpload && profileInputRef.current?.click()}
+                  className="size-12 sm:size-14 rounded-2xl overflow-hidden flex items-center justify-center text-black font-extrabold text-base shadow-xl border-2 border-white/25 backdrop-blur-md relative cursor-pointer"
+                  style={{ backgroundColor: accent }}
+                  title="Click to change profile photo"
+                >
+                  {logoUrl ? (
+                    <img
+                      src={logoUrl}
+                      alt={brandName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="font-extrabold text-base sm:text-lg">{initials}</span>
+                  )}
+                  {onProfileUpload && (
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/avatar:opacity-100 flex flex-col items-center justify-center text-white transition-opacity">
+                      <Camera className="size-4 text-[#f5551d]" />
+                      <span className="text-[8px] font-bold uppercase mt-0.5 tracking-wider">Photo</span>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="drop-shadow-md">
                 <div className="font-heading font-extrabold text-base sm:text-lg text-white leading-tight">

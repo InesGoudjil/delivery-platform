@@ -177,9 +177,12 @@ export async function updateBrandingAction(
   data: {
     brandName?: string;
     accentColor?: string;
+    logoUrl?: string | null;
     bio?: string | null;
     coverAssetUrl?: string | null;
     whatsappNumber?: string | null;
+    experience?: any[];
+    stats?: any;
     slug?: string;
   }
 ) {
@@ -191,11 +194,13 @@ export async function updateBrandingAction(
       return { success: false, error: "Unauthorized. Please log in." };
     }
 
-    if (data.brandName !== undefined || data.accentColor !== undefined) {
-      await services.workspace.updateWorkspaceBranding(workspaceId, {
-        brandName: data.brandName,
-        accentColor: data.accentColor,
-      });
+    const wsUpdate: any = {};
+    if (data.brandName !== undefined) wsUpdate.brandName = data.brandName;
+    if (data.accentColor !== undefined) wsUpdate.accentColor = data.accentColor;
+    if (data.logoUrl !== undefined) wsUpdate.logoUrl = data.logoUrl;
+
+    if (Object.keys(wsUpdate).length > 0) {
+      await services.workspace.updateWorkspaceBranding(workspaceId, wsUpdate);
     }
 
     const portfolioUpdate: any = {};
@@ -203,6 +208,8 @@ export async function updateBrandingAction(
     if (data.coverAssetUrl !== undefined) portfolioUpdate.coverAssetUrl = data.coverAssetUrl;
     if (data.whatsappNumber !== undefined) portfolioUpdate.whatsappNumber = data.whatsappNumber;
     if (data.brandName !== undefined) portfolioUpdate.title = `${data.brandName} Portfolio`;
+    if (data.experience !== undefined) portfolioUpdate.experience = data.experience;
+    if (data.stats !== undefined) portfolioUpdate.stats = data.stats;
 
     let updatedPortfolio = null;
     if (Object.keys(portfolioUpdate).length > 0) {

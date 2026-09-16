@@ -84,19 +84,19 @@ export function FooterSection() {
               </h4>
               <ul className="space-y-3 text-sm text-[#aeaeb4]">
                 <li>
-                  <a href="#features" className="hover:text-white transition-colors">
+                  <Link href="/#features" className="hover:text-white transition-colors">
                     Features
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#pricing" className="hover:text-white transition-colors">
+                  <Link href="/#pricing" className="hover:text-white transition-colors">
                     Pricing
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#workflow" className="hover:text-white transition-colors">
+                  <Link href="/waitlist" className="hover:text-white transition-colors">
                     Waitlist
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -108,19 +108,19 @@ export function FooterSection() {
               </h4>
               <ul className="space-y-3 text-sm text-[#aeaeb4]">
                 <li>
-                  <a href="#features" className="hover:text-white transition-colors">
+                  <Link href="/#partnership" className="hover:text-white transition-colors">
                     Partnerships
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#faq" className="hover:text-white transition-colors">
+                  <Link href="/contact" className="hover:text-white transition-colors">
                     Contact
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
+                  <Link href="/blog" className="hover:text-white transition-colors">
                     Blog
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -131,21 +131,21 @@ export function FooterSection() {
         <div className="flex flex-col sm:flex-row items-center justify-between border-t border-white/10 pt-8 text-xs text-[#71717a] gap-4">
           <p>© 2026 CineSpace. Made for filmmakers.</p>
           <div className="flex items-center gap-6">
-            <a href="#" className="hover:text-[#aeaeb4] transition-colors">
+            <Link href="/copyright" className="hover:text-[#aeaeb4] transition-colors">
               Copyright
-            </a>
-            <a href="#" className="hover:text-[#aeaeb4] transition-colors">
+            </Link>
+            <Link href="/privacy" className="hover:text-[#aeaeb4] transition-colors">
               Privacy
-            </a>
-            <a href="#" className="hover:text-[#aeaeb4] transition-colors">
+            </Link>
+            <Link href="/terms" className="hover:text-[#aeaeb4] transition-colors">
               Terms
-            </a>
-            <a href="#" className="hover:text-[#aeaeb4] transition-colors">
+            </Link>
+            <Link href="/cookies" className="hover:text-[#aeaeb4] transition-colors">
               Cookies
-            </a>
-            <a href="#" className="hover:text-[#aeaeb4] transition-colors">
+            </Link>
+            <Link href="/refunds" className="hover:text-[#aeaeb4] transition-colors">
               Refunds
-            </a>
+            </Link>
           </div>
         </div>
       </div>

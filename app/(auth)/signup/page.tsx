@@ -2,11 +2,13 @@ import Link from "next/link";
 import { Film } from "lucide-react";
 
 import { SignupForm } from "@/components/signup/signup-form";
+import { AmbientBackground } from "@/components/ui/ambient-background";
 
 export default function SignupPage() {
   return (
-    <div className="grid min-h-svh lg:grid-cols-2">
-      <div className="flex flex-col gap-4 p-6 md:p-10">
+    <div className="grid min-h-svh lg:grid-cols-2 relative overflow-hidden">
+      <AmbientBackground variant="subtle" />
+      <div className="flex flex-col gap-4 p-6 md:p-10 relative z-10">
         <div className="flex justify-center gap-2 md:justify-start">
           <Link
             href="/"

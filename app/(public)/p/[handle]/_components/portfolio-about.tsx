@@ -15,12 +15,10 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
         {/* Left portrait with warm rim lighting */}
         <div className="lg:col-span-5 flex justify-center">
           <div className="relative w-full max-w-sm aspect-[4/5] rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-black">
-            <Image
+            <img
               src={profile.avatar}
               alt={profile.name}
-              fill
-              sizes="(max-width: 768px) 100vw, 400px"
-              className="object-cover"
+              className="w-full h-full object-cover"
             />
           </div>
         </div>
@@ -82,21 +80,36 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
           {/* Experience Highlights */}
           <div className="pt-2 border-t border-white/10 space-y-3">
             <div className="text-xs font-mono font-bold text-zinc-400 uppercase tracking-wider">
-              Career Highlights
+              Career Highlights &amp; Credentials
             </div>
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {profile.experience.map((exp) => (
                 <div
                   key={exp.id}
-                  className="flex items-start justify-between gap-4 text-xs"
+                  className="flex items-start justify-between gap-4 text-xs pb-2 border-b border-white/5 last:border-0"
                 >
-                  <div>
-                    <span className="font-bold text-white font-sans">
-                      {exp.role}
-                    </span>
-                    <span className="text-zinc-400 ml-1.5 font-sans">
-                      — {exp.company}
-                    </span>
+                  <div className="space-y-0.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-bold text-white font-sans">
+                        {exp.role}
+                      </span>
+                      {exp.category && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#f5551d]/15 text-[#f5551d] border border-[#f5551d]/30 font-medium">
+                          {exp.category}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-zinc-400 font-sans flex items-center gap-1.5">
+                      <span>{exp.company}</span>
+                      {exp.location && (
+                        <span className="text-zinc-500">· {exp.location}</span>
+                      )}
+                    </div>
+                    {exp.description && (
+                      <p className="text-[11px] text-zinc-400 pt-0.5 leading-relaxed">
+                        {exp.description}
+                      </p>
+                    )}
                   </div>
                   <span className="text-zinc-500 font-mono shrink-0">
                     {exp.period}

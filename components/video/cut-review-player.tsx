@@ -30,6 +30,8 @@ import {
   Sparkles,
   AlertCircle,
   Image as ImageIcon,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { formatTimecode, stepByFrames } from "@/lib/timecode";
 
@@ -99,13 +101,14 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
     const playerRef = useRef<MediaPlayerInstance>(null);
     const scrubberRef = useRef<HTMLDivElement>(null);
 
-    const isImageCut = isPhoto || isImageSource(src);
+    const isImageCut = isPhoto || isImageSource(src) || isImageSource(poster);
 
-    // Reliable video stream fallback if provided src is an image URL
+    // Reliable video stream fallback ONLY if it is a video cut
     const videoStreamSrc = isImageCut
-      ? "https://files.vidstack.io/sprite-fight/hls/stream.m3u8"
-      : src;
+      ? ""
+      : src || "https://files.vidstack.io/sprite-fight/hls/stream.m3u8";
 
+    const [zoomLevel, setZoomLevel] = useState(1);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [isPaused, setIsPaused] = useState(true);
@@ -288,13 +291,20 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
               : "aspect-video"
           }`}
         >
-          {isPhoto ? (
+          {isImageCut ? (
             /* Dedicated High-Res Photo Still Review */
-            <div className="relative w-full h-full flex items-center justify-center bg-black">
+            <div
+              className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden cursor-zoom-in"
+              onDoubleClick={() => setZoomLevel((prev) => (prev > 1 ? 1 : 2))}
+            >
               <img
                 src={src || poster}
                 alt={title || "Still Asset"}
-                className="w-full h-full object-contain"
+                style={{
+                  transform: `scale(${zoomLevel})`,
+                  transition: "transform 200ms ease-out",
+                }}
+                className="max-w-full max-h-full object-contain pointer-events-none select-none"
               />
               <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
                 <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-black/80 text-emerald-400 border border-emerald-500/30 backdrop-blur-md shadow-lg flex items-center gap-1.5">
@@ -405,10 +415,10 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
 
         {/* Custom NLE HUD Review Controls & Scrubber */}
         <div className="bg-[#121215] border-t border-white/10 p-3.5 space-y-3">
-          {isPhoto ? (
+          {isImageCut ? (
             <div className="flex items-center justify-between text-xs py-1">
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-mono text-[11px] flex items-center gap-1.5">
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-mono text-[11px] flex items-center gap-1.5 font-bold">
                   <ImageIcon className="size-3.5" />
                   Still Photography Cut
                 </span>
@@ -417,6 +427,41 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                 </span>
               </div>
               <div className="flex items-center gap-2">
+                {/* Zoom Controls */}
+                <div className="flex items-center bg-black/60 border border-white/10 rounded-lg p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setZoomLevel((prev) => Math.max(1, prev - 0.5))}
+                    disabled={zoomLevel <= 1}
+                    className="p-1 text-muted-foreground hover:text-white disabled:opacity-30 cursor-pointer"
+                    title="Zoom Out"
+                  >
+                    <ZoomOut className="size-3.5" />
+                  </button>
+                  <span className="px-2 text-[10px] font-mono text-white font-bold min-w-[38px] text-center">
+                    {Math.round(zoomLevel * 100)}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setZoomLevel((prev) => Math.min(4, prev + 0.5))}
+                    disabled={zoomLevel >= 4}
+                    className="p-1 text-muted-foreground hover:text-white disabled:opacity-30 cursor-pointer"
+                    title="Zoom In"
+                  >
+                    <ZoomIn className="size-3.5" />
+                  </button>
+                </div>
+
+                {zoomLevel > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setZoomLevel(1)}
+                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-mono text-white cursor-pointer"
+                  >
+                    Reset Fit
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={toggleFullscreen}

@@ -20,6 +20,8 @@ import {
   ExternalLink,
   ShieldAlert,
   Loader2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CutReviewPlayer, type CutReviewPlayerRef } from "@/components/video/cut-review-player";
@@ -31,6 +33,8 @@ import {
   approveCutAction,
 } from "@/app/actions/deliveries";
 import { addFeedbackAction, toggleFeedbackResolvedAction } from "@/app/actions/feedback";
+import { AmbientBackground } from "@/components/ui/ambient-background";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export interface AssetVersionItem {
   id: string;
@@ -98,6 +102,7 @@ export interface DeliveryRoomProps {
     name?: string | null;
     email?: string | null;
   } | null;
+  isWorkspaceMember?: boolean;
 }
 
 export function DeliveryRoomClient({
@@ -108,10 +113,12 @@ export function DeliveryRoomClient({
   isPasscodeProtected,
   isInitiallyUnlocked,
   currentUser,
+  isWorkspaceMember,
 }: DeliveryRoomProps) {
   // Passcode gate state
   const [isLocked, setIsLocked] = useState(isPasscodeProtected && !isInitiallyUnlocked);
   const [passwordInput, setPasswordInput] = useState("");
+  const [showPasscode, setShowPasscode] = useState(false);
   const [passcodeError, setPasscodeError] = useState<string | null>(null);
   const [isVerifyingPasscode, startPasscodeTransition] = useTransition();
 
@@ -172,10 +179,34 @@ export function DeliveryRoomClient({
     startPasscodeTransition(async () => {
       const res = await verifyDeliveryPasscodeAction(delivery.shareToken, passwordInput);
       if (res.success) {
+        if (res.assets && res.assets.length > 0) {
+          setAssets(res.assets as DeliveryAssetItem[]);
+          if (!activeAssetId) {
+            setActiveAssetId(res.assets[0].id);
+          }
+        }
         setIsLocked(false);
         toast.success("Access granted to review room");
       } else {
         setPasscodeError(res.error || "Incorrect passcode. Please try again.");
+      }
+    });
+  };
+
+  const handleCreatorUnlock = () => {
+    startPasscodeTransition(async () => {
+      const res = await verifyDeliveryPasscodeAction(delivery.shareToken, "", true);
+      if (res.success) {
+        if (res.assets && res.assets.length > 0) {
+          setAssets(res.assets as DeliveryAssetItem[]);
+          if (!activeAssetId) {
+            setActiveAssetId(res.assets[0].id);
+          }
+        }
+        setIsLocked(false);
+        toast.success("Unlocked as workspace creator");
+      } else {
+        toast.error(res.error || "Creator authorization failed");
       }
     });
   };
@@ -238,9 +269,21 @@ export function DeliveryRoomClient({
     e.preventDefault();
     if (!commentText.trim() || !activeAsset || !activeVersion) return;
 
-    const capturedTime = cutPlayerRef.current?.getCurrentTime() ?? currentPlayheadTime;
-    const roundedTime = Math.round(capturedTime * 100) / 100;
-    const formattedTc = formatTimecode(roundedTime, 24);
+    const isStill =
+      activeAsset.type === "photo_gallery" ||
+      activeAsset.type === "image" ||
+      activeAsset.type === "still" ||
+      activeAsset.type === "photo";
+
+    const capturedTime = isStill
+      ? null
+      : (cutPlayerRef.current?.getCurrentTime() ?? currentPlayheadTime);
+    const roundedTime = capturedTime !== null ? Math.round(capturedTime * 100) / 100 : null;
+    const formattedTc = roundedTime !== null ? formatTimecode(roundedTime, 24) : null;
+
+    if (typeof window !== "undefined" && commentAuthor.trim()) {
+      localStorage.setItem("cinespace_reviewer_name", commentAuthor.trim());
+    }
 
     const tempId = `temp_${Date.now()}`;
     const newFeedback: FeedbackItem = {
@@ -267,7 +310,11 @@ export function DeliveryRoomClient({
     );
     setCommentText("");
     setActiveCommentId(tempId);
-    toast.success(`Timecoded note added at [${formattedTc}]`);
+    if (isStill) {
+      toast.success("Feedback note added to still");
+    } else {
+      toast.success(`Timecoded note added at [${formattedTc}]`);
+    }
 
     startCommentTransition(async () => {
       const res = await addFeedbackAction({
@@ -328,18 +375,22 @@ export function DeliveryRoomClient({
     setActiveCommentId(null);
   };
 
-  // 🔒 1. PASSWORD GATE SCREEN
-  if (isLocked) {
-    return (
-      <div className="min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased flex flex-col items-center justify-center p-4 selection:bg-[#f5551d] selection:text-black relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#f5551d]/15 blur-[140px] rounded-full pointer-events-none" />
+  // 🎬 MAIN CLIENT DELIVERY VIEW SCREEN WITH MODAL PASSCODE DIALOG
+  return (
+    <div className={`min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased selection:bg-[#f5551d] selection:text-black relative ${isLocked ? "overflow-hidden max-h-screen" : ""}`}>
+      <AmbientBackground variant="full" />
 
-        <div className="liquid-glass rounded-3xl p-8 sm:p-12 max-w-md w-full text-center space-y-6 shadow-2xl relative z-10 border border-white/15 backdrop-blur-xl">
+      {/* 🔒 PASSCODE VERIFICATION MODAL DIALOG */}
+      <Dialog open={isLocked} onOpenChange={() => {}}>
+        <DialogContent
+          showCloseButton={false}
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-[#121216]/95 backdrop-blur-2xl border border-white/20 text-[#f6f3ec] rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl space-y-6"
+        >
           <div className="w-16 h-16 rounded-2xl bg-[#f5551d]/15 text-[#f5551d] mx-auto flex items-center justify-center shadow-inner">
             <KeyRound className="size-8" />
           </div>
 
-          <div className="space-y-2">
+          <div className="text-center space-y-2">
             <span className="glass-badge font-mono text-[11px] uppercase tracking-wider text-[#ff8a45]">
               Protected Review Room
             </span>
@@ -347,22 +398,32 @@ export function DeliveryRoomClient({
               {workspace.brandName}
             </h1>
             <p className="text-xs text-[#aeaeb4] font-sans leading-relaxed">
-              Enter your passcode to access the private delivery cuts for{" "}
+              Enter the client passcode to unlock private delivery cuts for{" "}
               <strong className="text-[#f6f3ec]">{delivery.title}</strong>.
             </p>
           </div>
 
           <form onSubmit={handleUnlock} className="space-y-4">
             <div>
-              <input
-                type="password"
-                placeholder="Enter client passcode"
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 text-center text-sm rounded-xl py-3 focus:outline-none focus:border-[#f5551d] transition-all text-white placeholder:text-neutral-500"
-                autoFocus
-                disabled={isVerifyingPasscode}
-              />
+              <div className="relative">
+                <input
+                  type={showPasscode ? "text" : "password"}
+                  placeholder="Enter client passcode"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 text-center text-sm rounded-xl py-3 px-10 focus:outline-none focus:border-[#f5551d] transition-all text-white placeholder:text-neutral-500 font-mono tracking-wider"
+                  autoFocus
+                  disabled={isVerifyingPasscode}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasscode(!showPasscode)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors cursor-pointer p-1"
+                  title={showPasscode ? "Hide passcode" : "Show passcode"}
+                >
+                  {showPasscode ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
               {passcodeError && (
                 <div className="flex items-center justify-center gap-1.5 text-xs text-red-400 mt-2 font-medium">
                   <AlertCircle className="size-3.5" />
@@ -381,19 +442,29 @@ export function DeliveryRoomClient({
             </button>
           </form>
 
-          <p className="text-[11px] text-[#5e5e64] font-mono">
+          {isWorkspaceMember && (
+            <div className="pt-3 border-t border-white/10 text-center">
+              <button
+                type="button"
+                onClick={handleCreatorUnlock}
+                disabled={isVerifyingPasscode}
+                className="text-[11px] font-mono text-[#f5551d] hover:underline cursor-pointer transition-colors"
+              >
+                Workspace Creator: Quick Unlock Preview
+              </button>
+            </div>
+          )}
+
+          <p className="text-[11px] text-[#5e5e64] font-mono text-center">
             Delivery Token: {delivery.shareToken.slice(0, 8)}...
           </p>
-        </div>
-      </div>
-    );
-  }
+        </DialogContent>
+      </Dialog>
 
-  // 🎬 2. MAIN CLIENT DELIVERY VIEW SCREEN
-  return (
-    <div className="min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased selection:bg-[#f5551d] selection:text-black">
-      {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-[#070709]/90 backdrop-blur-xl border-b border-white/10 shadow-xl">
+      {/* Main Review Room Content (blurred when locked) */}
+      <div className={`relative z-10 ${isLocked ? "filter blur-lg pointer-events-none select-none opacity-30 transition-all duration-500" : ""}`}>
+        {/* Top Header */}
+        <header className="sticky top-0 z-40 bg-[#070709]/90 backdrop-blur-xl border-b border-white/10 shadow-xl">
         <div className="max-w-6xl mx-auto px-3 sm:px-6 py-2.5 sm:py-0 min-h-[4rem] sm:h-20 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-4">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             {workspace.logoUrl ? (
@@ -673,62 +744,83 @@ export function DeliveryRoomClient({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
               {/* Player Column */}
               <div className="lg:col-span-7 space-y-3 sm:space-y-4">
-                {activeVersion ? (
-                  <CutReviewPlayer
-                    ref={cutPlayerRef}
-                    isPhoto={activeAsset.type === "photo_gallery" || activeAsset.type === "image"}
-                    src={
-                      activeVersion.hlsManifestUrl ||
-                      activeVersion.rawFileUrl ||
-                      "https://files.vidstack.io/sprite-fight/hls/stream.m3u8"
-                    }
-                    title={activeAsset.title}
-                    poster={activeVersion.thumbnailUrl || "/images/hero.jpg"}
-                    aspectRatio={activeAsset.aspectRatio || "16:9"}
-                    fps={24}
-                    comments={activeFeedback.map((c) => ({
-                      id: c.id,
-                      timestampSeconds: c.timestampSeconds ?? 0,
-                      authorName: c.authorName,
-                      commentText: c.commentText,
-                      isResolved: c.isResolved,
-                    }))}
-                    activeCommentId={activeCommentId}
-                    onCommentSelect={(commentId, timestamp) => {
-                      setActiveCommentId(commentId);
-                      cutPlayerRef.current?.seekTo(timestamp);
-                    }}
-                    onTimeChange={(time, tc) => {
-                      setCurrentPlayheadTime(time);
-                      setCurrentPlayheadTc(tc);
-                    }}
-                  />
-                ) : (
-                  <div className="aspect-video bg-black/50 border border-white/10 rounded-2xl flex items-center justify-center text-xs text-[#aeaeb4]">
-                    No video version available
-                  </div>
-                )}
+                {(() => {
+                  const isStill =
+                    activeAsset.type === "photo_gallery" ||
+                    activeAsset.type === "image" ||
+                    activeAsset.type === "still" ||
+                    activeAsset.type === "photo";
+
+                  return activeVersion ? (
+                    <CutReviewPlayer
+                      ref={cutPlayerRef}
+                      isPhoto={isStill}
+                      src={
+                        isStill
+                          ? activeVersion.rawFileUrl || activeVersion.thumbnailUrl || "/images/hero.jpg"
+                          : activeVersion.hlsManifestUrl ||
+                            activeVersion.rawFileUrl ||
+                            "https://files.vidstack.io/sprite-fight/hls/stream.m3u8"
+                      }
+                      title={activeAsset.title}
+                      poster={activeVersion.thumbnailUrl || "/images/hero.jpg"}
+                      aspectRatio={activeAsset.aspectRatio || "16:9"}
+                      fps={24}
+                      comments={activeFeedback.map((c) => ({
+                        id: c.id,
+                        timestampSeconds: isStill ? null : (c.timestampSeconds ?? 0),
+                        authorName: c.authorName,
+                        commentText: c.commentText,
+                        isResolved: c.isResolved,
+                      }))}
+                      activeCommentId={activeCommentId}
+                      onCommentSelect={(commentId, timestamp) => {
+                        if (!isStill) {
+                          setActiveCommentId(commentId);
+                          cutPlayerRef.current?.seekTo(timestamp);
+                        }
+                      }}
+                      onTimeChange={(time, tc) => {
+                        if (!isStill) {
+                          setCurrentPlayheadTime(time);
+                          setCurrentPlayheadTc(tc);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="aspect-video bg-black/50 border border-white/10 rounded-2xl flex items-center justify-center text-xs text-[#aeaeb4]">
+                      No media version available
+                    </div>
+                  );
+                })()}
 
                 {/* Version Selector Bar */}
-                {activeAsset.versions.length > 1 && (
+                {activeAsset.versions && activeAsset.versions.length > 0 && (
                   <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
-                    <span className="text-xs font-mono text-[#aeaeb4]">
-                      Select Cut Version:
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <Layers className="size-3.5 text-[#f5551d]" />
+                      <span className="text-xs font-mono text-[#aeaeb4]">
+                        Version:
+                      </span>
+                    </div>
                     <div className="flex gap-1.5">
                       {activeAsset.versions.map((v) => {
                         const isSelected = activeVersion?.id === v.id;
                         return (
                           <button
                             key={v.id}
+                            type="button"
                             onClick={() => setSelectedVersionId(v.id)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer ${
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer flex items-center gap-1 ${
                               isSelected
                                 ? "bg-[#f5551d] text-black shadow-md"
                                 : "bg-white/5 text-[#aeaeb4] hover:text-[#f6f3ec]"
                             }`}
                           >
-                            V{v.versionNumber}
+                            <span>V{v.versionNumber}</span>
+                            {v.isActiveVersion && (
+                              <span className="text-[9px] opacity-75">★</span>
+                            )}
                           </button>
                         );
                       })}
@@ -738,118 +830,160 @@ export function DeliveryRoomClient({
               </div>
 
               {/* Timestamped Comment Drawer */}
-              <div className="lg:col-span-5 bg-white/5 p-4 sm:p-5 rounded-2xl flex flex-col justify-between min-h-[360px] sm:min-h-[420px] lg:h-[480px] border border-white/10">
-                <div className="space-y-3 sm:space-y-4 overflow-hidden flex flex-col h-full">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
-                    <h4 className="font-display font-bold text-sm text-[#f6f3ec] flex items-center gap-2">
-                      <MessageCircle className="size-4 text-[#f5551d]" /> Notes ({activeFeedback.length})
-                    </h4>
-                    <span className="text-[10px] font-mono text-[#ff8a45] bg-[#f5551d]/10 px-2 py-0.5 rounded border border-[#f5551d]/20">
-                      Playhead: {currentPlayheadTc}
-                    </span>
-                  </div>
+              {(() => {
+                const isStill =
+                  activeAsset.type === "photo_gallery" ||
+                  activeAsset.type === "image" ||
+                  activeAsset.type === "still" ||
+                  activeAsset.type === "photo";
 
-                  {/* Comments Feed */}
-                  <div className="space-y-2.5 sm:space-y-3 overflow-y-auto pr-1 flex-1">
-                    {activeFeedback.length === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center text-center p-4 text-xs text-[#aeaeb4] space-y-1">
-                        <p>No comments on this version yet.</p>
-                        <p className="text-[11px] text-[#71717a]">
-                          Pause at any frame and type your feedback below.
-                        </p>
+                return (
+                  <div className="lg:col-span-5 bg-white/5 p-4 sm:p-5 rounded-2xl flex flex-col justify-between min-h-[360px] sm:min-h-[420px] lg:h-[480px] border border-white/10">
+                    <div className="space-y-3 sm:space-y-4 overflow-hidden flex flex-col h-full">
+                      <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
+                        <h4 className="font-display font-bold text-sm text-[#f6f3ec] flex items-center gap-2">
+                          <MessageCircle className={`size-4 ${isStill ? "text-emerald-400" : "text-[#f5551d]"}`} />
+                          Notes ({activeFeedback.length})
+                        </h4>
+                        {isStill ? (
+                          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-bold">
+                            Still Photography
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-mono text-[#ff8a45] bg-[#f5551d]/10 px-2 py-0.5 rounded border border-[#f5551d]/20">
+                            Playhead: {currentPlayheadTc}
+                          </span>
+                        )}
                       </div>
-                    ) : (
-                      activeFeedback.map((c) => {
-                        const isSelected = activeCommentId === c.id;
-                        const commentTime = c.timestampSeconds ?? 0;
-                        const tcDisplay = formatTimecode(commentTime, 24);
 
-                        return (
-                          <div
-                            key={c.id}
-                            onClick={() => {
-                              cutPlayerRef.current?.seekTo(commentTime);
-                              setActiveCommentId(c.id);
-                            }}
-                            className={`p-3 rounded-xl text-xs space-y-1.5 cursor-pointer transition-all border ${
-                              isSelected
-                                ? "bg-[#f5551d]/20 border-[#f5551d] text-[#f6f3ec] ring-1 ring-[#f5551d]"
-                                : c.isResolved
-                                ? "bg-white/5 border-white/5 text-[#71717a] opacity-75"
-                                : "bg-[#18181c] border-white/10 text-[#f6f3ec] hover:border-white/20"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between text-[10px] text-[#aeaeb4] font-mono">
-                              <span className="font-semibold text-white">{c.authorName}</span>
-                              <span className="text-[#ff8a45] font-bold">
-                                [{tcDisplay}]
-                              </span>
-                            </div>
-                            <p className="leading-snug text-xs">{c.commentText}</p>
-                            <div className="flex items-center justify-end pt-1">
-                              <button
-                                onClick={(e) => {
-                                   e.stopPropagation();
-                                  handleToggleResolve(c.id, c.isResolved);
+                      {/* Comments Feed */}
+                      <div className="space-y-2.5 sm:space-y-3 overflow-y-auto pr-1 flex-1">
+                        {activeFeedback.length === 0 ? (
+                          <div className="h-full flex flex-col items-center justify-center text-center p-4 text-xs text-[#aeaeb4] space-y-1">
+                            <p>No comments on this {isStill ? "still" : "version"} yet.</p>
+                            <p className="text-[11px] text-[#71717a]">
+                              {isStill
+                                ? "Leave feedback or revision notes for this photo still below."
+                                : "Pause at any frame and type your feedback below."}
+                            </p>
+                          </div>
+                        ) : (
+                          activeFeedback.map((c) => {
+                            const isSelected = activeCommentId === c.id;
+                            const commentTime = c.timestampSeconds;
+                            const hasTimestamp = !isStill && commentTime !== null && commentTime !== undefined;
+                            const tcDisplay = hasTimestamp ? formatTimecode(commentTime, 24) : null;
+
+                            return (
+                              <div
+                                key={c.id}
+                                onClick={() => {
+                                  if (hasTimestamp) {
+                                    cutPlayerRef.current?.seekTo(commentTime);
+                                    setActiveCommentId(c.id);
+                                  }
                                 }}
-                                className={`text-[10px] font-mono px-2 py-0.5 rounded cursor-pointer transition-colors ${
-                                  c.isResolved
-                                    ? "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
-                                    : "text-[#aeaeb4] hover:text-white"
+                                className={`p-3 rounded-xl text-xs space-y-1.5 transition-all border ${
+                                  hasTimestamp ? "cursor-pointer" : ""
+                                } ${
+                                  isSelected
+                                    ? "bg-[#f5551d]/20 border-[#f5551d] text-[#f6f3ec] ring-1 ring-[#f5551d]"
+                                    : c.isResolved
+                                    ? "bg-white/5 border-white/5 text-[#71717a] opacity-75"
+                                    : "bg-[#18181c] border-white/10 text-[#f6f3ec] hover:border-white/20"
                                 }`}
                               >
-                                {c.isResolved ? "✓ Resolved" : "Mark resolved"}
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-
-                  {/* Comment Input */}
-                  <form
-                    onSubmit={handleAddComment}
-                    className="pt-3 border-t border-white/10 flex flex-col gap-2 shrink-0"
-                  >
-                    <div className="flex items-center justify-between text-[10px] font-mono text-[#aeaeb4]">
-                      <div className="flex items-center gap-1.5">
-                        <span>As:</span>
-                        <input
-                          type="text"
-                          value={commentAuthor}
-                          onChange={(e) => setCommentAuthor(e.target.value)}
-                          placeholder="Your Name"
-                          className="bg-transparent text-white font-semibold underline underline-offset-2 outline-none max-w-[130px] text-xs"
-                        />
+                                <div className="flex items-center justify-between text-[10px] text-[#aeaeb4] font-mono">
+                                  <span className="font-semibold text-white">{c.authorName}</span>
+                                  {hasTimestamp ? (
+                                    <span className="text-[#ff8a45] font-bold">
+                                      [{tcDisplay}]
+                                    </span>
+                                  ) : (
+                                    <span className="text-emerald-400 font-mono text-[9px] bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                      Still Note
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="leading-snug text-xs">{c.commentText}</p>
+                                <div className="flex items-center justify-end pt-1">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleResolve(c.id, c.isResolved);
+                                    }}
+                                    className={`text-[10px] font-mono px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                                      c.isResolved
+                                        ? "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
+                                        : "text-[#aeaeb4] hover:text-white"
+                                    }`}
+                                  >
+                                    {c.isResolved ? "✓ Resolved" : "Mark resolved"}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
                       </div>
-                      <span className="text-[#ff8a45] font-bold">[{currentPlayheadTc}]</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder={`Leave note at ${currentPlayheadTc}...`}
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        disabled={isSubmittingComment}
-                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#f5551d] text-white placeholder:text-neutral-500 min-h-[44px]"
-                      />
-                      <button
-                        type="submit"
-                        disabled={isSubmittingComment || !commentText.trim()}
-                        className="bg-[#f5551d] hover:bg-[#e0440d] text-black font-bold px-4 py-2.5 rounded-xl text-xs cursor-pointer transition-colors disabled:opacity-40 min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0"
-                        title="Post timecoded note"
+
+                      {/* Comment Input */}
+                      <form
+                        onSubmit={handleAddComment}
+                        className="pt-3 border-t border-white/10 flex flex-col gap-2 shrink-0"
                       >
-                        <Send className="size-4" />
-                      </button>
+                        <div className="flex items-center justify-between text-[10px] font-mono text-[#aeaeb4]">
+                          <div className="flex items-center gap-1.5">
+                            <span>As:</span>
+                            <input
+                              type="text"
+                              value={commentAuthor}
+                              onChange={(e) => setCommentAuthor(e.target.value)}
+                              placeholder="Your Name"
+                              className="bg-transparent text-white font-semibold underline underline-offset-2 outline-none max-w-[130px] text-xs"
+                            />
+                          </div>
+                          {isStill ? (
+                            <span className="text-emerald-400 font-bold font-mono">[Still Note]</span>
+                          ) : (
+                            <span className="text-[#ff8a45] font-bold">[{currentPlayheadTc}]</span>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder={
+                              isStill
+                                ? "Add feedback note on this still..."
+                                : `Leave note at ${currentPlayheadTc}...`
+                            }
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
+                            disabled={isSubmittingComment}
+                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#f5551d] text-white placeholder:text-neutral-500 min-h-[44px]"
+                          />
+                          <button
+                            type="submit"
+                            disabled={isSubmittingComment || !commentText.trim()}
+                            className="bg-[#f5551d] hover:bg-[#ff8a45] disabled:opacity-40 text-black font-bold px-4 rounded-xl text-xs flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                          >
+                            {isSubmittingComment ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              <Send className="size-4" />
+                            )}
+                          </button>
+                        </div>
+                      </form>
                     </div>
-                  </form>
-                </div>
-              </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

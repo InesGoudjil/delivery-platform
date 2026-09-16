@@ -16,6 +16,7 @@ import { DemoModal } from "@/components/landing/DemoModal";
 import { WaitlistSection } from "@/components/waitlist/WaitlistSection";
 import { WaitlistModal } from "@/components/waitlist/WaitlistModal";
 import type { UserNavMenuProps } from "@/components/landing/UserNavMenu";
+import { AmbientBackground } from "@/components/ui/ambient-background";
 
 interface LandingPageProps {
   user?: UserNavMenuProps["user"] | null;
@@ -34,17 +35,22 @@ export default function LandingPage({ user, workspace, referralCode }: LandingPa
   };
 
   return (
-    <div className="root min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased selection:bg-[#f5551d] selection:text-white">
+    <div
+      className="root min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased selection:bg-[#f5551d] selection:text-white relative"
+    >
+      <AmbientBackground variant="full" />
       {/* 1. Header Navigation Bar */}
-      <HeaderSection
-        user={user}
-        workspace={workspace}
-        onOpenDemo={() => setShowDemoModal(true)}
-        onStartTrial={() => showToast("Free trial registration initiated!")}
-      />
+      <div className="relative z-10">
+        <HeaderSection
+          user={user}
+          workspace={workspace}
+          onOpenDemo={() => setShowDemoModal(true)}
+          onStartTrial={() => showToast("Free trial registration initiated!")}
+        />
+      </div>
 
       {/* Main Landing Page Content Container */}
-      <main className="mx-auto max-w-7xl px-4 sm:px-8 space-y-8">
+      <main className="mx-auto max-w-7xl px-4 sm:px-8 space-y-8 relative z-10">
         {/* 2. Hero Section */}
         <HeroSection
           onOpenDemo={() => setShowDemoModal(true)}
@@ -55,7 +61,7 @@ export default function LandingPage({ user, workspace, referralCode }: LandingPa
         <FeaturesSection onOpenDemo={() => setShowDemoModal(true)} />
 
         {/* 4. How It Works Section (01 Upload, 02 Share, 03 Approvals) */}
-        <WorkflowSection />
+        {/* <WorkflowSection /> */}
 
         {/* 5. Pricing Section (Testimonial Quote + 4-Tier Pricing Grid + Compare Packages Matrix) */}
         <PricingSection
@@ -72,7 +78,7 @@ export default function LandingPage({ user, workspace, referralCode }: LandingPa
         <FaqSection />
 
         {/* 9. Exclusive Beta Waitlist Section */}
-        <WaitlistSection initialReferralCode={referralCode} />
+        {/* <WaitlistSection initialReferralCode={referralCode} /> */}
 
         {/* 10. Call To Action Banner */}
         <CtaSection

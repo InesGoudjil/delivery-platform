@@ -25,20 +25,145 @@ import {
   AttachmentAction,
 } from "@/components/ui/attachment";
 
+export interface DirectUploadParams {
+  workspaceId: string;
+  projectId: string;
+  file: File;
+  title?: string;
+  assetType?: "video" | "photo_gallery";
+  assetId?: string | null;
+  onProgress?: (percent: number, loaded: number, total: number) => void;
+  onStatusChange?: (statusText: string) => void;
+  onXhrCreated?: (xhr: XMLHttpRequest) => void;
+}
+
+export interface DirectUploadResult {
+  asset: any;
+  assetVersion: any;
+}
+
+export const formatBytes = (bytes: number) => {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
+
+export async function directUploadMediaFile({
+  workspaceId,
+  projectId,
+  file,
+  title,
+  assetType,
+  assetId,
+  onProgress,
+  onStatusChange,
+  onXhrCreated,
+}: DirectUploadParams): Promise<DirectUploadResult> {
+  const resolvedType =
+    assetType || (file.type.startsWith("image/") ? "photo_gallery" : "video");
+  const resolvedTitle = title || file.name.replace(/\.[^/.]+$/, "");
+
+  onStatusChange?.("Requesting direct upload token...");
+
+  // 1. Request direct upload URL from server (validates storage quota)
+  const initRes = await requestAssetUploadAction({
+    workspaceId,
+    projectId,
+    assetId: assetId || undefined,
+    title: resolvedTitle,
+    filename: file.name,
+    fileSizeBytes: file.size,
+    assetType: resolvedType,
+  });
+
+  if (!initRes.success || !initRes.directUpload || !initRes.assetVersion) {
+    throw new Error(initRes.error || "Failed to initialize upload.");
+  }
+
+  const { uploadUrl, providerUid, uploadType, headers } = initRes.directUpload;
+  const assetVersionId = initRes.assetVersion.id;
+
+  onStatusChange?.(`Uploading directly (${uploadType})...`);
+
+  // 2. Perform direct upload from client to Cloudflare (or mock)
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    onXhrCreated?.(xhr);
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        onProgress?.(percent, event.loaded, event.total);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`Direct upload failed with status ${xhr.status}`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during direct upload."));
+    xhr.onabort = () => reject(new Error("Upload cancelled by user."));
+
+    if (uploadType === "presigned_put") {
+      xhr.open("PUT", uploadUrl, true);
+      if (headers) {
+        Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+      }
+      xhr.send(file);
+    } else {
+      xhr.open("POST", uploadUrl, true);
+      const formData = new FormData();
+      formData.append("file", file);
+      xhr.send(formData);
+    }
+  });
+
+  // 3. Confirm upload on backend and fetch playback & transcoding records
+  onStatusChange?.("Finalizing transcoding and storage records...");
+  const confirmRes = await confirmUploadCompletedAction({
+    assetVersionId,
+    providerUid,
+    fileSizeBytes: file.size,
+  });
+
+  if (!confirmRes.success) {
+    throw new Error(confirmRes.error || "Failed to finalize upload records.");
+  }
+
+  onProgress?.(100, file.size, file.size);
+  onStatusChange?.("Upload complete & ready!");
+
+  return {
+    asset: initRes.asset,
+    assetVersion: confirmRes.assetVersion || initRes.assetVersion,
+  };
+}
+
 export interface VideoUploaderProps {
   workspaceId: string;
   projectId: string;
-  onUploadComplete?: (asset: any) => void;
+  existingAssets?: Array<{ id: string; title: string }>;
+  defaultAssetId?: string;
+  onUploadComplete?: (asset: any, version?: any) => void;
 }
 
 export function VideoUploader({
   workspaceId,
   projectId,
+  existingAssets = [],
+  defaultAssetId,
   onUploadComplete,
 }: VideoUploaderProps) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
+  const [selectedAssetId, setSelectedAssetId] = useState<string>(defaultAssetId || "");
   const [assetType, setAssetType] = useState<"video" | "photo_gallery">("video");
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -53,7 +178,15 @@ export function VideoUploader({
     if (!files || files.length === 0) return;
     const file = files[0];
     setSelectedFile(file);
-    setTitle(file.name.replace(/\.[^/.]+$/, ""));
+
+    if (selectedAssetId) {
+      const match = existingAssets.find((a) => a.id === selectedAssetId);
+      if (match) {
+        setTitle(match.title);
+      }
+    } else {
+      setTitle(file.name.replace(/\.[^/.]+$/, ""));
+    }
     
     // Auto-detect asset type based on mime type
     if (file.type.startsWith("image/")) {
@@ -86,14 +219,6 @@ export function VideoUploader({
     }
   };
 
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  };
-
   const startDirectUpload = async () => {
     if (!selectedFile || uploading) return;
 
@@ -103,83 +228,31 @@ export function VideoUploader({
     setStatusText("Requesting Cloudflare direct upload token...");
 
     try {
-      // 1. Request direct upload URL from server (validates storage quota)
-      const initRes = await requestAssetUploadAction({
+      const result = await directUploadMediaFile({
         workspaceId,
         projectId,
+        file: selectedFile,
         title: title || selectedFile.name,
-        filename: selectedFile.name,
-        fileSizeBytes: selectedFile.size,
         assetType,
+        assetId: selectedAssetId || undefined,
+        onProgress: (percent, loaded, total) => {
+          setProgress(percent);
+          setStatusText(
+            `Uploading: ${percent}% (${formatBytes(loaded)} / ${formatBytes(total)})`
+          );
+        },
+        onStatusChange: (status) => setStatusText(status),
+        onXhrCreated: (xhr) => {
+          xhrRef.current = xhr;
+        },
       });
-
-      if (!initRes.success || !initRes.directUpload) {
-        throw new Error(initRes.error || "Failed to initialize upload.");
-      }
-
-      const { uploadUrl, providerUid, uploadType, headers } = initRes.directUpload;
-      const assetVersionId = initRes.assetVersion.id;
-
-      setStatusText(`Uploading directly to Cloudflare (${uploadType})...`);
-
-      // 2. Perform direct upload from client to Cloudflare (bypasses Next.js server limits)
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhrRef.current = xhr;
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percent = Math.round((event.loaded / event.total) * 100);
-            setProgress(percent);
-            setStatusText(
-              `Uploading: ${percent}% (${formatBytes(event.loaded)} / ${formatBytes(event.total)})`
-            );
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve();
-          } else {
-            reject(new Error(`Direct upload failed with status ${xhr.status}`));
-          }
-        };
-
-        xhr.onerror = () => reject(new Error("Network error during direct upload."));
-        xhr.onabort = () => reject(new Error("Upload cancelled by user."));
-
-        if (uploadType === "presigned_put") {
-          xhr.open("PUT", uploadUrl, true);
-          if (headers) {
-            Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
-          }
-          xhr.send(selectedFile);
-        } else {
-          xhr.open("POST", uploadUrl, true);
-          const formData = new FormData();
-          formData.append("file", selectedFile);
-          xhr.send(formData);
-        }
-      });
-
-      // 3. Confirm upload on backend and fetch HLS manifest & thumbnail
-      setStatusText("Finalizing transcoding and storage records...");
-      const confirmRes = await confirmUploadCompletedAction({
-        assetVersionId,
-        providerUid,
-        fileSizeBytes: selectedFile.size,
-      });
-
-      if (!confirmRes.success) {
-        throw new Error(confirmRes.error || "Failed to finalize upload records.");
-      }
 
       setProgress(100);
       setStatusText("Upload complete & ready!");
-      setCompletedAsset(initRes.asset);
+      setCompletedAsset(result.asset);
 
       if (onUploadComplete) {
-        onUploadComplete(initRes.asset);
+        onUploadComplete(result.asset, result.assetVersion);
       }
     } catch (err: any) {
       setErrorMessage(err.message || "An error occurred during upload.");
@@ -341,14 +414,38 @@ export function VideoUploader({
               )}
             </Attachment>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+              {existingAssets.length > 0 && (
+                <select
+                  value={selectedAssetId}
+                  onChange={(e) => {
+                    const newId = e.target.value;
+                    setSelectedAssetId(newId);
+                    if (newId) {
+                      const match = existingAssets.find((a) => a.id === newId);
+                      if (match) setTitle(match.title);
+                    } else if (selectedFile) {
+                      setTitle(selectedFile.name.replace(/\.[^/.]+$/, ""));
+                    }
+                  }}
+                  disabled={uploading}
+                  className="bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary w-full sm:w-48"
+                >
+                  <option value="">New Asset (V1)</option>
+                  {existingAssets.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      New version of: {a.title}
+                    </option>
+                  ))}
+                </select>
+              )}
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Asset Title (e.g. v2_Director_Cut)"
                 disabled={uploading}
-                className="bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary w-full sm:w-56"
+                className="bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary w-full sm:w-52"
               />
             </div>
           </div>

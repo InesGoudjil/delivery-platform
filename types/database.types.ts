@@ -601,7 +601,9 @@ export interface Database {
           client_id: string | null;
           delivery_id: string | null;
           channel: "whatsapp" | "email";
-          recipient_phone: string;
+          recipient_phone: string | null;
+          recipient_email: string | null;
+          subject: string | null;
           status: "queued" | "sent" | "delivered" | "failed";
           provider_message_id: string | null;
           error_message: string | null;
@@ -613,7 +615,9 @@ export interface Database {
           client_id?: string | null;
           delivery_id?: string | null;
           channel?: "whatsapp" | "email";
-          recipient_phone: string;
+          recipient_phone?: string | null;
+          recipient_email?: string | null;
+          subject?: string | null;
           status?: "queued" | "sent" | "delivered" | "failed";
           provider_message_id?: string | null;
           error_message?: string | null;
@@ -625,7 +629,9 @@ export interface Database {
           client_id?: string | null;
           delivery_id?: string | null;
           channel?: "whatsapp" | "email";
-          recipient_phone?: string;
+          recipient_phone?: string | null;
+          recipient_email?: string | null;
+          subject?: string | null;
           status?: "queued" | "sent" | "delivered" | "failed";
           provider_message_id?: string | null;
           error_message?: string | null;

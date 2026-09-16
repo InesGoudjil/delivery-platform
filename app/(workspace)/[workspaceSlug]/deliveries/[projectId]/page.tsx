@@ -5,6 +5,7 @@ import {
   AssetVersionItem,
   FeedbackItem,
 } from "./delivery-detail-client";
+import { DeliveryNavHeader } from "./_components/delivery-nav-header";
 
 export default async function DeliveryDetailPage({
   params,
@@ -202,17 +203,23 @@ export default async function DeliveryDetailPage({
   }
 
   return (
-    <DeliveryDetailClient
-      workspace={workspace}
-      portfolio={portfolio ? { id: portfolio.id, slug: portfolio.slug, title: portfolio.title } : null}
-      project={{
-        ...project,
-        clientName,
-        passcodeProtected: Boolean(project.passcodeHash),
-      }}
-      assets={mappedAssets}
-      initialFeedback={initialFeedback}
-    />
+    <div className="max-w-6xl mx-auto space-y-8 pb-16 animate-in fade-in duration-200 text-foreground selection:bg-[#f5551d] selection:text-black">
+      <DeliveryNavHeader
+        workspaceSlug={workspace.slug}
+        shareToken={project.shareToken}
+      />
+      <DeliveryDetailClient
+        workspace={workspace}
+        portfolio={portfolio ? { id: portfolio.id, slug: portfolio.slug, title: portfolio.title } : null}
+        project={{
+          ...project,
+          clientName,
+          passcodeProtected: Boolean(project.passcodeHash),
+        }}
+        assets={mappedAssets}
+        initialFeedback={initialFeedback}
+      />
+    </div>
   );
 }
 
