@@ -1,5 +1,5 @@
 import { Subscription, SubscriptionStatus } from '@/core/entities/subscription';
-import { Plan, PlanSlug } from '@/core/entities/plan';
+import { Plan, PlanSlug, SEED_PLANS } from '@/core/entities/plan';
 import { Invoice, InvoiceStatus } from '@/core/entities/invoice';
 import { WorkspaceFeatureConfig } from '@/core/entities/workspace';
 import { ISubscriptionRepository } from '@/core/repositories/subscription.repository';
@@ -109,10 +109,17 @@ export class SubscriptionService {
 
   async getFeatures(workspaceId: string): Promise<WorkspaceFeatureConfig> {
     const featuresRecord = await this.featuresRepo.findByWorkspaceId(workspaceId);
-    if (featuresRecord) return featuresRecord.features;
+    if (featuresRecord && featuresRecord.features && Object.keys(featuresRecord.features).length > 0) {
+      return featuresRecord.features;
+    }
 
     const plan = await this.getCurrentPlan(workspaceId);
-    return plan?.features || {};
+    if (plan?.features && Object.keys(plan.features).length > 0) {
+      return plan.features;
+    }
+
+    const starter = await this.planRepo.findBySlug('starter');
+    return starter?.features || (SEED_PLANS.starter.features as WorkspaceFeatureConfig);
   }
 
   async startTrial(workspaceId: string, planSlug: PlanSlug = 'starter'): Promise<Subscription> {
@@ -270,6 +277,51 @@ export class SubscriptionService {
   async isWhiteLabelAllowed(workspaceId: string): Promise<boolean> {
     const features = await this.getFeatures(workspaceId);
     return Boolean(features.white_label);
+  }
+
+  async isDownloadNotificationAllowed(workspaceId: string): Promise<boolean> {
+    const features = await this.getFeatures(workspaceId);
+    return Boolean(features.download_notifications);
+  }
+
+  async isSiloArchiveAllowed(workspaceId: string): Promise<boolean> {
+    const features = await this.getFeatures(workspaceId);
+    return Boolean(features.silo_archive);
+  }
+
+  async isPrioritySupportAllowed(workspaceId: string): Promise<boolean> {
+    const features = await this.getFeatures(workspaceId);
+    return Boolean(features.priority_support);
+  }
+
+  async isLanguageAllowed(workspaceId: string, lang: 'ar' | 'en'): Promise<boolean> {
+    const features = await this.getFeatures(workspaceId);
+    const languages = features.languages || ['en'];
+    return languages.includes(lang);
+  }
+
+  async canAddPortfolioVideo(workspaceId: string, currentVideoCount: number): Promise<{
+    allowed: boolean;
+    currentCount: number;
+    maxAllowed: number;
+    reason?: string;
+  }> {
+    const features = await this.getFeatures(workspaceId);
+    const portfolioLimit = features.portfolio_videos ?? 4;
+
+    if (portfolioLimit === -1) {
+      return { allowed: true, currentCount: currentVideoCount, maxAllowed: -1 };
+    }
+
+    const allowed = currentVideoCount < portfolioLimit;
+    return {
+      allowed,
+      currentCount: currentVideoCount,
+      maxAllowed: portfolioLimit,
+      reason: allowed
+        ? undefined
+        : `Your current plan allows up to ${portfolioLimit} showcase film(s) on your portfolio. Upgrade to Basic or Pro for unlimited showcase films.`,
+    };
   }
 
   async listInvoices(workspaceId: string): Promise<Invoice[]> {

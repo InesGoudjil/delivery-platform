@@ -158,7 +158,7 @@ export function PricingSection({ onSelectPlan }: PricingSectionProps) {
         {PLANS.map((plan, idx) => (
           <div
             key={idx}
-            className={`relative rounded-[28px] border p-8 flex flex-col justify-between transition-all duration-300 ${
+            className={`card relative rounded-[28px] border p-8 flex flex-col justify-between transition-all duration-300 ${
               plan.popular
                 ? "border-[#f5551d] bg-gradient-to-b from-[#2a130c] to-[#121217] shadow-2xl scale-[1.02]"
                 : "border-white/10 bg-[#121217] shadow-xl hover:border-white/20"

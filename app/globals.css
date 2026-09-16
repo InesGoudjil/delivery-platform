@@ -436,4 +436,44 @@ h6,
   .glow-subtle {
     box-shadow: 0 0 20px -5px rgba(255, 255, 255, 0.05);
   }
+
+  /* Ambient Aura Drift Animations (Hardware-accelerated) */
+  .animate-aura-drift-left {
+    animation: auraDriftLeft 24s ease-in-out infinite alternate;
+  }
+
+  .animate-aura-drift-right {
+    animation: auraDriftRight 28s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes auraDriftLeft {
+  0% {
+    transform: rotate(-18deg) translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: rotate(-12deg) translate3d(30px, 45px, 0) scale(1.08);
+  }
+  100% {
+    transform: rotate(-22deg) translate3d(-20px, 20px, 0) scale(0.96);
+  }
+}
+
+@keyframes auraDriftRight {
+  0% {
+    transform: rotate(24deg) translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: rotate(18deg) translate3d(-35px, 50px, 0) scale(1.06);
+  }
+  100% {
+    transform: rotate(28deg) translate3d(25px, -20px, 0) scale(0.95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-aura-drift-left,
+  .animate-aura-drift-right {
+    animation: none !important;
+  }
 }

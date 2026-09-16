@@ -18,6 +18,20 @@ export async function addFeedbackAction(params: AddFeedbackParams) {
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
 
+    // Verify passcode access if protected shareToken is passed
+    if (params.shareToken) {
+      const delivery = await services.delivery.getDeliveryByShareToken(params.shareToken);
+      if (delivery?.passcodeHash) {
+        const { cookies } = await import("next/headers");
+        const cookieStore = await cookies();
+        const access = cookieStore.get(`delivery_access_${params.shareToken}`)?.value;
+        const isMember = user ? await services.member.isMember(delivery.workspaceId, user.id).catch(() => false) : false;
+        if (access !== "verified" && !isMember) {
+          return { error: "Passcode verification required to leave feedback on this cut." };
+        }
+      }
+    }
+
     const feedback = await services.feedback.addFeedback({
       assetVersionId: params.assetVersionId,
       authorUserId: user?.id,

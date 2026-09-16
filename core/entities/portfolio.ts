@@ -21,6 +21,8 @@ export interface PortfolioExperience {
   role: string;
   company: string;
   years: string;
+  location?: string;
+  category?: string;
   description?: string;
 }
 

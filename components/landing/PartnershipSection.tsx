@@ -82,7 +82,7 @@ export function PartnershipSection({ onShowToast }: PartnershipSectionProps) {
           return (
             <div
               key={idx}
-              className="rounded-2xl border border-white/10 bg-[#121217] p-6 shadow-xl space-y-4 hover:border-white/20 transition-all"
+              className="card rounded-2xl border border-white/10 bg-[#121217] p-6 shadow-xl space-y-4 hover:border-white/20 transition-all"
             >
               <div className="flex size-11 items-center justify-center rounded-xl bg-[#2a1b18] text-[#f5551d] border border-[#f5551d]/20">
                 <IconComponent className="size-5" />
@@ -99,7 +99,7 @@ export function PartnershipSection({ onShowToast }: PartnershipSectionProps) {
       </div>
 
       {/* Application Form Box */}
-      <div className="max-w-2xl mx-auto rounded-[28px] border border-white/10 bg-[#121217] p-8 sm:p-12 shadow-2xl text-left space-y-6">
+      <div className="card max-w-2xl mx-auto rounded-[28px] border border-white/10 bg-[#121217] p-8 sm:p-12 shadow-2xl text-left space-y-6">
         <h3 className="text-xl sm:text-2xl font-extrabold text-white tracking-wide uppercase font-display">
           APPLICATION FORM
         </h3>

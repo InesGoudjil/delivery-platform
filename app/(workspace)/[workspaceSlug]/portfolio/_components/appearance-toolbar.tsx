@@ -26,7 +26,6 @@ export function AppearanceToolbar({
   onAppearanceChange,
   showFlash,
 }: AppearanceToolbarProps) {
-  console.log("apparance",initialAppearance)
   const [isPending, startTransition] = useTransition();
 
   const [cardSize, setCardSize] = useState<"S" | "M" | "L">(

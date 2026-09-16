@@ -8,6 +8,7 @@ import { IClientRepository } from "@/core/repositories/client.repository";
 import { IAssetRepository, IAssetVersionRepository } from "@/core/repositories/i-asset-repository";
 import { IFeedbackRepository } from "@/core/repositories/feedback.repository";
 import { IProjectRepository } from "@/core/repositories/i-project-repository";
+import { SubscriptionService } from "./subscription.service";
 
 export interface DeliveryWithDetails extends Delivery {
   client?: Client | null;
@@ -27,10 +28,20 @@ export class DeliveryService {
     private readonly assetRepo: IAssetRepository,
     private readonly assetVersionRepo: IAssetVersionRepository,
     private readonly feedbackRepo: IFeedbackRepository,
-    private readonly projectRepo?: IProjectRepository
+    private readonly projectRepo?: IProjectRepository,
+    private readonly subscriptionService?: SubscriptionService
   ) {}
 
   async createDelivery(dto: CreateDeliveryDTO): Promise<Delivery> {
+    if (this.subscriptionService) {
+      const eligibility = await this.subscriptionService.canCreateProject(dto.workspaceId);
+      if (!eligibility.allowed) {
+        throw new Error(
+          eligibility.reason ||
+            "Active client delivery link limit reached. Please upgrade your subscription plan."
+        );
+      }
+    }
     return this.deliveryRepo.create(dto);
   }
 
@@ -150,6 +161,20 @@ export class DeliveryService {
 
     const delivery = await this.deliveryRepo.findById(deliveryId);
     if (!delivery) throw new Error("Delivery not found");
+
+    if (this.subscriptionService && this.projectRepo) {
+      const existingProjects = await this.projectRepo.listByPortfolioId(portfolioId);
+      const eligibility = await this.subscriptionService.canAddPortfolioVideo(
+        delivery.workspaceId,
+        existingProjects.length
+      );
+      if (!eligibility.allowed) {
+        throw new Error(
+          eligibility.reason ||
+            "Portfolio showcase film limit reached. Please upgrade your subscription plan."
+        );
+      }
+    }
 
     let clientName: string | null = null;
     if (delivery.clientId) {

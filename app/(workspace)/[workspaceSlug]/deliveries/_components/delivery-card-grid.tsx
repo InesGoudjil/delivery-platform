@@ -68,7 +68,7 @@ export function DeliveryCardGrid({
         return (
           <div
             key={item.id}
-            className="bg-card rounded-2xl p-6 border border-border hover:border-primary/50 transition-all duration-300 flex flex-col justify-between group shadow-sm"
+            className="card rounded-2xl p-6 border border-border hover:border-primary/50 transition-all duration-300 flex flex-col justify-between group shadow-sm"
           >
             <div className="space-y-4">
               {/* Status + Version Header */}

@@ -45,12 +45,12 @@ export function HeroSection({ onOpenDemo, onStartTrial }: HeroSectionProps) {
               >
                 START FOR FREE <ArrowRight className="size-4" />
               </Link>
-              <button
+              {/* <button
                 onClick={onOpenDemo}
                 className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 backdrop-blur-md px-7 py-3.5 text-sm font-bold uppercase tracking-wider text-white hover:bg-white/10 hover:border-white/40 transition-all"
               >
                 SEE A DELIVERY
-              </button>
+              </button> */}
             </div>
           </div>
 

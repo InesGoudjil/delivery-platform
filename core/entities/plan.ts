@@ -1,6 +1,6 @@
 import { WorkspaceFeatureConfig } from './workspace';
 
-export type PlanSlug = 'starter' | 'basic' | 'pro' | 'studio' | string;
+export type PlanSlug = 'starter' | 'basic' | 'pro' | 'studio' | 'enterprise' | string;
 export type BillingInterval = 'month' | 'year';
 
 export interface Plan {
@@ -104,6 +104,30 @@ export const SEED_PLANS: Record<string, Partial<Plan>> = {
       client_links: -1,
       portfolio_videos: -1,
       team_seats: 5,
+      languages: ['ar', 'en'],
+      whatsapp_delivery: true,
+      password_protected: true,
+      watermark: true,
+      branding: true,
+      download_notifications: true,
+      priority_support: true,
+      silo_archive: true,
+      white_label: true,
+    },
+  },
+  enterprise: {
+    name: 'Enterprise',
+    slug: 'enterprise',
+    priceCents: 19900,
+    currency: 'USD',
+    billingInterval: 'month',
+    sortOrder: 5,
+    isActive: true,
+    features: {
+      storage_gb: 10240,
+      client_links: -1,
+      portfolio_videos: -1,
+      team_seats: 25,
       languages: ['ar', 'en'],
       whatsapp_delivery: true,
       password_protected: true,

@@ -7,6 +7,7 @@ export interface IUserProfileRepository {
   listAll(limit?: number): Promise<UserProfile[]>;
   create(profile: { id: string; fullName?: string | null; avatarUrl?: string | null; platformRole?: PlatformRole }): Promise<UserProfile>;
   update(id: string, data: Partial<UserProfile>): Promise<UserProfile>;
+  upsert(profile: { id: string; fullName?: string | null; avatarUrl?: string | null; platformRole?: PlatformRole; lastLoginAt?: string | null; lastLoginIp?: string | null }): Promise<UserProfile>;
   updatePlatformRole(id: string, role: PlatformRole): Promise<UserProfile>;
   updateLoginInfo(id: string, ip?: string): Promise<void>;
 }
@@ -82,6 +83,34 @@ export class SupabaseUserProfileRepository implements IUserProfileRepository {
 
     if (error) throw new Error(`Error updating user profile: ${error.message}`);
     return this.mapRowToEntity(updated);
+  }
+
+  async upsert(profile: {
+    id: string;
+    fullName?: string | null;
+    avatarUrl?: string | null;
+    platformRole?: PlatformRole;
+    lastLoginAt?: string | null;
+    lastLoginIp?: string | null;
+  }): Promise<UserProfile> {
+    const payload: any = {
+      id: profile.id,
+      updated_at: new Date().toISOString(),
+    };
+    if (profile.fullName !== undefined) payload.full_name = profile.fullName;
+    if (profile.avatarUrl !== undefined) payload.avatar_url = profile.avatarUrl;
+    if (profile.platformRole !== undefined) payload.platform_role = profile.platformRole;
+    if (profile.lastLoginAt !== undefined) payload.last_login_at = profile.lastLoginAt;
+    if (profile.lastLoginIp !== undefined) payload.last_login_ip = profile.lastLoginIp;
+
+    const { data, error } = await (this.supabase as any)
+      .from('user_profiles')
+      .upsert(payload, { onConflict: 'id' })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Error upserting user profile: ${error.message}`);
+    return this.mapRowToEntity(data);
   }
 
   async updatePlatformRole(id: string, role: PlatformRole): Promise<UserProfile> {

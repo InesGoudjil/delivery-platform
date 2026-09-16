@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/sidebar";
 import { WorkspaceSidebar } from "@/components/workspaces/workspace-sidebar";
 import { WorkspaceHeader } from "@/components/workspaces/workspace-header";
+import { AmbientBackground } from "@/components/ui/ambient-background";
 
 export default async function WorkspaceLayout({
   children,
@@ -62,18 +63,21 @@ export default async function WorkspaceLayout({
         profile={profile}
         plan={plan}
       />
-      <SidebarInset className="bg-background text-foreground min-h-screen flex flex-col transition-colors duration-200">
+      <SidebarInset className="bg-background text-foreground min-h-screen flex flex-col transition-colors duration-200 relative overflow-hidden">
+        <AmbientBackground variant="subtle" />
         {/* Top Header matching CineSpace Dashboard with LIVE PREVIEW */}
-        <WorkspaceHeader
-          workspace={workspace}
-          workspaces={userWorkspaces}
-          user={user}
-          profile={profile}
-          plan={plan}
-        />
+        <div className="relative z-10">
+          <WorkspaceHeader
+            workspace={workspace}
+            workspaces={userWorkspaces}
+            user={user}
+            profile={profile}
+            plan={plan}
+          />
+        </div>
 
         {/* Main Content View */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-16">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-16 relative z-10">
           {children}
         </div>
       </SidebarInset>

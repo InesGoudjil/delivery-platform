@@ -27,22 +27,52 @@ export async function GET(request: Request) {
           }
         }
 
-        // 2. Route to workspace or invite token
+        const fullName =
+          data.user.user_metadata?.full_name ||
+          data.user.user_metadata?.name ||
+          data.user.email?.split('@')[0] ||
+          'Creator';
+
+        const avatarUrl =
+          data.user.user_metadata?.avatar_url ||
+          data.user.user_metadata?.picture ||
+          null;
+
+        const clientIp =
+          request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+          request.headers.get('x-real-ip') ||
+          undefined;
+
+        // 2. Sync OAuth user profile (name, avatar, last login)
+        await services.profile.syncOAuthProfile(data.user.id, {
+          fullName,
+          avatarUrl,
+          ip: clientIp,
+        }).catch((err) => {
+          console.warn('Could not sync OAuth profile in callback:', err);
+        });
+
+        // 3. Route to workspace or invite token
         if (inviteToken) {
           targetPath = `/invite/${inviteToken}`;
         } else {
-          const fullName =
-            data.user.user_metadata?.full_name ||
-            data.user.user_metadata?.name ||
-            data.user.email?.split('@')[0] ||
-            'Creator';
-          const workspace = await services.workspace.getOrCreateWorkspace(data.user.id, fullName);
+          // Check if user already belongs to an existing workspace (owner or member)
+          const userWorkspaces = await services.workspace.getUserWorkspaces(data.user.id).catch(() => []);
+          let workspace = userWorkspaces[0];
+          if (!workspace) {
+            workspace = await services.workspace.getOrCreateWorkspace(data.user.id, fullName);
+          }
           if ((targetPath === '/' || !targetPath) && workspace?.slug) {
             targetPath = `/${workspace.slug}`;
           }
         }
       } catch (err) {
         console.error('Workspace setup error in OAuth callback:', err);
+      }
+
+      // 4. Sanitize targetPath to avoid open redirect vulnerabilities
+      if (!targetPath.startsWith('/') || targetPath.startsWith('//') || targetPath.includes('\\')) {
+        targetPath = '/';
       }
 
       const forwardedHost = request.headers.get('x-forwarded-host');
@@ -58,6 +88,12 @@ export async function GET(request: Request) {
     }
   }
 
-  const errorMsg = searchParams.get('error_description') || searchParams.get('error') || 'auth-callback-failed';
+  const errorParam = searchParams.get('error');
+  const errorDesc = searchParams.get('error_description');
+  let errorMsg = errorDesc || errorParam || 'auth-callback-failed';
+  if (errorParam === 'access_denied') {
+    errorMsg = 'Google sign-in was cancelled or access was denied.';
+  }
+
   return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(errorMsg)}`);
 }

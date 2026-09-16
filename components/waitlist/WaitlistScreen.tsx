@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { DemoModal } from "@/components/landing/DemoModal";
 import { joinWaitlistAction, WaitlistActionState } from "@/app/actions/waitlist";
+import { AmbientBackground } from "@/components/ui/ambient-background";
 import "./waitlist.css";
 
 const ROLES = ["Filmmaker", "Studio", "Agency", "Other"];
@@ -104,11 +105,8 @@ export function WaitlistScreen({
 
   return (
     <div className="cs-wait">
-      {/* Flame-tinted ambient background lighting */}
-      <div className="wl-bg" aria-hidden="true">
-        <div className="wl-bg-glow" />
-        <div className="wl-bg-glow g2" />
-      </div>
+      {/* High-fidelity ambient background lighting */}
+      <AmbientBackground variant="full" />
 
       <div className="wl-shell">
         {/* Top Header */}

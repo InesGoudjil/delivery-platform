@@ -171,13 +171,6 @@ export function PortfolioClient({
         onSelectItem={handleSelectItem}
       />
 
-      {/* 5. Experience & Credentials Section */}
-      {/* <ExperienceSection
-        portfolioId={portfolio.id}
-        initialExperiences={portfolio.experience || []}
-        showFlash={showFlash}
-      /> */}
-
       {/* 6. Still Lightbox Modal */}
       {selectedStill && (
         <StillLightboxModal

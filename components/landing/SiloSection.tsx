@@ -55,7 +55,7 @@ export function SiloSection() {
           return (
             <div
               key={idx}
-              className="rounded-2xl border border-white/10 bg-[#121217] p-8 shadow-xl space-y-4 hover:border-white/20 transition-all"
+              className="card rounded-2xl border border-white/10 bg-[#121217] p-8 shadow-xl space-y-4 hover:border-white/20 transition-all"
             >
               <div className="flex size-11 items-center justify-center rounded-xl bg-[#2a1b18] text-[#f5551d] border border-[#f5551d]/20">
                 <IconComponent className="size-5" />

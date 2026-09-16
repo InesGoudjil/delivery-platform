@@ -41,6 +41,10 @@ const envSchema = z.object({
   // Resend Email Configuration
   RESEND_API_KEY: z.string().optional().default(""),
   RESEND_FROM_EMAIL: z.string().optional().default("onboarding@resend.dev"),
+
+  // Google OAuth Configuration
+  GOOGLE_CLIENT_ID: z.string().optional().default(""),
+  GOOGLE_CLIENT_SECRET: z.string().optional().default(""),
 });
 
 export type Env = z.infer<typeof envSchema> & {

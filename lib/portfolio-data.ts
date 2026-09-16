@@ -41,6 +41,8 @@ export interface PortfolioExperienceItem {
   role: string;
   company: string;
   period: string;
+  location?: string;
+  category?: string;
   description: string;
 }
 

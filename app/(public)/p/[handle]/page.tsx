@@ -18,6 +18,7 @@ import { PortfolioAbout } from "./_components/portfolio-about";
 import { PortfolioCta } from "./_components/portfolio-cta";
 import { PortfolioFooter } from "./_components/portfolio-footer";
 import { PortfolioModals } from "./_components/portfolio-modals";
+import { AmbientBackground } from "@/components/ui/ambient-background";
 
 interface PageProps {
   params: Promise<{ handle: string }>;
@@ -305,6 +306,8 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     role: exp.role || "Director / Cinematographer",
     company: exp.company || "Brand Production",
     period: exp.years || exp.period || "Present",
+    location: exp.location || undefined,
+    category: exp.category || undefined,
     description: exp.description || "",
   }));
 
@@ -463,35 +466,38 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
       assets={assetsToDisplay}
       primaryFeatured={primaryFeatured}
     >
-      <div className="min-h-screen bg-[#0a0a0b] text-[#f6f3ec] font-sans antialiased selection:bg-[#f5551d] selection:text-black">
-        {/* 🎬 1. TOP NAVIGATION HEADER (Server Component) */}
-        <PortfolioHeader profile={profile} />
+      <div className="min-h-screen bg-[#0a0a0b] text-[#f6f3ec] font-sans antialiased selection:bg-[#f5551d] selection:text-black relative">
+        <AmbientBackground variant="full" />
+        <div className="relative z-10">
+          {/* 🎬 1. TOP NAVIGATION HEADER (Server Component) */}
+          <PortfolioHeader profile={profile} />
 
-        {/* MAIN BODY */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-20 space-y-16 sm:space-y-24">
-          {/* 🌟 2. HERO / FEATURED HIGHLIGHT (Server Component) */}
-          <PortfolioHero
-            profile={profile}
-            primaryFeatured={primaryFeatured}
-            featuredProject={featuredProject}
-            featuredAsset={featuredAsset}
-          />
+          {/* MAIN BODY */}
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-20 space-y-16 sm:space-y-24">
+            {/* 🌟 2. HERO / FEATURED HIGHLIGHT (Server Component) */}
+            <PortfolioHero
+              profile={profile}
+              primaryFeatured={primaryFeatured}
+              featuredProject={featuredProject}
+              featuredAsset={featuredAsset}
+            />
 
-          {/* 📁 3. LATEST WORK & FILTER SEGMENTS (Client Component) */}
-          <LatestWork projects={projectsToDisplay} assets={assetsToDisplay} />
+            {/* 📁 3. LATEST WORK & FILTER SEGMENTS (Client Component) */}
+            <LatestWork projects={projectsToDisplay} assets={assetsToDisplay} />
 
-          {/* 👤 4. ABOUT SECTION (Server Component) */}
-          <PortfolioAbout profile={profile} />
+            {/* 👤 4. ABOUT SECTION (Server Component) */}
+            <PortfolioAbout profile={profile} />
 
-          {/* 🎬 5. END CTA BANNER (Server Component) */}
-          <PortfolioCta profile={profile} />
-        </main>
+            {/* 🎬 5. END CTA BANNER (Server Component) */}
+            <PortfolioCta profile={profile} />
+          </main>
 
-        {/* 📜 6. FOOTER (Server Component) */}
-        <PortfolioFooter profile={profile} />
+          {/* 📜 6. FOOTER (Server Component) */}
+          <PortfolioFooter profile={profile} />
 
-        {/* 🪟 7. INTERACTIVE MODALS (Client Component) */}
-        <PortfolioModals />
+          {/* 🪟 7. INTERACTIVE MODALS (Client Component) */}
+          <PortfolioModals />
+        </div>
       </div>
     </PortfolioProvider>
   );

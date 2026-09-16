@@ -114,7 +114,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
             return (
               <div
                 key={index}
-                className="group relative rounded-2xl border border-white/10 bg-[#121217]/90 p-8 shadow-xl transition-all duration-300 hover:border-white/20 hover:bg-[#16161c]"
+                className="card group relative rounded-2xl border border-white/10 bg-[#121217]/90 p-8 shadow-xl transition-all duration-300 hover:border-white/20 hover:bg-[#16161c]"
               >
                 <div className="mb-6 flex size-12 items-center justify-center rounded-xl bg-[#2a1b18] text-[#f5551d] border border-[#f5551d]/20 transition-transform group-hover:scale-105">
                   <Icon className="size-5" />
@@ -148,7 +148,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
         </div>
 
         <div className="lg:col-span-7">
-          <div className="rounded-[28px] border border-white/10 bg-[#121217] p-4 sm:p-6 shadow-2xl">
+          <div className="card rounded-[28px] border border-white/10 bg-[#121217] p-4 sm:p-6 shadow-2xl">
             <div className="grid grid-cols-2 gap-4">
               {[
                 {
@@ -193,7 +193,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
       {/* 3. Spotlight Feature 02: Feedback & Approval */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center pt-8">
         <div className="lg:col-span-7 order-2 lg:order-1">
-          <div className="rounded-[28px] border border-white/10 bg-[#121217] p-6 shadow-2xl space-y-4">
+          <div className="card rounded-[28px] border border-white/10 bg-[#121217] p-6 shadow-2xl space-y-4">
             <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-white/10 flex items-center justify-center">
               <img
                 src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80"
@@ -254,7 +254,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
         </div>
 
         <div className="lg:col-span-7">
-          <div className="rounded-[28px] border border-white/10 bg-[#121217] p-8 sm:p-12 shadow-2xl flex items-center justify-center">
+          <div className=" card rounded-[28px] border border-white/10 bg-[#121217] p-8 sm:p-12 shadow-2xl flex items-center justify-center">
             <div className="w-full max-w-md rounded-2xl bg-[#1c1c23] border border-white/10 p-5 space-y-3 shadow-2xl text-left">
               <div className="rounded-xl bg-[#262630] p-4 space-y-2 border border-white/5">
                 <p className="text-sm font-medium text-zinc-200">
@@ -277,7 +277,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
       </div>
 
       {/* 5. The Client Experience Box */}
-      <div className="rounded-[32px] border border-white/10 bg-gradient-to-r from-[#141419] to-[#1a1a24] p-8 sm:p-14 shadow-2xl">
+      <div className="card rounded-[32px] border border-white/10 bg-gradient-to-r from-[#141419] to-[#1a1a24] p-8 sm:p-14 shadow-2xl">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-6 space-y-4 text-left">
             <span className="text-xs font-semibold uppercase tracking-widest text-[#f5551d]">
@@ -311,10 +311,6 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
           </div>
         </div>
       </div>
-
-<div>
-  CineSpace replaced three tools. My clients approve faster, and every page looks like it came from a real studio.
-</div>
     </section>
   );
 }

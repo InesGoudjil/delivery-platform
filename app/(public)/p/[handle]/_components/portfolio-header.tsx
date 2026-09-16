@@ -13,12 +13,23 @@ export function PortfolioHeader({ profile }: PortfolioHeaderProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         <Link
           href={`/p/${profile.handle}`}
-          className="group flex items-center gap-1.5 focus:outline-none"
+          className="group flex items-center gap-3 focus:outline-none"
         >
-          <span className="font-heading font-extrabold text-xl sm:text-2xl tracking-tight text-white group-hover:text-zinc-200 transition-colors">
-            {profile.name}
-          </span>
-          <span className="inline-block size-2 rounded-full bg-[#f5551d]" />
+          {profile.avatar && (
+            <div className="size-9 rounded-full overflow-hidden border border-white/20 shadow-md shrink-0 bg-black">
+              <img
+                src={profile.avatar}
+                alt={profile.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+          <div className="flex items-center gap-1.5">
+            <span className="font-heading font-extrabold text-xl sm:text-2xl tracking-tight text-white group-hover:text-zinc-200 transition-colors">
+              {profile.name}
+            </span>
+            <span className="inline-block size-2 rounded-full bg-[#f5551d]" />
+          </div>
         </Link>
 
         <div className="flex items-center gap-3">

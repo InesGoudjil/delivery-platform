@@ -2,6 +2,7 @@ import { Project, CreateProjectDTO, UpdateProjectDTO } from "@/core/entities/pro
 import { Asset, AssetVersion } from "@/core/entities/asset";
 import { IProjectRepository } from "@/core/repositories/i-project-repository";
 import { IAssetRepository, IAssetVersionRepository } from "@/core/repositories/i-asset-repository";
+import { SubscriptionService } from "./subscription.service";
 
 export interface ShowcaseProjectWithAssets extends Project {
   assets: Array<
@@ -15,10 +16,24 @@ export class ProjectService {
   constructor(
     private readonly projectRepo: IProjectRepository,
     private readonly assetRepo: IAssetRepository,
-    private readonly assetVersionRepo: IAssetVersionRepository
+    private readonly assetVersionRepo: IAssetVersionRepository,
+    private readonly subscriptionService?: SubscriptionService
   ) {}
 
   async createProject(dto: CreateProjectDTO): Promise<Project> {
+    if (this.subscriptionService && dto.portfolioId) {
+      const existingProjects = await this.projectRepo.listByPortfolioId(dto.portfolioId);
+      const eligibility = await this.subscriptionService.canAddPortfolioVideo(
+        dto.workspaceId,
+        existingProjects.length
+      );
+      if (!eligibility.allowed) {
+        throw new Error(
+          eligibility.reason ||
+            "Portfolio showcase film limit reached. Please upgrade your subscription plan."
+        );
+      }
+    }
     return this.projectRepo.create(dto);
   }
 

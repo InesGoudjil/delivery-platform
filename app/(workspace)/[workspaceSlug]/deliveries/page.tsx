@@ -86,61 +86,7 @@ export default async function DeliveriesPage({
     })
   );
 
-  // Default Cinematic Showcase delivery items if database has no projects yet
-  const defaultDeliveries: DeliveryProjectItem[] = [
-    {
-      id: "del_1",
-      title: "Omakase Counter Launch Film",
-      clientName: "Lost in Tokyo Group",
-      version: "v3_DirectorCut_4K",
-      duration: "00:47",
-      status: "in_review",
-      shareToken: "token-1",
-      passcodeProtected: true,
-      downloadsAllowed: true,
-      commentsCount: 3,
-      lastActivity: "12 mins ago",
-    },
-    {
-      id: "del_2",
-      title: "Aisha & Omar — Wedding Teaser",
-      clientName: "Private Client",
-      version: "v2_ColorFinal",
-      duration: "03:12",
-      status: "approved",
-      shareToken: "token-2",
-      passcodeProtected: false,
-      downloadsAllowed: true,
-      commentsCount: 0,
-      lastActivity: "2 hours ago",
-    },
-    {
-      id: "del_3",
-      title: "Mercedes GT3 Desert Spec Reel",
-      clientName: "Prestige Rentals Dubai",
-      version: "v1_RoughCut",
-      duration: "01:20",
-      status: "in_review",
-      shareToken: "token-3",
-      passcodeProtected: true,
-      downloadsAllowed: false,
-      commentsCount: 7,
-      lastActivity: "Yesterday",
-    },
-    {
-      id: "del_4",
-      title: "Clean Performance Launch Reel",
-      clientName: "Clean Snacks UAE",
-      version: "v4_MasterDelivery",
-      duration: "00:30",
-      status: "approved",
-      shareToken: "token-4",
-      passcodeProtected: false,
-      downloadsAllowed: true,
-      commentsCount: 1,
-      lastActivity: "3 days ago",
-    },
-  ];
+
 
   const deliveries =
     mappedDbDeliveries.length > 0
