@@ -15,14 +15,19 @@ import {
 import { DeliveryProjectItem } from "../deliveries-client";
 
 interface DeliveryCardGridProps {
+  items?: DeliveryProjectItem[];
+  deliveries?: DeliveryProjectItem[];
   workspaceSlug: string;
-  deliveries: DeliveryProjectItem[];
+  canSendWhatsApp?: boolean;
 }
 
 export function DeliveryCardGrid({
-  workspaceSlug,
+  items,
   deliveries,
+  workspaceSlug,
+  canSendWhatsApp = true,
 }: DeliveryCardGridProps) {
+  const displayDeliveries = deliveries || items || [];
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleCopyLink = (token: string, id: string) => {
@@ -61,7 +66,7 @@ export function DeliveryCardGrid({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {deliveries.map((item) => {
+      {displayDeliveries.map((item) => {
         const isCopied = copiedId === item.id;
         const shareUrl = `/deliver/${item.shareToken}`;
 

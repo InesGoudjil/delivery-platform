@@ -30,11 +30,12 @@ export default async function StoragePage({
     redirect("/");
   }
 
-  // 1. Fetch real workspace projects, standalone assets, and active subscription plan
-  const [dbProjects, standaloneAssets, currentPlan] = await Promise.all([
+  // 1. Fetch real workspace projects, standalone assets, active subscription plan, and workspace features
+  const [dbProjects, standaloneAssets, currentPlan, features] = await Promise.all([
     services.project.listWorkspaceProjects(workspace.id),
     services.asset.listUnassignedAssets(workspace.id),
     services.subscription.getCurrentPlan(workspace.id),
+    services.subscription.getFeatures(workspace.id),
   ]);
 
   // 2. Calculate real storage usage concurrently
@@ -71,10 +72,10 @@ export default async function StoragePage({
   const calculatedUsedBytes = totalVideoBytes + totalStillBytes + totalStreamBytes;
   const usedBytes = Math.max(workspace.storageUsedBytes || 0, calculatedUsedBytes);
 
-  // 3. Quota allocation based on active subscription plan
+  // 3. Quota allocation based on active subscription plan & features
   const GB_IN_BYTES = 1024 * 1024 * 1024;
-  const planStorageGB = (currentPlan?.features as any)?.storage_gb;
-  const totalGB = planStorageGB || 500;
+  const totalGB = features.storage_gb || 2;
+  const canSiloArchive = Boolean(features.silo_archive);
   const totalBytesQuota = totalGB * GB_IN_BYTES;
 
   const usedGB = Number((usedBytes / GB_IN_BYTES).toFixed(2));
@@ -220,13 +221,17 @@ export default async function StoragePage({
           </div>
 
           {/* Archive Action (Client Island) */}
-          <ArchiveManagerButton />
+          <ArchiveManagerButton canSiloArchive={canSiloArchive} workspaceSlug={workspaceSlug} />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-2 p-2.5 rounded-xl bg-muted/40 border border-border">
             <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
-            <span>{quotaDisplay} included in your {currentPlan?.name || "Starter"} Plan</span>
+            <span>
+              {canSiloArchive
+                ? `${quotaDisplay} cold storage included in your ${currentPlan?.name || "Studio"} Plan`
+                : "Cold storage archive requires Studio or Enterprise plan"}
+            </span>
           </div>
           <div className="flex items-center gap-2 p-2.5 rounded-xl bg-muted/40 border border-border">
             <Shield className="size-4 text-blue-500 shrink-0" />

@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import { DemoModal } from "@/components/landing/DemoModal";
 import { joinWaitlistAction, WaitlistActionState } from "@/app/actions/waitlist";
-import { AmbientBackground } from "@/components/ui/ambient-background";
 import "./waitlist.css";
 
 const ROLES = ["Filmmaker", "Studio", "Agency", "Other"];
@@ -105,16 +104,17 @@ export function WaitlistScreen({
 
   return (
     <div className="cs-wait">
-      {/* High-fidelity ambient background lighting */}
-      <AmbientBackground variant="full" />
+      {/* flame-tinted ambient background */}
+      <div className="wl-bg" aria-hidden="true">
+        <div className="wl-bg-glow" />
+        <div className="wl-bg-glow g2" />
+      </div>
 
       <div className="wl-shell">
         {/* Top Header */}
         <header className="wl-top">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <span className="text-xl font-bold font-heading text-[#f5551d] tracking-tight">
-              CineSpace
-            </span>
+          <Link href="/">
+            <img className="wl-logo-img" src="/images/logo.svg" alt="CineSpace" />
           </Link>
           <span className="wl-badge">
             <Lock size={12} /> Private beta
@@ -168,7 +168,7 @@ export function WaitlistScreen({
                     </div>
 
                     <div className="wl-field">
-                      <label>Email *</label>
+                      <label>Email</label>
                       <input
                         ref={emailInputRef}
                         value={email}
@@ -205,10 +205,7 @@ export function WaitlistScreen({
                       disabled={isPending || !email}
                     >
                       {isPending ? (
-                        <>
-                          <Loader2 size={16} className="animate-spin" />
-                          <span>Securing spot…</span>
-                        </>
+                        "Joining…"
                       ) : (
                         <>
                           Join the waitlist <ArrowRight size={17} />
@@ -224,14 +221,18 @@ export function WaitlistScreen({
                 </div>
               ) : (
                 /* Success View */
-                <div className="wl-card wl-success animate-in zoom-in-95 duration-200">
+                <div className="wl-card wl-success">
                   <div className="wl-check">
                     <Check size={30} strokeWidth={2.6} />
                   </div>
-                  <h2>You're on the list! 🎉</h2>
+                  <h2>You're on the list.</h2>
                   <p>
                     We'll email <b>{email}</b> the moment your invite is ready.
-                    Your current priority position is <strong>#{result.data.position}</strong>.
+                    {result.data.position ? (
+                      <> Early access is rolling out to founders first. Your priority spot is <strong>#{result.data.position}</strong>.</>
+                    ) : (
+                      <> Early access is rolling out to founders first.</>
+                    )}
                   </p>
 
                   <div className="my-4 rounded-xl bg-white/5 border border-white/10 p-3 text-left">
@@ -276,7 +277,7 @@ export function WaitlistScreen({
                     </button>
                   </div>
 
-                  <div className="wl-count mt-4">
+                  <div className="wl-count">
                     <Users size={14} />{" "}
                     {(displayCount + 1).toLocaleString()} filmmakers already waiting
                   </div>
@@ -360,7 +361,6 @@ export function WaitlistScreen({
                   src="/images/waitlist/links.webp"
                   alt="Premium delivery links"
                   onError={(e) => {
-                    // Fallback to showcase image if not found
                     (e.target as HTMLImageElement).src = "/images/showcase.jpg";
                   }}
                 />
@@ -369,14 +369,6 @@ export function WaitlistScreen({
 
             {/* Row 2: Feedback & approvals */}
             <div className="wl-row">
-              <div className="wl-row-txt">
-                <b>Feedback &amp; approvals</b>
-                <span>
-                  Clients leave time-stamped comments pinned to the exact frame,
-                  and approve each asset — per cut or the whole project. Every
-                  sign-off tracked and locked.
-                </span>
-              </div>
               <div className="wl-row-img">
                 <img
                   src="/images/waitlist/feedback.webp"
@@ -386,10 +378,25 @@ export function WaitlistScreen({
                   }}
                 />
               </div>
+              <div className="wl-row-txt">
+                <b>Feedback &amp; approvals</b>
+                <span>
+                  Clients leave time-stamped comments pinned to the exact frame,
+                  and approve each asset — per cut or the whole project. Every
+                  sign-off tracked and locked.
+                </span>
+              </div>
             </div>
 
             {/* Row 3: Add your brand */}
             <div className="wl-row">
+              <div className="wl-row-txt">
+                <b>Add your brand</b>
+                <span>
+                  Your logo, your accent colour, your name on every page.
+                  Clients experience your studio — not our software.
+                </span>
+              </div>
               <div className="wl-row-img">
                 <img
                   src="/images/waitlist/brand.webp"
@@ -399,25 +406,10 @@ export function WaitlistScreen({
                   }}
                 />
               </div>
-              <div className="wl-row-txt">
-                <b>Add your brand</b>
-                <span>
-                  Your logo, your accent colour, your name on every page.
-                  Clients experience your studio — not our software.
-                </span>
-              </div>
             </div>
 
             {/* Row 4: Customize portfolio & deliveries */}
             <div className="wl-row">
-              <div className="wl-row-txt">
-                <b>Customize portfolio &amp; deliveries</b>
-                <span>
-                  Control card size, layout, and aspect ratio — including a
-                  Pinterest-style mixed view. Shape both your portfolio and
-                  every delivery page exactly the way you want.
-                </span>
-              </div>
               <div className="wl-row-img">
                 <img
                   src="/images/waitlist/control.webp"
@@ -426,6 +418,14 @@ export function WaitlistScreen({
                     (e.target as HTMLImageElement).src = "/images/showcase.jpg";
                   }}
                 />
+              </div>
+              <div className="wl-row-txt">
+                <b>Customize portfolio &amp; deliveries</b>
+                <span>
+                  Control card size, layout, and aspect ratio — including a
+                  Pinterest-style mixed view. Shape both your portfolio and
+                  every delivery page exactly the way you want.
+                </span>
               </div>
             </div>
           </div>

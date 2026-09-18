@@ -26,13 +26,16 @@ export interface DeliveriesClientProps {
     slug: string;
   };
   deliveries: DeliveryProjectItem[];
+  features?: Record<string, any>;
 }
 
 export function DeliveriesClient({
   workspace,
   deliveries,
+  features,
 }: DeliveriesClientProps) {
   const [filter, setFilter] = useState<"all" | "in_review" | "approved">("all");
+  const canSendWhatsApp = features ? Boolean(features.whatsapp_delivery) : true;
 
   const filteredDeliveries = deliveries.filter((d) => {
     if (filter === "all") return true;
@@ -64,6 +67,7 @@ export function DeliveriesClient({
       <DeliveryCardGrid
         workspaceSlug={workspace.slug}
         deliveries={filteredDeliveries}
+        canSendWhatsApp={canSendWhatsApp}
       />
     </div>
   );

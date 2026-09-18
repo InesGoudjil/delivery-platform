@@ -47,12 +47,16 @@ export default async function ClientDeliveryPage(props: PageProps) {
     notFound();
   }
 
-  // 2. Fetch workspace identity for custom branding & studio header
-  const workspace = await services.workspace.getWorkspaceById(fullDetails.workspaceId);
+  // 2. Fetch workspace identity & subscription features for custom branding & studio header
+  const [workspace, workspaceFeatures] = await Promise.all([
+    services.workspace.getWorkspaceById(fullDetails.workspaceId),
+    services.subscription.getFeatures(fullDetails.workspaceId),
+  ]);
   const brandName = workspace?.brandName || "Studio Workspace";
   const workspaceSlug = workspace?.slug || "studio";
   const logoUrl = workspace?.logoUrl || null;
   const accentColor = workspace?.accentColor || "#f5551d";
+  const isWhiteLabel = Boolean(workspaceFeatures?.white_label);
 
   // 3. Resolve client name
   const clientName = fullDetails.client?.name || null;
@@ -167,6 +171,7 @@ export default async function ClientDeliveryPage(props: PageProps) {
       isInitiallyUnlocked={isInitiallyUnlocked}
       currentUser={userProfile}
       isWorkspaceMember={isWorkspaceMember}
+      whiteLabel={isWhiteLabel}
     />
   );
 }

@@ -196,7 +196,35 @@ export async function createDeliveryAction(
 export async function approveCutAction(deliveryId: string, approvedByName?: string) {
   try {
     const services = await getServerServices();
-    const delivery = await services.delivery.approveCut(deliveryId, approvedByName);
+
+    let origin = "https://cut.app";
+    try {
+      const { headers } = await import("next/headers");
+      const headerList = await headers();
+      const host = headerList.get("host");
+      const proto = headerList.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
+      if (host) origin = `${proto}://${host}`;
+    } catch {
+      // fallback to default
+    }
+
+    let notifyEmails: string[] = [];
+    try {
+      const existing = await services.delivery.getDeliveryById(deliveryId);
+      if (existing) {
+        const members = await services.member.listMembers(existing.workspaceId);
+        notifyEmails = members
+          .filter((m) => (m.role === "owner" || m.role === "admin") && Boolean(m.email))
+          .map((m) => m.email as string);
+      }
+    } catch {
+      // fallback
+    }
+
+    const delivery = await services.delivery.approveCut(deliveryId, approvedByName, {
+      origin,
+      notifyEmails,
+    });
 
     revalidatePath(`/deliver/${delivery.shareToken}`);
     revalidatePath(`/deliveries/${delivery.id}`);
@@ -360,4 +388,40 @@ export async function updateDeliverySecurityAction(
     return { error: err.message || "Failed to update delivery security." };
   }
 }
+
+export async function sendDeliveryEmailAction(
+  deliveryId: string,
+  recipientEmail: string,
+  customMessage?: string
+) {
+  try {
+    const services = await getServerServices();
+    const user = await services.auth.getCurrentUser();
+    if (!user) return { success: false, error: "User is not authenticated." };
+
+    let origin = "https://cut.app";
+    try {
+      const { headers } = await import("next/headers");
+      const headerList = await headers();
+      const host = headerList.get("host");
+      const proto = headerList.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
+      if (host) origin = `${proto}://${host}`;
+    } catch {
+      // fallback
+    }
+
+    const res = await services.delivery.sendDeliveryEmail({
+      deliveryId,
+      recipientEmail: recipientEmail.trim().toLowerCase(),
+      customMessage,
+      origin,
+    });
+
+    revalidatePath(`/deliveries/${deliveryId}`);
+    return { success: res.success, log: res.log, error: res.error };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to send delivery email." };
+  }
+}
+
 

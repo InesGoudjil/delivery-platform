@@ -29,11 +29,14 @@ interface BrandingClientProps {
     experience?: PortfolioExperience[];
     stats?: PortfolioStats;
   };
+  features?: any;
 }
 
-export function BrandingClient({ workspace, portfolio }: BrandingClientProps) {
+export function BrandingClient({ workspace, portfolio, features }: BrandingClientProps) {
   const [isPending, startTransition] = useTransition();
   const [toast, setToast] = useState<string | null>(null);
+
+  const canBranding = features ? Boolean(features.branding) : true;
 
   // Brand details
   const [brandName, setBrandName] = useState(workspace.brandName || "Pedro Concreato");
@@ -100,6 +103,10 @@ export function BrandingClient({ workspace, portfolio }: BrandingClientProps) {
   };
 
   const handleProfileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canBranding) {
+      showFlash("Custom studio profile/logo is reserved for Pro, Studio, and Enterprise plans. Upgrade to unlock.");
+      return;
+    }
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
@@ -131,8 +138,8 @@ export function BrandingClient({ workspace, portfolio }: BrandingClientProps) {
     startTransition(async () => {
       const res = await updateBrandingAction(workspace.id, portfolio.id, {
         brandName,
-        accentColor: accent,
-        logoUrl,
+        accentColor: canBranding ? accent : undefined,
+        logoUrl: canBranding ? logoUrl : undefined,
         bio,
         coverAssetUrl: coverUrl,
         whatsappNumber: whatsapp,
@@ -194,6 +201,7 @@ export function BrandingClient({ workspace, portfolio }: BrandingClientProps) {
         onRemoveProfile={handleRemoveProfile}
         stats={stats}
         onStatsChange={setStats}
+        canBranding={canBranding}
       />
 
       {/* 3. Bio & About Description */}
