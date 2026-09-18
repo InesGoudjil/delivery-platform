@@ -1,15 +1,34 @@
 import { Feedback } from '@/core/entities/feedback';
 import { IFeedbackRepository, CreateFeedbackDTO } from '@/core/repositories/feedback.repository';
+import { NotificationService } from './notification.service';
 
 export interface FeedbackThread extends Feedback {
   replies: Feedback[];
 }
 
 export class FeedbackService {
-  constructor(private readonly feedbackRepo: IFeedbackRepository) {}
+  constructor(
+    private readonly feedbackRepo: IFeedbackRepository,
+    private readonly notificationService?: NotificationService
+  ) {}
 
   async addFeedback(dto: CreateFeedbackDTO): Promise<Feedback> {
     return this.feedbackRepo.create(dto);
+  }
+
+  async notifyFeedback(params: {
+    deliveryId: string;
+    recipientEmails: string | string[];
+    authorName: string;
+    commentText: string;
+    timestampSeconds?: number | null;
+    assetTitle?: string;
+    origin?: string;
+  }) {
+    if (!this.notificationService) return;
+    return this.notificationService.notifyNewFeedback(params).catch((err) => {
+      console.error("[FeedbackService] Failed to notify new feedback:", err);
+    });
   }
 
   async getThreadedFeedback(assetVersionId: string): Promise<FeedbackThread[]> {

@@ -111,18 +111,21 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
   let wsDeliveries: any[] = [];
   let standaloneAssets: any[] = [];
 
+  let workspaceFeatures: any = null;
   if (workspace) {
     try {
-      const [pProjects, wProjects, unassigned, deliveries] = await Promise.all([
+      const [pProjects, wProjects, unassigned, deliveries, features] = await Promise.all([
         portfolio ? services.project.listPortfolioProjects(portfolio.id) : [],
         services.project.listWorkspaceProjects(workspace.id),
         services.asset.listUnassignedAssets(workspace.id),
         services.delivery.listWorkspaceDeliveries(workspace.id),
+        services.subscription.getFeatures(workspace.id),
       ]);
       dbProjects = pProjects;
       wsProjects = wProjects;
       standaloneAssets = unassigned;
       wsDeliveries = deliveries;
+      workspaceFeatures = features;
     } catch (err: any) {
       console.warn("Notice fetching database assets/projects:", err?.message || err);
     }
@@ -493,7 +496,10 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
           </main>
 
           {/* 📜 6. FOOTER (Server Component) */}
-          <PortfolioFooter profile={profile} />
+          <PortfolioFooter
+            profile={profile}
+            whiteLabel={Boolean(workspaceFeatures?.white_label)}
+          />
 
           {/* 🪟 7. INTERACTIVE MODALS (Client Component) */}
           <PortfolioModals />

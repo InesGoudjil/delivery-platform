@@ -15,12 +15,14 @@ import {
   Check,
   MessageCircle,
   Download,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   updateDeliverySecurityAction,
   verifyPassphraseWithTokenAction,
+  sendDeliveryEmailAction,
 } from "@/app/actions/deliveries";
 
 interface ShareLinkDialogProps {
@@ -62,6 +64,33 @@ export function ShareLinkDialog({
   const [shareExpires, setShareExpires] = useState<"24 hours" | "7 days" | "30 days" | "Never">("24 hours");
   const [notifyComments, setNotifyComments] = useState(true);
   const [notifyDownloads, setNotifyDownloads] = useState(true);
+
+  // Email Sharing State
+  const [clientEmail, setClientEmail] = useState("");
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  const handleSendEmail = async () => {
+    if (!clientEmail.trim()) {
+      triggerToast("Please enter a valid client email address.");
+      return;
+    }
+    setIsSendingEmail(true);
+    try {
+      const res = await sendDeliveryEmailAction(projectId, clientEmail.trim());
+      if (res.success) {
+        triggerToast(`Review link successfully emailed to ${clientEmail.trim()}!`);
+        setShowEmailInput(false);
+        setClientEmail("");
+      } else {
+        triggerToast(res.error || "Failed to send email");
+      }
+    } catch (err: any) {
+      triggerToast(err.message || "Failed to send email");
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
 
   const generateRandomPassphrase = () => {
     const adjectives = ["golden", "desert", "cinematic", "lunar", "swift", "hyper", "velvet", "stellar"];
@@ -472,6 +501,49 @@ export function ShareLinkDialog({
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Email Direct Share */}
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1.5 font-bold text-white">
+              <Mail className="size-3.5 text-[#f5551d]" />
+              Email Review Link to Client
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowEmailInput(!showEmailInput)}
+              className="text-[11px] font-mono text-[#f5551d] hover:underline cursor-pointer"
+            >
+              {showEmailInput ? "Cancel" : "Send Email"}
+            </button>
+          </div>
+          {showEmailInput && (
+            <div className="flex gap-2 pt-1">
+              <input
+                type="email"
+                placeholder="client@company.com"
+                value={clientEmail}
+                onChange={(e) => setClientEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSendEmail();
+                  }
+                }}
+                className="flex-1 bg-black/60 border border-white/15 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-muted-foreground focus:outline-none focus:border-[#f5551d]"
+              />
+              <Button
+                type="button"
+                size="sm"
+                disabled={isSendingEmail}
+                onClick={handleSendEmail}
+                className="bg-[#f5551d] hover:bg-[#ff8a45] text-black font-extrabold text-xs h-auto py-1.5 px-3 rounded-lg cursor-pointer"
+              >
+                {isSendingEmail ? "Sending..." : "Send"}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}

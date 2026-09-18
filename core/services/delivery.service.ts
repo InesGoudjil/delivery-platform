@@ -9,6 +9,7 @@ import { IAssetRepository, IAssetVersionRepository } from "@/core/repositories/i
 import { IFeedbackRepository } from "@/core/repositories/feedback.repository";
 import { IProjectRepository } from "@/core/repositories/i-project-repository";
 import { SubscriptionService } from "./subscription.service";
+import { NotificationService } from "./notification.service";
 
 export interface DeliveryWithDetails extends Delivery {
   client?: Client | null;
@@ -29,7 +30,8 @@ export class DeliveryService {
     private readonly assetVersionRepo: IAssetVersionRepository,
     private readonly feedbackRepo: IFeedbackRepository,
     private readonly projectRepo?: IProjectRepository,
-    private readonly subscriptionService?: SubscriptionService
+    private readonly subscriptionService?: SubscriptionService,
+    private readonly notificationService?: NotificationService
   ) {}
 
   async createDelivery(dto: CreateDeliveryDTO): Promise<Delivery> {
@@ -112,8 +114,40 @@ export class DeliveryService {
     return this.deliveryRepo.updateStatus(id, status, approvedByName);
   }
 
-  async approveCut(id: string, approvedByName?: string): Promise<Delivery> {
-    return this.deliveryRepo.updateStatus(id, "approved", approvedByName || "Client Guest");
+  async approveCut(
+    id: string,
+    approvedByName?: string,
+    options?: { origin?: string; notifyEmails?: string[] }
+  ): Promise<Delivery> {
+    const delivery = await this.deliveryRepo.updateStatus(id, "approved", approvedByName || "Client Guest");
+
+    if (this.notificationService && options?.notifyEmails && options.notifyEmails.length > 0) {
+      await this.notificationService
+        .notifyCutApproved({
+          deliveryId: id,
+          approvedByName: approvedByName || "Client",
+          recipientEmails: options.notifyEmails,
+          origin: options.origin,
+        })
+        .catch((err) => {
+          console.error("[DeliveryService] Failed to dispatch cut approval email:", err);
+        });
+    }
+
+    return delivery;
+  }
+
+  async sendDeliveryEmail(params: {
+    deliveryId: string;
+    recipientEmail: string;
+    clientId?: string | null;
+    customMessage?: string;
+    origin?: string;
+  }) {
+    if (!this.notificationService) {
+      throw new Error("NotificationService is not configured in DeliveryService");
+    }
+    return this.notificationService.sendDeliveryEmail(params);
   }
 
   async toggleAssetApproval(deliveryId: string, assetId: string, isApproved: boolean): Promise<Asset> {
@@ -136,10 +170,14 @@ export class DeliveryService {
     return updatedAsset;
   }
 
-  async approveAllAssets(deliveryId: string, approvedByName?: string): Promise<void> {
+  async approveAllAssets(
+    deliveryId: string,
+    approvedByName?: string,
+    options?: { origin?: string; notifyEmails?: string[] }
+  ): Promise<void> {
     const allAssets = await this.assetRepo.listByDeliveryId(deliveryId);
     await Promise.all(allAssets.map((a) => this.assetRepo.toggleApproval(a.id, true)));
-    await this.updateStatus(deliveryId, "approved", approvedByName || "Client Guest");
+    await this.approveCut(deliveryId, approvedByName, options);
   }
 
   /**

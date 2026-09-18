@@ -103,6 +103,7 @@ export interface DeliveryRoomProps {
     email?: string | null;
   } | null;
   isWorkspaceMember?: boolean;
+  whiteLabel?: boolean;
 }
 
 export function DeliveryRoomClient({
@@ -113,7 +114,8 @@ export function DeliveryRoomClient({
   isPasscodeProtected,
   isInitiallyUnlocked,
   currentUser,
-  isWorkspaceMember,
+  isWorkspaceMember = false,
+  whiteLabel = false,
 }: DeliveryRoomProps) {
   // Passcode gate state
   const [isLocked, setIsLocked] = useState(isPasscodeProtected && !isInitiallyUnlocked);
@@ -713,6 +715,18 @@ export function DeliveryRoomClient({
           )}
         </div>
       </main>
+
+      {/* 4. FOOTER WITH OPTIONAL WHITE-LABEL */}
+      <footer className="border-t border-white/5 py-8 text-center text-xs text-neutral-500 font-sans">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p>© {workspace.brandName} — Client Review Room</p>
+          {!whiteLabel && (
+            <p className="flex items-center gap-1 text-zinc-500">
+              Powered by <span className="text-zinc-300 font-semibold">CineSpace</span>
+            </p>
+          )}
+        </div>
+      </footer>
 
       {/* 📹 3. INTERACTIVE VIDEO REVIEW LIGHTBOX MODAL */}
       {activeAsset && (

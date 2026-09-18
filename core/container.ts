@@ -129,6 +129,14 @@ export function createCoreServices(
   // Email Provider
   const emailProvider = new ResendEmailProvider();
 
+  // Notification Service (Hub for multi-channel notifications)
+  const notificationService = new NotificationService(
+    notificationRepo,
+    deliveryRepo,
+    workspaceRepo,
+    emailProvider
+  );
+
   // 2. Services (Injected with Repository Interfaces & Storage Provider)
   const authService = new AuthService(supabase, workspaceRepo, userProfileRepo);
   const workspaceService = new WorkspaceService(
@@ -144,7 +152,8 @@ export function createCoreServices(
     workspaceInvitationRepo,
     workspaceFeaturesRepo,
     workspaceRepo,
-    userProfileRepo
+    userProfileRepo,
+    notificationService
   );
   const subscriptionService = new SubscriptionService(
     subscriptionRepo,
@@ -166,7 +175,9 @@ export function createCoreServices(
     assetRepo,
     assetVersionRepo,
     feedbackRepo,
-    projectRepo
+    projectRepo,
+    undefined,
+    notificationService
   );
   const projectService = new ProjectService(
     projectRepo,
@@ -183,12 +194,7 @@ export function createCoreServices(
     subscriptionRepo,
     planRepo
   );
-  const feedbackService = new FeedbackService(feedbackRepo);
-  const notificationService = new NotificationService(
-    notificationRepo,
-    deliveryRepo,
-    workspaceRepo
-  );
+  const feedbackService = new FeedbackService(feedbackRepo, notificationService);
   const stripeService = new StripeService(
     subscriptionRepo,
     planRepo,

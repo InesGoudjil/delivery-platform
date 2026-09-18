@@ -20,16 +20,20 @@ export default async function SettingsPage({
     redirect("/");
   }
 
-  const portfolio = await services.portfolio.getOrCreatePortfolio(
-    workspace.id,
-    `${workspace.brandName} Portfolio`,
-    workspaceSlug
-  );
+  const [portfolio, features] = await Promise.all([
+    services.portfolio.getOrCreatePortfolio(
+      workspace.id,
+      `${workspace.brandName} Portfolio`,
+      workspaceSlug
+    ),
+    services.subscription.getFeatures(workspace.id),
+  ]);
 
   return (
     <BrandingClient
       workspace={workspace}
       portfolio={portfolio}
+      features={features}
     />
   );
 }

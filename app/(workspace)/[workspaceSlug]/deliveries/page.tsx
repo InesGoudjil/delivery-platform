@@ -88,6 +88,8 @@ export default async function DeliveriesPage({
 
 
 
+  const workspaceFeatures = await services.subscription.getFeatures(workspace.id);
+
   const deliveries =
     mappedDbDeliveries.length > 0
       ? [...mappedDbDeliveries]
@@ -97,6 +99,7 @@ export default async function DeliveriesPage({
     <DeliveriesClient
       workspace={workspace}
       deliveries={deliveries}
+      features={workspaceFeatures}
     />
   );
 }

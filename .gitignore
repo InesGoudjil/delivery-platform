@@ -15,3 +15,5 @@ npm-debug.log*
 skills-lock.json
 
 /public/images
+
+/prototype

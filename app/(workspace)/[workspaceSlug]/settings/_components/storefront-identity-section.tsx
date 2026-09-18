@@ -19,6 +19,7 @@ interface StorefrontIdentitySectionProps {
   onRemoveProfile: () => void;
   stats: PortfolioStats;
   onStatsChange: (val: PortfolioStats) => void;
+  canBranding?: boolean;
 }
 
 export function StorefrontIdentitySection({
@@ -35,6 +36,7 @@ export function StorefrontIdentitySection({
   onRemoveProfile,
   stats,
   onStatsChange,
+  canBranding = true,
 }: StorefrontIdentitySectionProps) {
   const profileInputRef = useRef<HTMLInputElement>(null);
 
@@ -181,10 +183,17 @@ export function StorefrontIdentitySection({
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <Palette className="size-3.5 text-[#f5551d]" />
-              Player &amp; Button Accent Color
-            </label>
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <Palette className="size-3.5 text-[#f5551d]" />
+                Player &amp; Button Accent Color
+              </label>
+              {!canBranding && (
+                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-mono font-bold">
+                  PRO+
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-3 pt-1">
               {ACCENTS.map((c) => (
                 <button
@@ -196,7 +205,8 @@ export function StorefrontIdentitySection({
                     accent === c
                       ? "border-white scale-110 shadow-lg"
                       : "border-transparent opacity-80 hover:opacity-100"
-                  }`}
+                  } ${!canBranding ? "opacity-60 cursor-not-allowed" : ""}`}
+                  title={!canBranding ? "Custom accent colors require a Pro, Studio, or Enterprise plan." : undefined}
                 >
                   {accent === c && <Check className="size-4 text-black font-bold" />}
                 </button>

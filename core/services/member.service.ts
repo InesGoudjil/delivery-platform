@@ -2,6 +2,7 @@ import { WorkspaceMember, WorkspaceInvitation, WorkspaceRole, InvitationStatus, 
 import { IWorkspaceMemberRepository, IWorkspaceInvitationRepository } from '@/core/repositories/workspace-member.repository';
 import { IWorkspaceFeaturesRepository, IWorkspaceRepository } from '@/core/repositories/workspace.repository';
 import { IUserProfileRepository } from '@/core/repositories/user-profile.repository';
+import { NotificationService } from './notification.service';
 
 export class MemberService {
   constructor(
@@ -9,7 +10,8 @@ export class MemberService {
     private readonly invitationRepo: IWorkspaceInvitationRepository,
     private readonly featuresRepo: IWorkspaceFeaturesRepository,
     private readonly workspaceRepo?: IWorkspaceRepository,
-    private readonly userProfileRepo?: IUserProfileRepository
+    private readonly userProfileRepo?: IUserProfileRepository,
+    private readonly notificationService?: NotificationService
   ) {}
 
   async listMembers(workspaceId: string): Promise<EnrichedWorkspaceMember[]> {
@@ -120,7 +122,8 @@ export class MemberService {
     workspaceId: string,
     inviterId: string,
     email: string,
-    role: 'admin' | 'editor' | 'viewer' = 'editor'
+    role: 'admin' | 'editor' | 'viewer' = 'editor',
+    options?: { inviterName?: string; origin?: string }
   ): Promise<WorkspaceInvitation> {
     const cleanEmail = email.trim().toLowerCase();
     const stats = await this.getWorkspaceSeatStats(workspaceId);
@@ -136,12 +139,39 @@ export class MemberService {
       throw new Error(`An invitation has already been sent to ${cleanEmail}.`);
     }
 
-    return this.invitationRepo.create({
+    const invitation = await this.invitationRepo.create({
       workspaceId,
       inviterId,
       email: cleanEmail,
       role,
     });
+
+    if (this.notificationService) {
+      let inviterName = options?.inviterName;
+      if (!inviterName && this.userProfileRepo) {
+        try {
+          const profile = await this.userProfileRepo.findById(inviterId);
+          if (profile?.fullName) inviterName = profile.fullName;
+        } catch {
+          // ignore lookup error
+        }
+      }
+
+      await this.notificationService
+        .sendMemberInvitationEmail({
+          workspaceId,
+          recipientEmail: cleanEmail,
+          inviterName: inviterName || "A team admin",
+          inviteToken: invitation.token,
+          role,
+          origin: options?.origin,
+        })
+        .catch((err) => {
+          console.error("[MemberService] Failed to dispatch member invitation email:", err);
+        });
+    }
+
+    return invitation;
   }
 
   async listPendingInvitations(workspaceId: string): Promise<WorkspaceInvitation[]> {
