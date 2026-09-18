@@ -1,0 +1,493 @@
+"use client";
+
+import React, { useState, useRef } from "react";
+import {
+  Upload,
+  Film,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  Image as ImageIcon,
+  Sparkles,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  requestAssetUploadAction,
+  confirmUploadCompletedAction,
+} from "@/app/actions/upload";
+import {
+  Attachment,
+  AttachmentContent,
+  AttachmentDescription,
+  AttachmentMedia,
+  AttachmentTitle,
+  AttachmentActions,
+  AttachmentAction,
+} from "@/components/ui/attachment";
+
+export interface DirectUploadParams {
+  workspaceId: string;
+  projectId: string;
+  file: File;
+  title?: string;
+  assetType?: "video" | "photo_gallery";
+  assetId?: string | null;
+  onProgress?: (percent: number, loaded: number, total: number) => void;
+  onStatusChange?: (statusText: string) => void;
+  onXhrCreated?: (xhr: XMLHttpRequest) => void;
+}
+
+export interface DirectUploadResult {
+  asset: any;
+  assetVersion: any;
+}
+
+export const formatBytes = (bytes: number) => {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
+
+export async function directUploadMediaFile({
+  workspaceId,
+  projectId,
+  file,
+  title,
+  assetType,
+  assetId,
+  onProgress,
+  onStatusChange,
+  onXhrCreated,
+}: DirectUploadParams): Promise<DirectUploadResult> {
+  const resolvedType =
+    assetType || (file.type.startsWith("image/") ? "photo_gallery" : "video");
+  const resolvedTitle = title || file.name.replace(/\.[^/.]+$/, "");
+
+  onStatusChange?.("Requesting direct upload token...");
+
+  // 1. Request direct upload URL from server (validates storage quota)
+  const initRes = await requestAssetUploadAction({
+    workspaceId,
+    projectId,
+    assetId: assetId || undefined,
+    title: resolvedTitle,
+    filename: file.name,
+    fileSizeBytes: file.size,
+    assetType: resolvedType,
+  });
+
+  if (!initRes.success || !initRes.directUpload || !initRes.assetVersion) {
+    throw new Error(initRes.error || "Failed to initialize upload.");
+  }
+
+  const { uploadUrl, providerUid, uploadType, headers } = initRes.directUpload;
+  const assetVersionId = initRes.assetVersion.id;
+
+  onStatusChange?.(`Uploading directly (${uploadType})...`);
+
+  // 2. Perform direct upload from client to Cloudflare (or mock)
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    onXhrCreated?.(xhr);
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        onProgress?.(percent, event.loaded, event.total);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`Direct upload failed with status ${xhr.status}`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during direct upload."));
+    xhr.onabort = () => reject(new Error("Upload cancelled by user."));
+
+    if (uploadType === "presigned_put") {
+      xhr.open("PUT", uploadUrl, true);
+      if (headers) {
+        Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+      }
+      xhr.send(file);
+    } else {
+      xhr.open("POST", uploadUrl, true);
+      const formData = new FormData();
+      formData.append("file", file);
+      xhr.send(formData);
+    }
+  });
+
+  // 3. Confirm upload on backend and fetch playback & transcoding records
+  onStatusChange?.("Finalizing transcoding and storage records...");
+  const confirmRes = await confirmUploadCompletedAction({
+    assetVersionId,
+    providerUid,
+    fileSizeBytes: file.size,
+  });
+
+  if (!confirmRes.success) {
+    throw new Error(confirmRes.error || "Failed to finalize upload records.");
+  }
+
+  onProgress?.(100, file.size, file.size);
+  onStatusChange?.("Upload complete & ready!");
+
+  return {
+    asset: initRes.asset,
+    assetVersion: confirmRes.assetVersion || initRes.assetVersion,
+  };
+}
+
+export interface VideoUploaderProps {
+  workspaceId: string;
+  projectId: string;
+  existingAssets?: Array<{ id: string; title: string }>;
+  defaultAssetId?: string;
+  onUploadComplete?: (asset: any, version?: any) => void;
+}
+
+export function VideoUploader({
+  workspaceId,
+  projectId,
+  existingAssets = [],
+  defaultAssetId,
+  onUploadComplete,
+}: VideoUploaderProps) {
+  const [dragActive, setDragActive] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [title, setTitle] = useState("");
+  const [selectedAssetId, setSelectedAssetId] = useState<string>(defaultAssetId || "");
+  const [assetType, setAssetType] = useState<"video" | "photo_gallery">("video");
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [statusText, setStatusText] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [completedAsset, setCompletedAsset] = useState<any | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
+
+  const handleFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    setSelectedFile(file);
+
+    if (selectedAssetId) {
+      const match = existingAssets.find((a) => a.id === selectedAssetId);
+      if (match) {
+        setTitle(match.title);
+      }
+    } else {
+      setTitle(file.name.replace(/\.[^/.]+$/, ""));
+    }
+    
+    // Auto-detect asset type based on mime type
+    if (file.type.startsWith("image/")) {
+      setAssetType("photo_gallery");
+    } else {
+      setAssetType("video");
+    }
+
+    setErrorMessage(null);
+    setCompletedAsset(null);
+    setProgress(0);
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFiles(e.dataTransfer.files);
+    }
+  };
+
+  const startDirectUpload = async () => {
+    if (!selectedFile || uploading) return;
+
+    setUploading(true);
+    setErrorMessage(null);
+    setProgress(0);
+    setStatusText("Requesting Cloudflare direct upload token...");
+
+    try {
+      const result = await directUploadMediaFile({
+        workspaceId,
+        projectId,
+        file: selectedFile,
+        title: title || selectedFile.name,
+        assetType,
+        assetId: selectedAssetId || undefined,
+        onProgress: (percent, loaded, total) => {
+          setProgress(percent);
+          setStatusText(
+            `Uploading: ${percent}% (${formatBytes(loaded)} / ${formatBytes(total)})`
+          );
+        },
+        onStatusChange: (status) => setStatusText(status),
+        onXhrCreated: (xhr) => {
+          xhrRef.current = xhr;
+        },
+      });
+
+      setProgress(100);
+      setStatusText("Upload complete & ready!");
+      setCompletedAsset(result.asset);
+
+      if (onUploadComplete) {
+        onUploadComplete(result.asset, result.assetVersion);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "An error occurred during upload.");
+    } finally {
+      setUploading(false);
+      xhrRef.current = null;
+    }
+  };
+
+  const cancelUpload = () => {
+    if (xhrRef.current) {
+      xhrRef.current.abort();
+    }
+    setUploading(false);
+    setProgress(0);
+    setStatusText("");
+  };
+
+  const resetForm = () => {
+    setSelectedFile(null);
+    setTitle("");
+    setCompletedAsset(null);
+    setErrorMessage(null);
+    setProgress(0);
+    setStatusText("");
+  };
+
+  return (
+    <div className="w-full rounded-2xl bg-card border border-border p-6 sm:p-8 space-y-6 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20">
+            {assetType === "photo_gallery" ? <ImageIcon className="size-5" /> : <Film className="size-5" />}
+          </div>
+          <div>
+            <h3 className="font-heading text-base font-bold text-card-foreground">
+              Direct Cloudflare Media Upload
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Direct-to-edge 4K HLS video stream & high-res image gallery upload up to 5GB
+            </p>
+          </div>
+        </div>
+
+        {selectedFile && !uploading && !completedAsset && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={resetForm}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            <X className="size-3.5 mr-1" /> Reset
+          </Button>
+        )}
+      </div>
+
+      {/* Error Alert */}
+      {errorMessage && (
+        <div className="p-4 rounded-xl bg-destructive/15 border border-destructive/30 text-destructive text-xs font-semibold flex items-start gap-2.5 animate-in fade-in">
+          <AlertCircle className="size-4 shrink-0 mt-0.5" />
+          <div className="flex-1">{errorMessage}</div>
+        </div>
+      )}
+
+      {/* Success State */}
+      {completedAsset && (
+        <div className="p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 space-y-3 animate-in fade-in">
+          <div className="flex items-center gap-2 font-bold text-sm">
+            <CheckCircle2 className="size-5" />
+            <span>Master Asset Uploaded Successfully!</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {assetType === "video"
+              ? "Your cut is being encoded into adaptive multi-bitrate HLS streams across Cloudflare edge nodes."
+              : "Your photo gallery asset is now optimized and served globally via Cloudflare CDN."}
+          </p>
+          <div className="flex items-center gap-3 pt-2">
+            <Button
+              onClick={resetForm}
+              className="rounded-full bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-600 cursor-pointer"
+            >
+              Upload Another Asset
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Dropzone Area */}
+      {!selectedFile && !completedAsset && (
+        <div
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+          className={`border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-3 ${
+            dragActive
+              ? "border-primary bg-primary/5 scale-[1.01]"
+              : "border-border/80 hover:border-primary/50 hover:bg-muted/30"
+          }`}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="video/*,image/*,.mov,.mp4,.mkv,.m4v,.png,.jpg,.jpeg,.webp"
+            className="hidden"
+            onChange={(e) => handleFiles(e.target.files)}
+          />
+
+          <div className="size-14 rounded-2xl bg-muted border border-border flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:border-primary transition-colors">
+            <Upload className="size-7 text-[#f5551d]" />
+          </div>
+
+          <div className="space-y-1">
+            <div className="text-sm font-bold text-card-foreground">
+              Click to select or drag and drop your video cut or photo asset
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Supports ProRes 422/4444, MP4, MOV, PNG, JPG, WEBP up to 5.0 GB
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* File Details & Upload Trigger */}
+      {selectedFile && !completedAsset && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <Attachment
+              state={uploading ? "uploading" : errorMessage ? "error" : progress === 100 ? "done" : "idle"}
+              size="default"
+              orientation="horizontal"
+              className="w-full sm:flex-1"
+            >
+              <AttachmentMedia variant={assetType === "photo_gallery" ? "image" : "icon"}>
+                {assetType === "photo_gallery" ? (
+                  <ImageIcon className="size-4" />
+                ) : (
+                  <Film className="size-4 text-primary" />
+                )}
+              </AttachmentMedia>
+              <AttachmentContent>
+                <AttachmentTitle>{selectedFile.name}</AttachmentTitle>
+                <AttachmentDescription>
+                  {formatBytes(selectedFile.size)} · {assetType === "video" ? "4K Video Cut" : "Photo Gallery Asset"}
+                </AttachmentDescription>
+              </AttachmentContent>
+              {!uploading && (
+                <AttachmentActions>
+                  <AttachmentAction
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={resetForm}
+                    title="Remove file"
+                  >
+                    <X className="size-3.5" />
+                  </AttachmentAction>
+                </AttachmentActions>
+              )}
+            </Attachment>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+              {existingAssets.length > 0 && (
+                <select
+                  value={selectedAssetId}
+                  onChange={(e) => {
+                    const newId = e.target.value;
+                    setSelectedAssetId(newId);
+                    if (newId) {
+                      const match = existingAssets.find((a) => a.id === newId);
+                      if (match) setTitle(match.title);
+                    } else if (selectedFile) {
+                      setTitle(selectedFile.name.replace(/\.[^/.]+$/, ""));
+                    }
+                  }}
+                  disabled={uploading}
+                  className="bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary w-full sm:w-48"
+                >
+                  <option value="">New Asset (V1)</option>
+                  {existingAssets.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      New version of: {a.title}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Asset Title (e.g. v2_Director_Cut)"
+                disabled={uploading}
+                className="bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary w-full sm:w-52"
+              />
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          {uploading && (
+            <div className="space-y-2 pt-2 animate-in fade-in">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-muted-foreground">{statusText}</span>
+                <span className="font-bold text-primary">{progress}%</span>
+              </div>
+              <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden border border-border">
+                <div
+                  className="h-full bg-gradient-to-r from-[#f5551d] to-[#ff8a45] rounded-full transition-all duration-150"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-3 pt-2">
+            {uploading ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={cancelUpload}
+                className="rounded-full text-xs font-semibold text-destructive border-destructive/30 hover:bg-destructive/10"
+              >
+                Cancel Upload
+              </Button>
+            ) : (
+              <Button
+                onClick={startDirectUpload}
+                className="rounded-full bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] shadow-md shadow-[#f5551d]/20 cursor-pointer"
+              >
+                <Upload className="size-3.5 mr-1.5" /> Start Direct Upload
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

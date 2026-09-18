@@ -1,0 +1,282 @@
+"use server";
+
+import { getServerServices } from "@/core/server";
+import { revalidatePath } from "next/cache";
+import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
+
+export async function updatePortfolioAction(
+  portfolioId: string,
+  data: {
+    title?: string;
+    bio?: string | null;
+    coverAssetUrl?: string | null;
+    socialLinks?: Record<string, string | undefined>;
+    isPublished?: boolean;
+    appearance?: any;
+    experience?: any[];
+    whatsappNumber?: string | null;
+    stats?: any;
+    layoutTemplate?: string;
+  }
+) {
+  try {
+    const services = await getServerServices();
+    const user = await services.auth.getCurrentUser();
+
+    if (!user) {
+      return { success: false, error: "Unauthorized. Please log in." };
+    }
+
+    const current = await services.portfolio.getPortfolioById(portfolioId);
+    if (!current) {
+      return { success: false, error: "Portfolio not found." };
+    }
+
+    if (data.appearance) {
+      const existingAppearance: any = current.appearance || {};
+      data.appearance = {
+        ...existingAppearance,
+        ...data.appearance,
+        featuredItemIds:
+          data.appearance.featuredItemIds !== undefined
+            ? data.appearance.featuredItemIds
+            : (existingAppearance.featuredItemIds || []),
+      };
+    }
+
+    const updated = await services.portfolio.updatePortfolio(portfolioId, data);
+
+    if (current.slug) {
+      revalidatePath(`/${current.slug}/portfolio`);
+      revalidatePath(`/p/${current.slug}`);
+    }
+    revalidatePath("/portfolio");
+
+    return { success: true, portfolio: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to update portfolio." };
+  }
+}
+
+export async function toggleFeaturedItemAction(
+  portfolioId: string,
+  itemId: string,
+  itemType: "project" | "asset",
+  isFeatured: boolean
+) {
+  try {
+    const services = await getServerServices();
+    const user = await services.auth.getCurrentUser();
+
+    if (!user) {
+      return { success: false, error: "Unauthorized." };
+    }
+
+    const portfolio = await services.portfolio.getPortfolioById(portfolioId);
+    if (!portfolio) {
+      return { success: false, error: "Portfolio not found." };
+    }
+
+    const currentAppearance = portfolio.appearance || {
+      cardSize: "M",
+      aspectRatio: "16:9",
+      thumbnailScale: "fill",
+      showClientInfo: true,
+      featuredItemIds: [],
+    };
+
+    const currentFeaturedIds = Array.isArray(currentAppearance.featuredItemIds)
+      ? [...currentAppearance.featuredItemIds]
+      : [];
+
+    let updatedFeaturedIds: string[];
+    if (isFeatured) {
+      if (!currentFeaturedIds.includes(itemId)) {
+        updatedFeaturedIds = [...currentFeaturedIds, itemId];
+      } else {
+        updatedFeaturedIds = currentFeaturedIds;
+      }
+    } else {
+      updatedFeaturedIds = currentFeaturedIds.filter((id) => id !== itemId);
+    }
+
+    await services.portfolio.updatePortfolio(portfolioId, {
+      appearance: {
+        ...currentAppearance,
+        featuredItemIds: updatedFeaturedIds,
+      },
+    });
+
+    if (portfolio.slug) {
+      revalidatePath(`/${portfolio.slug}/portfolio`);
+      revalidatePath(`/p/${portfolio.slug}`);
+    }
+    revalidatePath("/portfolio");
+
+    return { success: true, featuredItemIds: updatedFeaturedIds };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to update featured item." };
+  }
+}
+
+export async function reorderFeaturedItemsAction(
+  portfolioId: string,
+  itemIds: string[]
+) {
+  try {
+    const services = await getServerServices();
+    const user = await services.auth.getCurrentUser();
+
+    if (!user) {
+      return { success: false, error: "Unauthorized." };
+    }
+
+    const portfolio = await services.portfolio.getPortfolioById(portfolioId);
+    if (!portfolio) {
+      return { success: false, error: "Portfolio not found." };
+    }
+
+    const currentAppearance = portfolio.appearance || {
+      cardSize: "M",
+      aspectRatio: "16:9",
+      thumbnailScale: "fill",
+      showClientInfo: true,
+      featuredItemIds: [],
+    };
+
+    await services.portfolio.updatePortfolio(portfolioId, {
+      appearance: {
+        ...currentAppearance,
+        featuredItemIds: itemIds,
+      },
+    });
+
+    if (portfolio.slug) {
+      revalidatePath(`/${portfolio.slug}/portfolio`);
+      revalidatePath(`/p/${portfolio.slug}`);
+    }
+    revalidatePath("/portfolio");
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to reorder featured items." };
+  }
+}
+
+export async function toggleFeaturedProjectAction(
+  portfolioId: string,
+  projectId: string,
+  isFeatured: boolean
+) {
+  return toggleFeaturedItemAction(portfolioId, projectId, "project", isFeatured);
+}
+
+export async function updateBrandingAction(
+  workspaceId: string,
+  portfolioId: string,
+  data: {
+    brandName?: string;
+    accentColor?: string;
+    logoUrl?: string | null;
+    bio?: string | null;
+    coverAssetUrl?: string | null;
+    whatsappNumber?: string | null;
+    experience?: any[];
+    stats?: any;
+    slug?: string;
+  }
+) {
+  try {
+    const services = await getServerServices();
+    const user = await services.auth.getCurrentUser();
+
+    if (!user) {
+      return { success: false, error: "Unauthorized. Please log in." };
+    }
+
+    const wsUpdate: any = {};
+    if (data.brandName !== undefined) wsUpdate.brandName = data.brandName;
+    if (data.accentColor !== undefined) wsUpdate.accentColor = data.accentColor;
+    if (data.logoUrl !== undefined) wsUpdate.logoUrl = data.logoUrl;
+
+    if (Object.keys(wsUpdate).length > 0) {
+      await services.workspace.updateWorkspaceBranding(workspaceId, wsUpdate);
+    }
+
+    const portfolioUpdate: any = {};
+    if (data.bio !== undefined) portfolioUpdate.bio = data.bio;
+    if (data.coverAssetUrl !== undefined) portfolioUpdate.coverAssetUrl = data.coverAssetUrl;
+    if (data.whatsappNumber !== undefined) portfolioUpdate.whatsappNumber = data.whatsappNumber;
+    if (data.brandName !== undefined) portfolioUpdate.title = `${data.brandName} Portfolio`;
+    if (data.experience !== undefined) portfolioUpdate.experience = data.experience;
+    if (data.stats !== undefined) portfolioUpdate.stats = data.stats;
+
+    let updatedPortfolio = null;
+    if (Object.keys(portfolioUpdate).length > 0) {
+      updatedPortfolio = await services.portfolio.updatePortfolio(portfolioId, portfolioUpdate);
+    }
+
+    if (data.slug) {
+      revalidatePath(`/${data.slug}/settings`);
+      revalidatePath(`/${data.slug}/portfolio`);
+      revalidatePath(`/p/${data.slug}`);
+    }
+
+    return { success: true, portfolio: updatedPortfolio };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to update branding." };
+  }
+}
+
+export async function getProjectAssetsAction(projectId: string) {
+  try {
+    const services = await getServerServices();
+    const project = await services.project.getProjectById(projectId);
+    const deliveryId = project?.sourceDeliveryId || projectId;
+
+    let assets = await services.asset.listAssets(deliveryId);
+    if (assets.length === 0 && project && project.id !== deliveryId) {
+      assets = await services.asset.listAssets(project.id);
+    }
+
+    const enriched = await Promise.all(
+      assets.map(async (a) => {
+        const activeVersion = await services.asset.getActiveVersion(a.id);
+        const isStill = a.type === "photo_gallery";
+        const rawMedia =
+          activeVersion?.rawFileUrl ||
+          activeVersion?.hlsManifestUrl ||
+          activeVersion?.thumbnailUrl ||
+          "";
+        const resolvedThumb = resolveThumbnailUrl(
+          activeVersion?.thumbnailUrl,
+          rawMedia,
+          isStill
+        );
+        return {
+          id: a.id,
+          title: a.title,
+          type: isStill ? ("still" as const) : ("film" as const),
+          url: resolveMediaUrl(rawMedia),
+          thumbnailUrl: resolveMediaUrl(resolvedThumb),
+          aspectRatio: a.aspectRatio || "16:9",
+          duration: activeVersion?.durationSeconds
+            ? `${Math.floor(activeVersion.durationSeconds / 60)}:${String(
+                Math.floor(activeVersion.durationSeconds % 60)
+              ).padStart(2, "0")}`
+            : null,
+          category: isStill ? "Photo Still" : "Film Cut",
+        };
+      })
+    );
+
+    return { success: true, assets: enriched };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || "Failed to load project assets.",
+      assets: [],
+    };
+  }
+}
+

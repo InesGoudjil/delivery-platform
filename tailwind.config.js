@@ -21,8 +21,8 @@ module.exports = {
         grey: '#6B7580',
       },
       fontFamily: {
-        display: ['var(--font-archivo)', 'sans-serif'],
-        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-satoshi)', 'sans-serif'],
+        sans: ['var(--font-manrope)', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         xl2: '20px',

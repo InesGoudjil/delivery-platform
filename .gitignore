@@ -4,3 +4,16 @@ out
 .env*.local
 .DS_Store
 npm-debug.log*
+
+
+/package-lock.json
+
+/supabase
+
+.agents
+
+skills-lock.json
+
+/public/images
+
+/prototype
