@@ -11,6 +11,7 @@ import {
   Play,
 } from "lucide-react";
 import { WorkflowSection } from "./WorkflowSection";
+import { AppImage } from "../ui/app-image";
 
 export interface ProjectDemo {
   id: string;
@@ -22,6 +23,14 @@ export interface ProjectDemo {
   g: string;
   desc: string;
 }
+
+const IMG_CONCERT = "/images/img-concert.webp";
+const IMG_FASHION = "/images/img-fashion.webp";
+const IMG_CITY = "/images/img-city.webp";
+const IMG_CAR = "/images/img-car.webp";
+const IMG_HERO = "/images/posts/IG-Posts-16.webp";
+
+const IMG_MEETING = "/images/img-meeting.webp";
 
 export const SAMPLE_PROJECTS: ProjectDemo[] = [
   {
@@ -84,14 +93,12 @@ const GRID_FEATURES = [
   {
     icon: Pencil,
     title: "Custom branding",
-    description:
-      "Your logo, your colours. Clients see your studio — not ours.",
+    description: "Your logo, your colours. Clients see your studio — not ours.",
   },
   {
     icon: Check,
     title: "Ad-free",
-    description:
-      "No ads, ever. Just your films, clean and distraction-free.",
+    description: "No ads, ever. Just your films, clean and distraction-free.",
   },
 ];
 
@@ -132,7 +139,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
         </div>
       </div>
 
-      <WorkflowSection/>
+      <WorkflowSection />
       {/* 2. Spotlight Feature 01: Portfolio That Sells */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center pt-8">
         <div className="lg:col-span-5 space-y-4 text-left">
@@ -143,7 +150,9 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
             A PORTFOLIO THAT SELLS.
           </h2>
           <p className="text-base text-[#aeaeb4] leading-relaxed">
-            Your best work, always ready to share. A clean, branded page you can send to any lead in a tap — no PDFs, no WeTransfer links, no clutter.
+            Your best work, always ready to share. A clean, branded page you can
+            send to any lead in a tap — no PDFs, no WeTransfer links, no
+            clutter.
           </p>
         </div>
 
@@ -152,19 +161,23 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
             <div className="grid grid-cols-2 gap-4">
               {[
                 {
-                  img: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80",
+                  // img: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80",
+                  img: IMG_CONCERT,
                   title: "Live Concert 4K",
                 },
                 {
-                  img: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=600&q=80",
+                  // img: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=600&q=80",
+                  img: IMG_CITY,
                   title: "Dubai Skyline",
                 },
                 {
-                  img: "https://images.unsplash.com/photo-1544829099-b9a0c07fad1a?auto=format&fit=crop&w=600&q=80",
+                  // img: "https://images.unsplash.com/photo-1544829099-b9a0c07fad1a?auto=format&fit=crop&w=600&q=80",
+                  img: IMG_CAR,
                   title: "Supercar Commercial",
                 },
                 {
-                  img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+                  // img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+                  img: IMG_FASHION,
                   title: "Fashion Campaign",
                 },
               ].map((item, idx) => (
@@ -188,7 +201,6 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
           </div>
         </div>
       </div>
-      
 
       {/* 3. Spotlight Feature 02: Feedback & Approval */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center pt-8">
@@ -196,7 +208,8 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
           <div className="card rounded-[28px] border border-white/10 bg-[#121217] p-6 shadow-2xl space-y-4">
             <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-white/10 flex items-center justify-center">
               <img
-                src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80"
+              src={IMG_MEETING}
+                // src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80"
                 alt="Client Review"
                 className="w-full h-full object-cover opacity-80"
               />
@@ -234,7 +247,9 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
             FEEDBACK & APPROVAL.
           </h2>
           <p className="text-base text-[#aeaeb4] leading-relaxed">
-            Feedback without the chaos. Clients watch each cut, leave notes, and compare versions — and every approval is timestamped and locks that version.
+            Feedback without the chaos. Clients watch each cut, leave notes, and
+            compare versions — and every approval is timestamped and locks that
+            version.
           </p>
         </div>
       </div>
@@ -249,7 +264,9 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
             DELIVER ON WHATSAPP.
           </h2>
           <p className="text-base text-[#aeaeb4] leading-relaxed">
-            Meet clients where they already are. Send a private link over WhatsApp — they open it in one tap, no account, no app. You're notified the moment they comment or approve.
+            Meet clients where they already are. Send a private link over
+            WhatsApp — they open it in one tap, no account, no app. You're
+            notified the moment they comment or approve.
           </p>
         </div>
 
@@ -287,7 +304,9 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
               A SCREENING ROOM WITH YOUR NAME ON IT.
             </h2>
             <p className="text-base text-[#aeaeb4] leading-relaxed">
-              Clients get a clean, branded page — versions side by side, comments in one place, and a single tap to approve. No clutter, no confusion.
+              Clients get a clean, branded page — versions side by side,
+              comments in one place, and a single tap to approve. No clutter, no
+              confusion.
             </p>
           </div>
 
@@ -295,16 +314,23 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
             <div className="rounded-2xl p-6 bg-gradient-to-tr from-[#df3b0b] to-[#7f1396] border border-white/20 shadow-2xl">
               <div className="rounded-xl bg-[#0d0d12] p-4 border border-white/10 space-y-3 text-left">
                 <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                  <span className="text-xs font-bold text-white font-mono">CineSpace Screening Room</span>
-                  <span className="text-[10px] bg-[#86b98f] text-black px-2 py-0.5 rounded font-bold">BRANDED</span>
+                  <span className="text-xs font-bold text-white font-mono">
+                    CineSpace Screening Room
+                  </span>
+                  <span className="text-[10px] bg-[#86b98f] text-black px-2 py-0.5 rounded font-bold">
+                    BRANDED
+                  </span>
                 </div>
                 <div className="aspect-video rounded-lg overflow-hidden bg-black relative flex items-center justify-center">
                   <img
-                    src="https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&w=600&q=80"
+                  src={IMG_HERO}
+                    // src="https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&w=600&q=80"
                     alt="Screening Room"
                     className="w-full h-full object-cover opacity-80"
                   />
-                  <Play className="size-10 text-white relative z-10" />
+                  
+
+                  {/* <Play className="size-10 text-white relative z-10" /> */}
                 </div>
               </div>
             </div>

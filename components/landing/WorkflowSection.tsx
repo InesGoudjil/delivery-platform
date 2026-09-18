@@ -3,6 +3,10 @@
 import React from "react";
 import { Upload, Share2, CheckCircle2 } from "lucide-react";
 
+
+const SHOT_UPLOAD = "/images/posts/shot-upload.webp";
+const SHOT_LINK = "/images/posts/shot-link.webp";
+const SHOT_APPROVE = "/images/posts/shot-approve.webp";
 const STEPS = [
   {
     step: "01",
@@ -10,8 +14,10 @@ const STEPS = [
     description:
       "Drop in a film. We handle the hosting, transcoding, and smooth playback.",
     icon: Upload,
-    img: "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?auto=format&fit=crop&w=600&q=80",
-    badgeText: "TRANSCODING 4K",
+        img:SHOT_UPLOAD,
+
+    // img: "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?auto=format&fit=crop&w=600&q=80",
+    // badgeText: "TRANSCODING 4K",
   },
   {
     step: "02",
@@ -19,8 +25,10 @@ const STEPS = [
     description:
       "Send it on WhatsApp. Your client opens it instantly — no login, no app.",
     icon: Share2,
-    img: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80",
-    badgeText: "PRIVATE WHATSAPP LINK",
+        img:SHOT_LINK,
+
+    // img: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80",
+    // badgeText: "PRIVATE WHATSAPP LINK",
   },
   {
     step: "03",
@@ -28,10 +36,12 @@ const STEPS = [
     description:
       "Clients comment and approve the final cut, and you deliver the finished files.",
     icon: CheckCircle2,
-    img: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80",
-    badgeText: "ASSETS APPROVAL ✓",
+    img:SHOT_APPROVE,
+    // img: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80",
+    // badgeText: "ASSETS APPROVAL ✓",
   },
 ];
+
 
 export function WorkflowSection() {
   return (
@@ -62,16 +72,16 @@ export function WorkflowSection() {
                   alt={item.title}
                   className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform"
                 />
-                <div className="relative z-10 flex justify-between items-start">
+                {/* <div className="relative z-10 flex justify-between items-start">
                   <span className="bg-[#f5551d] text-white text-[10px] font-extrabold px-2 py-0.5 rounded shadow font-mono">
                     {item.badgeText}
                   </span>
-                </div>
-                <div className="relative z-10 bg-black/70 backdrop-blur-md p-2 rounded-lg border border-white/10">
+                </div> */}
+                {/* <div className="relative z-10 bg-black/70 backdrop-blur-md p-2 rounded-lg border border-white/10">
                   <span className="text-[11px] font-bold text-white block">
                     {item.title}
                   </span>
-                </div>
+                </div> */}
               </div>
             </div>
 

@@ -38,7 +38,7 @@ export default function LandingPage({ user, workspace, referralCode }: LandingPa
     <div
       className="root min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased selection:bg-[#f5551d] selection:text-white relative"
     >
-      <AmbientBackground variant="full" />
+      <AmbientBackground variant="subtle" showNoise={false}/>
       {/* 1. Header Navigation Bar */}
       <div className="relative z-10">
         <HeaderSection
