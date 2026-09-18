@@ -1,21 +1,20 @@
 "use client";
 
-import React from "react";
 import { Star, ArrowRight } from "lucide-react";
 import Link from "next/link";
+
+
 
 interface HeroSectionProps {
   onOpenDemo: () => void;
   onStartTrial: () => void;
 }
+const IMG_HERO = "/images/posts/IG-Posts-16.webp";
+
 
 export function HeroSection({ onOpenDemo, onStartTrial }: HeroSectionProps) {
   return (
     <section className="relative pt-8 pb-16 overflow-hidden">
-      {/* Background ambient lighting */}
-      <div className="absolute top-1/4 right-0 w-[500px] h-[500px] bg-[#f5551d]/15 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute top-1/3 left-1/3 w-[350px] h-[350px] bg-purple-900/15 rounded-full blur-[120px] pointer-events-none" />
-
       <div className="mx-auto max-w-7xl px-4 sm:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           {/* Left Column: Headline & Action */}
@@ -98,7 +97,8 @@ export function HeroSection({ onOpenDemo, onStartTrial }: HeroSectionProps) {
                   {/* Right sub-box: Video player preview */}
                   <div className="col-span-8 bg-black rounded-xl overflow-hidden border border-white/10 relative aspect-video flex flex-col justify-between p-3">
                     <img
-                      src="https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&w=800&q=80"
+                    src={IMG_HERO}
+                      // src="https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&w=800&q=80"
                       alt="Mercedes AMG GT"
                       className="absolute inset-0 w-full h-full object-cover opacity-80"
                     />
