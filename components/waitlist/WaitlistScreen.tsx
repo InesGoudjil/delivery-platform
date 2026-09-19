@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { DemoModal } from "@/components/landing/DemoModal";
 import { joinWaitlistAction, WaitlistActionState } from "@/app/actions/waitlist";
+import { getWaitlistImageUrl, CLOUDFLARE_PUBLIC_DOMAIN } from "@/lib/assets";
 import "./waitlist.css";
 
 const ROLES = ["Filmmaker", "Studio", "Agency", "Other"];
@@ -300,12 +301,12 @@ export function WaitlistScreen({
 
           {/* Demo Button Wrap */}
           <div className="wl-demo-wrap">
-            <button
-              className="wl-demo-big"
-              onClick={() => setShowDemoModal(true)}
+            <Link
+              href="/delivery-view"
+              className="wl-demo-big inline-flex items-center justify-center gap-2"
             >
               <Play size={17} /> See a live client demo — no signup needed
-            </button>
+            </Link>
           </div>
 
           {/* Perks Row */}
@@ -358,10 +359,10 @@ export function WaitlistScreen({
               </div>
               <div className="wl-row-img">
                 <img
-                  src="/images/waitlist/links.webp"
+                  src={getWaitlistImageUrl("links.webp")}
                   alt="Premium delivery links"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = "/images/showcase.jpg";
+                    (e.target as HTMLImageElement).src = "/images/waitlist/links.webp";
                   }}
                 />
               </div>
@@ -371,10 +372,10 @@ export function WaitlistScreen({
             <div className="wl-row">
               <div className="wl-row-img">
                 <img
-                  src="/images/waitlist/feedback.webp"
+                  src={getWaitlistImageUrl("feedback.webp")}
                   alt="Client timestamped feedback and approvals"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = "/images/showcase.jpg";
+                    (e.target as HTMLImageElement).src = "/images/waitlist/feedback.webp";
                   }}
                 />
               </div>
@@ -399,10 +400,10 @@ export function WaitlistScreen({
               </div>
               <div className="wl-row-img">
                 <img
-                  src="/images/waitlist/brand.webp"
+                  src={getWaitlistImageUrl("brand.webp")}
                   alt="Add your brand"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = "/images/showcase.jpg";
+                    (e.target as HTMLImageElement).src = "/images/waitlist/brand.webp";
                   }}
                 />
               </div>
@@ -412,10 +413,10 @@ export function WaitlistScreen({
             <div className="wl-row">
               <div className="wl-row-img">
                 <img
-                  src="/images/waitlist/control.webp"
+                  src={getWaitlistImageUrl("control.webp")}
                   alt="Customize portfolio and deliveries"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = "/images/showcase.jpg";
+                    (e.target as HTMLImageElement).src = "/images/waitlist/control.webp";
                   }}
                 />
               </div>
@@ -467,12 +468,12 @@ export function WaitlistScreen({
                 cut, leave time-stamped comments, approve versions, and download
                 the finished files.
               </p>
-              <button
-                className="wl-surface-demo"
-                onClick={() => setShowDemoModal(true)}
+              <Link
+                href="/delivery-view"
+                className="wl-surface-demo inline-flex items-center gap-1.5"
               >
                 <Play size={13} /> Try the live demo
-              </button>
+              </Link>
             </div>
 
             <div className="wl-surface">

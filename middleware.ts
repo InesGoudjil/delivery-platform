@@ -53,8 +53,12 @@ export async function middleware(request: NextRequest) {
         return await updateSession(request);
       }
 
-      // If user is already on the waitlist page, allow request through
-      if (pathname === '/waitlist') {
+      // Only allow the waitlist and the client/delivery view demo
+      if (
+        pathname === '/waitlist' ||
+        pathname === '/delivery-view' ||
+        pathname === '/demo'
+      ) {
         return await updateSession(request);
       }
 
