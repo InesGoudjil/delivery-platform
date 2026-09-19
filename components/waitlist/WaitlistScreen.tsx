@@ -334,6 +334,28 @@ export function WaitlistScreen({
             </div>
           </div>
         </main>
+        {/* ===== video here ===== */}
+        <section className="wl-sec">
+          <div className="wl-sec-head">
+            <div className="wl-eyebrow">Product walkthrough</div>
+            <h2 className="wl-h2">Watch CineSpace in action.</h2>
+            <p className="wl-sec-sub">
+              Experience the fast, studio-grade delivery workflow built specifically for filmmakers and creative agencies.
+            </p>
+          </div>
+
+          <div className="max-w-[920px] mx-auto w-full px-2 sm:px-0">
+            <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/15 bg-black/80">
+              <iframe
+                src="https://iframe.videodelivery.net/bcb96cb5bbb50ee8093256f33146f473?preload=true&poster=https%3A%2F%2Fvideodelivery.net%2Fbcb96cb5bbb50ee8093256f33146f473%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D1s%26height%3D720"
+                className="w-full h-full border-none absolute inset-0"
+                allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                allowFullScreen
+                title="CineSpace Preview Video"
+              />
+            </div>
+          </div>
+        </section>
 
         {/* ===== Feature Showcase (Image Mockups) ===== */}
         <section className="wl-sec">
