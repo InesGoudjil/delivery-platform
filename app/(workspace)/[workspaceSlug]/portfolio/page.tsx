@@ -35,6 +35,7 @@ export default async function PortfolioPage({
     services.asset.listUnassignedAssets(workspace.id),
   ]);
 
+
   const featuredItemIds: string[] = Array.isArray(portfolio.appearance?.featuredItemIds)
     ? portfolio.appearance.featuredItemIds
     : [];
@@ -67,7 +68,7 @@ export default async function PortfolioPage({
             title: a.title,
             type: isStill ? ("still" as const) : ("film" as const),
             url: resolveMediaUrl(rawMedia),
-            thumbnailUrl: resolveMediaUrl(resolvedThumb),
+            thumbnailUrl: resolvedThumb,
             aspectRatio: a.aspectRatio || "16:9",
             duration: activeVersion?.durationSeconds
               ? `${Math.floor(activeVersion.durationSeconds / 60)}:${String(
@@ -106,6 +107,7 @@ export default async function PortfolioPage({
   const mappedStandaloneAssets: PortfolioItem[] = await Promise.all(
     standaloneAssets.map(async (asset) => {
       const activeVersion = await services.asset.getActiveVersion(asset.id);
+      console.log("activeVersion",activeVersion)
       const itemType = asset.type === "photo_gallery" ? ("still" as const) : ("film" as const);
       const isStill = itemType === "still";
       const rawMedia =
@@ -125,7 +127,7 @@ export default async function PortfolioPage({
         category: isStill ? "Photo Gallery" : "Film Cut",
         type: itemType,
         assetCount: 1,
-        thumbnailUrl: resolveMediaUrl(resolvedThumb),
+        thumbnailUrl: resolvedThumb,
         mediaUrl: resolveMediaUrl(rawMedia || resolvedThumb),
         aspectRatio: asset.aspectRatio || (isStill ? "1:1" : "16:9"),
         isFeatured,
@@ -139,6 +141,8 @@ export default async function PortfolioPage({
   const initialFeaturedIds = featuredItemIds.filter((id) =>
     allPortfolioItems.some((item) => item.id === id)
   );
+
+    console.log("port",workspace,portfolio,dbProjects,standaloneAssets)
 
   return (
     <PortfolioClient

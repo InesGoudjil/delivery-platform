@@ -2,15 +2,13 @@
 
 import { Star, ArrowRight } from "lucide-react";
 import Link from "next/link";
-
-
+import { motion, FadeIn, TiltCard } from "@/components/ui/motion";
 
 interface HeroSectionProps {
   onOpenDemo: () => void;
   onStartTrial: () => void;
 }
 const IMG_HERO = "/images/posts/IG-Posts-16.webp";
-
 
 export function HeroSection({ onOpenDemo, onStartTrial }: HeroSectionProps) {
   return (
@@ -20,42 +18,56 @@ export function HeroSection({ onOpenDemo, onStartTrial }: HeroSectionProps) {
           {/* Left Column: Headline & Action */}
           <div className="lg:col-span-6 space-y-6 text-left">
             {/* Partner Program Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#f5551d]/40 bg-[#f5551d]/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#ff7948]">
-              <Star className="size-3.5 fill-current" />
-              <span>PARTNER PROGRAM — APPLICATIONS OPEN</span>
-            </div>
+            <FadeIn delay={0.05} distance={15}>
+              <motion.div
+                className="inline-flex items-center gap-2 rounded-full border border-[#f5551d]/40 bg-[#f5551d]/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#ff7948]"
+                whileHover={{ scale: 1.03 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Star className="size-3.5 fill-current" />
+                <span>PARTNER PROGRAM — APPLICATIONS OPEN</span>
+              </motion.div>
+            </FadeIn>
 
             {/* Main Headline */}
-            <h1 className="text-4xl sm:text-6xl xl:text-7xl font-extrabold text-white tracking-tight leading-[1.05] font-display">
-              DELIVER FILMS <br />
-              LIKE A STUDIO.
-            </h1>
+            <FadeIn delay={0.15} distance={22}>
+              <h1 className="text-4xl sm:text-6xl xl:text-7xl font-extrabold text-white tracking-tight leading-[1.05] font-display">
+                DELIVER FILMS <br />
+                LIKE A STUDIO.
+              </h1>
+            </FadeIn>
 
             {/* Subheading */}
-            <p className="text-base sm:text-lg text-[#b4b4bb] max-w-xl font-normal leading-relaxed">
-              Your portfolio, client feedback, and delivery — in one place, built for elite filmmakers, videographers, and production agencies.
-            </p>
+            <FadeIn delay={0.25} distance={20}>
+              <p className="text-base sm:text-lg text-[#b4b4bb] max-w-xl font-normal leading-relaxed">
+                Your portfolio, client feedback, and delivery — in one place, built for elite filmmakers, videographers, and production agencies.
+              </p>
+            </FadeIn>
 
             {/* Action Buttons */}
-            <div className="flex flex-wrap items-center gap-4 pt-2">
-              <Link
-                href="/signup"
-                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#f5551d] to-[#df430f] px-7 py-3.5 text-sm font-bold uppercase tracking-wider text-white shadow-xl shadow-[#f5551d]/30 transition-all hover:scale-[1.02] hover:shadow-[#f5551d]/50"
-              >
-                START FOR FREE <ArrowRight className="size-4" />
-              </Link>
-              {/* <button
-                onClick={onOpenDemo}
-                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 backdrop-blur-md px-7 py-3.5 text-sm font-bold uppercase tracking-wider text-white hover:bg-white/10 hover:border-white/40 transition-all"
-              >
-                SEE A DELIVERY
-              </button> */}
-            </div>
+            <FadeIn delay={0.35} distance={20}>
+              <div className="flex flex-wrap items-center gap-4 pt-2">
+                <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} transition={{ duration: 0.15 }}>
+                  <Link
+                    href="/signup"
+                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#f5551d] to-[#df430f] px-7 py-3.5 text-sm font-bold uppercase tracking-wider text-white shadow-xl shadow-[#f5551d]/30 transition-all hover:shadow-[#f5551d]/50"
+                  >
+                    START FOR FREE <ArrowRight className="size-4" />
+                  </Link>
+                </motion.div>
+              </div>
+            </FadeIn>
           </div>
 
           {/* Right Column: High-Fidelity UI Mockup with Orange Glow Backdrop */}
-          <div className="lg:col-span-6 relative">
-            <div className="relative rounded-[32px] p-4 sm:p-8 bg-gradient-to-tr from-[#cf3808] via-[#e64713] to-[#88179f] shadow-2xl overflow-hidden border border-white/10 group">
+          <motion.div
+            className="lg:col-span-6 relative"
+            initial={{ opacity: 0, y: 30, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <TiltCard tiltIntensity={5} glareIntensity={0.15}>
+              <div className="relative rounded-[32px] p-4 sm:p-8 bg-gradient-to-tr from-[#cf3808] via-[#e64713] to-[#88179f] shadow-2xl overflow-hidden border border-white/10 group">
               {/* Outer glow container */}
               <div className="absolute inset-0 bg-radial from-amber-500/20 via-transparent to-transparent opacity-60 pointer-events-none" />
 
@@ -141,7 +153,8 @@ export function HeroSection({ onOpenDemo, onStartTrial }: HeroSectionProps) {
                 </div>
               </div>
             </div>
-          </div>
+          </TiltCard>
+        </motion.div>
         </div>
 
         {/* Subhead transition text below hero */}

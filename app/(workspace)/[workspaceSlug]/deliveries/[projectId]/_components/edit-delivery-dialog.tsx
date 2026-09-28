@@ -63,6 +63,11 @@ export function EditDeliveryDialog({
               <img
                 src={coverThumbnailUrl}
                 alt="Cover Thumbnail"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src =
+                    "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=1200&auto=format&fit=crop&q=80";
+                }}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -100,6 +105,11 @@ export function EditDeliveryDialog({
                 <img
                   src={item.src}
                   alt={item.title}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src =
+                      "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=1200&auto=format&fit=crop&q=80";
+                  }}
                   className="w-full h-full object-cover"
                 />
                 <button

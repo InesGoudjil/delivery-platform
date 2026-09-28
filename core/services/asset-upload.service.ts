@@ -9,6 +9,7 @@ import { ISubscriptionRepository } from "@/core/repositories/subscription.reposi
 import { IPlanRepository } from "@/core/repositories/plan.repository";
 import { Asset, AssetVersion, AssetType, TranscodingStatus } from "@/core/entities/asset";
 import { isPlaceholderUrl } from "@/lib/media";
+import { env } from "@/lib/env";
 
 export interface RequestAssetUploadDTO {
   workspaceId: string;
@@ -20,6 +21,7 @@ export interface RequestAssetUploadDTO {
   fileSizeBytes: number;
   assetType?: AssetType;
   maxDurationSeconds?: number;
+  category?: string;
   metadata?: Record<string, string>;
 }
 
@@ -156,29 +158,78 @@ export class AssetUploadService {
 
     const storageAssetType: StorageAssetType = (asset.type || assetType) === "photo_gallery" ? "image" : "video";
 
-    // 6. Request Direct Upload URL from Storage Provider (Cloudflare Stream / R2 / Mock)
+    // 6. Context-Aware Privacy:
+    // If an asset is uploaded to a delivery project, it is PRIVATE (private bucket, no public URL).
+    // If it is standalone / portfolio / public showcase, it is PUBLIC (public bucket, CDN accessible).
+    const isPublic = Boolean(
+      dto.metadata?.isPublic === "true" ||
+      !resolvedDeliveryId
+    );
+
+    const resolvedCategory =
+      dto.category ||
+      (dto.metadata?.category as string) ||
+      (asset.category as string) ||
+      (storageAssetType === "video" ? "film" : "still");
+
+    // Request Direct Upload URL from Storage Provider (Cloudflare Stream / R2 / Mock)
     const directUpload = await this.storageProvider.createDirectUploadUrl({
       workspaceId: resolvedWorkspaceId,
-      projectId: resolvedDeliveryId || "standalone",
-      deliveryId: resolvedDeliveryId || "standalone",
+      projectId: resolvedDeliveryId ? resolvedDeliveryId : (dto.projectId || "standalone"),
+      deliveryId: resolvedDeliveryId || undefined,
       assetTitle: dto.title,
       assetType: storageAssetType,
       fileSizeBytes: dto.fileSizeBytes,
       filename: dto.filename,
+      isPublic,
+      category: resolvedCategory,
+      versionNumber: nextVersionNumber,
       maxDurationSeconds: dto.maxDurationSeconds,
       metadata: {
         assetId: asset.id,
+        isPublic: String(isPublic),
+        category: resolvedCategory,
+        versionNumber: String(nextVersionNumber),
         ...(dto.metadata || {}),
       },
     });
 
     // 7. Create Pending AssetVersion Record
     let cleanInitialUrl = directUpload.uploadUrl.split("?")[0];
-    if (directUpload.providerUid) {
+    let initialHlsUrl: string | null = null;
+    let initialThumbnailUrl: string | null = null;
+
+    const isStreamVideo =
+      storageAssetType === "video" &&
+      !directUpload.uploadUrl.startsWith("/api/mock-upload");
+
+    if (isStreamVideo && directUpload.providerUid) {
+      const streamDomain = (env.CLOUDFLARE_STREAM_SUBDOMAIN || "videodelivery.net")
+        .replace(/^https?:\/\//, "")
+        .replace(/\/+$/, "");
+      cleanInitialUrl = `https://${streamDomain}/${directUpload.providerUid}/manifest/video.m3u8`;
+      initialHlsUrl = cleanInitialUrl;
+      initialThumbnailUrl = `https://${streamDomain}/${directUpload.providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`;
+    } else if (directUpload.providerUid) {
       if (directUpload.uploadUrl.startsWith("/api/mock-upload")) {
         cleanInitialUrl = `/api/mock-upload/${directUpload.providerUid}`;
+      } else if (isPublic) {
+        const r2Domain = (
+          process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_DOMAIN ||
+          process.env.CLOUDFLARE_R2_PUBLIC_DOMAIN ||
+          ""
+        ).replace(/\/+$/, "");
+        const hasRealR2 =
+          Boolean(r2Domain) &&
+          !r2Domain.includes("pub-xxxx") &&
+          !r2Domain.includes("r2.cloudflarestorage.com");
+
+        cleanInitialUrl = hasRealR2
+          ? `${r2Domain}/${directUpload.providerUid}`
+          : directUpload.providerUid;
       } else {
-        cleanInitialUrl = `/api/media/${directUpload.providerUid}`;
+        // Private asset: store canonical key (e.g. private/workspaces/...)
+        cleanInitialUrl = directUpload.providerUid;
       }
     }
 
@@ -186,6 +237,8 @@ export class AssetUploadService {
       assetId: asset.id,
       versionNumber: nextVersionNumber,
       rawFileUrl: cleanInitialUrl,
+      hlsManifestUrl: initialHlsUrl,
+      thumbnailUrl: initialThumbnailUrl,
       fileSizeBytes: dto.fileSizeBytes,
       transcodingStatus: assetType === "photo_gallery" ? "ready" : "pending",
       isActiveVersion: true,
@@ -229,10 +282,40 @@ export class AssetUploadService {
     const playbackInfo = await this.storageProvider.getPlaybackInfo(dto.providerUid);
 
     // 2. Update AssetVersion record
-    let cleanRawUrl = (playbackInfo as any)?.rawDownloadUrl || version.rawFileUrl.split("?")[0];
+    let cleanRawUrl =
+      (playbackInfo as any)?.rawDownloadUrl ||
+      playbackInfo?.hlsManifestUrl ||
+      version.rawFileUrl?.split("?")[0] ||
+      "";
+
+    const r2Domain = (
+      process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_DOMAIN ||
+      process.env.CLOUDFLARE_R2_PUBLIC_DOMAIN ||
+      ""
+    ).replace(/\/+$/, "");
+    const hasRealR2 =
+      Boolean(r2Domain) &&
+      !r2Domain.includes("pub-xxxx") &&
+      !r2Domain.includes("r2.cloudflarestorage.com");
+
+    const isExplicitlyPrivate =
+      dto.providerUid.startsWith("private/") || Boolean(asset.deliveryId);
+
     if (cleanRawUrl.includes("workspaces/")) {
       const parts = cleanRawUrl.split("workspaces/");
-      cleanRawUrl = `/api/media/workspaces/${parts[1].split("?")[0]}`;
+      const keySuffix = parts[1].split("?")[0];
+      const key = dto.providerUid.includes("workspaces/")
+        ? dto.providerUid
+        : (isExplicitlyPrivate ? `private/workspaces/${keySuffix}` : `public/workspaces/${keySuffix}`);
+      cleanRawUrl = (!isExplicitlyPrivate && hasRealR2) ? `${r2Domain}/${key}` : key;
+    }
+
+    const isStreamUid = /^[a-f0-9]{32}$/i.test(dto.providerUid);
+    if (isStreamUid && (!cleanRawUrl || cleanRawUrl.startsWith("/api/media/"))) {
+      const streamDomain = (env.CLOUDFLARE_STREAM_SUBDOMAIN || "videodelivery.net")
+        .replace(/^https?:\/\//, "")
+        .replace(/\/+$/, "");
+      cleanRawUrl = `https://${streamDomain}/${dto.providerUid}/manifest/video.m3u8`;
     }
 
     const isImage =
@@ -241,8 +324,17 @@ export class AssetUploadService {
       /\.(jpe?g|png|avif|webp|gif|svg|bmp)$/i.test(dto.providerUid || "");
 
     let resolvedThumbnailUrl = playbackInfo?.thumbnailUrl || version.thumbnailUrl;
-    if (isImage) {
-      if (!resolvedThumbnailUrl || isPlaceholderUrl(resolvedThumbnailUrl)) {
+    if (isStreamUid && (!resolvedThumbnailUrl || isPlaceholderUrl(resolvedThumbnailUrl))) {
+      const streamDomain = (env.CLOUDFLARE_STREAM_SUBDOMAIN || "videodelivery.net")
+        .replace(/^https?:\/\//, "")
+        .replace(/\/+$/, "");
+      resolvedThumbnailUrl = `https://${streamDomain}/${dto.providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`;
+    } else if (isImage) {
+      if (
+        !resolvedThumbnailUrl ||
+        isPlaceholderUrl(resolvedThumbnailUrl) ||
+        resolvedThumbnailUrl.includes("X-Amz-Signature")
+      ) {
         resolvedThumbnailUrl = cleanRawUrl;
       }
     }

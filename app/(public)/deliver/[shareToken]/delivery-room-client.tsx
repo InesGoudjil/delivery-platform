@@ -26,6 +26,7 @@ import {
 import { toast } from "sonner";
 import { CutReviewPlayer, type CutReviewPlayerRef } from "@/components/video/cut-review-player";
 import { formatTimecode, parseTimecodeToSeconds } from "@/lib/timecode";
+import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 import {
   verifyDeliveryPasscodeAction,
   toggleAssetApprovalAction,
@@ -611,8 +612,7 @@ export function DeliveryRoomClient({
                 const ver = asset.activeVersion || asset.versions[0] || null;
                 const isPhoto = asset.type === "photo_gallery" || asset.type === "image";
                 const poster =
-                  ver?.thumbnailUrl ||
-                  (isPhoto ? ver?.rawFileUrl : null) ||
+                  resolveThumbnailUrl(ver?.thumbnailUrl, ver?.rawFileUrl, isPhoto) ||
                   "/images/hero.jpg";
 
                 const durationSec = ver?.durationSeconds ? Math.round(ver.durationSeconds) : null;
@@ -771,13 +771,13 @@ export function DeliveryRoomClient({
                       isPhoto={isStill}
                       src={
                         isStill
-                          ? activeVersion.rawFileUrl || activeVersion.thumbnailUrl || "/images/hero.jpg"
-                          : activeVersion.hlsManifestUrl ||
-                            activeVersion.rawFileUrl ||
+                          ? resolveMediaUrl(activeVersion.rawFileUrl || activeVersion.thumbnailUrl) || "/images/hero.jpg"
+                          : resolveMediaUrl(activeVersion.hlsManifestUrl) ||
+                            resolveMediaUrl(activeVersion.rawFileUrl) ||
                             "https://files.vidstack.io/sprite-fight/hls/stream.m3u8"
                       }
                       title={activeAsset.title}
-                      poster={activeVersion.thumbnailUrl || "/images/hero.jpg"}
+                      poster={resolveThumbnailUrl(activeVersion.thumbnailUrl, activeVersion.rawFileUrl, isStill) || "/images/hero.jpg"}
                       aspectRatio={activeAsset.aspectRatio || "16:9"}
                       fps={24}
                       comments={activeFeedback.map((c) => ({

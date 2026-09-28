@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CutReviewPlayer, type CutReviewPlayerRef } from "@/components/video/cut-review-player";
 import { formatTimecode } from "@/lib/timecode";
+import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 import { addFeedbackAction } from "@/app/actions/feedback";
 import type { GalleryItem, FeedbackItem } from "./types";
 
@@ -92,18 +93,13 @@ export function AssetLightboxModal({
   };
 
   const videoOrPhotoSrc = isStill
-    ? (currentVersion?.rawFileUrl || activeItem.src)
-    : (currentVersion?.hlsManifestUrl ||
-      currentVersion?.rawFileUrl ||
-      activeItem.hlsUrl ||
-      activeItem.videoUrl ||
-      (activeItem.rawUrl &&
-      !activeItem.rawUrl.includes("unsplash.com") &&
-      (activeItem.rawUrl.endsWith(".mp4") ||
-        activeItem.rawUrl.endsWith(".m3u8") ||
-        activeItem.rawUrl.startsWith("/api/mock-upload"))
-        ? activeItem.rawUrl
-        : "https://files.vidstack.io/sprite-fight/hls/stream.m3u8"));
+    ? resolveMediaUrl(currentVersion?.rawFileUrl || activeItem.src)
+    : (resolveMediaUrl(currentVersion?.hlsManifestUrl) ||
+      resolveMediaUrl(currentVersion?.rawFileUrl) ||
+      resolveMediaUrl(activeItem.hlsUrl) ||
+      resolveMediaUrl(activeItem.videoUrl) ||
+      resolveMediaUrl(activeItem.rawUrl) ||
+      "https://files.vidstack.io/sprite-fight/hls/stream.m3u8");
 
   return (
     <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
@@ -187,7 +183,7 @@ export function AssetLightboxModal({
               isPhoto={isStill}
               src={videoOrPhotoSrc}
               title={activeItem.title}
-              poster={activeItem.src}
+              poster={resolveThumbnailUrl(currentVersion?.thumbnailUrl || activeItem.src, videoOrPhotoSrc, isStill)}
               aspectRatio={activeItem.aspectRatio || "16:9"}
               fps={24}
               comments={feedbackList.map((f) => ({

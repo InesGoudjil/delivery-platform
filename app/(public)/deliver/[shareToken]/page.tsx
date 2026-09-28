@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import { createHash } from "crypto";
 import { getServerServices } from "@/core/server";
+import { presignDeliveryAssets } from "@/lib/media-server";
 import { DeliveryRoomClient, DeliveryAssetItem } from "./delivery-room-client";
 
 interface PageProps {
@@ -139,7 +140,9 @@ export default async function ClientDeliveryPage(props: PageProps) {
   }
 
   // 7. Media access gate: Only send assets/streams/comments if public or unlocked
-  const deliveredAssets = (isPasscodeProtected && !isInitiallyUnlocked) ? [] : mappedAssets;
+  const deliveredAssets = (isPasscodeProtected && !isInitiallyUnlocked)
+    ? []
+    : await presignDeliveryAssets(mappedAssets, services.storage, 7200);
 
   return (
     <DeliveryRoomClient

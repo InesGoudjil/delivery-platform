@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import localFont from "next/font/local";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/i18n/context";
+import { MetaPixel } from "@/components/meta/MetaPixel";
+import { MetaPageView } from "@/components/meta/MetaPageView";
+import { PostHogProvider } from "@/lib/posthog/client";
+import { PostHogPageView } from "@/components/posthog/PostHogPageView";
+import { PostHogIdentify } from "@/components/posthog/PostHogIdentify";
 
 const manrope = localFont({
   src: "../public/fonts/Manrope-Regular.otf",
@@ -52,6 +58,7 @@ export default function RootLayout({
             `,
           }}
         />
+        <MetaPixel />
       </head>
       <body className="min-h-screen bg-background text-foreground antialiased selection:bg-[#f5551d] selection:text-black">
         <ThemeProvider
@@ -60,10 +67,19 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <I18nProvider initialLocale="en">
-            {children}
-          </I18nProvider>
-          <Toaster position="bottom-right" richColors closeButton />
+          <PostHogProvider>
+            <I18nProvider initialLocale="en">
+              {children}
+            </I18nProvider>
+            <Toaster position="bottom-right" richColors closeButton />
+            <PostHogIdentify />
+            <Suspense fallback={null}>
+              <PostHogPageView />
+            </Suspense>
+            <Suspense fallback={null}>
+              <MetaPageView />
+            </Suspense>
+          </PostHogProvider>
         </ThemeProvider>
       </body>
     </html>

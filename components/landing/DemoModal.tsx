@@ -12,6 +12,7 @@ import {
   TypographyMuted,
 } from "@/components/ui/typography";
 import { SAMPLE_PROJECTS, type ProjectDemo } from "./FeaturesSection";
+import { motion, AnimatePresence } from "@/components/ui/motion";
 
 interface DemoModalProps {
   isOpen: boolean;
@@ -41,8 +42,6 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
     },
   ]);
 
-  if (!isOpen) return null;
-
   const handleAddComment = () => {
     if (!commentInput.trim()) return;
     setComments((prev) => [
@@ -63,8 +62,22 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-      <div className="liquid-glass rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-6 text-[#f6f3ec] shadow-2xl relative border border-white/20">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <motion.div
+            className="liquid-glass rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-6 text-[#f6f3ec] shadow-2xl relative border border-white/20"
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          >
         <CardContent className="p-0 space-y-6">
           {/* Modal Header */}
           <div className="flex items-center justify-between border-b border-white/10 pb-4">
@@ -255,7 +268,9 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
             </div>
           </div>
         </CardContent>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

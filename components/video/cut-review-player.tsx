@@ -29,11 +29,13 @@ import {
   MessageSquare,
   Sparkles,
   AlertCircle,
+  Loader2,
   Image as ImageIcon,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
 import { formatTimecode, stepByFrames } from "@/lib/timecode";
+import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 
 export function isImageSource(url?: string): boolean {
   if (!url) return false;
@@ -72,6 +74,7 @@ export interface CutReviewPlayerProps {
   aspectRatio?: "16:9" | "9:16" | "1:1" | string;
   fps?: number;
   isPhoto?: boolean;
+  iframeEmbedUrl?: string;
   comments?: CutCommentMarker[];
   activeCommentId?: string | null;
   onCommentSelect?: (commentId: string, timestamp: number) => void;
@@ -89,6 +92,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
       aspectRatio = "16:9",
       fps = 24,
       isPhoto = false,
+      iframeEmbedUrl,
       comments = [],
       activeCommentId,
       onCommentSelect,
@@ -101,13 +105,33 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
     const playerRef = useRef<MediaPlayerInstance>(null);
     const scrubberRef = useRef<HTMLDivElement>(null);
 
-    const isImageCut = isPhoto || isImageSource(src) || isImageSource(poster);
+    const resolvedVideoSrc = resolveMediaUrl(src);
+    const resolvedPoster = resolveThumbnailUrl(poster, src, isPhoto);
+
+    // Only treat as image cut if explicitly marked as photo or the actual video source is an image
+    const isImageCut = Boolean(
+      isPhoto ||
+      (resolvedVideoSrc && isImageSource(resolvedVideoSrc))
+    );
+
+    // Extract Cloudflare Stream UID if present
+    const streamUidMatch = (resolvedVideoSrc || "").match(
+      /(?:cloudflarestream\.com|videodelivery\.net)\/([a-f0-9]{32})/i
+    );
+    const streamUid = streamUidMatch ? streamUidMatch[1] : null;
+    const streamHostMatch = (resolvedVideoSrc || "").match(/https?:\/\/([^/]+)/);
+    const streamDomain = streamHostMatch ? streamHostMatch[1] : "videodelivery.net";
+    const computedIframeUrl =
+      iframeEmbedUrl ||
+      (streamUid ? `https://${streamDomain}/${streamUid}/iframe` : null);
 
     // Reliable video stream fallback ONLY if it is a video cut
     const videoStreamSrc = isImageCut
       ? ""
-      : src || "https://files.vidstack.io/sprite-fight/hls/stream.m3u8";
+      : resolvedVideoSrc || "https://files.vidstack.io/sprite-fight/hls/stream.m3u8";
 
+    const [useIframeFallback, setUseIframeFallback] = useState(false);
+    const [retryCount, setRetryCount] = useState(0);
     const [zoomLevel, setZoomLevel] = useState(1);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
@@ -119,6 +143,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
     const [hoverTime, setHoverTime] = useState<number | null>(null);
     const [isDraggingScrubber, setIsDraggingScrubber] = useState(false);
     const [mediaError, setMediaError] = useState<string | null>(null);
+    const [isEncoding, setIsEncoding] = useState(false);
 
     // Imperative Handle for parent components (seeking, stepping, etc.)
     useImperativeHandle(ref, () => ({
@@ -298,8 +323,12 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
               onDoubleClick={() => setZoomLevel((prev) => (prev > 1 ? 1 : 2))}
             >
               <img
-                src={src || poster}
+                src={resolvedVideoSrc || resolvedPoster || src || poster}
                 alt={title || "Still Asset"}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = "/api/media/placeholder.svg";
+                }}
                 style={{
                   transform: `scale(${zoomLevel})`,
                   transition: "transform 200ms ease-out",
@@ -317,68 +346,168 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
               </div>
             </div>
           ) : (
-            /* Video Review Core (Vidstack) */
-            <>
-              <MediaPlayer
-                ref={playerRef}
-                src={videoStreamSrc}
-                title={title}
-                autoPlay={autoPlay}
-                playsInline
-                className="w-full h-full object-contain"
-                onTimeUpdate={(detail) => {
-                  setCurrentTime(detail.currentTime);
-                  onTimeChange?.(detail.currentTime, formatTimecode(detail.currentTime, fps));
-                }}
-                onDurationChange={(d) => setDuration(d)}
-                onPlay={() => {
-                  setIsPaused(false);
-                  setMediaError(null);
-                }}
-                onPause={() => setIsPaused(true)}
-                onError={() => {
-                  setMediaError("Video stream failed to decode or is still processing.");
-                }}
-                onFullscreenChange={(fs) => setIsFullscreen(fs)}
-              >
-                <MediaProvider>
-                  {poster && (
-                    <Poster
-                      src={poster}
-                      alt={title || "Video thumbnail"}
-                      className="w-full h-full object-contain"
-                    />
-                  )}
-                </MediaProvider>
-              </MediaPlayer>
-
-              {/* Stream Error Recovery Overlay */}
-              {mediaError && (
-                <div className="absolute inset-0 z-30 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-3 animate-in fade-in">
-                  <div className="size-12 rounded-full bg-[#f5551d]/20 text-[#f5551d] flex items-center justify-center border border-[#f5551d]/40">
-                    <AlertCircle className="size-6" />
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="font-bold text-sm text-white">Stream Processing or Unavailable</h4>
-                    <p className="text-xs text-muted-foreground max-w-sm">
-                      {mediaError}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
+            /* Video Review Core (Vidstack / Cloudflare Stream) */
+            useIframeFallback && computedIframeUrl ? (
+              <div className="relative w-full h-full bg-black flex items-center justify-center">
+                <iframe
+                  src={computedIframeUrl}
+                  title={title || "Cloudflare Stream"}
+                  allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                  allowFullScreen
+                  className="w-full h-full border-0"
+                />
+              </div>
+            ) : (
+              <>
+                <MediaPlayer
+                  ref={playerRef}
+                  src={videoStreamSrc}
+                  title={title}
+                  autoPlay={autoPlay}
+                  playsInline
+                  className="w-full h-full object-contain"
+                  onTimeUpdate={(detail) => {
+                    setCurrentTime(detail.currentTime);
+                    onTimeChange?.(detail.currentTime, formatTimecode(detail.currentTime, fps));
+                  }}
+                  onDurationChange={(d) => setDuration(d)}
+                  onPlay={() => {
+                    setIsPaused(false);
+                    setMediaError(null);
+                    setIsEncoding(false);
+                  }}
+                  onPause={() => setIsPaused(true)}
+                  onError={(detail: any) => {
+                    console.warn("[CutReviewPlayer] Vidstack playback error:", detail, videoStreamSrc);
+                    const isHls = videoStreamSrc.includes("manifest/video.m3u8");
+                    if (retryCount < 8 && isHls) {
+                      setIsEncoding(true);
                       setMediaError(null);
-                      if (playerRef.current) {
-                        playerRef.current.currentTime = 0;
-                        playerRef.current.play();
+                      setTimeout(() => {
+                        setRetryCount((prev) => prev + 1);
+                        if (playerRef.current) {
+                          playerRef.current.currentTime = 0;
+                          playerRef.current.play().catch(() => {});
+                        }
+                      }, 3500);
+                    } else {
+                      setIsEncoding(false);
+                      if (computedIframeUrl) {
+                        setMediaError("Direct HLS stream is taking longer to finish encoding. You can switch to the Cloudflare Player or retry.");
+                      } else {
+                        setMediaError("Video stream processing or temporarily unavailable.");
                       }
-                    }}
-                    className="px-4 py-1.5 rounded-full bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] transition-colors cursor-pointer"
-                  >
-                    Reload Stream
-                  </button>
-                </div>
-              )}
+                    }
+                  }}
+                  onFullscreenChange={(fs) => setIsFullscreen(fs)}
+                >
+                  <MediaProvider>
+                    {resolvedPoster && (
+                      <Poster
+                        src={resolvedPoster}
+                        alt={title || "Video thumbnail"}
+                        className="w-full h-full object-contain"
+                      />
+                    )}
+                  </MediaProvider>
+                </MediaPlayer>
+
+                {/* Cloudflare Edge Encoding In Progress Overlay */}
+                {isEncoding && (
+                  <div className="absolute inset-0 z-30 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-4 animate-in fade-in">
+                    <div className="relative">
+                      <div className="size-14 rounded-full bg-[#f5551d]/15 text-[#f5551d] flex items-center justify-center border border-[#f5551d]/30">
+                        <Loader2 className="size-7 animate-spin" />
+                      </div>
+                      <span className="absolute -bottom-1 -right-1 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#f5551d] opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-[#f5551d]"></span>
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 max-w-sm">
+                      <h4 className="font-bold text-sm text-white">
+                        Cloudflare Edge Encoding
+                      </h4>
+                      <p className="text-xs text-zinc-400">
+                        Transcoding 4K cut & generating adaptive HLS streaming tiers...
+                      </p>
+                      <p className="text-[11px] font-mono text-zinc-500">
+                        Checking stream readiness (Attempt {retryCount + 1} of 8)
+                      </p>
+                    </div>
+
+                    {computedIframeUrl && (
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUseIframeFallback(true);
+                            setIsEncoding(false);
+                            setMediaError(null);
+                          }}
+                          className="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors cursor-pointer border border-white/15"
+                        >
+                          Watch in Cloudflare Player Now
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Stream Error Recovery Overlay */}
+                {mediaError && !isEncoding && (
+                  <div className="absolute inset-0 z-30 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-3 animate-in fade-in">
+                    <div className="size-12 rounded-full bg-[#f5551d]/20 text-[#f5551d] flex items-center justify-center border border-[#f5551d]/40">
+                      <AlertCircle className="size-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="font-bold text-sm text-white">Stream Notice</h4>
+                      <p className="text-xs text-muted-foreground max-w-sm">
+                        {mediaError}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMediaError(null);
+                          setRetryCount(0);
+                          setIsEncoding(true);
+                          if (playerRef.current) {
+                            playerRef.current.currentTime = 0;
+                            playerRef.current.play().catch(() => {});
+                          }
+                        }}
+                        className="px-4 py-1.5 rounded-full bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] transition-colors cursor-pointer"
+                      >
+                        Retry Stream
+                      </button>
+                      {computedIframeUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUseIframeFallback(true);
+                            setMediaError(null);
+                          }}
+                          className="px-4 py-1.5 rounded-full bg-white/10 text-white font-bold text-xs hover:bg-white/20 transition-colors cursor-pointer"
+                        >
+                          Use Cloudflare Player
+                        </button>
+                      )}
+                      {resolvedVideoSrc && !resolvedVideoSrc.includes("manifest/video.m3u8") && (
+                        <a
+                          href={resolvedVideoSrc}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-zinc-300 font-bold text-xs hover:bg-white/15 transition-colors"
+                        >
+                          Direct File
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
 
               {/* Center Play/Pause Overlay Indicator on Click */}
               <div
@@ -403,6 +532,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                 </span>
               </div>
             </>
+            )
           )}
 
           {/* Floating Title (Top Right) */}

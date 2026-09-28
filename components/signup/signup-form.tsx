@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { signupSchema } from "@/lib/validations/auth";
 import { signupAction } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/client";
+import { trackCompleteRegistration } from "@/lib/meta/pixel";
 
 export function SignupForm({
   className,
@@ -144,6 +145,11 @@ export function SignupForm({
         setError(res.error);
       } else if (res?.success) {
         setSuccess(res.success);
+        // The auto-login branch redirects before reaching here; the
+        // form only sees the email-pending path. Fire a client pixel
+        // event so Meta gets both browser and server (CAPI) signals
+        // and dedupes by eventId.
+        trackCompleteRegistration({ status: "pending_email_confirmation" });
       }
     });
   };

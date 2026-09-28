@@ -30,15 +30,14 @@ export default async function StoragePage({
     redirect("/");
   }
 
-  // 1. Fetch real workspace projects, standalone assets, active subscription plan, and workspace features
-  const [dbProjects, standaloneAssets, currentPlan, features] = await Promise.all([
-    services.project.listWorkspaceProjects(workspace.id),
-    services.asset.listUnassignedAssets(workspace.id),
+  // 1. Fetch all assets for this workspace (covers client deliveries, projects, and standalone assets), plan, and features
+  const [allWorkspaceAssets, currentPlan, features] = await Promise.all([
+    services.asset.listWorkspaceAssets(workspace.id),
     services.subscription.getCurrentPlan(workspace.id),
     services.subscription.getFeatures(workspace.id),
   ]);
 
-  // 2. Calculate real storage usage concurrently
+  // 2. Calculate real storage usage concurrently across all workspace assets
   let totalVideoBytes = 0;
   let totalStillBytes = 0;
   let totalStreamBytes = 0;
@@ -46,7 +45,7 @@ export default async function StoragePage({
   const processAsset = async (asset: { id: string; type: string }) => {
     const activeVer = await services.asset.getActiveVersion(asset.id);
     if (activeVer) {
-      const bytes = activeVer.fileSizeBytes || 0;
+      const bytes = Number(activeVer.fileSizeBytes || 0);
       if (asset.type === "photo_gallery") {
         totalStillBytes += bytes;
       } else {
@@ -58,19 +57,15 @@ export default async function StoragePage({
     }
   };
 
-  const projectAssetsArrays = await Promise.all(
-    dbProjects.map((p) => services.asset.listAssets(p.id))
-  );
-
-  const allAssetsToProcess = [
-    ...standaloneAssets,
-    ...projectAssetsArrays.flat(),
-  ];
-
-  await Promise.all(allAssetsToProcess.map(processAsset));
+  await Promise.all(allWorkspaceAssets.map(processAsset));
 
   const calculatedUsedBytes = totalVideoBytes + totalStillBytes + totalStreamBytes;
   const usedBytes = Math.max(workspace.storageUsedBytes || 0, calculatedUsedBytes);
+
+  // Sync workspace.storage_used_bytes in database if it was out of sync
+  if (calculatedUsedBytes > 0 && workspace.storageUsedBytes !== calculatedUsedBytes) {
+    await services.workspace.trackStorageUsage(workspace.id, calculatedUsedBytes - (workspace.storageUsedBytes || 0)).catch(() => {});
+  }
 
   // 3. Quota allocation based on active subscription plan & features
   const GB_IN_BYTES = 1024 * 1024 * 1024;

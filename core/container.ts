@@ -85,6 +85,7 @@ export interface CoreServices {
     notification: NotificationService;
     stripe: StripeService;
     waitlist: WaitlistService;
+    storage: IStorageProvider;
   };
 }
 
@@ -239,6 +240,7 @@ export function createCoreServices(
       notification: notificationService,
       stripe: stripeService,
       waitlist: waitlistService,
+      storage: storageProvider,
     },
   };
 }

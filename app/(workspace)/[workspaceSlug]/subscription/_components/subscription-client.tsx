@@ -7,6 +7,8 @@ import { PlanComparisonGrid, PlanItem } from "./plan-comparison-grid";
 import { InvoicesHistoryCard } from "./invoices-history-card";
 import { Invoice } from "@/core/entities/invoice";
 import { WorkspaceFeatureConfig } from "@/core/entities/workspace";
+import { trackInitiateCheckout } from "@/lib/meta/pixel";
+import { getPostHogClient } from "@/lib/posthog/client";
 
 interface SubscriptionClientProps {
   workspaceId: string;
@@ -79,6 +81,22 @@ export function SubscriptionClient({
 
     try {
       setLoadingPlanId(plan.id);
+      // Fire InitiateCheckout before redirecting to Stripe. The
+      // matching server-side Purchase event fires from the webhook
+      // after checkout.session.completed.
+      trackInitiateCheckout({
+        planId: plan.id,
+        planName: plan.name,
+        value: (plan.priceCents || 0) / 100,
+        currency: plan.currency || "USD",
+      });
+      const postHog = getPostHogClient();
+      postHog?.capture("initiate_checkout", {
+        plan_id: plan.id,
+        plan_name: plan.name,
+        value: (plan.priceCents || 0) / 100,
+        currency: plan.currency || "USD",
+      });
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

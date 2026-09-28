@@ -65,10 +65,40 @@ export async function GET(
     });
   }
 
-  // If not found in store, fallback to sample video stream
-  return NextResponse.redirect(
-    "https://files.vidstack.io/sprite-fight/720p.mp4"
-  );
+  const rangeHeader = req.headers.get("range");
+  const acceptHeader = req.headers.get("accept") || "";
+  const isVideoPlaybackRequest =
+    Boolean(rangeHeader) ||
+    acceptHeader.includes("video") ||
+    req.nextUrl.searchParams.get("type") === "video" ||
+    req.nextUrl.searchParams.has("video");
+
+  if (isVideoPlaybackRequest) {
+    // If explicitly requested by a video player with byte ranges or video Accept
+    return NextResponse.redirect(
+      "https://files.vidstack.io/sprite-fight/720p.mp4",
+      307
+    );
+  }
+
+  // By default (Next.js image optimizer, browser thumbnails, img tags):
+  // Return the SVG placeholder directly with 200 OK so Next.js never sees an empty 307
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" fill="none">
+    <rect width="1280" height="720" fill="#0e0e11"/>
+    <rect x="0.5" y="0.5" width="1279" height="719" stroke="#ffffff" stroke-opacity="0.08"/>
+    <g transform="translate(608, 328)">
+      <circle cx="32" cy="32" r="32" fill="#18181b" stroke="#ffffff" stroke-opacity="0.12"/>
+      <path d="M26 20L44 32L26 44V20Z" fill="#f5551d"/>
+    </g>
+    <text x="640" y="405" text-anchor="middle" fill="#71717a" font-family="system-ui, sans-serif" font-size="14" font-weight="600" letter-spacing="1">MOCK MEDIA PREVIEW</text>
+  </svg>`;
+  return new NextResponse(svg, {
+    status: 200,
+    headers: {
+      "Content-Type": "image/svg+xml",
+      "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+    },
+  });
 }
 
 export async function POST(

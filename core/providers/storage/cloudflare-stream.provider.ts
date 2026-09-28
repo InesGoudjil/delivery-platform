@@ -29,7 +29,8 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
     }
     this.accountId = config.accountId;
     this.apiToken = config.apiToken;
-    this.deliveryDomain = config.customerSubdomain || "videodelivery.net";
+    const rawDomain = config.customerSubdomain || "videodelivery.net";
+    this.deliveryDomain = rawDomain.replace(/^https?:\/\//, "").replace(/\/+$/, "");
     this.webhookSecret = config.webhookSecret;
   }
 
@@ -92,21 +93,37 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
   }
 
   /**
-   * Builds standardized Cloudflare Stream HLS and thumbnail URLs for a video UID
+   * Builds standardized Cloudflare Stream HLS, DASH, and thumbnail URLs for a video UID
    */
   async getPlaybackInfo(providerUid: string): Promise<PlaybackInfo | null> {
-    const status = await this.getAssetStatus(providerUid);
+    let status: StorageAssetStatus = {
+      providerUid,
+      status: "processing",
+    };
+    try {
+      status = await this.getAssetStatus(providerUid);
+    } catch (err: any) {
+      console.warn(`[CloudflareStream] Failed to get asset status for ${providerUid}:`, err?.message || err);
+    }
+
+    const iframeEmbedUrl = this.deliveryDomain.includes("videodelivery.net")
+      ? `https://iframe.videodelivery.net/${providerUid}`
+      : `https://${this.deliveryDomain}/${providerUid}/iframe`;
+
+    const hlsManifestUrl = `https://${this.deliveryDomain}/${providerUid}/manifest/video.m3u8`;
+    const thumbnailUrl = `https://${this.deliveryDomain}/${providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`;
 
     return {
       providerUid,
-      hlsManifestUrl: `https://${this.deliveryDomain}/${providerUid}/manifest/video.m3u8`,
+      hlsManifestUrl,
       dashManifestUrl: `https://${this.deliveryDomain}/${providerUid}/manifest/video.mpd`,
-      thumbnailUrl: `https://${this.deliveryDomain}/${providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`,
+      thumbnailUrl,
       animatedThumbnailUrl: `https://${this.deliveryDomain}/${providerUid}/thumbnails/thumbnail.gif?time=1s&duration=3s`,
-      iframeEmbedUrl: `https://iframe.${this.deliveryDomain}/${providerUid}`,
+      iframeEmbedUrl,
       durationSeconds: status.durationSeconds,
-      status: status.status,
-    };
+      status: status.status || "processing",
+      rawDownloadUrl: hlsManifestUrl,
+    } as any;
   }
 
   /**
@@ -115,48 +132,65 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
   async getAssetStatus(providerUid: string): Promise<StorageAssetStatus> {
     const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/stream/${providerUid}`;
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${this.apiToken}`,
-      },
-    });
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${this.apiToken}`,
+        },
+      });
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        return { providerUid, status: "pending" };
+      if (!response.ok) {
+        if (response.status === 404) {
+          return { providerUid, status: "pending" };
+        }
+        const errorText = await response.text();
+        return {
+          providerUid,
+          status: "error",
+          errorMessage: `Cloudflare Stream error (${response.status}): ${errorText}`,
+          hlsManifestUrl: `https://${this.deliveryDomain}/${providerUid}/manifest/video.m3u8`,
+          thumbnailUrl: `https://${this.deliveryDomain}/${providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`,
+        };
       }
-      const errorText = await response.text();
+
+      const json = await response.json();
+      const result = json.result;
+
+      if (!result) {
+        return {
+          providerUid,
+          status: "pending",
+          hlsManifestUrl: `https://${this.deliveryDomain}/${providerUid}/manifest/video.m3u8`,
+          thumbnailUrl: `https://${this.deliveryDomain}/${providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`,
+        };
+      }
+
+      const state = result.status?.state; // 'ready', 'inprogress', 'queued', 'error'
+      let status: StorageAssetStatus["status"] = "pending";
+
+      if (state === "ready") status = "ready";
+      else if (state === "inprogress" || state === "queued") status = "processing";
+      else if (state === "error") status = "error";
+
       return {
         providerUid,
-        status: "error",
-        errorMessage: `Cloudflare Stream error (${response.status}): ${errorText}`,
+        status,
+        durationSeconds: result.duration ? Number(result.duration) : undefined,
+        fileSizeBytes: result.size ? Number(result.size) : undefined,
+        hlsManifestUrl: `https://${this.deliveryDomain}/${providerUid}/manifest/video.m3u8`,
+        thumbnailUrl: `https://${this.deliveryDomain}/${providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`,
+        errorMessage: result.status?.errorReasonText,
+      };
+    } catch (err: any) {
+      console.warn(`[CloudflareStream] Network error querying status for ${providerUid}:`, err?.message || err);
+      return {
+        providerUid,
+        status: "processing",
+        hlsManifestUrl: `https://${this.deliveryDomain}/${providerUid}/manifest/video.m3u8`,
+        thumbnailUrl: `https://${this.deliveryDomain}/${providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`,
       };
     }
-
-    const json = await response.json();
-    const result = json.result;
-
-    if (!result) {
-      return { providerUid, status: "pending" };
-    }
-
-    const state = result.status?.state; // 'ready', 'inprogress', 'queued', 'error'
-    let status: StorageAssetStatus["status"] = "pending";
-
-    if (state === "ready") status = "ready";
-    else if (state === "inprogress" || state === "queued") status = "processing";
-    else if (state === "error") status = "error";
-
-    return {
-      providerUid,
-      status,
-      durationSeconds: result.duration ? Number(result.duration) : undefined,
-      fileSizeBytes: result.size ? Number(result.size) : undefined,
-      hlsManifestUrl: `https://${this.deliveryDomain}/${providerUid}/manifest/video.m3u8`,
-      thumbnailUrl: `https://${this.deliveryDomain}/${providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`,
-      errorMessage: result.status?.errorReasonText,
-    };
   }
 
   /**
