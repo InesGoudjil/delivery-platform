@@ -147,12 +147,14 @@ export class StripeService {
         workspace_slug: pathSlug,
         plan_id: plan.id,
         user_id: input.userId,
+        email: input.userEmail || '',
       },
       subscription_data: {
         metadata: {
           workspace_id: input.workspaceId,
           workspace_slug: pathSlug,
           plan_id: plan.id,
+          email: input.userEmail || '',
         },
       },
       success_url: `${input.origin}/${pathSlug}/subscription?billing=success&session_id={CHECKOUT_SESSION_ID}`,

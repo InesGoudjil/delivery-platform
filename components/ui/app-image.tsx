@@ -1,9 +1,9 @@
 "use client";
 
-import  { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Image, { ImageProps } from "next/image";
-import { Camera, Film, Image as ImageIcon } from "lucide-react";
-import { resolveMediaUrl } from "@/lib/media";
+import { Camera, Film, Image as ImageIcon, RefreshCw } from "lucide-react";
+import { resolveThumbnailUrl, isPlaceholderUrl, resolveMediaUrl } from "@/lib/media";
 
 export interface AppImageProps extends Omit<ImageProps, "src" | "alt"> {
   src?: string | null;
@@ -25,19 +25,72 @@ export function AppImage({
   className = "",
   fill = true,
   objectFit = "cover",
+  sizes,
+  unoptimized,
   ...props
 }: AppImageProps) {
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentSrc, setCurrentSrc] = useState<string>("");
+  const [retryAttempt, setRetryAttempt] = useState(0);
 
-  const resolvedSrc = resolveMediaUrl(src);
+  const isImageOrStill = fallbackIcon === "image" || fallbackIcon === "camera";
 
   useEffect(() => {
     setHasError(false);
     setIsLoading(true);
-  }, [resolvedSrc]);
 
-  const isValidSrc = Boolean(resolvedSrc && typeof resolvedSrc === "string" && resolvedSrc.trim().length > 0 && !hasError);
+    if (!src || typeof src !== "string" || src.trim().length === 0) {
+      setHasError(true);
+      setIsLoading(false);
+      setCurrentSrc("");
+      return;
+    }
+
+    const trimmed = src.trim();
+    if (isPlaceholderUrl(trimmed)) {
+      setHasError(true);
+      setIsLoading(false);
+      setCurrentSrc("");
+      return;
+    }
+
+    const resolved =
+      resolveThumbnailUrl(trimmed, undefined, isImageOrStill) ||
+      resolveMediaUrl(trimmed);
+
+    if (!resolved || isPlaceholderUrl(resolved)) {
+      setHasError(true);
+      setIsLoading(false);
+      setCurrentSrc("");
+      return;
+    }
+
+    setCurrentSrc(resolved);
+  }, [src, isImageOrStill, retryAttempt]);
+
+  const handleImageError = () => {
+    // If the image failed on the direct R2 public CDN, gracefully fall back to the authenticated /api/media proxy
+    if (currentSrc.includes(".r2.dev/workspaces/")) {
+      const workspaceKey = currentSrc.slice(currentSrc.indexOf("workspaces/"));
+      const proxyUrl = `/api/media/${workspaceKey}`;
+      if (currentSrc !== proxyUrl) {
+        console.warn(`[AppImage] R2 CDN returned error for ${currentSrc}. Falling back to proxy ${proxyUrl}`);
+        setCurrentSrc(proxyUrl);
+        return;
+      }
+    }
+
+    setHasError(true);
+    setIsLoading(false);
+  };
+
+  const isExternalCdn = Boolean(
+    currentSrc &&
+    (currentSrc.includes("cloudflarestream.com") ||
+      currentSrc.includes("r2.dev") ||
+      currentSrc.includes("videodelivery.net"))
+  );
 
   const renderFallbackIcon = () => {
     switch (fallbackIcon) {
@@ -55,30 +108,49 @@ export function AppImage({
     <div
       className={`relative overflow-hidden bg-[#0c0c0e] ${aspectRatioClass || ""} ${containerClassName}`}
     >
-      {isValidSrc ? (
+      {!hasError && currentSrc ? (
         <>
           {isLoading && (
-            <div className="absolute inset-0 bg-white/5 animate-pulse z-10 flex items-center justify-center">
-              <div className="size-6 rounded-full border-2 border-white/20 border-t-[#f5551d] animate-spin" />
+            <div className="absolute inset-0 bg-white/5 animate-pulse z-10 flex items-center justify-center pointer-events-none">
+              <div className="size-5 rounded-full border-2 border-white/20 border-t-[#f5551d] animate-spin" />
             </div>
           )}
           <Image
-            src={resolvedSrc}
+            src={currentSrc}
             alt={alt}
             fill={fill}
-            onError={() => setHasError(true)}
-            onLoadingComplete={() => setIsLoading(false)}
-            className={`transition-all duration-300 ${
-              isLoading ? "scale-105 blur-sm opacity-0" : "scale-100 blur-0 opacity-100"
+            sizes={sizes || (fill ? "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" : undefined)}
+            unoptimized={unoptimized ?? true}
+            onError={handleImageError}
+            onLoad={() => setIsLoading(false)}
+            className={`transition-opacity duration-300 ${
+              isLoading ? "opacity-40" : "opacity-100"
             } ${objectFit === "contain" ? "object-contain" : "object-cover"} ${className}`}
             {...props}
           />
         </>
       ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-3 text-center bg-[#141416] border border-white/5 text-[#8e8e93] space-y-1.5">
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-3 text-center bg-[#141416] border border-white/5 text-[#8e8e93] space-y-1.5 select-none">
           {renderFallbackIcon()}
-          {fallbackText && (
+          {fallbackText ? (
             <span className="text-[10px] font-mono text-[#71717a] line-clamp-1">{fallbackText}</span>
+          ) : (
+            <span className="text-[10px] font-mono text-[#71717a] uppercase tracking-wider">
+              {fallbackIcon === "film" ? "No Video Preview" : "No Image Preview"}
+            </span>
+          )}
+          {src && !isPlaceholderUrl(src) && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setRetryAttempt((prev) => prev + 1);
+              }}
+              className="mt-1 flex items-center gap-1 text-[9px] font-mono text-[#f5551d] hover:underline cursor-pointer"
+            >
+              <RefreshCw className="size-2.5" />
+              <span>Retry</span>
+            </button>
           )}
         </div>
       )}

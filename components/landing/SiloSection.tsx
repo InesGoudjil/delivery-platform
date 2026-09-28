@@ -1,17 +1,25 @@
-"use client";
-
 import React from "react";
 import { Lock, Film, Clock } from "lucide-react";
+import {
+  motion,
+  ScrollReveal,
+  StaggerContainer,
+  StaggerItem,
+} from "@/components/ui/motion";
 
 export function SiloSection() {
   return (
-    <section id="silo" className="py-20 text-center space-y-12">
+    <ScrollReveal id="silo" className="py-20 text-center space-y-12">
       {/* Top Badge */}
       <div className="flex justify-center">
-        <div className="inline-flex items-center gap-2 rounded-full border border-[#f5551d]/40 bg-[#f5551d]/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#ff7948]">
+        <motion.div
+          className="inline-flex items-center gap-2 rounded-full border border-[#f5551d]/40 bg-[#f5551d]/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#ff7948]"
+          whileHover={{ scale: 1.04 }}
+          transition={{ duration: 0.2 }}
+        >
           <Lock className="size-3.5" />
           <span>SECURE ARCHIVE</span>
-        </div>
+        </motion.div>
       </div>
 
       {/* Main Title & Description */}
@@ -30,7 +38,7 @@ export function SiloSection() {
       </div>
 
       {/* 3 Feature Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+      <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left" staggerDelay={0.1}>
         {[
           {
             icon: Film,
@@ -53,28 +61,30 @@ export function SiloSection() {
         ].map((card, idx) => {
           const IconComponent = card.icon;
           return (
-            <div
-              key={idx}
-              className="card rounded-2xl border border-white/10 bg-[#121217] p-8 shadow-xl space-y-4 hover:border-white/20 transition-all"
-            >
-              <div className="flex size-11 items-center justify-center rounded-xl bg-[#2a1b18] text-[#f5551d] border border-[#f5551d]/20">
-                <IconComponent className="size-5" />
-              </div>
-              <h3 className="text-lg font-bold text-white font-display">
-                {card.title}
-              </h3>
-              <p className="text-sm text-[#aeaeb4] leading-relaxed">
-                {card.description}
-              </p>
-            </div>
+            <StaggerItem key={idx}>
+              <motion.div
+                className="card rounded-2xl border border-white/10 bg-[#121217] p-8 shadow-xl space-y-4 hover:border-white/20 transition-all h-full"
+                whileHover={{ y: -5, transition: { duration: 0.2 } }}
+              >
+                <div className="flex size-11 items-center justify-center rounded-xl bg-[#2a1b18] text-[#f5551d] border border-[#f5551d]/20">
+                  <IconComponent className="size-5" />
+                </div>
+                <h3 className="text-lg font-bold text-white font-display">
+                  {card.title}
+                </h3>
+                <p className="text-sm text-[#aeaeb4] leading-relaxed">
+                  {card.description}
+                </p>
+              </motion.div>
+            </StaggerItem>
           );
         })}
-      </div>
+      </StaggerContainer>
 
       {/* Subtext */}
       <p className="text-xs italic text-[#71717a]">
         On Pro & Studio · $79/yr per TB · restore in 24-48h.
       </p>
-    </section>
+    </ScrollReveal>
   );
 }

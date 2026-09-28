@@ -2,6 +2,12 @@
 
 import React, { useState } from "react";
 import { Check, Minus } from "lucide-react";
+import {
+  motion,
+  ScrollReveal,
+  StaggerContainer,
+  StaggerItem,
+} from "@/components/ui/motion";
 
 interface PricingSectionProps {
   onSelectPlan?: (planName: string) => void;
@@ -55,7 +61,7 @@ export function PricingSection({ onSelectPlan }: PricingSectionProps) {
       priceSub: billing === "yearly" ? "billed yearly · save 25%" : "billed monthly",
       popular: true,
       buttonText: "CHOOSE PRO",
-      buttonStyle: "bg-gradient-to-r from-[#ce3a09] to-[#df4510] text-white shadow-xl shadow-[#f5551d]/40 hover:scale-[1.02]",
+      buttonStyle: "bg-gradient-to-r from-[#ce3a09] to-[#df4510] text-white shadow-xl shadow-[#f5551d]/40",
       features: [
         "Everything in Basic, plus:",
         "500 GB video storage",
@@ -107,15 +113,15 @@ export function PricingSection({ onSelectPlan }: PricingSectionProps) {
   return (
     <section id="pricing" className="py-20 space-y-24 text-center">
       {/* 1. Testimonial Quote Banner */}
-      <div className="max-w-4xl mx-auto space-y-4">
+      <ScrollReveal className="max-w-4xl mx-auto space-y-4">
         <h2 className="text-2xl sm:text-4xl font-extrabold text-white leading-tight uppercase font-display">
           "CINESPACE REPLACED THREE TOOLS. MY CLIENTS APPROVE FASTER, AND EVERY PAGE LOOKS LIKE IT CAME FROM A REAL STUDIO."
         </h2>
         <p className="text-sm text-[#aeaeb4] font-medium">— A filmmaker in Dubai</p>
-      </div>
+      </ScrollReveal>
 
       {/* 2. Pricing Header */}
-      <div className="space-y-4 max-w-2xl mx-auto">
+      <ScrollReveal className="space-y-4 max-w-2xl mx-auto">
         <span className="text-xs font-semibold uppercase tracking-widest text-[#f5551d]">
           PRICES THAT SUIT EVERY FILMMAKER
         </span>
@@ -128,93 +134,112 @@ export function PricingSection({ onSelectPlan }: PricingSectionProps) {
 
         {/* Toggle */}
         <div className="pt-4 flex justify-center">
-          <div className="inline-flex items-center rounded-full bg-[#121217] border border-white/10 p-1">
+          <div className="relative inline-flex items-center rounded-full bg-[#121217] border border-white/10 p-1">
             <button
               onClick={() => setBilling("monthly")}
-              className={`rounded-full px-6 py-2 text-xs font-bold transition-all cursor-pointer ${
+              className={`relative z-10 rounded-full px-6 py-2 text-xs font-bold transition-colors cursor-pointer ${
                 billing === "monthly"
-                  ? "bg-white/10 text-white"
+                  ? "text-white"
                   : "text-[#aeaeb4] hover:text-white"
               }`}
             >
               Monthly
+              {billing === "monthly" && (
+                <motion.div
+                  layoutId="billingIndicator"
+                  className="absolute inset-0 bg-white/10 rounded-full -z-10"
+                  transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                />
+              )}
             </button>
             <button
               onClick={() => setBilling("yearly")}
-              className={`rounded-full px-6 py-2 text-xs font-bold transition-all cursor-pointer ${
+              className={`relative z-10 rounded-full px-6 py-2 text-xs font-bold transition-colors cursor-pointer ${
                 billing === "yearly"
-                  ? "bg-[#f5551d] text-white shadow-lg shadow-[#f5551d]/30"
+                  ? "text-white"
                   : "text-[#aeaeb4] hover:text-white"
               }`}
             >
               Yearly <span className="text-[10px] opacity-90 font-mono">Save 25%</span>
+              {billing === "yearly" && (
+                <motion.div
+                  layoutId="billingIndicator"
+                  className="absolute inset-0 bg-[#f5551d] shadow-lg shadow-[#f5551d]/30 rounded-full -z-10"
+                  transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                />
+              )}
             </button>
           </div>
         </div>
-      </div>
+      </ScrollReveal>
 
       {/* 3. 4-Tier Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
+      <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left" staggerDelay={0.08}>
         {PLANS.map((plan, idx) => (
-          <div
-            key={idx}
-            className={`card relative rounded-[28px] border p-8 flex flex-col justify-between transition-all duration-300 ${
-              plan.popular
-                ? "border-[#f5551d] bg-gradient-to-b from-[#2a130c] to-[#121217] shadow-2xl scale-[1.02]"
-                : "border-white/10 bg-[#121217] shadow-xl hover:border-white/20"
-            }`}
-          >
-            {plan.popular && (
-              <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-[#f5551d] px-4 py-1 text-[10px] font-extrabold uppercase tracking-widest text-white shadow-md">
-                MOST POPULAR
-              </span>
-            )}
+          <StaggerItem key={idx}>
+            <motion.div
+              className={`card relative rounded-[28px] border p-8 flex flex-col justify-between h-full transition-all duration-300 ${
+                plan.popular
+                  ? "border-[#f5551d] bg-gradient-to-b from-[#2a130c] to-[#121217] shadow-2xl"
+                  : "border-white/10 bg-[#121217] shadow-xl hover:border-white/20"
+              }`}
+              whileHover={{ y: -6, transition: { duration: 0.2 } }}
+            >
+              {plan.popular && (
+                <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-[#f5551d] px-4 py-1 text-[10px] font-extrabold uppercase tracking-widest text-white shadow-md">
+                  MOST POPULAR
+                </span>
+              )}
 
-            <div className="space-y-6">
-              <span className="text-sm font-bold text-white tracking-widest font-display block">
-                {plan.name}
-              </span>
+              <div className="space-y-6">
+                <span className="text-sm font-bold text-white tracking-widest font-display block">
+                  {plan.name}
+                </span>
 
-              <div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-black text-white font-display">
-                    {plan.price}
-                  </span>
-                  {plan.period && (
-                    <span className="text-xs text-[#aeaeb4] font-medium">{plan.period}</span>
+                <div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-black text-white font-display">
+                      {plan.price}
+                    </span>
+                    {plan.period && (
+                      <span className="text-xs text-[#aeaeb4] font-medium">{plan.period}</span>
+                    )}
+                  </div>
+                  {plan.priceSub && (
+                    <span className="text-[11px] text-[#f5551d] block mt-1">
+                      {plan.priceSub}
+                    </span>
                   )}
                 </div>
-                {plan.priceSub && (
-                  <span className="text-[11px] text-[#f5551d] block mt-1">
-                    {plan.priceSub}
-                  </span>
-                )}
+
+                <ul className="space-y-3 text-xs text-[#aeaeb4] pt-2">
+                  {plan.features.map((feat, fIdx) => (
+                    <li key={fIdx} className="flex items-start gap-2">
+                      <Check className="size-3.5 text-[#f5551d] shrink-0 mt-0.5" />
+                      <span>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              <ul className="space-y-3 text-xs text-[#aeaeb4] pt-2">
-                {plan.features.map((feat, fIdx) => (
-                  <li key={fIdx} className="flex items-start gap-2">
-                    <Check className="size-3.5 text-[#f5551d] shrink-0 mt-0.5" />
-                    <span>{feat}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="pt-8">
-              <button
-                onClick={() => handleSelect(plan.name)}
-                className={`w-full rounded-full py-3.5 text-xs font-extrabold tracking-wider uppercase transition-all cursor-pointer ${plan.buttonStyle}`}
-              >
-                {plan.buttonText}
-              </button>
-            </div>
-          </div>
+              <div className="pt-8">
+                <motion.button
+                  onClick={() => handleSelect(plan.name)}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ duration: 0.15 }}
+                  className={`w-full rounded-full py-3.5 text-xs font-extrabold tracking-wider uppercase cursor-pointer ${plan.buttonStyle}`}
+                >
+                  {plan.buttonText}
+                </motion.button>
+              </div>
+            </motion.div>
+          </StaggerItem>
         ))}
-      </div>
+      </StaggerContainer>
 
       {/* 4. Compare Packages Table Matrix */}
-      <div className="pt-12 space-y-8">
+      <ScrollReveal className="pt-12 space-y-8">
         <h3 className="text-3xl sm:text-5xl font-black text-white tracking-tight uppercase font-display">
           COMPARE OUR PACKAGES
         </h3>
@@ -295,7 +320,7 @@ export function PricingSection({ onSelectPlan }: PricingSectionProps) {
         <p className="text-xs italic text-[#71717a]">
           Every plan includes hosting, transcoding, and secure client links.
         </p>
-      </div>
+      </ScrollReveal>
     </section>
   );
 }

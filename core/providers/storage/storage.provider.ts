@@ -9,6 +9,9 @@ export interface CreateUploadUrlParams {
   fileSizeBytes: number;
   filename: string;
   maxDurationSeconds?: number;
+  isPublic?: boolean;
+  category?: string;
+  versionNumber?: number;
   metadata?: Record<string, string>;
 }
 
@@ -31,6 +34,7 @@ export interface PlaybackInfo {
   status: "ready" | "processing" | "pending" | "error";
   width?: number;
   height?: number;
+  rawDownloadUrl?: string;
 }
 
 export interface StorageAssetStatus {
@@ -66,6 +70,11 @@ export interface IStorageProvider {
    * Deletes the media file from the storage provider
    */
   deleteAsset(providerUid: string): Promise<void>;
+
+  /**
+   * Returns a direct CDN URL (for public assets) or a short-lived presigned GET URL (for private assets)
+   */
+  getSecurePlaybackUrl?(providerUid: string, isPublic?: boolean, expiresInSeconds?: number): Promise<string>;
 
   /**
    * Validates incoming webhook signature (e.g. from Cloudflare)

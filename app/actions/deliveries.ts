@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { createHash } from "crypto";
 import { getServerServices } from "@/core/server";
+import { presignDeliveryAssets } from "@/lib/media-server";
 
 export async function verifyDeliveryPasscodeAction(
   shareToken: string,
@@ -95,8 +96,9 @@ export async function verifyDeliveryPasscodeAction(
       };
     });
 
+    const presignedAssets = await presignDeliveryAssets(mappedAssets, services.storage, 7200);
     revalidatePath(`/deliver/${shareToken}`);
-    return { success: true, assets: mappedAssets };
+    return { success: true, assets: presignedAssets };
   } catch (err: any) {
     return { success: false, error: err.message || "Failed to verify passcode." };
   }

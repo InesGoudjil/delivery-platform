@@ -12,6 +12,8 @@ export interface RequestUploadInput {
   fileSizeBytes: number;
   assetType?: AssetType;
   maxDurationSeconds?: number;
+  category?: string;
+  metadata?: Record<string, string>;
 }
 
 export async function requestAssetUploadAction(input: RequestUploadInput) {
@@ -33,6 +35,8 @@ export async function requestAssetUploadAction(input: RequestUploadInput) {
       fileSizeBytes: input.fileSizeBytes,
       assetType: input.assetType || "video",
       maxDurationSeconds: input.maxDurationSeconds,
+      category: input.category,
+      metadata: input.metadata,
     });
 
     return {

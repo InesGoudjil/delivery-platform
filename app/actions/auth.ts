@@ -3,7 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
+import { cookies } from 'next/headers';
+import { randomUUID } from 'crypto';
 import { getServerServices } from '@/core/server';
+import { sendServerEvent } from '@/lib/meta';
+import { captureSignup, captureLogin } from '@/lib/posthog';
 import {
   loginSchema,
   signupSchema,
@@ -167,6 +171,42 @@ export async function loginAction(prevState: AuthState | null, formData: FormDat
       workspace = userWorkspaces[0] || await services.workspace.getOrCreateWorkspace(user.id, user.user_metadata?.full_name || 'My Studio').catch(() => null);
     }
 
+    // Fire server-side Login (no client echo needed — Login is server-only
+    // in this integration; the user is already known to the page).
+    try {
+      const headerList = await headers();
+      const ip =
+        headerList.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+        headerList.get('x-real-ip') ||
+        undefined;
+      const userAgent = headerList.get('user-agent') || undefined;
+      await sendServerEvent({
+        eventName: 'Login',
+        eventId: `login_${randomUUID()}`,
+        actionSource: 'website',
+        userData: {
+          email,
+          externalId: user?.id,
+        },
+        clientIp: ip,
+        userAgent,
+      });
+    } catch (e) {
+      // already logged
+    }
+
+    // PostHog: identify + group + logged_in.
+    try {
+      captureLogin({
+        userId: user?.id,
+        email,
+        workspaceId: workspace?.id,
+        workspaceSlug: workspace?.slug,
+      });
+    } catch (e) {
+      // already logged
+    }
+
     revalidatePath('/', 'layout');
     redirect(workspace?.slug ? `/${workspace.slug}` : '/');
   } catch (err: any) {
@@ -215,8 +255,72 @@ export async function signupAction(prevState: AuthState | null, formData: FormDa
 
       const workspace = await services.workspace.getOrCreateWorkspace(data.user.id, name);
 
+      // Fire server-side CompleteRegistration and hand the eventId to
+      // the client via a short-lived cookie so the browser pixel can
+      // echo it on the next page (Meta dedupes by eventId).
+      const complregEventId = `cr_${randomUUID()}`;
+      try {
+        const headerList = await headers();
+        const ip =
+          headerList.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+          headerList.get('x-real-ip') ||
+          undefined;
+        const userAgent = headerList.get('user-agent') || undefined;
+        const referer = headerList.get('referer') || undefined;
+        await sendServerEvent({
+          eventName: 'CompleteRegistration',
+          eventId: complregEventId,
+          eventSourceUrl: referer,
+          actionSource: 'website',
+          userData: {
+            email: data.user.email,
+            externalId: data.user.id,
+          },
+          customData: {
+            content_name: 'signup',
+            status: 'signed_in',
+          },
+          clientIp: ip,
+          userAgent,
+        });
+      } catch (e) {
+        // already logged inside sendServerEvent
+      }
+
+      const cookieStore = await cookies();
+      cookieStore.set('meta_event_complreg', complregEventId, {
+        httpOnly: false, // must be readable by the client pixel helper
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60, // 1 minute is enough for the post-redirect echo
+        path: '/',
+      });
+
+      // PostHog: identify + group + signup_completed.
+      try {
+        captureSignup({
+          userId: data.user.id,
+          email: data.user.email || email,
+          status: 'signed_in',
+          workspaceId: workspace.id,
+          workspaceSlug: workspace.slug,
+        });
+      } catch (e) {
+        // already logged
+      }
+
       revalidatePath('/', 'layout');
       redirect(`/${workspace.slug}`);
+    }
+
+    // Email-pending branch: no session yet, but the account exists.
+    try {
+      captureSignup({
+        email,
+        status: 'pending_email_confirmation',
+      });
+    } catch (e) {
+      // already logged
     }
 
     return {

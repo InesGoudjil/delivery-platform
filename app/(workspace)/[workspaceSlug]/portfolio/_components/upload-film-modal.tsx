@@ -137,6 +137,7 @@ export function UploadFilmModal({
         filename: selectedFile.name,
         fileSizeBytes: selectedFile.size,
         assetType,
+        category: assetType === "video" ? "film" : "still",
       });
 
       if (!initRes.success || !initRes.directUpload) {
@@ -198,10 +199,12 @@ export function UploadFilmModal({
             filename: thumbnailFile.name,
             fileSizeBytes: thumbnailFile.size,
             assetType: "photo_gallery",
+            category: "cover",
           });
           if (thumbInit.success && thumbInit.directUpload) {
             await fetch(thumbInit.directUpload.uploadUrl, {
               method: thumbInit.directUpload.uploadType === "presigned_put" ? "PUT" : "POST",
+              headers: thumbInit.directUpload.headers || undefined,
               body: thumbnailFile,
             });
             customThumbUrl = thumbInit.directUpload.uploadUrl.split("?")[0];

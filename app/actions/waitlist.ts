@@ -1,7 +1,10 @@
 "use server";
 
 import { headers } from "next/headers";
+import { randomUUID } from "crypto";
 import { getServerServices } from "@/core/server";
+import { sendServerEvent } from "@/lib/meta";
+import { captureWaitlistLead } from "@/lib/posthog";
 import {
   joinWaitlistSchema,
   checkStatusSchema,
@@ -12,7 +15,7 @@ import { WaitlistPositionResult } from "@/core/entities/waitlist";
 export interface WaitlistActionState {
   success?: boolean;
   error?: string | null;
-  data?: WaitlistPositionResult | null;
+  data?: (WaitlistPositionResult & { eventId?: string }) | null;
 }
 
 export async function joinWaitlistAction(
@@ -71,9 +74,52 @@ export async function joinWaitlistAction(
       baseUrl,
     });
 
+    // Fire server-side Lead. The same eventId is returned to the client
+    // so the browser pixel can echo it and Meta dedupes.
+    const eventId = `lead_${randomUUID()}`;
+    try {
+      const ip =
+        headerList.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        headerList.get("x-real-ip") ||
+        undefined;
+      const userAgent = headerList.get("user-agent") || undefined;
+      const referer = headerList.get("referer") || undefined;
+      await sendServerEvent({
+        eventName: "Lead",
+        eventId,
+        eventSourceUrl: referer,
+        actionSource: "website",
+        userData: { email: parsed.data.email },
+        customData: {
+          content_name: "waitlist",
+          content_category: "waitlist",
+          status: result.status,
+        },
+        clientIp: ip,
+        userAgent,
+      });
+    } catch (e) {
+      // sendServerEvent already swallows + logs; defensive only.
+    }
+
+    // PostHog: server-side waitlist_joined. PostHog will merge this
+    // with the client's anonymous `$anon_id` once the same visitor
+    // signs up via PostHogIdentify.
+    try {
+      captureWaitlistLead({
+        email: parsed.data.email,
+        role: parsed.data.role,
+        companySize: parsed.data.companySize,
+        referralCode: parsed.data.referralCode,
+        status: result.status,
+      });
+    } catch (e) {
+      // already logged
+    }
+
     return {
       success: true,
-      data: result,
+      data: { ...result, eventId },
     };
   } catch (err: any) {
     return {

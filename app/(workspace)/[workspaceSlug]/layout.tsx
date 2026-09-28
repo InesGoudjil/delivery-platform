@@ -7,6 +7,7 @@ import {
 import { WorkspaceSidebar } from "@/components/workspaces/workspace-sidebar";
 import { WorkspaceHeader } from "@/components/workspaces/workspace-header";
 import { AmbientBackground } from "@/components/ui/ambient-background";
+import { MetaComplregEcho } from "@/components/meta/MetaComplregEcho";
 
 export default async function WorkspaceLayout({
   children,
@@ -57,6 +58,7 @@ export default async function WorkspaceLayout({
   return (
     <SidebarProvider defaultOpen={true}>
 
+      <MetaComplregEcho />
       <WorkspaceSidebar
         workspace={workspace}
         workspaces={userWorkspaces}

@@ -1,8 +1,7 @@
-"use client";
-
 import React from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { motion, ScrollReveal } from "@/components/ui/motion";
 
 interface CtaSectionProps {
   onStartTrial: () => void;
@@ -10,7 +9,7 @@ interface CtaSectionProps {
 
 export function CtaSection({ onStartTrial }: CtaSectionProps) {
   return (
-    <section className="py-16">
+    <ScrollReveal className="py-16">
       <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-r from-[#ce3a09] via-[#df4510] to-[#7f1307] p-12 sm:p-20 text-center shadow-2xl border border-white/10">
         {/* Ambient Dark Image & Glow Overlay */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-500/20 via-black/40 to-black/80 pointer-events-none" />
@@ -30,15 +29,22 @@ export function CtaSection({ onStartTrial }: CtaSectionProps) {
           </h2>
 
           <div>
-            <Link
-              href="/signup"
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#f5551d] to-[#e0430e] px-8 py-4 text-sm sm:text-base font-bold uppercase tracking-wider text-white shadow-2xl shadow-[#f5551d]/50 hover:scale-105 transition-all active:scale-95"
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              className="inline-block"
             >
-              GET STARTED <ArrowRight className="size-4 sm:size-5" />
-            </Link>
+              <Link
+                href="/signup"
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#f5551d] to-[#e0430e] px-8 py-4 text-sm sm:text-base font-bold uppercase tracking-wider text-white shadow-2xl shadow-[#f5551d]/50 transition-shadow hover:shadow-[#f5551d]/75"
+              >
+                GET STARTED <ArrowRight className="size-4 sm:size-5" />
+              </Link>
+            </motion.div>
           </div>
         </div>
       </div>
-    </section>
+    </ScrollReveal>
   );
 }

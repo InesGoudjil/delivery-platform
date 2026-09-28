@@ -24,6 +24,7 @@ export interface IWorkspaceRepository {
   listAllWorkspaces(): Promise<Workspace[]>;
   listByOwnerId(ownerId: string): Promise<Workspace[]>;
   listByIds(ids: string[]): Promise<Workspace[]>;
+  incrementStorageUsed?(id: string, bytes: number): Promise<void>;
 }
 
 export interface IWorkspaceFeaturesRepository {
@@ -159,6 +160,14 @@ export class SupabaseWorkspaceRepository implements IWorkspaceRepository {
       .eq('id', id);
 
     if (error) throw new Error(`Failed to delete workspace: ${error.message}`);
+  }
+
+  async incrementStorageUsed(id: string, bytes: number): Promise<void> {
+    const ws = await this.findById(id);
+    if (!ws) return;
+    const current = Number(ws.storageUsedBytes || 0);
+    const updated = Math.max(0, current + bytes);
+    await this.update(id, { storageUsedBytes: updated });
   }
 
   async listAllWorkspaces(): Promise<Workspace[]> {

@@ -17,9 +17,10 @@ import {
   Loader2,
 } from "lucide-react";
 import { AppImage } from "@/components/ui/app-image";
+import { CutReviewPlayer } from "@/components/video/cut-review-player";
 import { PortfolioItem, ProjectAsset } from "../portfolio-client";
 import { getProjectAssetsAction } from "@/app/actions/portfolio";
-import { resolveMediaUrl } from "@/lib/media";
+import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 
 // ==========================================
 // 1. STILL LIGHTBOX MODAL (Image Full View)
@@ -48,13 +49,13 @@ export function StillLightboxModal({
 
   if (!item) return null;
 
-  const fallbackUnsplash = "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1600&q=80";
+  // const fallbackUnsplash = "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1600&q=80";
   const rawUrl =
     ("mediaUrl" in item && item.mediaUrl ? item.mediaUrl : null) ||
     ("url" in item && item.url ? item.url : null) ||
     item.thumbnailUrl ||
-    fallbackUnsplash;
-  const primaryUrl = resolveMediaUrl(rawUrl) || fallbackUnsplash;
+    "";
+  const primaryUrl = resolveMediaUrl(rawUrl) || "";
 
   const [currentSrc, setCurrentSrc] = useState(primaryUrl);
   const [isLoading, setIsLoading] = useState(true);
@@ -146,11 +147,9 @@ export function StillLightboxModal({
             alt={item.title}
             onLoad={() => setIsLoading(false)}
             onError={() => {
-              const fallbackThumb = resolveMediaUrl(item.thumbnailUrl);
+              const fallbackThumb = resolveThumbnailUrl(item.thumbnailUrl, rawUrl, true);
               if (currentSrc !== fallbackThumb && fallbackThumb) {
                 setCurrentSrc(fallbackThumb);
-              } else if (currentSrc !== fallbackUnsplash) {
-                setCurrentSrc(fallbackUnsplash);
               } else {
                 setHasError(true);
                 setIsLoading(false);
@@ -197,10 +196,6 @@ export function FilmPlayerModal({
   onClose,
   onBack,
 }: FilmPlayerModalProps) {
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -218,43 +213,13 @@ export function FilmPlayerModal({
     ("url" in item && item.url ? item.url : null) ||
     ("mediaUrl" in item && item.mediaUrl ? item.mediaUrl : null) ||
     "";
-  const videoUrl = resolveMediaUrl(rawUrl);
-  const posterUrl = resolveMediaUrl(item.thumbnailUrl);
-
-  const isPlayableVideo =
-    videoUrl &&
-    (videoUrl.endsWith(".mp4") ||
-      videoUrl.endsWith(".mov") ||
-      videoUrl.endsWith(".webm") ||
-      videoUrl.endsWith(".m4v") ||
-      videoUrl.includes(".m3u8") ||
-      videoUrl.startsWith("blob:") ||
-      videoUrl.includes("cloudflarestream.com") ||
-      videoUrl.includes("video") ||
-      videoUrl.startsWith("/api/media/"));
-
-  const togglePlay = () => {
-    if (videoRef.current) {
-      if (videoRef.current.paused) {
-        videoRef.current.play();
-        setIsPlaying(true);
-      } else {
-        videoRef.current.pause();
-        setIsPlaying(false);
-      }
-    } else {
-      setIsPlaying(!isPlaying);
-    }
-  };
-
-  const toggleMute = () => {
-    if (videoRef.current) {
-      videoRef.current.muted = !videoRef.current.muted;
-      setIsMuted(videoRef.current.muted);
-    } else {
-      setIsMuted(!isMuted);
-    }
-  };
+  const videoUrl =
+    resolveMediaUrl(rawUrl) ||
+    (item.thumbnailUrl && /^[a-f0-9]{32}$/i.test(item.thumbnailUrl.trim())
+      ? resolveMediaUrl(item.thumbnailUrl)
+      : "") ||
+    "https://files.vidstack.io/sprite-fight/hls/stream.m3u8";
+  const posterUrl = resolveThumbnailUrl(item.thumbnailUrl, rawUrl);
 
   return (
     <div
@@ -308,82 +273,15 @@ export function FilmPlayerModal({
         </div>
 
         {/* Video Stage */}
-        <div className="aspect-video rounded-2xl bg-black overflow-hidden relative border border-white/10 shadow-2xl flex items-center justify-center">
-          {isPlayableVideo ? (
-            <video
-              ref={videoRef}
-              src={videoUrl}
-              poster={posterUrl}
-              controls
-              autoPlay
-              playsInline
-              className="size-full object-contain"
-            />
-          ) : (
-            // Simulated Player for demo items or assets pending stream transcoding
-            <div className="size-full relative flex flex-col justify-between p-5 sm:p-6 bg-gradient-to-br from-[#1a1412] via-[#0c0c0e] to-[#12161a]">
-              {/* Poster image background */}
-              {posterUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={posterUrl}
-                  alt={item.title}
-                  className="absolute inset-0 size-full object-cover opacity-35"
-                />
-              )}
-              <div className="absolute inset-0 bg-black/40" />
-
-              {/* Top Meta Badges */}
-              <div className="relative z-10 flex items-center justify-between">
-                <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-[10px] font-mono font-bold text-[#f5551d]">
-                  4K 60FPS · HDR
-                </span>
-                <span className="text-xs font-mono text-zinc-300 bg-black/60 px-3 py-1 rounded-full border border-white/10">
-                  {"duration" in item && item.duration ? item.duration : "00:47"}
-                </span>
-              </div>
-
-              {/* Center Play/Pause Trigger */}
-              <div
-                onClick={togglePlay}
-                className="relative z-10 self-center size-16 sm:size-20 rounded-full bg-[#f5551d] hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-2xl cursor-pointer transition-all"
-              >
-                {isPlaying ? (
-                  <Pause className="size-7 sm:size-8 fill-current" />
-                ) : (
-                  <Play className="size-7 sm:size-8 fill-current ml-1" />
-                )}
-              </div>
-
-              {/* Bottom Custom Playback Bar */}
-              <div className="relative z-10 flex items-center justify-between text-xs font-mono text-zinc-300 bg-black/75 backdrop-blur-md p-3 rounded-xl border border-white/10 gap-4">
-                <button
-                  onClick={togglePlay}
-                  className="hover:text-[#f5551d] transition-colors cursor-pointer"
-                >
-                  {isPlaying ? <Pause className="size-4" /> : <Play className="size-4 fill-current" />}
-                </button>
-
-                <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden relative cursor-pointer">
-                  <div
-                    className={`h-full bg-gradient-to-r from-[#d25828] to-[#f5551d] rounded-full transition-all duration-300 ${
-                      isPlaying ? "w-2/3" : "w-1/4"
-                    }`}
-                  />
-                </div>
-
-                <div className="flex items-center gap-3 text-[11px]">
-                  <span>{isPlaying ? "00:31" : "00:12"} / 00:47</span>
-                  <button
-                    onClick={toggleMute}
-                    className="hover:text-white transition-colors cursor-pointer"
-                  >
-                    {isMuted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+        <div className="w-full rounded-2xl bg-black overflow-hidden relative border border-white/10 shadow-2xl flex items-center justify-center">
+          <CutReviewPlayer
+            src={videoUrl}
+            poster={posterUrl}
+            title={item.title}
+            aspectRatio="16:9"
+            autoPlay
+            className="w-full h-full border-0"
+          />
         </div>
 
         {/* Footer Details */}

@@ -13,6 +13,7 @@ import {
   Send,
   Film,
 } from "lucide-react";
+import { motion, AnimatePresence } from "@/components/ui/motion";
 import "./delivery-view.css";
 
 const IMG_BG =
@@ -463,11 +464,13 @@ export function DeliveryViewScreen() {
         <div className="dbar">
           <div className="dbar-l">
             <div className="dbar-prog">
-              <div
+              <motion.div
                 className="dbar-fill"
-                style={{
+                initial={{ width: 0 }}
+                animate={{
                   width: `${Math.round((approvedCount / assets.length) * 100)}%`,
                 }}
+                transition={{ type: "spring", stiffness: 120, damping: 20 }}
               />
             </div>
             <span>
@@ -534,11 +537,14 @@ export function DeliveryViewScreen() {
             {assets
               .filter((a) => assetTab === "all" || a.type === assetTab)
               .map((a) => (
-                <div
+                <motion.div
                   key={a.id}
                   className={
                     "acard" + (clientView.ratio === "mixed" ? " mason" : "")
                   }
+                  whileHover={{ y: -4, scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  transition={{ duration: 0.18 }}
                   onClick={() => {
                     setOpenAsset(a.id);
                     setAssetVer(a.versions[a.versions.length - 1]);
@@ -568,7 +574,7 @@ export function DeliveryViewScreen() {
                       </div>
                     )}
                   </div>
-                </div>
+                </motion.div>
               ))}
           </div>
         </div>
@@ -584,179 +590,203 @@ export function DeliveryViewScreen() {
           <span className="foot-site-name">cinespace.pro</span>
         </div>
 
-        {openAsset !== null &&
-          (() => {
-            const a = assets.find((x) => x.id === openAsset);
-            if (!a) return null;
-            return (
-              <div className="overlay" onClick={() => setOpenAsset(null)}>
-                <div className="asheet" onClick={(e) => e.stopPropagation()}>
-                  <div className="asheet-head">
-                    <div>
-                      <div className="eyebrow">
-                        {a.type === "video" ? "Video" : "Photo"} · {a.size}
-                      </div>
-                      <h3 className="disp">{a.name}</h3>
-                    </div>
-                    <button
-                      className="btn ghost sm"
-                      style={{ padding: 8 }}
-                      onClick={() => setOpenAsset(null)}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                  <div className="astage" style={{ background: a.g }}>
-                    <Wm />
-                    {a.type === "video" && (
-                      <div
-                        className="bigplay"
-                        onClick={() => flash("Playing…")}
-                      >
-                        <Play size={24} />
-                      </div>
-                    )}
-                  </div>
-                  {a.type === "video" &&
-                    (() => {
-                      const dur = parseTC(a.tc) || 1;
-                      const pct = Math.min(100, (playT / dur) * 100);
-                      return (
-                        <div style={{ marginTop: 12 }}>
-                          <div className="scrub-time">
-                            <b>{fmtT(playT)}</b>
-                            <span>{a.tc}</span>
-                          </div>
-                          <div
-                            className="scrub"
-                            onClick={(e) => scrubTo(e, dur)}
-                          >
-                            <div className="scrub-track" />
-                            <div
-                              className="scrub-fill"
-                              style={{ width: pct + "%" }}
-                            />
-                            {a.comments
-                              .filter((c) => c.time != null)
-                              .map((c, i) => (
-                                <div
-                                  key={i}
-                                  className="scrub-mark"
-                                  style={{ left: ((c.time || 0) / dur) * 100 + "%" }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (c.time != null) setPlayT(c.time);
-                                  }}
-                                />
-                              ))}
-                            <div
-                              className="scrub-head"
-                              style={{ left: pct + "%" }}
-                            />
-                          </div>
+        <AnimatePresence>
+          {openAsset !== null &&
+            (() => {
+              const a = assets.find((x) => x.id === openAsset);
+              if (!a) return null;
+              return (
+                <motion.div
+                  className="overlay"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => setOpenAsset(null)}
+                >
+                  <motion.div
+                    className="asheet"
+                    initial={{ opacity: 0, scale: 0.96, y: 18 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96, y: 18 }}
+                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="asheet-head">
+                      <div>
+                        <div className="eyebrow">
+                          {a.type === "video" ? "Video" : "Photo"} · {a.size}
                         </div>
-                      );
-                    })()}
-                  {a.versions.length > 1 && (
-                    <div className="vstrip">
-                      {a.versions.map((v) => (
-                        <button
-                          key={v}
-                          className={`vchip ${assetVer === v ? "on" : ""}`}
-                          onClick={() => setAssetVer(v)}
+                        <h3 className="disp">{a.name}</h3>
+                      </div>
+                      <button
+                        className="btn ghost sm"
+                        style={{ padding: 8 }}
+                        onClick={() => setOpenAsset(null)}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                    <div className="astage" style={{ background: a.g }}>
+                      <Wm />
+                      {a.type === "video" && (
+                        <div
+                          className="bigplay"
+                          onClick={() => flash("Playing…")}
                         >
-                          {v}
+                          <Play size={24} />
+                        </div>
+                      )}
+                    </div>
+                    {a.type === "video" &&
+                      (() => {
+                        const dur = parseTC(a.tc) || 1;
+                        const pct = Math.min(100, (playT / dur) * 100);
+                        return (
+                          <div style={{ marginTop: 12 }}>
+                            <div className="scrub-time">
+                              <b>{fmtT(playT)}</b>
+                              <span>{a.tc}</span>
+                            </div>
+                            <div
+                              className="scrub"
+                              onClick={(e) => scrubTo(e, dur)}
+                            >
+                              <div className="scrub-track" />
+                              <div
+                                className="scrub-fill"
+                                style={{ width: pct + "%" }}
+                              />
+                              {a.comments
+                                .filter((c) => c.time != null)
+                                .map((c, i) => (
+                                  <div
+                                    key={i}
+                                    className="scrub-mark"
+                                    style={{ left: ((c.time || 0) / dur) * 100 + "%" }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (c.time != null) setPlayT(c.time);
+                                    }}
+                                  />
+                                ))}
+                              <div
+                                className="scrub-head"
+                                style={{ left: pct + "%" }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    {a.versions.length > 1 && (
+                      <div className="vstrip">
+                        {a.versions.map((v) => (
+                          <button
+                            key={v}
+                            className={`vchip ${assetVer === v ? "on" : ""}`}
+                            onClick={() => setAssetVer(v)}
+                          >
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="dactions">
+                      <button
+                        className="btn"
+                        onClick={() => flash("Download started")}
+                      >
+                        <Download size={15} />
+                        Download
+                      </button>
+                      {a.approved ? (
+                        <button
+                          className="btn seal-btn"
+                          onClick={() => {
+                            toggleApprove(a.id);
+                            flash("Approval removed");
+                          }}
+                          title="Tap to undo approval"
+                        >
+                          <Check size={14} />
+                          Approved · tap to undo
                         </button>
+                      ) : (
+                        <button
+                          className="btn ghost"
+                          onClick={() => approveAsset(a.id)}
+                        >
+                          <Check size={15} />
+                          Approve this asset
+                        </button>
+                      )}
+                    </div>
+                    <div className="cmts">
+                      <h4>Comments on {a.name}</h4>
+                      {a.comments.length === 0 && (
+                        <p className="cmt-empty">
+                          No comments yet — leave the first note.
+                        </p>
+                      )}
+                      {a.comments.map((c, i) => (
+                        <Comment
+                          key={i}
+                          c={c}
+                          aid={a.id}
+                          idx={i}
+                          replyWho="client"
+                        />
                       ))}
+                      {a.type === "video" && (
+                        <button
+                          className={"tc-toggle" + (attachTime ? " on" : "")}
+                          onClick={() => setAttachTime(!attachTime)}
+                        >
+                          <Clock size={13} />
+                          {attachTime
+                            ? `Pinned to ${fmtT(playT)}`
+                            : "Add timecode"}
+                        </button>
+                      )}
+                      <div className="cinput">
+                        <input
+                          value={assetDraft}
+                          onChange={(e) => setAssetDraft(e.target.value)}
+                          placeholder={
+                            a.type === "video" && attachTime
+                              ? `Note at ${fmtT(playT)}…`
+                              : "Add a comment…"
+                          }
+                          onKeyDown={(e) =>
+                            e.key === "Enter" && addAssetComment(a.id)
+                          }
+                        />
+                        <button onClick={() => addAssetComment(a.id)}>
+                          <Send size={16} />
+                        </button>
+                      </div>
                     </div>
-                  )}
-                  <div className="dactions">
-                    <button
-                      className="btn"
-                      onClick={() => flash("Download started")}
-                    >
-                      <Download size={15} />
-                      Download
-                    </button>
-                    {a.approved ? (
-                      <button
-                        className="btn seal-btn"
-                        onClick={() => {
-                          toggleApprove(a.id);
-                          flash("Approval removed");
-                        }}
-                        title="Tap to undo approval"
-                      >
-                        <Check size={14} />
-                        Approved · tap to undo
-                      </button>
-                    ) : (
-                      <button
-                        className="btn ghost"
-                        onClick={() => approveAsset(a.id)}
-                      >
-                        <Check size={15} />
-                        Approve this asset
-                      </button>
-                    )}
-                  </div>
-                  <div className="cmts">
-                    <h4>Comments on {a.name}</h4>
-                    {a.comments.length === 0 && (
-                      <p className="cmt-empty">
-                        No comments yet — leave the first note.
-                      </p>
-                    )}
-                    {a.comments.map((c, i) => (
-                      <Comment
-                        key={i}
-                        c={c}
-                        aid={a.id}
-                        idx={i}
-                        replyWho="client"
-                      />
-                    ))}
-                    {a.type === "video" && (
-                      <button
-                        className={"tc-toggle" + (attachTime ? " on" : "")}
-                        onClick={() => setAttachTime(!attachTime)}
-                      >
-                        <Clock size={13} />
-                        {attachTime
-                          ? `Pinned to ${fmtT(playT)}`
-                          : "Add timecode"}
-                      </button>
-                    )}
-                    <div className="cinput">
-                      <input
-                        value={assetDraft}
-                        onChange={(e) => setAssetDraft(e.target.value)}
-                        placeholder={
-                          a.type === "video" && attachTime
-                            ? `Note at ${fmtT(playT)}…`
-                            : "Add a comment…"
-                        }
-                        onKeyDown={(e) =>
-                          e.key === "Enter" && addAssetComment(a.id)
-                        }
-                      />
-                      <button onClick={() => addAssetComment(a.id)}>
-                        <Send size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
+                  </motion.div>
+                </motion.div>
+              );
+            })()}
+        </AnimatePresence>
       </div>
 
-      {toast && (
-        <div className="toast">
-          <Check size={15} />
-          {toast}
-        </div>
-      )}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            className="toast"
+            initial={{ opacity: 0, y: 16, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Check size={15} />
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

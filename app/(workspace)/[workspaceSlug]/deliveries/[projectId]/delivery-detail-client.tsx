@@ -9,6 +9,7 @@ import {
   archiveDeliveryAction,
   toggleAssetApprovalAction,
 } from "@/app/actions/deliveries";
+import { resolveThumbnailUrl, resolveMediaUrl } from "@/lib/media";
 
 // Modular Subcomponents
 import { DeliveryHeroBanner } from "./_components/delivery-hero-banner";
@@ -91,15 +92,14 @@ export function DeliveryDetailClient({
             aspectRatio: a.aspectRatio || "16:9",
             duration: durationStr,
             src:
-              activeVer?.thumbnailUrl ||
-              activeVer?.rawFileUrl ||
+              resolveThumbnailUrl(activeVer?.thumbnailUrl, activeVer?.rawFileUrl, isPhoto) ||
               "https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=1200&auto=format&fit=crop&q=80",
             status: a.isApproved ? "approved" : "review",
-            rawUrl: activeVer?.rawFileUrl,
-            hlsUrl: activeVer?.hlsManifestUrl,
+            rawUrl: resolveMediaUrl(activeVer?.rawFileUrl),
+            hlsUrl: resolveMediaUrl(activeVer?.hlsManifestUrl),
             videoUrl:
-              activeVer?.hlsManifestUrl ||
-              activeVer?.rawFileUrl ||
+              resolveMediaUrl(activeVer?.hlsManifestUrl) ||
+              resolveMediaUrl(activeVer?.rawFileUrl) ||
               (isPhoto ? undefined : "https://files.vidstack.io/sprite-fight/hls/stream.m3u8"),
           };
         })

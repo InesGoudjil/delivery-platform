@@ -23,6 +23,16 @@ import {
 import { DemoModal } from "@/components/landing/DemoModal";
 import { joinWaitlistAction, WaitlistActionState } from "@/app/actions/waitlist";
 import { getWaitlistImageUrl, CLOUDFLARE_PUBLIC_DOMAIN } from "@/lib/assets";
+import { trackLead } from "@/lib/meta/pixel";
+import {
+  motion,
+  AnimatePresence,
+  FadeIn,
+  StaggerContainer,
+  StaggerItem,
+  ScrollReveal,
+  AnimatedCounter,
+} from "@/components/ui/motion";
 import "./waitlist.css";
 
 const ROLES = ["Filmmaker", "Studio", "Agency", "Other"];
@@ -66,6 +76,9 @@ export function WaitlistScreen({
     startTransition(async () => {
       const res = await joinWaitlistAction(null, formData);
       setResult(res);
+      if (res?.data?.eventId) {
+        trackLead({ email, eventId: res.data.eventId });
+      }
     });
   };
 
@@ -113,229 +126,274 @@ export function WaitlistScreen({
 
       <div className="wl-shell">
         {/* Top Header */}
-        <header className="wl-top">
+        <motion.header
+          className="wl-top"
+          initial={{ opacity: 0, y: -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        >
           <Link href="/">
             <img className="wl-logo-img" src="/images/logo.svg" alt="CineSpace" />
           </Link>
           <span className="wl-badge">
             <Lock size={12} /> Private beta
           </span>
-        </header>
+        </motion.header>
 
         {/* Hero Section */}
         <main className="wl-main">
           <div className="wl-hero-split">
             {/* Hero Left Column */}
             <div className="wl-hero-left">
-              <div className="wl-eyebrow">
-                Coming soon · Built for filmmakers everywhere
-              </div>
-              <h1 className="wl-h1">
-                Deliver films
-                <br />
-                like a studio.
-              </h1>
-              <p className="wl-sub">
-                Your portfolio, client feedback, and delivery — in one place.
-                CineSpace is opening in private beta. Join the waitlist and get
-                early access, founder pricing, and a say in what we build.
-              </p>
+              <FadeIn delay={0.08} distance={14}>
+                <div className="wl-eyebrow">
+                  Coming soon · Built for filmmakers everywhere
+                </div>
+              </FadeIn>
+              <FadeIn delay={0.16} distance={20}>
+                <h1 className="wl-h1">
+                  Deliver films
+                  <br />
+                  like a studio.
+                </h1>
+              </FadeIn>
+              <FadeIn delay={0.24} distance={20}>
+                <p className="wl-sub">
+                  Your portfolio, client feedback, and delivery — in one place.
+                  CineSpace is opening in private beta. Join the waitlist and get
+                  early access, founder pricing, and a say in what we build.
+                </p>
+              </FadeIn>
             </div>
 
             {/* Hero Right Column: Card */}
-            <div className="wl-hero-right">
-              {!result?.data ? (
-                <div className="wl-card">
-                  <form onSubmit={handleJoin}>
-                    {/* Honeypot hidden input */}
-                    <div style={{ display: "none" }}>
-                      <input
-                        type="text"
-                        name="hp_field"
-                        tabIndex={-1}
-                        autoComplete="off"
-                      />
-                    </div>
+            <motion.div
+              className="wl-hero-right"
+              initial={{ opacity: 0, y: 24, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.65, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <AnimatePresence mode="wait">
+                {!result?.data ? (
+                  <motion.div
+                    key="form-card"
+                    className="wl-card"
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.96 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <form onSubmit={handleJoin}>
+                      {/* Honeypot hidden input */}
+                      <div style={{ display: "none" }}>
+                        <input
+                          type="text"
+                          name="hp_field"
+                          tabIndex={-1}
+                          autoComplete="off"
+                        />
+                      </div>
 
-                    <div className="wl-field">
-                      <label>
-                        Name <span className="opt">(optional)</span>
-                      </label>
-                      <input
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Pedro Concreato"
-                      />
-                    </div>
+                      <div className="wl-field">
+                        <label>
+                          Name <span className="opt">(optional)</span>
+                        </label>
+                        <input
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="Pedro Concreato"
+                        />
+                      </div>
 
-                    <div className="wl-field">
-                      <label>Email</label>
-                      <input
-                        ref={emailInputRef}
-                        value={email}
-                        required
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@studio.com"
-                        type="email"
-                      />
-                    </div>
+                      <div className="wl-field">
+                        <label>Email</label>
+                        <input
+                          ref={emailInputRef}
+                          value={email}
+                          required
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="you@studio.com"
+                          type="email"
+                        />
+                      </div>
 
-                    <div className="wl-field">
-                      <label>I'm a…</label>
-                      <div className="wl-roles">
-                        {ROLES.map((r) => (
-                          <button
-                            key={r}
-                            type="button"
-                            className={"wl-role" + (role === r ? " on" : "")}
-                            onClick={() => setRole(r)}
-                          >
-                            {r}
-                          </button>
-                        ))}
+                      <div className="wl-field">
+                        <label>I'm a…</label>
+                        <div className="wl-roles">
+                          {ROLES.map((r) => (
+                            <motion.button
+                              key={r}
+                              type="button"
+                              className={"wl-role" + (role === r ? " on" : "")}
+                              onClick={() => setRole(r)}
+                              whileHover={{ scale: 1.04 }}
+                              whileTap={{ scale: 0.96 }}
+                              transition={{ duration: 0.15 }}
+                            >
+                              {r}
+                            </motion.button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {result?.error && (
+                        <div className="wl-err">{result.error}</div>
+                      )}
+
+                      <motion.button
+                        type="submit"
+                        className="wl-cta"
+                        disabled={isPending || !email}
+                        whileHover={!isPending && email ? { scale: 1.02, y: -2 } : {}}
+                        whileTap={!isPending && email ? { scale: 0.98 } : {}}
+                        transition={{ duration: 0.15 }}
+                      >
+                        {isPending ? (
+                          "Joining…"
+                        ) : (
+                          <>
+                            Join the waitlist <ArrowRight size={17} />
+                          </>
+                        )}
+                      </motion.button>
+
+                      <div className="wl-count">
+                        <Users size={14} />{" "}
+                        <AnimatedCounter to={displayCount} duration={1.6} /> filmmakers already waiting
+                      </div>
+                    </form>
+                  </motion.div>
+                ) : (
+                  /* Success View */
+                  <motion.div
+                    key="success-card"
+                    className="wl-card wl-success"
+                    initial={{ opacity: 0, scale: 0.92, y: 15 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.92 }}
+                    transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    <motion.div
+                      className="wl-check"
+                      initial={{ scale: 0, rotate: -30 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: "spring", stiffness: 350, damping: 20, delay: 0.1 }}
+                    >
+                      <Check size={30} strokeWidth={2.6} />
+                    </motion.div>
+                    <h2>You're on the list.</h2>
+                    <p>
+                      We'll email <b>{email}</b> the moment your invite is ready.
+                      {result.data.position ? (
+                        <> Early access is rolling out to founders first. Your priority spot is <strong>#{result.data.position}</strong>.</>
+                      ) : (
+                        <> Early access is rolling out to founders first.</>
+                      )}
+                    </p>
+
+                    <div className="my-4 rounded-xl bg-white/5 border border-white/10 p-3 text-left">
+                      <div className="text-[11px] font-semibold text-white/70 mb-1">
+                        Bump up in line with your personal referral link:
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={referralLink}
+                          className="flex-1 bg-black/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/90 font-mono select-all focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleCopyLink}
+                          className="flex items-center gap-1 rounded-lg bg-[#f5551d] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#e04a16] transition-colors"
+                        >
+                          {copied ? <Check size={13} /> : <Copy size={13} />}
+                          <span>{copied ? "Copied" : "Copy"}</span>
+                        </button>
+                      </div>
+                      <div className="text-[10.5px] text-white/50 mt-1.5">
+                        Each friend who signs up moves you <strong>10 spots forward</strong>.
                       </div>
                     </div>
 
-                    {result?.error && (
-                      <div className="wl-err">{result.error}</div>
-                    )}
-
-                    <button
-                      type="submit"
-                      className="wl-cta"
-                      disabled={isPending || !email}
-                    >
-                      {isPending ? (
-                        "Joining…"
-                      ) : (
-                        <>
-                          Join the waitlist <ArrowRight size={17} />
-                        </>
-                      )}
-                    </button>
+                    <div className="flex items-center justify-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={shareOnTwitter}
+                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+                      >
+                        Share on X
+                      </button>
+                      <button
+                        type="button"
+                        onClick={shareOnWhatsApp}
+                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+                      >
+                        WhatsApp
+                      </button>
+                    </div>
 
                     <div className="wl-count">
                       <Users size={14} />{" "}
-                      {displayCount.toLocaleString()} filmmakers already waiting
+                      <AnimatedCounter to={displayCount + 1} duration={1.6} /> filmmakers already waiting
                     </div>
-                  </form>
-                </div>
-              ) : (
-                /* Success View */
-                <div className="wl-card wl-success">
-                  <div className="wl-check">
-                    <Check size={30} strokeWidth={2.6} />
-                  </div>
-                  <h2>You're on the list.</h2>
-                  <p>
-                    We'll email <b>{email}</b> the moment your invite is ready.
-                    {result.data.position ? (
-                      <> Early access is rolling out to founders first. Your priority spot is <strong>#{result.data.position}</strong>.</>
-                    ) : (
-                      <> Early access is rolling out to founders first.</>
-                    )}
-                  </p>
 
-                  <div className="my-4 rounded-xl bg-white/5 border border-white/10 p-3 text-left">
-                    <div className="text-[11px] font-semibold text-white/70 mb-1">
-                      Bump up in line with your personal referral link:
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={referralLink}
-                        className="flex-1 bg-black/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/90 font-mono select-all focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleCopyLink}
-                        className="flex items-center gap-1 rounded-lg bg-[#f5551d] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#e04a16] transition-colors"
-                      >
-                        {copied ? <Check size={13} /> : <Copy size={13} />}
-                        <span>{copied ? "Copied" : "Copy"}</span>
-                      </button>
-                    </div>
-                    <div className="text-[10.5px] text-white/50 mt-1.5">
-                      Each friend who signs up moves you <strong>10 spots forward</strong>.
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-center gap-2 pt-1">
                     <button
-                      type="button"
-                      onClick={shareOnTwitter}
-                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+                      className="wl-ghost"
+                      onClick={() => {
+                        setResult(null);
+                        setName("");
+                        setEmail("");
+                        setRole("Filmmaker");
+                      }}
                     >
-                      Share on X
+                      Add another email
                     </button>
-                    <button
-                      type="button"
-                      onClick={shareOnWhatsApp}
-                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 hover:text-white transition-colors"
-                    >
-                      WhatsApp
-                    </button>
-                  </div>
-
-                  <div className="wl-count">
-                    <Users size={14} />{" "}
-                    {(displayCount + 1).toLocaleString()} filmmakers already waiting
-                  </div>
-
-                  <button
-                    className="wl-ghost"
-                    onClick={() => {
-                      setResult(null);
-                      setName("");
-                      setEmail("");
-                      setRole("Filmmaker");
-                    }}
-                  >
-                    Add another email
-                  </button>
-                </div>
-              )}
-            </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           </div>
 
           {/* Demo Button Wrap */}
-          <div className="wl-demo-wrap">
-            <Link
-              href="/delivery-view"
-              className="wl-demo-big inline-flex items-center justify-center gap-2"
-            >
-              <Play size={17} /> See a live client demo — no signup needed
-            </Link>
-          </div>
+          <FadeIn delay={0.3} className="wl-demo-wrap">
+            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+              <Link
+                href="/delivery-view"
+                className="wl-demo-big inline-flex items-center justify-center gap-2"
+              >
+                <Play size={17} /> See a live client demo — no signup needed
+              </Link>
+            </motion.div>
+          </FadeIn>
 
           {/* Perks Row */}
-          <div className="wl-perks">
-            <div className="wl-perk">
+          <StaggerContainer className="wl-perks" staggerDelay={0.1} initialDelay={0.35}>
+            <StaggerItem className="wl-perk">
               <Film size={16} />
               <div>
                 <b>Early access</b>
                 <span>Be first in when we open the doors.</span>
               </div>
-            </div>
-            <div className="wl-perk">
+            </StaggerItem>
+            <StaggerItem className="wl-perk">
               <Users size={16} />
               <div>
                 <b>Founder pricing</b>
                 <span>Locked-in rates for early members.</span>
               </div>
-            </div>
-            <div className="wl-perk">
+            </StaggerItem>
+            <StaggerItem className="wl-perk">
               <Check size={16} />
               <div>
                 <b>Shape the product</b>
                 <span>Tell us what to build next.</span>
               </div>
-            </div>
-          </div>
+            </StaggerItem>
+          </StaggerContainer>
         </main>
         {/* ===== video here ===== */}
-        <section className="wl-sec">
+        <ScrollReveal className="wl-sec">
           <div className="wl-sec-head">
             <div className="wl-eyebrow">Product walkthrough</div>
             <h2 className="wl-h2">Watch CineSpace in action.</h2>
@@ -345,7 +403,11 @@ export function WaitlistScreen({
           </div>
 
           <div className="max-w-[920px] mx-auto w-full px-2 sm:px-0">
-            <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/15 bg-black/80">
+            <motion.div
+              className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/15 bg-black/80"
+              whileHover={{ scale: 1.01 }}
+              transition={{ duration: 0.3 }}
+            >
               <iframe
                 src="https://iframe.videodelivery.net/bcb96cb5bbb50ee8093256f33146f473?preload=true&poster=https%3A%2F%2Fvideodelivery.net%2Fbcb96cb5bbb50ee8093256f33146f473%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D1s%26height%3D720"
                 className="w-full h-full border-none absolute inset-0"
@@ -353,12 +415,12 @@ export function WaitlistScreen({
                 allowFullScreen
                 title="CineSpace Preview Video"
               />
-            </div>
+            </motion.div>
           </div>
-        </section>
+        </ScrollReveal>
 
         {/* ===== Feature Showcase (Image Mockups) ===== */}
-        <section className="wl-sec">
+        <ScrollReveal className="wl-sec">
           <div className="wl-sec-head">
             <div className="wl-eyebrow">A look inside</div>
             <h2 className="wl-h2">See how it actually looks.</h2>
@@ -370,7 +432,7 @@ export function WaitlistScreen({
 
           <div className="wl-shots">
             {/* Row 1: Premium delivery links */}
-            <div className="wl-row">
+            <FadeIn direction="up" distance={20} className="wl-row">
               <div className="wl-row-txt">
                 <b>Premium delivery links</b>
                 <span>
@@ -379,7 +441,7 @@ export function WaitlistScreen({
                   scattered folders, no WeTransfer clutter.
                 </span>
               </div>
-              <div className="wl-row-img">
+              <motion.div className="wl-row-img" whileHover={{ scale: 1.02 }} transition={{ duration: 0.25 }}>
                 <img
                   src={getWaitlistImageUrl("links.webp")}
                   alt="Premium delivery links"
@@ -387,12 +449,12 @@ export function WaitlistScreen({
                     (e.target as HTMLImageElement).src = "/images/waitlist/links.webp";
                   }}
                 />
-              </div>
-            </div>
+              </motion.div>
+            </FadeIn>
 
             {/* Row 2: Feedback & approvals */}
-            <div className="wl-row">
-              <div className="wl-row-img">
+            <FadeIn direction="up" distance={20} className="wl-row">
+              <motion.div className="wl-row-img" whileHover={{ scale: 1.02 }} transition={{ duration: 0.25 }}>
                 <img
                   src={getWaitlistImageUrl("feedback.webp")}
                   alt="Client timestamped feedback and approvals"
@@ -400,7 +462,7 @@ export function WaitlistScreen({
                     (e.target as HTMLImageElement).src = "/images/waitlist/feedback.webp";
                   }}
                 />
-              </div>
+              </motion.div>
               <div className="wl-row-txt">
                 <b>Feedback &amp; approvals</b>
                 <span>
@@ -409,10 +471,10 @@ export function WaitlistScreen({
                   sign-off tracked and locked.
                 </span>
               </div>
-            </div>
+            </FadeIn>
 
             {/* Row 3: Add your brand */}
-            <div className="wl-row">
+            <FadeIn direction="up" distance={20} className="wl-row">
               <div className="wl-row-txt">
                 <b>Add your brand</b>
                 <span>
@@ -420,7 +482,7 @@ export function WaitlistScreen({
                   Clients experience your studio — not our software.
                 </span>
               </div>
-              <div className="wl-row-img">
+              <motion.div className="wl-row-img" whileHover={{ scale: 1.02 }} transition={{ duration: 0.25 }}>
                 <img
                   src={getWaitlistImageUrl("brand.webp")}
                   alt="Add your brand"
@@ -428,12 +490,12 @@ export function WaitlistScreen({
                     (e.target as HTMLImageElement).src = "/images/waitlist/brand.webp";
                   }}
                 />
-              </div>
-            </div>
+              </motion.div>
+            </FadeIn>
 
             {/* Row 4: Customize portfolio & deliveries */}
-            <div className="wl-row">
-              <div className="wl-row-img">
+            <FadeIn direction="up" distance={20} className="wl-row">
+              <motion.div className="wl-row-img" whileHover={{ scale: 1.02 }} transition={{ duration: 0.25 }}>
                 <img
                   src={getWaitlistImageUrl("control.webp")}
                   alt="Customize portfolio and deliveries"
@@ -441,7 +503,7 @@ export function WaitlistScreen({
                     (e.target as HTMLImageElement).src = "/images/waitlist/control.webp";
                   }}
                 />
-              </div>
+              </motion.div>
               <div className="wl-row-txt">
                 <b>Customize portfolio &amp; deliveries</b>
                 <span>
@@ -450,12 +512,12 @@ export function WaitlistScreen({
                   every delivery page exactly the way you want.
                 </span>
               </div>
-            </div>
+            </FadeIn>
           </div>
-        </section>
+        </ScrollReveal>
 
         {/* ===== What You Get: The Four Surfaces ===== */}
-        <section className="wl-sec">
+        <ScrollReveal className="wl-sec">
           <div className="wl-sec-head">
             <div className="wl-eyebrow">Everything in one place</div>
             <h2 className="wl-h2">
@@ -468,7 +530,7 @@ export function WaitlistScreen({
           </div>
 
           <div className="wl-surfaces">
-            <div className="wl-surface">
+            <motion.div className="wl-surface" whileHover={{ y: -4, borderColor: "rgba(245, 85, 29, 0.4)" }} transition={{ duration: 0.2 }}>
               <div className="wl-si">
                 <LayoutGrid size={20} />
               </div>
@@ -478,9 +540,9 @@ export function WaitlistScreen({
                 latest work, your story — all on one link you can send to any
                 lead in a tap.
               </p>
-            </div>
+            </motion.div>
 
-            <div className="wl-surface">
+            <motion.div className="wl-surface" whileHover={{ y: -4, borderColor: "rgba(245, 85, 29, 0.4)" }} transition={{ duration: 0.2 }}>
               <div className="wl-si">
                 <Link2 size={20} />
               </div>
@@ -496,9 +558,9 @@ export function WaitlistScreen({
               >
                 <Play size={13} /> Try the live demo
               </Link>
-            </div>
+            </motion.div>
 
-            <div className="wl-surface">
+            <motion.div className="wl-surface" whileHover={{ y: -4, borderColor: "rgba(245, 85, 29, 0.4)" }} transition={{ duration: 0.2 }}>
               <div className="wl-si">
                 <Play size={20} />
               </div>
@@ -508,9 +570,9 @@ export function WaitlistScreen({
                 clean workspace. Upload a cut, share a link, track approvals —
                 without the chaos.
               </p>
-            </div>
+            </motion.div>
 
-            <div className="wl-surface">
+            <motion.div className="wl-surface" whileHover={{ y: -4, borderColor: "rgba(245, 85, 29, 0.4)" }} transition={{ duration: 0.2 }}>
               <div className="wl-si">
                 <Archive size={20} />
               </div>
@@ -520,12 +582,12 @@ export function WaitlistScreen({
                 active space. Nothing lost, nothing expiring — restore any
                 project in 24–48h.
               </p>
-            </div>
+            </motion.div>
           </div>
-        </section>
+        </ScrollReveal>
 
         {/* ===== Capabilities ===== */}
-        <section className="wl-sec">
+        <ScrollReveal className="wl-sec">
           <div className="wl-sec-head">
             <div className="wl-eyebrow">Built for the way you work</div>
             <h2 className="wl-h2">
@@ -533,8 +595,8 @@ export function WaitlistScreen({
             </h2>
           </div>
 
-          <div className="wl-caps">
-            <div className="wl-cap">
+          <StaggerContainer className="wl-caps" staggerDelay={0.07}>
+            <StaggerItem className="wl-cap">
               <Palette size={18} />
               <div>
                 <b>Your branding</b>
@@ -543,9 +605,9 @@ export function WaitlistScreen({
                   page. Your brand, not ours.
                 </span>
               </div>
-            </div>
+            </StaggerItem>
 
-            <div className="wl-cap">
+            <StaggerItem className="wl-cap">
               <MessageCircle size={18} />
               <div>
                 <b>Review &amp; approve</b>
@@ -554,9 +616,9 @@ export function WaitlistScreen({
                   every approval is timestamped and locks that cut.
                 </span>
               </div>
-            </div>
+            </StaggerItem>
 
-            <div className="wl-cap">
+            <StaggerItem className="wl-cap">
               <Lock size={18} />
               <div>
                 <b>Private &amp; secure</b>
@@ -565,9 +627,9 @@ export function WaitlistScreen({
                   links to expire when you choose.
                 </span>
               </div>
-            </div>
+            </StaggerItem>
 
-            <div className="wl-cap">
+            <StaggerItem className="wl-cap">
               <Download size={18} />
               <div>
                 <b>Instant handoff</b>
@@ -576,9 +638,9 @@ export function WaitlistScreen({
                   no logins, no apps, no friction.
                 </span>
               </div>
-            </div>
+            </StaggerItem>
 
-            <div className="wl-cap">
+            <StaggerItem className="wl-cap">
               <Film size={18} />
               <div>
                 <b>Watermark &amp; protect</b>
@@ -587,9 +649,9 @@ export function WaitlistScreen({
                   then release the clean files.
                 </span>
               </div>
-            </div>
+            </StaggerItem>
 
-            <div className="wl-cap">
+            <StaggerItem className="wl-cap">
               <Users size={18} />
               <div>
                 <b>Made for everyone</b>
@@ -598,12 +660,12 @@ export function WaitlistScreen({
                   built for how clients everywhere actually work.
                 </span>
               </div>
-            </div>
-          </div>
-        </section>
+            </StaggerItem>
+          </StaggerContainer>
+        </ScrollReveal>
 
         {/* ===== Plans Teaser ===== */}
-        <section className="wl-sec">
+        <ScrollReveal className="wl-sec">
           <div className="wl-sec-head">
             <div className="wl-eyebrow">Plans</div>
             <h2 className="wl-h2">Start free. Grow when you're ready.</h2>
@@ -615,27 +677,30 @@ export function WaitlistScreen({
           </div>
 
           <div className="wl-plannames">
-            <span className="wl-planpill">Starter</span>
-            <span className="wl-planpill">Basic</span>
-            <span className="wl-planpill pop">Pro</span>
-            <span className="wl-planpill">Studio</span>
+            <motion.span className="wl-planpill" whileHover={{ scale: 1.05 }} transition={{ duration: 0.15 }}>Starter</motion.span>
+            <motion.span className="wl-planpill" whileHover={{ scale: 1.05 }} transition={{ duration: 0.15 }}>Basic</motion.span>
+            <motion.span className="wl-planpill pop" whileHover={{ scale: 1.06 }} transition={{ duration: 0.15 }}>Pro</motion.span>
+            <motion.span className="wl-planpill" whileHover={{ scale: 1.05 }} transition={{ duration: 0.15 }}>Studio</motion.span>
           </div>
-        </section>
+        </ScrollReveal>
 
         {/* ===== Bottom CTA ===== */}
-        <section className="wl-endcta">
+        <ScrollReveal className="wl-endcta">
           <h2 className="wl-h2">Be first in.</h2>
           <p className="wl-sec-sub">
             Join {displayCount.toLocaleString()} filmmakers already on the list.
           </p>
-          <button
+          <motion.button
             className="wl-cta"
             style={{ maxWidth: 320, margin: "0 auto" }}
             onClick={scrollToForm}
+            whileHover={{ scale: 1.03, y: -2 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ duration: 0.15 }}
           >
             Join the waitlist <ArrowRight size={17} />
-          </button>
-        </section>
+          </motion.button>
+        </ScrollReveal>
 
         {/* Footer */}
         <footer className="wl-foot">

@@ -17,6 +17,8 @@ import {
   checkWaitlistStatusAction,
   WaitlistActionState,
 } from "@/app/actions/waitlist";
+import { trackLead } from "@/lib/meta/pixel";
+import { motion, AnimatePresence } from "@/components/ui/motion";
 
 interface WaitlistModalProps {
   isOpen: boolean;
@@ -43,8 +45,6 @@ export function WaitlistModal({
   // Status check state
   const [statusEmail, setStatusEmail] = useState("");
 
-  if (!isOpen) return null;
-
   const handleJoin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -52,6 +52,9 @@ export function WaitlistModal({
     startTransition(async () => {
       const res = await joinWaitlistAction(null, formData);
       setResult(res);
+      if (res?.data?.eventId) {
+        trackLead({ email, eventId: res.data.eventId });
+      }
     });
   };
 
@@ -100,8 +103,22 @@ export function WaitlistModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-[#0e0e12] p-6 text-[#f6f3ec] shadow-2xl">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <motion.div
+            className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-[#0e0e12] p-6 text-[#f6f3ec] shadow-2xl"
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+          >
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -395,7 +412,9 @@ export function WaitlistModal({
             </div>
           </div>
         )}
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

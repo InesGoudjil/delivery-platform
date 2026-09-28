@@ -12,6 +12,13 @@ import {
 } from "lucide-react";
 import { WorkflowSection } from "./WorkflowSection";
 import { AppImage } from "../ui/app-image";
+import {
+  motion,
+  ScrollReveal,
+  StaggerContainer,
+  StaggerItem,
+  FadeIn,
+} from "@/components/ui/motion";
 
 export interface ProjectDemo {
   id: string;
@@ -110,38 +117,40 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
   return (
     <section id="features" className="py-16 space-y-24">
       {/* 1. 6-Card Feature Grid Section */}
-      <div className="space-y-12 text-center">
+      <ScrollReveal className="space-y-12 text-center">
         <span className="text-sm font-semibold uppercase tracking-wider text-[#f5551d]">
           Everything you send clients
         </span>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+        <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left" staggerDelay={0.08}>
           {GRID_FEATURES.map((item, index) => {
             const Icon = item.icon;
             return (
-              <div
-                key={index}
-                className="card group relative rounded-2xl border border-white/10 bg-[#121217]/90 p-8 shadow-xl transition-all duration-300 hover:border-white/20 hover:bg-[#16161c]"
-              >
-                <div className="mb-6 flex size-12 items-center justify-center rounded-xl bg-[#2a1b18] text-[#f5551d] border border-[#f5551d]/20 transition-transform group-hover:scale-105">
-                  <Icon className="size-5" />
-                </div>
+              <StaggerItem key={index}>
+                <motion.div
+                  className="card group relative rounded-2xl border border-white/10 bg-[#121217]/90 p-8 shadow-xl transition-all duration-300 hover:border-white/25 hover:bg-[#16161c]"
+                  whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                >
+                  <div className="mb-6 flex size-12 items-center justify-center rounded-xl bg-[#2a1b18] text-[#f5551d] border border-[#f5551d]/20 transition-transform group-hover:scale-110">
+                    <Icon className="size-5" />
+                  </div>
 
-                <h3 className="mb-2 text-lg font-bold text-white font-display">
-                  {item.title}
-                </h3>
-                <p className="text-sm leading-relaxed text-[#a0a0aa]">
-                  {item.description}
-                </p>
-              </div>
+                  <h3 className="mb-2 text-lg font-bold text-white font-display">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm leading-relaxed text-[#a0a0aa]">
+                    {item.description}
+                  </p>
+                </motion.div>
+              </StaggerItem>
             );
           })}
-        </div>
-      </div>
+        </StaggerContainer>
+      </ScrollReveal>
 
       <WorkflowSection />
       {/* 2. Spotlight Feature 01: Portfolio That Sells */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center pt-8">
+      <ScrollReveal className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center pt-8">
         <div className="lg:col-span-5 space-y-4 text-left">
           <span className="text-xs font-semibold uppercase tracking-widest text-[#f5551d]">
             Feature 01
@@ -200,10 +209,10 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
             </div>
           </div>
         </div>
-      </div>
+      </ScrollReveal>
 
       {/* 3. Spotlight Feature 02: Feedback & Approval */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center pt-8">
+      <ScrollReveal className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center pt-8">
         <div className="lg:col-span-7 order-2 lg:order-1">
           <div className="card rounded-[28px] border border-white/10 bg-[#121217] p-6 shadow-2xl space-y-4">
             <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-white/10 flex items-center justify-center">
@@ -252,10 +261,10 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
             version.
           </p>
         </div>
-      </div>
+      </ScrollReveal>
 
       {/* 4. Spotlight Feature 03: Deliver on WhatsApp */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center pt-8">
+      <ScrollReveal className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center pt-8">
         <div className="lg:col-span-5 space-y-4 text-left">
           <span className="text-xs font-semibold uppercase tracking-widest text-[#f5551d]">
             Feature 03
@@ -291,10 +300,10 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
             </div>
           </div>
         </div>
-      </div>
+      </ScrollReveal>
 
       {/* 5. The Client Experience Box */}
-      <div className="card rounded-[32px] border border-white/10 bg-gradient-to-r from-[#141419] to-[#1a1a24] p-8 sm:p-14 shadow-2xl">
+      <ScrollReveal className="card rounded-[32px] border border-white/10 bg-gradient-to-r from-[#141419] to-[#1a1a24] p-8 sm:p-14 shadow-2xl">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-6 space-y-4 text-left">
             <span className="text-xs font-semibold uppercase tracking-widest text-[#f5551d]">
@@ -336,7 +345,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
             </div>
           </div>
         </div>
-      </div>
+      </ScrollReveal>
     </section>
   );
 }

@@ -159,6 +159,7 @@ export function UploadProjectModal({
               filename: file.name,
               fileSizeBytes: file.size,
               assetType,
+              category: isImage ? "still" : "film",
             });
 
             if (initRes.success && initRes.directUpload) {
@@ -235,10 +236,12 @@ export function UploadProjectModal({
             filename: coverFile.name,
             fileSizeBytes: coverFile.size,
             assetType: "photo_gallery",
+            category: "cover",
           });
           if (coverInit.success && coverInit.directUpload) {
             await fetch(coverInit.directUpload.uploadUrl, {
               method: coverInit.directUpload.uploadType === "presigned_put" ? "PUT" : "POST",
+              headers: coverInit.directUpload.headers || undefined,
               body: coverFile,
             });
             primaryThumbnailUrl = coverInit.directUpload.uploadUrl.split("?")[0];

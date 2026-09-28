@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerServices } from "@/core/server";
+import { presignDeliveryAssets } from "@/lib/media-server";
 import {
   DeliveryDetailClient,
   AssetVersionItem,
@@ -201,6 +202,9 @@ export default async function DeliveryDetailPage({
       },
     ];
   }
+
+  // Batch presign private delivery assets so creator streams/views directly from Cloudflare R2
+  mappedAssets = await presignDeliveryAssets(mappedAssets, services.storage, 7200);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-16 animate-in fade-in duration-200 text-foreground selection:bg-[#f5551d] selection:text-black">
