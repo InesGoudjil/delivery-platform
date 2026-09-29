@@ -4,6 +4,9 @@ import React from "react";
 import Link from "next/link";
 import { Sparkles, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { TypographyH1, TypographyLead } from "@/components/ui/typography";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 interface BrandingHeaderProps {
   workspaceSlug: string;
@@ -17,37 +20,56 @@ export function BrandingHeader({
   onSave,
 }: BrandingHeaderProps) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pt-2">
-      <div className="space-y-1">
+    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pt-2 border-b border-border pb-6">
+      <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-[#f5551d] uppercase tracking-wider font-semibold">
-            Public Identity &amp; Storefront
-          </span>
-          <Link
-            href={`/p/${workspaceSlug}`}
-            target="_blank"
-            className="text-xs text-zinc-500 hover:text-[#f5551d] flex items-center gap-1 transition-colors font-mono"
+          <Badge
+            variant="orange"
+            className="text-xs font-mono uppercase tracking-wider font-semibold"
           >
-            <span>Preview</span>
-            <ExternalLink className="size-3" />
-          </Link>
+            Public Identity &amp; Storefront
+          </Badge>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Link
+                  href={`/p/${workspaceSlug}`}
+                  target="_blank"
+                  className="text-xs text-muted-foreground hover:text-[#f5551d] flex items-center gap-1 transition-colors font-mono"
+                >
+                  <Badge variant="outline" className="text-[10px] font-mono hover:border-[#f5551d]/40 flex items-center gap-1 cursor-pointer">
+                    <span>Live Preview</span>
+                    <ExternalLink className="size-2.5" />
+                  </Badge>
+                </Link>
+              }
+            />
+            <TooltipContent>Open your public portfolio showcase in a new tab</TooltipContent>
+          </Tooltip>
         </div>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight uppercase font-heading">
+        <TypographyH1 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight uppercase font-heading">
           BRAND &amp; CUSTOMIZATION
-        </h1>
-        <p className="text-xs sm:text-sm text-muted-foreground max-w-xl leading-relaxed">
+        </TypographyH1>
+        <TypographyLead className="text-xs sm:text-sm text-muted-foreground max-w-xl leading-relaxed">
           Configure your storefront cover banner, public handle, filmmaker biography, accent palette, and verified client credentials.
-        </p>
+        </TypographyLead>
       </div>
 
-      <Button
-        onClick={onSave}
-        disabled={isPending}
-        className="rounded-full bg-[#f5551d] hover:bg-[#ff8a45] text-black font-extrabold text-xs px-6 py-2.5 shadow-lg shadow-[#f5551d]/20 transition-all uppercase tracking-wider h-auto shrink-0 cursor-pointer"
-      >
-        <Sparkles className="size-4 mr-1.5" />
-        <span>{isPending ? "Saving..." : "SAVE BRAND SETTINGS"}</span>
-      </Button>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              onClick={onSave}
+              disabled={isPending}
+              className="rounded-full bg-[#f5551d] hover:bg-[#ff8a45] text-black font-extrabold text-xs px-6 py-2.5 shadow-lg shadow-[#f5551d]/20 transition-all uppercase tracking-wider h-auto shrink-0 cursor-pointer"
+            >
+              <Sparkles className="size-4 mr-1.5" />
+              <span>{isPending ? "Saving..." : "SAVE BRAND SETTINGS"}</span>
+            </Button>
+          }
+        />
+        <TooltipContent>Apply brand identity, colors, and showcase changes</TooltipContent>
+      </Tooltip>
     </div>
   );
 }

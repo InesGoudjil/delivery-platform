@@ -15,6 +15,9 @@ import {
   confirmUploadCompletedAction,
 } from "@/app/actions/upload";
 import { PortfolioItem } from "../portfolio-client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Attachment,
   AttachmentContent,
@@ -371,25 +374,25 @@ export function UploadFilmModal({
 
           {/* Title Field */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
+            <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
               TITLE
-            </label>
-            <input
+            </Label>
+            <Input
               type="text"
               placeholder="e.g. Dubai Nights"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={uploading}
-              className="w-full bg-[#0c0c0e]/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#f5551d] transition-all"
+              className="bg-[#0c0c0e]/80 border-white/10 text-xs text-white placeholder:text-zinc-600 focus-visible:border-[#f5551d]"
               required
             />
           </div>
 
           {/* Description Field */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
+            <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
               DESCRIPTION <span className="normal-case text-zinc-500">(optional)</span>
-            </label>
+            </Label>
             <textarea
               rows={3}
               placeholder="A short line about this piece — the brief, the vibe, the client..."
@@ -402,9 +405,9 @@ export function UploadFilmModal({
 
           {/* Thumbnail Section */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
+            <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
               THUMBNAIL <span className="normal-case text-zinc-500">(optional)</span>
-            </label>
+            </Label>
 
             <div className="flex items-center gap-3">
               {/* Preview Thumbnail Box */}
@@ -430,15 +433,16 @@ export function UploadFilmModal({
                 onChange={(e) => handleThumbnailSelect(e.target.files)}
                 disabled={uploading}
               />
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => thumbInputRef.current?.click()}
                 disabled={uploading}
-                className="flex-1 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/15 text-white text-xs font-semibold py-2.5 px-4 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                className="flex-1 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border-white/15 text-white text-xs font-semibold py-2.5 px-4 h-auto flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
               >
                 <Upload className="size-3.5 text-zinc-300" />
                 <span>UPLOAD THUMBNAIL</span>
-              </button>
+              </Button>
             </div>
 
             <p className="text-[11px] text-zinc-500 font-sans leading-tight pt-0.5">
@@ -467,10 +471,10 @@ export function UploadFilmModal({
 
           {/* Submit Action Button */}
           <div className="pt-2">
-            <button
+            <Button
               type="submit"
               disabled={!selectedFile || uploading}
-              className="w-full rounded-xl py-3 px-4 bg-gradient-to-r from-[#b8481e] via-[#db5722] to-[#8d3615] hover:brightness-110 active:brightness-95 text-white text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-orange-950/40 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border border-white/10"
+              className="w-full rounded-xl py-3 px-4 h-auto bg-gradient-to-r from-[#b8481e] via-[#db5722] to-[#8d3615] hover:brightness-110 active:brightness-95 text-white text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-orange-950/40 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border border-white/10"
             >
               {uploading ? (
                 <>
@@ -483,7 +487,7 @@ export function UploadFilmModal({
                   <span>UPLOAD FILM OR STILL</span>
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

@@ -27,13 +27,16 @@ export interface CreateAssetVersionDTO {
 
 export interface IAssetRepository {
   findById(id: string): Promise<Asset | null>;
-  listByWorkspaceId(workspaceId: string): Promise<Asset[]>;
+  listByWorkspaceId(workspaceId: string, includeArchived?: boolean): Promise<Asset[]>;
   listUnassignedByWorkspaceId(workspaceId: string): Promise<Asset[]>;
   listByDeliveryId(deliveryId: string): Promise<Asset[]>;
+  listArchivedByWorkspaceId(workspaceId: string): Promise<Asset[]>;
   listByIds(ids: string[]): Promise<Asset[]>;
   create(dto: CreateAssetDTO): Promise<Asset>;
   assignToDelivery(assetId: string, deliveryId: string | null): Promise<Asset>;
   toggleApproval(assetId: string, isApproved: boolean): Promise<Asset>;
+  archive(id: string): Promise<Asset>;
+  restore(id: string): Promise<Asset>;
   update(id: string, data: Partial<Asset>): Promise<Asset>;
   delete(id: string): Promise<void>;
 }

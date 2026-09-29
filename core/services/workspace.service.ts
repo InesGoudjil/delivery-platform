@@ -233,4 +233,9 @@ export class WorkspaceService {
     const updatedUsed = Math.max(0, (ws.storageUsedBytes || 0) + addedBytes);
     return this.workspaceRepo.update(workspaceId, { storageUsedBytes: updatedUsed });
   }
+
+  async updateWorkspace(workspaceId: string, data: Partial<Workspace>): Promise<Workspace> {
+    return this.workspaceRepo.update(workspaceId, data);
+  }
 }
+

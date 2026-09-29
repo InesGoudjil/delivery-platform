@@ -218,10 +218,28 @@ export class CloudflareR2StorageProvider implements IStorageProvider {
   }
 
   async deleteAsset(providerUid: string): Promise<void> {
-    const bucket = this.getTargetBucket(providerUid);
+    let key = providerUid.split("?")[0].trim();
+    if (key.startsWith("http://") || key.startsWith("https://")) {
+      try {
+        const parsed = new URL(key);
+        key = parsed.pathname.replace(/^\/+/, "");
+        if (this.publicBucket && key.startsWith(`${this.publicBucket}/`)) {
+          key = key.slice(this.publicBucket.length + 1);
+        }
+        if (this.privateBucket && key.startsWith(`${this.privateBucket}/`)) {
+          key = key.slice(this.privateBucket.length + 1);
+        }
+      } catch {
+        // Fallback to raw key
+      }
+    }
+    if (key.startsWith("api/media/")) {
+      key = key.replace(/^api\/media\//, "");
+    }
+    const bucket = this.getTargetBucket(key);
     const command = new DeleteObjectCommand({
       Bucket: bucket,
-      Key: providerUid,
+      Key: key,
     });
     await this.s3Client.send(command);
   }

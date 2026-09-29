@@ -9,8 +9,16 @@ import {
   Send,
   Layers,
   Image as ImageIcon,
+  Trash2,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { TypographyH3 } from "@/components/ui/typography";
+import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
 import { CutReviewPlayer, type CutReviewPlayerRef } from "@/components/video/cut-review-player";
 import { formatTimecode } from "@/lib/timecode";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
@@ -23,6 +31,8 @@ interface AssetLightboxModalProps {
   feedbackList: FeedbackItem[];
   onAddFeedback: (feedback: FeedbackItem) => void;
   onToggleApproval: (itemId: string, currentStatus: string) => void;
+  onDeleteAsset?: (item: GalleryItem) => Promise<void> | void;
+  onEditAsset?: (item: GalleryItem) => void;
   authorName: string;
   triggerToast: (msg: string) => void;
 }
@@ -33,11 +43,15 @@ export function AssetLightboxModal({
   feedbackList,
   onAddFeedback,
   onToggleApproval,
+  onDeleteAsset,
+  onEditAsset,
   authorName,
   triggerToast,
 }: AssetLightboxModalProps) {
   const cutPlayerRef = useRef<CutReviewPlayerRef | null>(null);
   const [currentCutTime, setCurrentCutTime] = useState(0);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeletingAsset, setIsDeletingAsset] = useState(false);
   const [currentCutTimecode, setCurrentCutTimecode] = useState("00:00:00");
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
@@ -113,10 +127,10 @@ export function AssetLightboxModal({
             )}
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base">{activeItem.title}</h3>
-                <span className="text-[10px] font-mono font-bold bg-[#f5551d]/10 text-[#f5551d] border border-[#f5551d]/20 px-2 py-0.5 rounded-full">
+                <TypographyH3 className="font-bold text-base text-white">{activeItem.title}</TypographyH3>
+                <Badge variant="orange" className="text-[10px] font-mono font-bold">
                   V{activeVersionNumber}
-                </span>
+                </Badge>
               </div>
               <p className="text-xs text-muted-foreground font-mono">
                 Aspect: {activeItem.aspectRatio} · Format: {isStill ? "Hi-Res Still" : "4K ProRes"}
@@ -125,26 +139,82 @@ export function AssetLightboxModal({
           </div>
 
           <div className="flex items-center gap-2.5">
-            <Button
-              type="button"
-              onClick={() => onToggleApproval(activeItem.id, activeItem.status)}
-              size="sm"
-              className={`rounded-full text-xs font-bold px-3.5 py-1.5 cursor-pointer flex items-center gap-1.5 ${
-                activeItem.status === "approved"
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30"
-                  : "bg-white/10 text-white hover:bg-white/20"
-              }`}
-            >
-              <Check className="size-3.5" />
-              <span>{activeItem.status === "approved" ? "Approved" : "Mark Approved"}</span>
-            </Button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="size-9 rounded-full bg-white/10 text-muted-foreground hover:text-white flex items-center justify-center cursor-pointer"
-            >
-              <X className="size-5" />
-            </button>
+            {onEditAsset && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onEditAsset(activeItem)}
+                      className="rounded-full border-white/20 text-white bg-white/10 hover:bg-white/20 text-xs font-bold px-3.5 py-1.5 cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Pencil className="size-3.5" />
+                      <span className="hidden sm:inline">Edit Asset</span>
+                    </Button>
+                  }
+                />
+                <TooltipContent>Edit asset title &amp; aspect ratio</TooltipContent>
+              </Tooltip>
+            )}
+            {onDeleteAsset && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="rounded-full border-red-500/30 text-red-400 bg-red-500/10 hover:bg-red-500/20 text-xs font-bold px-3.5 py-1.5 cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Trash2 className="size-3.5" />
+                      <span className="hidden sm:inline">Delete Asset</span>
+                    </Button>
+                  }
+                />
+                <TooltipContent>Move asset to trash</TooltipContent>
+              </Tooltip>
+            )}
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    onClick={() => onToggleApproval(activeItem.id, activeItem.status)}
+                    size="sm"
+                    className={`rounded-full text-xs font-bold px-3.5 py-1.5 cursor-pointer flex items-center gap-1.5 ${
+                      activeItem.status === "approved"
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30"
+                        : "bg-white/10 text-white hover:bg-white/20"
+                    }`}
+                  >
+                    <Check className="size-3.5" />
+                    <span>{activeItem.status === "approved" ? "Approved" : "Mark Approved"}</span>
+                  </Button>
+                }
+              />
+              <TooltipContent>
+                {activeItem.status === "approved" ? "Click to request revisions" : "Approve asset"}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={onClose}
+                    className="size-9 rounded-full bg-white/10 text-muted-foreground hover:text-white flex items-center justify-center cursor-pointer"
+                  >
+                    <X className="size-5" />
+                  </Button>
+                }
+              />
+              <TooltipContent>Close preview (Esc)</TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
@@ -158,18 +228,20 @@ export function AssetLightboxModal({
               {activeItem.versions.map((ver) => {
                 const isActive = (currentVersion?.id || activeItem.versionId) === ver.id;
                 return (
-                  <button
+                  <Button
                     key={ver.id}
                     type="button"
+                    size="sm"
+                    variant={isActive ? "default" : "outline"}
                     onClick={() => setSelectedVersionId(ver.id)}
-                    className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                    className={`px-3 py-1 h-7 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
                       isActive
-                        ? "bg-[#f5551d] text-black shadow-md shadow-[#f5551d]/20"
-                        : "bg-white/5 text-white/70 hover:text-white hover:bg-white/10"
+                        ? "bg-[#f5551d] text-black hover:bg-[#e0440d] shadow-md shadow-[#f5551d]/20 border-transparent"
+                        : "bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10"
                     }`}
                   >
                     V{ver.versionNumber}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -217,13 +289,13 @@ export function AssetLightboxModal({
                   {isStill ? "Photo Notes" : "Timecoded Notes"} ({feedbackList.length})
                 </h4>
                 {isStill ? (
-                  <span className="text-[11px] font-mono text-muted-foreground bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                  <Badge variant="sage" className="text-[11px] font-mono px-2 py-0.5">
                     Still Inspection
-                  </span>
+                  </Badge>
                 ) : (
-                  <span className="text-[11px] font-mono text-[#ff8a45] bg-[#f5551d]/10 px-2 py-0.5 rounded border border-[#f5551d]/20">
+                  <Badge variant="orange" className="text-[11px] font-mono px-2 py-0.5">
                     Playhead: {currentCutTimecode}
-                  </span>
+                  </Badge>
                 )}
               </div>
 
@@ -268,17 +340,27 @@ export function AssetLightboxModal({
                           }
                           setActiveCommentId(f.id);
                         }}
-                        className={`p-3 rounded-xl text-xs space-y-1 border transition-all cursor-pointer ${
+                        className={`p-3 rounded-xl text-xs space-y-1.5 border transition-all cursor-pointer ${
                           isSelected
                             ? "bg-[#f5551d]/15 border-[#f5551d] text-white ring-1 ring-[#f5551d]"
                             : "bg-black/40 border-white/10 text-white/90 hover:bg-black/60 hover:border-white/20"
                         }`}
                       >
                         <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-                          <span className="font-semibold text-white">{f.authorName}</span>
-                          <span className={isTimecoded ? "text-[#ff8a45] font-bold" : "text-white/40"}>
-                            [{tcDisplay}]
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <Avatar className="size-5 text-[9px] shrink-0">
+                              <AvatarFallback className="text-[9px] bg-white/10 text-white font-mono">
+                                {f.authorName ? f.authorName.slice(0, 2).toUpperCase() : "U"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-semibold text-white">{f.authorName}</span>
+                          </div>
+                          <Badge
+                            variant={isTimecoded ? "orange" : "outline"}
+                            className="text-[10px] font-mono py-0 h-4"
+                          >
+                            {tcDisplay}
+                          </Badge>
                         </div>
                         <p className="text-white/90 leading-snug">{f.commentText}</p>
                       </div>
@@ -290,12 +372,12 @@ export function AssetLightboxModal({
               <form onSubmit={handleSendFeedback} className="pt-2 border-t border-white/10 flex flex-col gap-2 shrink-0">
                 <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
                   <span>{isStill ? "Note on:" : "Tagging at:"}</span>
-                  <span className={isStill ? "text-white/70 font-semibold" : "text-[#ff8a45] font-bold"}>
-                    {isStill ? "Full Still" : `[${currentCutTimecode}]`}
-                  </span>
+                  <Badge variant={isStill ? "sage" : "orange"} className="text-[10px] font-mono py-0 h-4">
+                    {isStill ? "Full Still" : currentCutTimecode}
+                  </Badge>
                 </div>
                 <div className="flex gap-2">
-                  <input
+                  <Input
                     type="text"
                     placeholder={
                       isStill
@@ -304,21 +386,48 @@ export function AssetLightboxModal({
                     }
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
-                    className="flex-1 bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#f5551d] text-white"
+                    className="flex-1 bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-xs focus-visible:ring-1 focus-visible:ring-[#f5551d] focus-visible:border-[#f5551d] text-white h-9"
                   />
-                  <Button
-                    type="submit"
-                    size="sm"
-                    className="size-8 p-0 rounded-xl bg-[#f5551d] text-black font-bold hover:bg-[#ff8a45] cursor-pointer"
-                  >
-                    <Send className="size-3.5" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          type="submit"
+                          size="sm"
+                          className="size-9 p-0 rounded-xl bg-[#f5551d] text-black font-bold hover:bg-[#ff8a45] cursor-pointer shrink-0 flex items-center justify-center"
+                        >
+                          <Send className="size-3.5" />
+                        </Button>
+                      }
+                    />
+                    <TooltipContent>Post timecoded feedback</TooltipContent>
+                  </Tooltip>
                 </div>
               </form>
             </div>
           </div>
         </div>
       </div>
+
+      <DeleteConfirmDialog
+        isOpen={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="Delete Deliverable Asset"
+        itemName={activeItem.title}
+        description="Are you sure you want to permanently delete this asset from the delivery? All versions and feedback notes for this asset will also be removed."
+        isDeleting={isDeletingAsset}
+        onConfirm={async () => {
+          if (!onDeleteAsset) return;
+          setIsDeletingAsset(true);
+          try {
+            await onDeleteAsset(activeItem);
+            setShowDeleteConfirm(false);
+            onClose();
+          } finally {
+            setIsDeletingAsset(false);
+          }
+        }}
+      />
     </div>
   );
 }

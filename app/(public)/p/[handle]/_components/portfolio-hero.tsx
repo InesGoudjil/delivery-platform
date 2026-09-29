@@ -2,6 +2,10 @@ import React from "react";
 import { Play, Film, Image as ImageIcon } from "lucide-react";
 import { FilmmakerProfile, PublicFeaturedItem, PortfolioProject, PortfolioAsset } from "@/lib/portfolio-data";
 import { HeroPreviewTrigger } from "./portfolio-buttons";
+import { AppImage } from "@/components/ui/app-image";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { TypographyH2, TypographyLead } from "@/components/ui/typography";
 
 interface PortfolioHeroProps {
   profile: FilmmakerProfile;
@@ -43,12 +47,17 @@ export function PortfolioHero({
 
   return (
     <section className="relative">
-      <HeroPreviewTrigger className="group relative w-full aspect-[16/9] sm:aspect-[21/9] rounded-[2rem] overflow-hidden border border-white/10 bg-zinc-900 shadow-2xl cursor-pointer">
-        {/* Background cover image */}
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out group-hover:scale-105"
-          style={{ backgroundImage: `url(${bgImage})` }}
-        />
+      <HeroPreviewTrigger className="group relative w-full aspect-[16/9] sm:aspect-[21/9] rounded-[2rem] overflow-hidden border border-white/10 bg-zinc-900 shadow-2xl cursor-pointer block">
+        {/* Background cover image with AppImage */}
+        <div className="absolute inset-0 transition-transform duration-700 ease-out group-hover:scale-105">
+          <AppImage
+            src={bgImage}
+            alt={heroTitle}
+            fallbackIcon="film"
+            containerClassName="size-full"
+            className="size-full object-cover"
+          />
+        </div>
 
         {/* Dark gradient & cinematic vignette */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/20 group-hover:via-black/20 transition-all duration-300" />
@@ -66,29 +75,34 @@ export function PortfolioHero({
 
         {/* Bottom-left information */}
         <div className="absolute bottom-6 left-6 right-6 sm:bottom-10 sm:left-10 sm:right-10 z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div className="space-y-2 max-w-xl">
+          <div className="space-y-2 max-w-xl text-left">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f5551d] text-black text-[11px] font-extrabold uppercase tracking-wider">
-                <span>{badgeTitle}</span>
-              </div>
+              <Badge variant="orange" className="font-extrabold uppercase tracking-wider text-black bg-[#f5551d] px-3 py-1 text-[11px]">
+                {badgeTitle}
+              </Badge>
               {profile.avatar && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-white text-[11px] shadow-sm">
-                  <div className="relative size-4 rounded-full overflow-hidden shrink-0 border border-white/20">
-                    <img src={profile.avatar} alt={profile.name} className="w-full h-full object-cover" />
-                  </div>
+                <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/15 shadow-sm">
+                  <Avatar size="sm" className="size-4 ring-1 ring-white/20">
+                    <AvatarImage src={profile.avatar} alt={profile.name} />
+                    <AvatarFallback className="text-[8px] bg-zinc-800 text-white">
+                      {profile.name.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                   <span className="font-semibold text-xs text-zinc-200">{profile.name}</span>
                 </div>
               )}
             </div>
-            <h2 className="font-heading font-extrabold text-2xl sm:text-4xl lg:text-5xl text-white tracking-tight drop-shadow-md uppercase">
+
+            <TypographyH2 className="font-heading font-extrabold text-2xl sm:text-4xl lg:text-5xl text-white tracking-tight drop-shadow-md uppercase">
               {heroTitle}
-            </h2>
-            <p className="text-xs sm:text-sm text-zinc-300 font-sans leading-relaxed drop-shadow-sm line-clamp-2">
+            </TypographyH2>
+
+            <TypographyLead className="text-xs sm:text-sm text-zinc-300 font-sans leading-relaxed drop-shadow-sm line-clamp-2">
               {heroDesc}
-            </p>
+            </TypographyLead>
           </div>
 
-          <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-zinc-300 bg-black/50 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10">
+          <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-zinc-300 bg-black/50 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 shrink-0">
             {isStill ? (
               <>
                 <ImageIcon className="size-3.5 text-[#f5551d]" />

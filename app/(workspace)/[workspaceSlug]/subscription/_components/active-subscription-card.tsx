@@ -24,6 +24,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { WorkspaceFeatureConfig } from "@/core/entities/workspace";
 
 interface ActiveSubscriptionCardProps {
@@ -110,25 +111,46 @@ export function ActiveSubscriptionCard({
         <Separator />
 
         {/* Storage Usage Progress */}
-        <div className="flex flex-col gap-2 p-4 rounded-xl bg-background/70 border border-border">
-          <div className="flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <HardDrive className="size-4 text-primary" />
-              <span className="font-semibold text-foreground">Storage Allocation</span>
-            </div>
-            <span className="font-mono text-muted-foreground">
-              <strong className="text-foreground">{usedGb} GB</strong> of {totalGb} GB used ({storagePercentage}%)
-            </span>
-          </div>
-          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-300 ${
-                storagePercentage > 90 ? "bg-red-500" : storagePercentage > 75 ? "bg-amber-500" : "bg-primary"
-              }`}
-              style={{ width: `${Math.max(2, storagePercentage)}%` }}
-            />
-          </div>
-        </div>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <div className="flex flex-col gap-2.5 p-4 rounded-xl bg-background/70 border border-border cursor-help hover:border-primary/40 transition-colors">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <HardDrive className="size-4 text-primary" />
+                    <span className="font-semibold text-foreground">Storage Allocation</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-muted-foreground text-[11px]">
+                      <strong className="text-foreground">{usedGb} GB</strong> of {totalGb} GB
+                    </span>
+                    <Badge
+                      variant={storagePercentage > 90 ? "destructive" : storagePercentage > 75 ? "orange" : "sage"}
+                      className="text-[10px] font-mono px-1.5 py-0 font-semibold"
+                    >
+                      {storagePercentage}%
+                    </Badge>
+                  </div>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden p-0.5 border border-border/50">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      storagePercentage > 90
+                        ? "bg-destructive shadow-destructive/50"
+                        : storagePercentage > 75
+                        ? "bg-[#f5551d]"
+                        : "bg-gradient-to-r from-primary to-[#ff8a45]"
+                    }`}
+                    style={{ width: `${Math.max(2, storagePercentage)}%` }}
+                  />
+                </div>
+              </div>
+            }
+          />
+          <TooltipContent>
+            {usedGb} GB used out of {totalGb} GB quota ({Math.max(0, totalGb - Number(usedGb)).toFixed(1)} GB remaining)
+          </TooltipContent>
+        </Tooltip>
 
         {/* Feature inclusions checklist */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">

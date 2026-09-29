@@ -426,4 +426,58 @@ export async function sendDeliveryEmailAction(
   }
 }
 
+export async function deleteAssetAction(
+  assetId: string,
+  options?: { deliveryId?: string; workspaceSlug?: string; portfolioId?: string }
+) {
+  const { deleteAssetAction: del } = await import("./assets");
+  return del(assetId, options);
+}
+
+export async function deleteDeliveryAction(deliveryId: string, workspaceSlug?: string) {
+  const { deleteDeliveryAction: del } = await import("./assets");
+  return del(deliveryId, workspaceSlug);
+}
+
+export async function restoreAssetAction(
+  assetId: string,
+  options?: { deliveryId?: string; workspaceSlug?: string; portfolioId?: string; projectId?: string }
+) {
+  const { restoreAssetAction: res } = await import("./assets");
+  return res(assetId, options);
+}
+
+export async function permanentDeleteAssetAction(
+  assetId: string,
+  options?: { deliveryId?: string; workspaceSlug?: string; portfolioId?: string; projectId?: string }
+) {
+  const { permanentDeleteAssetAction: pdel } = await import("./assets");
+  return pdel(assetId, options);
+}
+
+export async function listTrashAssetsAction(workspaceId: string) {
+  const { listTrashAssetsAction: list } = await import("./assets");
+  return list(workspaceId);
+}
+
+export async function emptyTrashAction(workspaceId: string, workspaceSlug?: string) {
+  const { emptyTrashAction: empty } = await import("./assets");
+  return empty(workspaceId, workspaceSlug);
+}
+
+export async function updateAssetAction(
+  itemId: string,
+  data: {
+    title?: string;
+    description?: string;
+    category?: string;
+    thumbnailUrl?: string;
+    aspectRatio?: string;
+  },
+  options?: { deliveryId?: string; workspaceSlug?: string; portfolioId?: string; isProject?: boolean }
+) {
+  const { updateAssetAction: upd } = await import("./assets");
+  return upd(itemId, data, options);
+}
+
 

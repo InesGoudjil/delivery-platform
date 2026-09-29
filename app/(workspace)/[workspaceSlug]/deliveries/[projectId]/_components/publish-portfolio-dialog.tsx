@@ -9,7 +9,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { publishDeliveryToPortfolioAction } from "@/app/actions/deliveries";
 
 interface PublishPortfolioDialogProps {
@@ -68,12 +72,12 @@ export function PublishPortfolioDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#121215] text-white border-white/20 rounded-3xl p-6 sm:p-8 max-w-md">
-        <DialogHeader className="space-y-2">
-          <span className="text-[11px] font-mono font-bold text-[#f5551d] uppercase tracking-wider">
+      <DialogContent className="bg-card text-card-foreground border-border rounded-3xl p-6 sm:p-8 max-w-md shadow-2xl">
+        <DialogHeader className="space-y-1.5">
+          <Badge variant="orange" className="w-fit text-[10px] font-mono font-bold uppercase tracking-wider">
             SHOWCASE SPOTLIGHT
-          </span>
-          <DialogTitle className="text-xl font-bold font-heading text-white">
+          </Badge>
+          <DialogTitle className="text-xl font-bold font-heading text-foreground">
             Publish Cut to Portfolio
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
@@ -82,14 +86,15 @@ export function PublishPortfolioDialog({
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
-          <div className="space-y-2">
-            <label className="text-[11px] font-mono text-muted-foreground uppercase tracking-wider block">
+          <Field orientation="vertical">
+            <FieldLabel htmlFor="publish-cat" className="text-[11px] font-mono text-muted-foreground uppercase tracking-wider block">
               Showcase Category
-            </label>
+            </FieldLabel>
             <select
+              id="publish-cat"
               value={publishCategory}
               onChange={(e) => setPublishCategory(e.target.value)}
-              className="w-full bg-[#1a1a1e] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#f5551d]"
+              className="w-full bg-muted/40 border border-input rounded-xl px-3 py-2.5 text-xs text-foreground focus:outline-none focus:border-primary transition-colors"
             >
               <option value="Commercial">Commercial / Brand</option>
               <option value="Narrative">Narrative / Short Film</option>
@@ -98,23 +103,25 @@ export function PublishPortfolioDialog({
               <option value="Automotive">Automotive</option>
               <option value="Fashion">Fashion / Editorial</option>
             </select>
-          </div>
+          </Field>
 
-          <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-1.5 text-xs">
-            <div className="text-[11px] font-mono text-muted-foreground uppercase">Target Showcase:</div>
-            <div className="font-bold text-white">{projectTitle}</div>
-            <div className="text-muted-foreground text-[11px]">Client: {clientName}</div>
-            <div className="text-[#f5551d] text-[11px] font-mono">
-              {portfolio ? `Publishes to /${workspaceSlug}/portfolio` : "Creates your public portfolio showcase"}
-            </div>
-          </div>
+          <Card className="rounded-xl border border-border bg-muted/30 p-3.5 space-y-1.5 text-xs hover:translate-y-0">
+            <CardContent className="p-0 space-y-1">
+              <div className="text-[11px] font-mono text-muted-foreground uppercase">Target Showcase:</div>
+              <div className="font-bold text-foreground">{projectTitle}</div>
+              <div className="text-muted-foreground text-[11px]">Client: {clientName}</div>
+              <div className="text-primary text-[11px] font-mono pt-0.5">
+                {portfolio ? `Publishes to /${workspaceSlug}/portfolio` : "Creates your public portfolio showcase"}
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+          <DialogFooter className="flex items-center justify-end gap-3 pt-3 border-t border-border -mx-6 -mb-6 p-6">
             <Button
               type="button"
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className="rounded-full text-xs text-muted-foreground hover:text-white"
+              className="rounded-full text-xs text-muted-foreground hover:text-foreground"
             >
               Cancel
             </Button>
@@ -122,12 +129,12 @@ export function PublishPortfolioDialog({
               type="button"
               onClick={handlePublish}
               disabled={isPublishing}
-              className="rounded-full bg-[#f5551d] hover:bg-[#ff8a45] text-black font-extrabold text-xs px-5 py-2.5 cursor-pointer shadow-lg shadow-[#f5551d]/20 flex items-center gap-2"
+              className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs px-5 py-2.5 cursor-pointer shadow-lg shadow-primary/20 flex items-center gap-2"
             >
               <Sparkles className="size-3.5" />
               <span>{isPublishing ? "Publishing..." : "Publish to Portfolio"}</span>
             </Button>
-          </div>
+          </DialogFooter>
         </div>
       </DialogContent>
     </Dialog>

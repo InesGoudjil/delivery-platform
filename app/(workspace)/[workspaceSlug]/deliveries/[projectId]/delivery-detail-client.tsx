@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { VideoUploader } from "@/components/workspaces/video-uploader";
 import { AssetMultiUploader } from "@/components/workspaces/asset-multi-uploader";
@@ -8,8 +9,14 @@ import {
   approveCutAction,
   archiveDeliveryAction,
   toggleAssetApprovalAction,
+  deleteAssetAction,
+  deleteDeliveryAction,
+  updateAssetAction,
 } from "@/app/actions/deliveries";
 import { resolveThumbnailUrl, resolveMediaUrl } from "@/lib/media";
+import { EditAssetDialog, type EditableAssetItem } from "@/components/workspaces/edit-asset-dialog";
+import { TrashBinDialog } from "@/components/workspaces/trash-bin-dialog";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 // Modular Subcomponents
 import { DeliveryHeroBanner } from "./_components/delivery-hero-banner";
@@ -50,10 +57,16 @@ export function DeliveryDetailClient({
   assets,
   initialFeedback,
 }: DeliveryDetailClientProps) {
+  const router = useRouter();
+
   // Dialog Open States
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
+  const [isTrashDialogOpen, setIsTrashDialogOpen] = useState(false);
+  const [isEditAssetDialogOpen, setIsEditAssetDialogOpen] = useState(false);
+  const [editingAssetItem, setEditingAssetItem] = useState<EditableAssetItem | null>(null);
+  const [isSavingAssetEdit, setIsSavingAssetEdit] = useState(false);
 
   // Uploader & Toast State
   const [showUploader, setShowUploader] = useState(false);
@@ -188,9 +201,107 @@ export function DeliveryDetailClient({
     }
   };
 
-  const handleDeleteItemFromGallery = (itemId: string) => {
-    setGalleryItems((prev) => prev.filter((item) => item.id !== itemId));
-    triggerToast("Asset removed from delivery");
+  const handleDeleteAsset = async (item: GalleryItem) => {
+    try {
+      const res = await deleteAssetAction(item.id, {
+        deliveryId: project.id,
+        workspaceSlug: workspace.slug,
+      });
+      if (res.success) {
+        setGalleryItems((prev) => prev.filter((i) => i.id !== item.id));
+        if (activeItem?.id === item.id) {
+          setActiveItem(null);
+        }
+        triggerToast(`Asset "${item.title}" moved to Trash`);
+      } else {
+        triggerToast(res.error || "Failed to move asset to trash");
+      }
+    } catch (err: any) {
+      triggerToast(err.message || "Failed to move asset to trash");
+    }
+  };
+
+  const handleDeleteItemFromGallery = async (itemId: string) => {
+    const targetItem = galleryItems.find((i) => i.id === itemId);
+    if (!targetItem) {
+      setGalleryItems((prev) => prev.filter((item) => item.id !== itemId));
+      return;
+    }
+    await handleDeleteAsset(targetItem);
+  };
+
+  const handleOpenEditAsset = (item: GalleryItem) => {
+    setEditingAssetItem({
+      id: item.id,
+      title: item.title,
+      thumbnailUrl: item.src,
+      aspectRatio: item.aspectRatio,
+      type: item.type === "photo" ? "still" : "film",
+    });
+    setIsEditAssetDialogOpen(true);
+  };
+
+  const handleSaveAssetEdit = async (updated: {
+    id: string;
+    title: string;
+    description?: string;
+    category?: string;
+    thumbnailUrl?: string;
+    aspectRatio?: string;
+  }) => {
+    setIsSavingAssetEdit(true);
+    try {
+      const res = await updateAssetAction(
+        updated.id,
+        {
+          title: updated.title,
+          description: updated.description,
+          category: updated.category,
+          thumbnailUrl: updated.thumbnailUrl,
+          aspectRatio: updated.aspectRatio,
+        },
+        {
+          deliveryId: project.id,
+          workspaceSlug: workspace.slug,
+        }
+      );
+
+      if (res.success) {
+        setGalleryItems((prev) =>
+          prev.map((i) =>
+            i.id === updated.id
+              ? {
+                  ...i,
+                  title: updated.title,
+                  aspectRatio: updated.aspectRatio || i.aspectRatio,
+                  src: updated.thumbnailUrl || i.src,
+                }
+              : i
+          )
+        );
+
+        if (activeItem && activeItem.id === updated.id) {
+          setActiveItem((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  title: updated.title,
+                  aspectRatio: updated.aspectRatio || prev.aspectRatio,
+                  src: updated.thumbnailUrl || prev.src,
+                }
+              : null
+          );
+        }
+
+        triggerToast(`Updated "${updated.title}" successfully`);
+      } else {
+        triggerToast(res.error || "Failed to update asset");
+      }
+    } catch (err: any) {
+      triggerToast(err.message || "Failed to update asset");
+    } finally {
+      setIsSavingAssetEdit(false);
+    }
   };
 
   const handleAssetUploaded = (uploadedAsset: any, uploadedVersion?: any) => {
@@ -282,7 +393,8 @@ export function DeliveryDetailClient({
       : galleryItems.filter((item) => item.status === "approved").length;
 
   return (
-    <div className="space-y-8">
+    <TooltipProvider delay={150}>
+      <div className="space-y-8">
       {/* 1. Main Hero Banner Container */}
       <DeliveryHeroBanner
         coverThumbnailUrl={coverThumbnailUrl}
@@ -343,6 +455,9 @@ export function DeliveryDetailClient({
         appearance={appearance}
         showAssetAddedBadge={showAssetAddedBadge}
         onSelectItem={setActiveItem}
+        onDeleteAsset={handleDeleteAsset}
+        onEditAsset={handleOpenEditAsset}
+        onOpenTrash={() => setIsTrashDialogOpen(true)}
       />
 
       {/* 6. Project Details Card */}
@@ -379,15 +494,22 @@ export function DeliveryDetailClient({
         onChangeCoverUrl={setCoverThumbnailUrl}
         items={galleryItems}
         onDeleteItem={handleDeleteItemFromGallery}
+        onEditItem={handleOpenEditAsset}
         onAddAssetClick={() => setShowUploader(true)}
         onSaveChanges={() => {
           setIsEditDialogOpen(false);
           triggerToast("Delivery details updated successfully");
         }}
-        onDeleteDelivery={() => {
-          if (confirm("Are you sure you want to delete this delivery?")) {
-            triggerToast("Delivery deleted");
-            setIsEditDialogOpen(false);
+        onDeleteDelivery={async () => {
+          if (confirm("Are you sure you want to permanently delete this delivery and all its assets?")) {
+            const res = await deleteDeliveryAction(project.id, workspace.slug);
+            if (res.success) {
+              triggerToast("Delivery deleted successfully");
+              setIsEditDialogOpen(false);
+              router.push(`/${workspace.slug}/deliveries`);
+            } else {
+              triggerToast(res.error || "Failed to delete delivery");
+            }
           }
         }}
       />
@@ -418,8 +540,35 @@ export function DeliveryDetailClient({
         feedbackList={feedbackList}
         onAddFeedback={(fb) => setFeedbackList((prev) => [...prev, fb])}
         onToggleApproval={handleToggleAssetApproval}
+        onDeleteAsset={handleDeleteAsset}
+        onEditAsset={handleOpenEditAsset}
         authorName={workspace.brandName || "Filmmaker"}
         triggerToast={triggerToast}
+      />
+
+      {/* 12. Edit Asset Dialog */}
+      <EditAssetDialog
+        isOpen={isEditAssetDialogOpen}
+        onClose={() => {
+          setIsEditAssetDialogOpen(false);
+          setEditingAssetItem(null);
+        }}
+        item={editingAssetItem}
+        workspaceId={workspace.id}
+        onSave={handleSaveAssetEdit}
+        isSaving={isSavingAssetEdit}
+      />
+
+      {/* 13. Workspace Trash Bin Dialog */}
+      <TrashBinDialog
+        isOpen={isTrashDialogOpen}
+        onOpenChange={setIsTrashDialogOpen}
+        workspaceId={workspace.id}
+        workspaceSlug={workspace.slug}
+        deliveryId={project.id}
+        onItemRestored={() => {
+          router.refresh();
+        }}
       />
 
       {/* Floating Toast Notification */}
@@ -429,6 +578,7 @@ export function DeliveryDetailClient({
           <span>{toastMessage}</span>
         </div>
       )}
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

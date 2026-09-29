@@ -4,6 +4,13 @@ import React, { useRef } from "react";
 import { MessageCircle, Palette, Check, Camera, Trash2, Upload, Film, Briefcase, MapPin, User } from "lucide-react";
 import { ACCENTS } from "./constants";
 import { PortfolioStats } from "@/core/entities/portfolio";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { TypographyH2, TypographyMuted } from "@/components/ui/typography";
 
 interface StorefrontIdentitySectionProps {
   brandName: string;
@@ -51,20 +58,22 @@ export function StorefrontIdentitySection({
   return (
     <section id="branding" className="space-y-4">
       <div>
-        <div className="text-xs font-mono text-[#f5551d] uppercase tracking-wider mb-0.5">
-          Storefront Identity
+        <div className="flex items-center gap-2 mb-1">
+          <Badge variant="orange" className="font-mono text-[10px] tracking-wider uppercase">
+            Storefront Identity
+          </Badge>
         </div>
-        <h2 className="text-xl font-bold font-heading text-foreground tracking-tight">
+        <TypographyH2 className="text-xl font-bold font-heading text-foreground tracking-tight border-none pb-0">
           BRAND &amp; URL SETTINGS
-        </h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
+        </TypographyH2>
+        <TypographyMuted className="text-xs text-muted-foreground mt-0.5">
           Configure how your name, profile photo, link, and accent styling appear to prospective clients.
-        </p>
+        </TypographyMuted>
       </div>
 
-      <div className="rounded-2xl bg-[#141416]/90 border border-white/[0.08] p-5 md:p-6 shadow-sm space-y-6">
+      <Card className="rounded-2xl bg-card/90 border border-border p-5 md:p-6 shadow-sm space-y-6 hover:translate-y-0">
         {/* Profile Image & Avatar Upload Card */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 p-4 rounded-xl bg-black/40 border border-white/10">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 p-4 rounded-xl bg-muted/40 border border-border">
           <input
             type="file"
             ref={profileInputRef}
@@ -74,26 +83,42 @@ export function StorefrontIdentitySection({
           />
 
           <div className="relative group/avatar shrink-0">
-            <div
-              onClick={() => profileInputRef.current?.click()}
-              className="size-16 sm:size-20 rounded-2xl overflow-hidden flex items-center justify-center text-black font-extrabold text-xl shadow-xl border-2 border-white/20 relative cursor-pointer group"
-              style={{ backgroundColor: accent }}
-              title="Upload new profile photo"
-            >
-              {logoUrl ? (
-                <img
-                  src={logoUrl}
-                  alt={brandName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="font-extrabold text-xl sm:text-2xl">{initials}</span>
-              )}
-              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity">
-                <Camera className="size-5 text-[#f5551d]" />
-                <span className="text-[9px] font-bold uppercase mt-1 tracking-wider">Change</span>
-              </div>
-            </div>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    onClick={() => profileInputRef.current?.click()}
+                    className="relative shrink-0 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background cursor-pointer"
+                  />
+                }
+              >
+                <Avatar
+                  className="size-16 sm:size-20 rounded-2xl overflow-hidden flex items-center justify-center shadow-xl border-2 border-border cursor-pointer relative"
+                  style={{ backgroundColor: accent }}
+                >
+                  {logoUrl && (
+                    <AvatarImage
+                      src={logoUrl}
+                      alt={brandName}
+                      className="rounded-2xl object-cover"
+                    />
+                  )}
+                  <AvatarFallback
+                    className="rounded-2xl font-extrabold text-xl sm:text-2xl text-black bg-transparent select-none"
+                  >
+                    {initials}
+                  </AvatarFallback>
+                  <div className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity rounded-2xl">
+                    <Camera className="size-5 text-[#f5551d]" />
+                    <span className="text-[9px] font-bold uppercase mt-1 tracking-wider">Change</span>
+                  </div>
+                </Avatar>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                Click to upload new director avatar or studio portrait
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           <div className="space-y-1.5 flex-1">
@@ -103,28 +128,49 @@ export function StorefrontIdentitySection({
                 Profile Photo &amp; Avatar
               </h3>
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
+            <TypographyMuted className="text-xs text-muted-foreground leading-relaxed">
               Upload your director portrait, logo, or headshot. Displayed in your public portfolio header, about card, and client delivery rooms.
-            </p>
+            </TypographyMuted>
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => profileInputRef.current?.click()}
-                className="rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold px-4 py-1.5 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-              >
-                <Upload className="size-3 text-[#f5551d]" />
-                <span>{logoUrl ? "Replace Photo" : "Upload Profile Photo"}</span>
-              </button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => profileInputRef.current?.click()}
+                      className="rounded-full bg-muted hover:bg-muted/80 border-border text-foreground text-xs font-semibold px-4 h-8 gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <Upload className="size-3 text-[#f5551d]" />
+                      <span>{logoUrl ? "Replace Photo" : "Upload Profile Photo"}</span>
+                    </Button>
+                  }
+                />
+                <TooltipContent side="bottom">
+                  JPG, PNG or WebP up to 10MB
+                </TooltipContent>
+              </Tooltip>
               {logoUrl && (
-                <button
-                  type="button"
-                  onClick={onRemoveProfile}
-                  className="rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-semibold px-3 py-1.5 transition-all flex items-center gap-1 cursor-pointer"
-                  title="Remove custom photo and use initials"
-                >
-                  <Trash2 className="size-3" />
-                  <span>Remove</span>
-                </button>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={onRemoveProfile}
+                        className="rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-semibold px-3 h-8 gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="size-3" />
+                        <span>Remove</span>
+                      </Button>
+                    }
+                  />
+                  <TooltipContent side="bottom">
+                    Remove custom photo and use initials
+                  </TooltipContent>
+                </Tooltip>
               )}
             </div>
           </div>
@@ -136,13 +182,13 @@ export function StorefrontIdentitySection({
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Brand / Filmmaker Name
             </label>
-            <input
+            <Input
               type="text"
               required
               value={brandName}
               onChange={(e) => onBrandNameChange(e.target.value)}
               placeholder="e.g. Pedro Concreato"
-              className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary transition-colors"
+              className="h-10 rounded-xl bg-muted/50 border-border text-foreground text-sm px-4"
             />
           </div>
 
@@ -150,14 +196,14 @@ export function StorefrontIdentitySection({
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Public Showcase Handle
             </label>
-            <div className="flex items-center bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm text-muted-foreground">
-              <span className="font-mono text-xs">cinespace.film/p/</span>
+            <div className="flex items-center bg-muted/50 border border-border rounded-xl px-4 h-10 text-sm text-muted-foreground focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 transition-colors">
+              <span className="font-mono text-xs select-none">cinespace.film/p/</span>
               <input
                 type="text"
                 required
                 value={handle}
                 onChange={(e) => onHandleChange(e.target.value)}
-                className="bg-transparent text-foreground focus:outline-none ml-1 font-bold w-full text-sm"
+                className="bg-transparent text-foreground focus:outline-none ml-1 font-bold w-full text-sm font-mono"
               />
             </div>
           </div>
@@ -170,16 +216,16 @@ export function StorefrontIdentitySection({
               <MessageCircle className="size-3.5 text-[#f5551d]" />
               WhatsApp Direct Booking Number
             </label>
-            <input
+            <Input
               type="text"
               value={whatsapp}
               onChange={(e) => onWhatsappChange(e.target.value)}
               placeholder="+971501234567"
-              className="w-full bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary transition-colors font-mono"
+              className="h-10 rounded-xl bg-muted/50 border-border text-foreground text-sm font-mono px-4"
             />
-            <p className="text-[11px] text-muted-foreground">
+            <TypographyMuted className="text-[11px] text-muted-foreground">
               Powers one-click WhatsApp client inquiries and rapid review links across the Gulf.
-            </p>
+            </TypographyMuted>
           </div>
 
           <div className="space-y-2">
@@ -189,42 +235,49 @@ export function StorefrontIdentitySection({
                 Player &amp; Button Accent Color
               </label>
               {!canBranding && (
-                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-mono font-bold">
+                <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[9px] font-mono font-bold">
                   PRO+
-                </span>
+                </Badge>
               )}
             </div>
             <div className="flex items-center gap-3 pt-1">
               {ACCENTS.map((c) => (
-                <button
-                  type="button"
-                  key={c}
-                  onClick={() => onAccentChange(c)}
-                  style={{ backgroundColor: c }}
-                  className={`size-9 rounded-full flex items-center justify-center transition-all border-2 cursor-pointer ${
-                    accent === c
-                      ? "border-white scale-110 shadow-lg"
-                      : "border-transparent opacity-80 hover:opacity-100"
-                  } ${!canBranding ? "opacity-60 cursor-not-allowed" : ""}`}
-                  title={!canBranding ? "Custom accent colors require a Pro, Studio, or Enterprise plan." : undefined}
-                >
-                  {accent === c && <Check className="size-4 text-black font-bold" />}
-                </button>
+                <Tooltip key={c}>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        onClick={() => onAccentChange(c)}
+                        style={{ backgroundColor: c }}
+                        className={`size-9 rounded-full flex items-center justify-center transition-all border-2 cursor-pointer ${
+                          accent === c
+                            ? "border-white scale-110 shadow-lg"
+                            : "border-transparent opacity-80 hover:opacity-100"
+                        } ${!canBranding ? "opacity-60 cursor-not-allowed" : ""}`}
+                      >
+                        {accent === c && <Check className="size-4 text-black font-bold" />}
+                      </button>
+                    }
+                  />
+                  <TooltipContent side="top">
+                    {!canBranding ? "Custom accent colors require Pro, Studio, or Enterprise" : `Select ${c}`}
+                  </TooltipContent>
+                </Tooltip>
               ))}
             </div>
           </div>
         </div>
 
         {/* Filmmaker Showcase Stats Card */}
-        <div className="pt-2 border-t border-white/10 space-y-3">
+        <div className="pt-2 border-t border-border space-y-3">
           <div>
             <div className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
               <Film className="size-3.5 text-[#f5551d]" />
               Filmmaker Showcase Stats &amp; Badges
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <TypographyMuted className="text-xs text-muted-foreground mt-0.5">
               These 3 counter badges appear prominently on your public About section to communicate scale and experience.
-            </p>
+            </TypographyMuted>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
@@ -233,12 +286,12 @@ export function StorefrontIdentitySection({
                 <Film className="size-3 text-[#f5551d]" />
                 Films Delivered
               </label>
-              <input
+              <Input
                 type="text"
                 value={stats.projects || "80+"}
                 onChange={(e) => onStatsChange({ ...stats, projects: e.target.value })}
                 placeholder="e.g. 80+"
-                className="w-full bg-muted/50 border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:border-primary font-mono"
+                className="h-9 rounded-xl bg-muted/50 border-border text-xs text-foreground font-mono px-3.5"
               />
             </div>
 
@@ -247,12 +300,12 @@ export function StorefrontIdentitySection({
                 <Briefcase className="size-3 text-[#f5551d]" />
                 Industry Experience
               </label>
-              <input
+              <Input
                 type="text"
                 value={stats.years || "6 YRS"}
                 onChange={(e) => onStatsChange({ ...stats, years: e.target.value })}
                 placeholder="e.g. 6 YRS"
-                className="w-full bg-muted/50 border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:border-primary font-mono"
+                className="h-9 rounded-xl bg-muted/50 border-border text-xs text-foreground font-mono px-3.5"
               />
             </div>
 
@@ -261,17 +314,17 @@ export function StorefrontIdentitySection({
                 <MapPin className="size-3 text-[#f5551d]" />
                 Based / Region
               </label>
-              <input
+              <Input
                 type="text"
                 value={stats.location || "UAE"}
                 onChange={(e) => onStatsChange({ ...stats, location: e.target.value })}
                 placeholder="e.g. Dubai, UAE"
-                className="w-full bg-muted/50 border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:border-primary font-mono"
+                className="h-9 rounded-xl bg-muted/50 border-border text-xs text-foreground font-mono px-3.5"
               />
             </div>
           </div>
         </div>
-      </div>
+      </Card>
     </section>
   );
 }

@@ -1,8 +1,16 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { PortfolioAppearance, PortfolioExperience, SocialLinks } from "@/core/entities/portfolio";
-import { toggleFeaturedItemAction } from "@/app/actions/portfolio";
+import {
+  toggleFeaturedItemAction,
+  deletePortfolioItemAction,
+  deleteAssetAction,
+  updateAssetAction,
+} from "@/app/actions/portfolio";
+import { EditAssetDialog, type EditableAssetItem } from "@/components/workspaces/edit-asset-dialog";
+import { TrashBinDialog } from "@/components/workspaces/trash-bin-dialog";
 import { PortfolioHero } from "./_components/portfolio-hero";
 import { AppearanceToolbar } from "./_components/appearance-toolbar";
 import { FeaturedReel } from "./_components/featured-reel";
@@ -14,6 +22,7 @@ import {
 } from "./_components/portfolio-modals";
 import { ExperienceSection } from "./_components/experience-section";
 import { toast } from "sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 
 
@@ -69,8 +78,10 @@ export function PortfolioClient({
   initialProjects,
   initialFeaturedIds,
 }: PortfolioClientProps) {
+  const router = useRouter();
   const [projects, setProjects] = useState<PortfolioItem[]>(initialProjects);
   const [featuredIds, setFeaturedIds] = useState<string[]>(initialFeaturedIds);
+  const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const handleToggleFeature = (item: PortfolioItem) => {
@@ -111,6 +122,11 @@ export function PortfolioClient({
   const [selectedProject, setSelectedProject] = useState<PortfolioItem | null>(null);
   const [activeParentProject, setActiveParentProject] = useState<PortfolioItem | null>(null);
 
+  // Edit State
+  const [itemToEdit, setItemToEdit] = useState<EditableAssetItem | null>(null);
+  const [isEditingItem, setIsEditingItem] = useState(false);
+  const [isSavingItem, setIsSavingItem] = useState(false);
+
   const handleSelectItem = (item: PortfolioItem) => {
     if (item.type === "still") {
       setSelectedStill(item);
@@ -129,9 +145,202 @@ export function PortfolioClient({
     setProjects((prev) => [newItem, ...prev]);
   };
 
+  const handleDeleteItem = async (item: PortfolioItem | ProjectAsset) => {
+    startTransition(async () => {
+      const itemType =
+        "type" in item && item.type === "project"
+          ? "project"
+          : item.type === "still"
+          ? "still"
+          : "film";
+
+      const res = await deletePortfolioItemAction(
+        item.id,
+        itemType,
+        portfolio.id,
+        workspace.slug
+      );
+
+      if (res.success) {
+        setProjects((prev) => prev.filter((p) => p.id !== item.id));
+        setFeaturedIds((prev) => prev.filter((id) => id !== item.id));
+        showFlash(itemType === "project" ? `Deleted project "${item.title}"` : `Moved "${item.title}" to Trash`);
+        if (selectedStill?.id === item.id) {
+          setSelectedStill(null);
+          setActiveParentProject(null);
+        }
+        if (selectedFilm?.id === item.id) {
+          setSelectedFilm(null);
+          setActiveParentProject(null);
+        }
+        if (selectedProject?.id === item.id) {
+          setSelectedProject(null);
+          setActiveParentProject(null);
+        }
+      } else {
+        toast.error(("error" in res && res.error) ? String(res.error) : "Failed to delete item");
+      }
+    });
+  };
+
+  const handleDeleteProjectAsset = async (asset: ProjectAsset) => {
+    startTransition(async () => {
+      const res = await deleteAssetAction(asset.id, {
+        portfolioId: portfolio.id,
+        workspaceSlug: workspace.slug,
+        projectId: selectedProject?.id,
+      });
+
+      if (res.success) {
+        setProjects((prev) =>
+          prev.map((p) => {
+            if (p.id === selectedProject?.id && p.projectAssets) {
+              const updatedAssets = p.projectAssets.filter((a) => a.id !== asset.id);
+              return {
+                ...p,
+                assetCount: updatedAssets.length,
+                projectAssets: updatedAssets,
+              };
+            }
+            return p;
+          })
+        );
+        showFlash(`Moved "${asset.title}" to Trash`);
+      } else {
+        toast.error(res.error || "Failed to move asset to trash");
+      }
+    });
+  };
+
+  const handleOpenEdit = (item: PortfolioItem | ProjectAsset) => {
+    setItemToEdit({
+      id: item.id,
+      title: item.title,
+      description: "description" in item ? item.description : null,
+      category: "category" in item ? item.category : null,
+      thumbnailUrl: item.thumbnailUrl,
+      aspectRatio: item.aspectRatio || "16:9",
+      type: "type" in item ? item.type : "still",
+    });
+    setIsEditingItem(true);
+  };
+
+  const handleSaveEdit = async (updated: {
+    id: string;
+    title: string;
+    description?: string;
+    category?: string;
+    thumbnailUrl?: string;
+    aspectRatio?: string;
+  }) => {
+    setIsSavingItem(true);
+    try {
+      const isProj = itemToEdit?.type === "project";
+      const res = await updateAssetAction(
+        updated.id,
+        {
+          title: updated.title,
+          description: updated.description,
+          category: updated.category,
+          thumbnailUrl: updated.thumbnailUrl,
+          aspectRatio: updated.aspectRatio,
+        },
+        {
+          portfolioId: portfolio.id,
+          workspaceSlug: workspace.slug,
+          isProject: isProj,
+        }
+      );
+
+      if (res.success) {
+        setProjects((prev) =>
+          prev.map((p) => {
+            if (p.id === updated.id) {
+              return {
+                ...p,
+                title: updated.title,
+                description: updated.description !== undefined ? updated.description : p.description,
+                category: updated.category || p.category,
+                thumbnailUrl: updated.thumbnailUrl || p.thumbnailUrl,
+                aspectRatio: updated.aspectRatio || p.aspectRatio,
+              };
+            }
+            if (p.projectAssets) {
+              const updatedAssets = p.projectAssets.map((a) =>
+                a.id === updated.id
+                  ? {
+                      ...a,
+                      title: updated.title,
+                      category: updated.category || a.category,
+                      thumbnailUrl: updated.thumbnailUrl || a.thumbnailUrl,
+                      aspectRatio: updated.aspectRatio || a.aspectRatio,
+                    }
+                  : a
+              );
+              return {
+                ...p,
+                projectAssets: updatedAssets,
+              };
+            }
+            return p;
+          })
+        );
+
+        if (selectedProject?.id === updated.id) {
+          setSelectedProject((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  title: updated.title,
+                  description: updated.description !== undefined ? updated.description : prev.description,
+                  category: updated.category || prev.category,
+                  thumbnailUrl: updated.thumbnailUrl || prev.thumbnailUrl,
+                }
+              : null
+          );
+        }
+        if (selectedFilm?.id === updated.id) {
+          setSelectedFilm((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  title: updated.title,
+                  category: updated.category || prev.category,
+                  thumbnailUrl: updated.thumbnailUrl || prev.thumbnailUrl,
+                  aspectRatio: updated.aspectRatio || prev.aspectRatio,
+                }
+              : null
+          );
+        }
+        if (selectedStill?.id === updated.id) {
+          setSelectedStill((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  title: updated.title,
+                  category: updated.category || prev.category,
+                  thumbnailUrl: updated.thumbnailUrl || prev.thumbnailUrl,
+                  aspectRatio: updated.aspectRatio || prev.aspectRatio,
+                }
+              : null
+          );
+        }
+
+        showFlash(`Updated "${updated.title}" successfully`);
+      } else {
+        toast.error(res.error || "Failed to update item");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update item");
+    } finally {
+      setIsSavingItem(false);
+    }
+  };
+
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-200">
-      {/* 1. Header & Modals matching Screenshot 3 */}
+    <TooltipProvider delay={150}>
+      <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-200">
+        {/* 1. Header & Modals matching Screenshot 3 */}
       <PortfolioHero
         workspace={workspace}
         portfolio={portfolio}
@@ -169,6 +378,9 @@ export function PortfolioClient({
         appearance={appearance}
         showFlash={showFlash}
         onSelectItem={handleSelectItem}
+        onDeleteItem={handleDeleteItem}
+        onEditItem={handleOpenEdit}
+        onOpenTrash={() => setIsTrashOpen(true)}
       />
 
       {/* 6. Still Lightbox Modal */}
@@ -187,6 +399,8 @@ export function PortfolioClient({
                 }
               : undefined
           }
+          onDelete={handleDeleteItem}
+          onEdit={handleOpenEdit}
         />
       )}
 
@@ -206,6 +420,8 @@ export function PortfolioClient({
                 }
               : undefined
           }
+          onDelete={handleDeleteItem}
+          onEdit={handleOpenEdit}
         />
       )}
 
@@ -227,9 +443,38 @@ export function PortfolioClient({
             setSelectedProject(null);
             setSelectedFilm(film);
           }}
+          onDeleteAsset={handleDeleteProjectAsset}
+          onEditProject={handleOpenEdit}
+          onEditAsset={handleOpenEdit}
         />
       )}
-    </div>
+
+      {/* 8. Edit Asset / Project Dialog */}
+      <EditAssetDialog
+        isOpen={isEditingItem}
+        onClose={() => {
+          setIsEditingItem(false);
+          setItemToEdit(null);
+        }}
+        item={itemToEdit}
+        workspaceId={workspace.id}
+        onSave={handleSaveEdit}
+        isSaving={isSavingItem}
+        dialogTitle={itemToEdit?.type === "project" ? "EDIT PROJECT" : "EDIT ASSET"}
+      />
+
+      {/* 9. Workspace Trash Bin Dialog */}
+      <TrashBinDialog
+        isOpen={isTrashOpen}
+        onOpenChange={setIsTrashOpen}
+        workspaceId={workspace.id}
+        workspaceSlug={workspace.slug}
+        onItemRestored={() => {
+          router.refresh();
+        }}
+      />
+      </div>
+    </TooltipProvider>
   );
 }
 

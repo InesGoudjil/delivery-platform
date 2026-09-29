@@ -40,12 +40,17 @@ export class SupabaseAssetRepository implements IAssetRepository {
     return data ? this.mapRowToEntity(data) : null;
   }
 
-  async listByWorkspaceId(workspaceId: string): Promise<Asset[]> {
-    const { data, error } = await (this.supabase as any)
+  async listByWorkspaceId(workspaceId: string, includeArchived?: boolean): Promise<Asset[]> {
+    let query = (this.supabase as any)
       .from("assets")
       .select("*")
-      .eq("workspace_id", workspaceId)
-      .order("sort_order", { ascending: true });
+      .eq("workspace_id", workspaceId);
+
+    if (!includeArchived) {
+      query = query.eq("is_archived", false);
+    }
+
+    const { data, error } = await query.order("sort_order", { ascending: true });
 
     if (error) throw new Error(`Error listing assets for workspace: ${error.message}`);
     return (data || []).map(this.mapRowToEntity);
@@ -57,6 +62,7 @@ export class SupabaseAssetRepository implements IAssetRepository {
       .select("*")
       .eq("workspace_id", workspaceId)
       .is("delivery_id", null)
+      .eq("is_archived", false)
       .order("sort_order", { ascending: true });
 
     if (error) throw new Error(`Error listing unassigned assets: ${error.message}`);
@@ -68,10 +74,31 @@ export class SupabaseAssetRepository implements IAssetRepository {
       .from("assets")
       .select("*")
       .eq("delivery_id", deliveryId)
+      .eq("is_archived", false)
       .order("sort_order", { ascending: true });
 
     if (error) throw new Error(`Error listing assets for delivery: ${error.message}`);
     return (data || []).map(this.mapRowToEntity);
+  }
+
+  async listArchivedByWorkspaceId(workspaceId: string): Promise<Asset[]> {
+    const { data, error } = await (this.supabase as any)
+      .from("assets")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .eq("is_archived", true)
+      .order("updated_at", { ascending: false });
+
+    if (error) throw new Error(`Error listing trash assets: ${error.message}`);
+    return (data || []).map(this.mapRowToEntity);
+  }
+
+  async archive(id: string): Promise<Asset> {
+    return this.update(id, { isArchived: true });
+  }
+
+  async restore(id: string): Promise<Asset> {
+    return this.update(id, { isArchived: false });
   }
 
   async listByIds(ids: string[]): Promise<Asset[]> {
@@ -154,6 +181,15 @@ export class SupabaseAssetRepository implements IAssetRepository {
   }
 
   async delete(id: string): Promise<void> {
+    try {
+      await (this.supabase as any)
+        .from("project_assets")
+        .delete()
+        .eq("asset_id", id);
+    } catch {
+      // Junction cleanup failure shouldn't abort deletion if table is missing/cascade
+    }
+
     const { error } = await (this.supabase as any)
       .from("assets")
       .delete()

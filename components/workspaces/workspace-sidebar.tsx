@@ -172,10 +172,10 @@ export function WorkspaceSidebar({
   return (
     <Sidebar
       collapsible="icon"
-      className="border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-colors duration-200"
+      className="border-r border-sidebar-border/30  backdrop-blur-xl bg-background/10 text-sidebar-foreground transition-colors duration-200"
       {...props}
     >
-      <SidebarHeader className="p-3 border-b border-sidebar-border">
+      <SidebarHeader className="p-3 border-b border-sidebar-border/30">
         <WorkspaceSwitcher
           workspaces={workspaceItems}
           activeSlug={workspaceSlug}
@@ -188,7 +188,7 @@ export function WorkspaceSidebar({
         <NavDocuments title="RESOURCES" items={data.resources} />
       </SidebarContent>
 
-      <SidebarFooter className="p-3 border-t border-sidebar-border">
+      <SidebarFooter className="p-3 border-t border-sidebar-border/30">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton

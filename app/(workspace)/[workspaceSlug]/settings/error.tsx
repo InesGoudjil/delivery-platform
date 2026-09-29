@@ -3,6 +3,10 @@
 import React, { useEffect } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { TiltCard } from "@/components/ui/motion";
+import { TypographyH2, TypographyMuted } from "@/components/ui/typography";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 export default function SettingsError({
   error,
@@ -16,26 +20,49 @@ export default function SettingsError({
   }, [error]);
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 text-foreground">
-      <div className="rounded-3xl bg-card border border-destructive/30 p-8 text-center space-y-5 shadow-2xl">
-        <div className="size-12 rounded-2xl bg-destructive/15 text-destructive flex items-center justify-center mx-auto">
-          <AlertCircle className="size-6" />
-        </div>
-        <div className="space-y-1">
-          <h3 className="text-xl font-bold font-heading text-foreground">
-            Failed to Load Brand Settings
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            {error.message || "An error occurred while loading your brand and customization settings."}
-          </p>
-        </div>
-        <Button
-          onClick={() => reset()}
-          className="rounded-xl bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] cursor-pointer h-9 px-5"
+    <TooltipProvider delay={150}>
+      <div className="max-w-2xl mx-auto py-16 px-4 text-foreground">
+        <TiltCard
+          tiltIntensity={2}
+          glareIntensity={0.06}
+          className="rounded-3xl bg-card border border-destructive/30 p-8 text-center space-y-5 shadow-2xl"
         >
-          <RefreshCw className="size-3.5 mr-2" /> Reload Brand Settings
-        </Button>
+          <div className="flex justify-center">
+            <Badge variant="destructive" className="font-mono text-[10px] tracking-wider uppercase gap-1.5">
+              <AlertCircle className="size-3.5" />
+              Settings Error
+            </Badge>
+          </div>
+
+          <div className="space-y-1.5">
+            <TypographyH2 className="text-xl font-bold font-heading text-foreground border-none pb-0">
+              Failed to Load Brand Settings
+            </TypographyH2>
+            <TypographyMuted className="text-xs text-muted-foreground max-w-md mx-auto">
+              {error.message || "An unexpected error occurred while loading your brand and customization settings."}
+            </TypographyMuted>
+          </div>
+
+          <div className="flex justify-center pt-2">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    onClick={() => reset()}
+                    className="rounded-full bg-[#f5551d] text-black font-extrabold text-xs hover:bg-[#ff8a45] cursor-pointer h-10 px-6 uppercase tracking-wider shadow-lg shadow-[#f5551d]/20"
+                  >
+                    <RefreshCw className="size-3.5 mr-2" />
+                    <span>Reload Brand Settings</span>
+                  </Button>
+                }
+              />
+              <TooltipContent side="bottom">
+                Re-attempt fetching workspace branding state
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TiltCard>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }

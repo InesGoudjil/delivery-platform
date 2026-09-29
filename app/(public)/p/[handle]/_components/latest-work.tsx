@@ -4,6 +4,12 @@ import React, { useState } from "react";
 import { Film, Image as ImageIcon, Layers, Play } from "lucide-react";
 import { PortfolioProject, PortfolioAsset } from "@/lib/portfolio-data";
 import { usePortfolioModal } from "./portfolio-context";
+import { AppImage } from "@/components/ui/app-image";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { TiltCard } from "@/components/ui/motion";
+import { TypographyH2, TypographyH3, TypographyKicker, TypographyMuted } from "@/components/ui/typography";
 
 interface LatestWorkProps {
   projects: PortfolioProject[];
@@ -25,40 +31,37 @@ export function LatestWork({ projects, assets }: LatestWorkProps) {
     <section className="space-y-8">
       {/* Section heading & Eyebrow */}
       <div className="text-center space-y-2">
-        <div className="text-[11px] font-mono font-bold tracking-widest text-[#f5551d] uppercase">
-          Our Portfolio
-        </div>
-        <h2 className="font-heading font-black text-3xl sm:text-4xl md:text-5xl text-white tracking-tight uppercase">
+        <TypographyKicker color="orange">Our Portfolio</TypographyKicker>
+        <TypographyH2 className="font-heading font-black text-3xl sm:text-4xl md:text-5xl text-white tracking-tight uppercase">
           Latest Work
-        </h2>
+        </TypographyH2>
       </div>
 
       {/* Filter Segmented Control Tabs */}
       <div className="flex justify-center">
-        <div className="inline-flex p-1 rounded-full bg-[#18181b] border border-white/10 shadow-inner">
+        <div className="inline-flex p-1 rounded-full bg-[#18181b] border border-white/10 shadow-inner gap-1">
           {(["projects", "films", "stills"] as const).map((tab) => {
             const isActive = activeTab === tab;
             return (
-              <button
+              <Button
                 key={tab}
                 type="button"
+                variant={isActive ? "default" : "ghost"}
                 onClick={() => setActiveTab(tab)}
-                className={`relative px-6 sm:px-8 py-2 rounded-full text-xs font-bold tracking-wide capitalize transition-all duration-200 cursor-pointer ${
+                className={`px-6 sm:px-8 py-2 rounded-full text-xs font-bold tracking-wide capitalize transition-all duration-200 cursor-pointer h-auto ${
                   isActive
-                    ? "bg-[#f5551d] text-black shadow-md"
-                    : "text-zinc-400 hover:text-white"
+                    ? "bg-[#f5551d] text-white hover:bg-[#ff8a45] shadow-md"
+                    : "text-zinc-400 hover:text-white hover:bg-transparent"
                 }`}
               >
                 {tab}
-              </button>
+              </Button>
             );
           })}
         </div>
       </div>
 
-      {/* ------------------------------------------------------------ */}
-      {/* TAB 1: PROJECTS (4-column grid matching screenshot 2)       */}
-      {/* ------------------------------------------------------------ */}
+      {/* TAB 1: PROJECTS */}
       {activeTab === "projects" && (
         projects.length === 0 ? (
           <div className="py-16 text-center space-y-3 bg-[#141416]/50 rounded-2xl border border-white/5">
@@ -70,43 +73,48 @@ export function LatestWork({ projects, assets }: LatestWorkProps) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 animate-in fade-in duration-300">
             {projects.map((proj) => (
-              <div
-                key={proj.id}
-                onClick={() => setSelectedProject(proj)}
-                className="group relative aspect-[16/11] rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300"
-              >
-                {/* Background cover image */}
+              <TiltCard key={proj.id} tiltIntensity={4} glareIntensity={0.12} className="h-full">
                 <div
-                  className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                  style={{ backgroundImage: `url(${proj.coverImage})` }}
-                />
+                  onClick={() => setSelectedProject(proj)}
+                  className="group relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300 h-full"
+                >
+                  <AspectRatio ratio={16 / 11} className="w-full">
+                    <AppImage
+                      src={proj.coverImage}
+                      alt={proj.title}
+                      fallbackIcon="film"
+                      containerClassName="size-full"
+                      className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  </AspectRatio>
 
-                {/* Gradient shadow */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent group-hover:via-black/20 transition-all duration-300" />
+                  {/* Gradient shadow */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent group-hover:via-black/20 transition-all duration-300 pointer-events-none" />
 
-                {/* Top-right asset count badge */}
-                <div className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[11px] font-mono text-zinc-200">
-                  {proj.tc}
+                  {/* Top-right asset count badge */}
+                  <div className="absolute top-3 right-3 z-10">
+                    <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[11px] font-mono text-zinc-200">
+                      {proj.tc}
+                    </Badge>
+                  </div>
+
+                  {/* Bottom title and client */}
+                  <div className="absolute bottom-4 left-4 right-4 z-10 space-y-0.5 pointer-events-none">
+                    <TypographyH3 className="font-heading font-bold text-base text-white group-hover:text-[#f5551d] transition-colors truncate">
+                      {proj.title}
+                    </TypographyH3>
+                    <TypographyMuted className="text-xs text-zinc-400 font-mono truncate">
+                      {proj.client}
+                    </TypographyMuted>
+                  </div>
                 </div>
-
-                {/* Bottom title and client */}
-                <div className="absolute bottom-4 left-4 right-4 z-10 space-y-0.5">
-                  <h3 className="font-heading font-bold text-base text-white group-hover:text-[#f5551d] transition-colors truncate">
-                    {proj.title}
-                  </h3>
-                  <p className="text-xs text-zinc-400 font-mono truncate">
-                    {proj.client}
-                  </p>
-                </div>
-              </div>
+              </TiltCard>
             ))}
           </div>
         )
       )}
 
-      {/* ------------------------------------------------------------ */}
-      {/* TAB 2: FILMS (Cinematic video cards with duration)          */}
-      {/* ------------------------------------------------------------ */}
+      {/* TAB 2: FILMS */}
       {activeTab === "films" && (
         films.length === 0 ? (
           <div className="py-16 text-center space-y-3 bg-[#141416]/50 rounded-2xl border border-white/5">
@@ -118,48 +126,57 @@ export function LatestWork({ projects, assets }: LatestWorkProps) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
             {films.map((film) => (
-              <div
-                key={film.id}
-                onClick={() => setActiveFilm(film)}
-                className="group relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300"
-              >
-                {/* Thumbnail */}
-                <div className="relative aspect-video w-full overflow-hidden">
-                  <div
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                    style={{ backgroundImage: `url(${film.image})` }}
-                  />
-                  <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors" />
+              <TiltCard key={film.id} tiltIntensity={4} glareIntensity={0.12} className="h-full">
+                <div
+                  onClick={() => setActiveFilm(film)}
+                  className="group relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300 h-full flex flex-col justify-between"
+                >
+                  <div className="relative w-full overflow-hidden">
+                    <AspectRatio ratio={16 / 9} className="w-full">
+                      <AppImage
+                        src={film.image}
+                        alt={film.title}
+                        fallbackIcon="film"
+                        containerClassName="size-full"
+                        className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    </AspectRatio>
+                    <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors pointer-events-none" />
 
-                  {/* Top-right duration */}
-                  <div className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[11px] font-mono text-white">
-                    {film.tc}
-                  </div>
+                    {/* Top-right duration */}
+                    <div className="absolute top-3 right-3 z-10">
+                      <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[11px] font-mono text-white">
+                        {film.tc}
+                      </Badge>
+                    </div>
 
-                  {/* Top-left resolution */}
-                  <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/10 text-[10px] font-mono font-bold text-white uppercase">
-                    <Film className="size-3 text-[#f5551d]" />
-                    <span>{film.resolution || "4K 60fps"}</span>
-                  </div>
+                    {/* Top-left resolution */}
+                    <div className="absolute top-3 left-3 z-10">
+                      <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[10px] font-mono font-bold text-white uppercase gap-1.5">
+                        <Film className="size-3 text-[#f5551d]" />
+                        <span>{film.resolution || "4K 60fps"}</span>
+                      </Badge>
+                    </div>
 
-                  {/* Center play icon */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="size-12 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white group-hover:scale-110 group-hover:bg-[#f5551d] group-hover:text-black transition-all duration-300 shadow-xl">
-                      <Play className="size-5 fill-current ml-0.5" />
+                    {/* Center play icon */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="size-12 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white group-hover:scale-110 group-hover:bg-[#f5551d] group-hover:text-black transition-all duration-300 shadow-xl">
+                        <Play className="size-5 fill-current ml-0.5" />
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Card bottom info */}
-                <div className="p-4 bg-[#121214] border-t border-white/5 space-y-1">
-                  <h3 className="font-heading font-bold text-base text-white group-hover:text-[#f5551d] transition-colors truncate">
-                    {film.title}
-                  </h3>
-                  <p className="text-xs text-zinc-400 font-sans line-clamp-1">
-                    {film.desc}
-                  </p>
+                  {/* Card bottom info */}
+                  <div className="p-4 bg-[#121214] border-t border-white/5 space-y-1">
+                    <TypographyH3 className="font-heading font-bold text-base text-white group-hover:text-[#f5551d] transition-colors truncate">
+                      {film.title}
+                    </TypographyH3>
+                    <p className="text-xs text-zinc-400 font-sans line-clamp-1">
+                      {film.desc}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              </TiltCard>
             ))}
           </div>
         )

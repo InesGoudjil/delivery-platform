@@ -2,8 +2,18 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, X } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { createDeliveryAction } from "@/app/actions/deliveries";
 
 interface DeliveriesHeaderProps {
@@ -50,83 +60,89 @@ export function DeliveriesHeader({ workspace }: DeliveriesHeaderProps) {
 
   return (
     <>
-      {/* Create Delivery Project Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
-          <div className="w-full max-w-md bg-card rounded-3xl p-6 sm:p-8 border border-border shadow-2xl space-y-5 relative">
-            <button
-              onClick={() => setShowCreateModal(false)}
-              className="absolute top-5 right-5 size-8 rounded-full bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80 flex items-center justify-center transition-colors cursor-pointer"
-            >
-              <X className="size-4" />
-            </button>
-
-            <div className="space-y-1">
-              <span className="glass-badge font-mono text-[11px]">
+      {/* Create Delivery Project Modal using shadcn Dialog */}
+      <Dialog
+        open={showCreateModal}
+        onOpenChange={(open) => {
+          setShowCreateModal(open);
+          if (!open) {
+            setNewTitle("");
+            setNewClient("");
+            setErrorMessage(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md bg-card border-border">
+          <DialogHeader>
+            <div className="space-y-1.5">
+              <Badge variant="orange" className="font-mono text-[11px] w-fit">
                 NEW REVIEW ROOM
-              </span>
-              <h3 className="text-xl font-bold font-display text-card-foreground">
+              </Badge>
+              <DialogTitle className="text-xl font-bold font-display text-card-foreground">
                 Create Delivery Workspace
-              </h3>
-              <p className="text-xs text-muted-foreground font-sans">
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground font-sans">
                 Set up a dedicated 4K review workspace for your client.
-              </p>
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-destructive/15 border border-destructive/30 text-destructive text-xs font-semibold">
+              {errorMessage}
+            </div>
+          )}
+
+          <form onSubmit={handleCreateProject} className="space-y-4 pt-1">
+            <div className="space-y-1.5">
+              <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
+                Project Title <span className="text-[#f5551d]">*</span>
+              </Label>
+              <Input
+                type="text"
+                required
+                placeholder="e.g. Omakase Counter Launch Film"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                className="text-xs"
+              />
             </div>
 
-            {errorMessage && (
-              <div className="p-3 rounded-xl bg-destructive/15 border border-destructive/30 text-destructive text-xs font-semibold">
-                {errorMessage}
-              </div>
-            )}
+            <div className="space-y-1.5">
+              <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
+                Client / Brand Name
+              </Label>
+              <Input
+                type="text"
+                placeholder="e.g. Lost in Tokyo Group"
+                value={newClient}
+                onChange={(e) => setNewClient(e.target.value)}
+                className="text-xs"
+              />
+            </div>
 
-            <form onSubmit={handleCreateProject} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 font-mono">
-                  Project Title
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Omakase Counter Launch Film"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full bg-muted border border-border text-foreground text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-primary"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 font-mono">
-                  Client / Brand Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Lost in Tokyo Group"
-                  value={newClient}
-                  onChange={(e) => setNewClient(e.target.value)}
-                  className="w-full bg-muted border border-border text-foreground text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-primary"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-xs rounded-full border border-border text-foreground hover:bg-muted cursor-pointer transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating}
-                  className="bg-primary hover:bg-primary/90 text-black font-bold text-xs px-5 py-2.5 rounded-full cursor-pointer transition-colors shadow-md disabled:opacity-60"
-                >
-                  {creating ? "Creating..." : "Create & Upload Cut"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowCreateModal(false)}
+                className="rounded-full text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={creating}
+                size="sm"
+                className="bg-primary hover:bg-primary/90 text-black font-bold text-xs rounded-full shadow-md disabled:opacity-60"
+              >
+                {creating ? "Creating..." : "Create & Upload Cut"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Workspace Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
@@ -143,12 +159,12 @@ export function DeliveriesHeader({ workspace }: DeliveriesHeaderProps) {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
+          <Button
             onClick={() => setShowCreateModal(true)}
-            className="bg-primary hover:bg-primary/90 text-black font-bold text-xs px-5 py-2.5 rounded-full cursor-pointer transition-colors shadow-md flex items-center gap-2"
+            className="bg-primary hover:bg-primary/90 text-black font-bold text-xs px-5 py-2.5 h-auto rounded-full shadow-md flex items-center gap-2 cursor-pointer"
           >
             <Plus className="size-4" /> New Delivery Room
-          </button>
+          </Button>
         </div>
       </div>
     </>

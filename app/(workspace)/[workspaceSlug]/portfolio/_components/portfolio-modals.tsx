@@ -15,9 +15,12 @@ import {
   VolumeX,
   Maximize2,
   Loader2,
+  Trash2,
+  Pencil,
 } from "lucide-react";
 import { AppImage } from "@/components/ui/app-image";
 import { CutReviewPlayer } from "@/components/video/cut-review-player";
+import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
 import { PortfolioItem, ProjectAsset } from "../portfolio-client";
 import { getProjectAssetsAction } from "@/app/actions/portfolio";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
@@ -29,13 +32,19 @@ interface StillLightboxModalProps {
   item: PortfolioItem | ProjectAsset | null;
   onClose: () => void;
   onBack?: () => void;
+  onDelete?: (item: PortfolioItem | ProjectAsset) => Promise<void> | void;
+  onEdit?: (item: PortfolioItem | ProjectAsset) => void;
 }
 
 export function StillLightboxModal({
   item,
   onClose,
   onBack,
+  onDelete,
+  onEdit,
 }: StillLightboxModalProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -106,6 +115,28 @@ export function StillLightboxModal({
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
+          {onEdit && (
+            <button
+              type="button"
+              onClick={() => onEdit(item)}
+              className="size-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              title="Edit still"
+            >
+              <Pencil className="size-4" />
+            </button>
+          )}
+
+          {onDelete && (
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="size-9 rounded-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 hover:text-red-300 flex items-center justify-center transition-colors cursor-pointer"
+              title="Delete still"
+            >
+              <Trash2 className="size-4" />
+            </button>
+          )}
+
           {currentSrc && (
             <a
               href={currentSrc}
@@ -178,6 +209,28 @@ export function StillLightboxModal({
         <span>CUT High-Res Still Showcase</span>
         <span>Press ESC to exit</span>
       </div>
+
+      <DeleteConfirmDialog
+        isOpen={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        isPermanent={false}
+        title="Move to Trash"
+        itemName={item.title}
+        description="This photo still will be moved to your workspace Trash and safely retained for 30 days before permanent deletion."
+        confirmText="Move to Trash"
+        isDeleting={isDeleting}
+        onConfirm={async () => {
+          if (!onDelete) return;
+          setIsDeleting(true);
+          try {
+            await onDelete(item);
+            setShowDeleteConfirm(false);
+            onClose();
+          } finally {
+            setIsDeleting(false);
+          }
+        }}
+      />
     </div>
   );
 }
@@ -189,13 +242,19 @@ interface FilmPlayerModalProps {
   item: PortfolioItem | ProjectAsset | null;
   onClose: () => void;
   onBack?: () => void;
+  onDelete?: (item: PortfolioItem | ProjectAsset) => Promise<void> | void;
+  onEdit?: (item: PortfolioItem | ProjectAsset) => void;
 }
 
 export function FilmPlayerModal({
   item,
   onClose,
   onBack,
+  onDelete,
+  onEdit,
 }: FilmPlayerModalProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -263,13 +322,37 @@ export function FilmPlayerModal({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="size-9 rounded-full bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-            title="Close video player"
-          >
-            <X className="size-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => onEdit(item)}
+                className="size-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                title="Edit film"
+              >
+                <Pencil className="size-4" />
+              </button>
+            )}
+
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="size-9 rounded-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 hover:text-red-300 flex items-center justify-center transition-colors cursor-pointer"
+                title="Delete film"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            )}
+
+            <button
+              onClick={onClose}
+              className="size-9 rounded-full bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              title="Close video player"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
         </div>
 
         {/* Video Stage */}
@@ -290,6 +373,28 @@ export function FilmPlayerModal({
           <span>Press ESC to close</span>
         </div>
       </div>
+
+      <DeleteConfirmDialog
+        isOpen={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        isPermanent={false}
+        title="Move to Trash"
+        itemName={item.title}
+        description="This film cut will be moved to your workspace Trash and safely retained for 30 days before permanent deletion."
+        confirmText="Move to Trash"
+        isDeleting={isDeleting}
+        onConfirm={async () => {
+          if (!onDelete) return;
+          setIsDeleting(true);
+          try {
+            await onDelete(item);
+            setShowDeleteConfirm(false);
+            onClose();
+          } finally {
+            setIsDeleting(false);
+          }
+        }}
+      />
     </div>
   );
 }
@@ -302,6 +407,9 @@ interface ProjectExplorerModalProps {
   onClose: () => void;
   onSelectStill: (still: ProjectAsset) => void;
   onSelectFilm: (film: ProjectAsset) => void;
+  onDeleteAsset?: (asset: ProjectAsset) => Promise<void> | void;
+  onEditProject?: (project: PortfolioItem) => void;
+  onEditAsset?: (asset: ProjectAsset) => void;
 }
 
 export function ProjectExplorerModal({
@@ -309,10 +417,15 @@ export function ProjectExplorerModal({
   onClose,
   onSelectStill,
   onSelectFilm,
+  onDeleteAsset,
+  onEditProject,
+  onEditAsset,
 }: ProjectExplorerModalProps) {
   const [activeFilter, setActiveFilter] = useState<"all" | "films" | "stills">("all");
   const [assets, setAssets] = useState<ProjectAsset[]>(project?.projectAssets || []);
   const [loading, setLoading] = useState(false);
+  const [assetToDelete, setAssetToDelete] = useState<ProjectAsset | null>(null);
+  const [isDeletingAsset, setIsDeletingAsset] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -391,6 +504,18 @@ export function ProjectExplorerModal({
             <span className="text-[11px] font-mono text-zinc-400 bg-white/5 px-2.5 py-1 rounded-md border border-white/10">
               {assets.length} items · {filmCount} film{filmCount !== 1 ? "s" : ""}, {stillCount} still{stillCount !== 1 ? "s" : ""}
             </span>
+
+            {onEditProject && (
+              <button
+                type="button"
+                onClick={() => onEditProject(project)}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-semibold text-white transition-colors cursor-pointer"
+                title="Edit project details"
+              >
+                <Pencil className="size-3.5" />
+                <span>Edit Project</span>
+              </button>
+            )}
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-black text-white font-heading tracking-tight">
@@ -478,6 +603,38 @@ export function ProjectExplorerModal({
                     </span>
                   </div>
 
+                  {/* Top-Right Action Buttons */}
+                  {(onEditAsset || onDeleteAsset) && (
+                    <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1.5">
+                      {onEditAsset && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditAsset(asset);
+                          }}
+                          className="size-7 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-zinc-400 hover:text-white hover:bg-white/20 hover:border-white/30 flex items-center justify-center transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
+                          title="Edit asset"
+                        >
+                          <Pencil className="size-3.5" />
+                        </button>
+                      )}
+                      {onDeleteAsset && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAssetToDelete(asset);
+                          }}
+                          className="size-7 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-zinc-400 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/30 flex items-center justify-center transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
+                          title="Delete asset"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Center Action Overlay Icon */}
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                     <div className="size-11 rounded-full bg-[#f5551d] text-black flex items-center justify-center shadow-2xl scale-90 group-hover:scale-100 transition-transform">
@@ -509,6 +666,28 @@ export function ProjectExplorerModal({
           </div>
         )}
       </div>
+
+      <DeleteConfirmDialog
+        isOpen={Boolean(assetToDelete)}
+        onOpenChange={(open) => !open && setAssetToDelete(null)}
+        isPermanent={false}
+        title="Move to Trash"
+        itemName={assetToDelete?.title}
+        description="This asset will be moved to your workspace Trash and safely retained for 30 days before permanent deletion."
+        confirmText="Move to Trash"
+        isDeleting={isDeletingAsset}
+        onConfirm={async () => {
+          if (!assetToDelete || !onDeleteAsset) return;
+          setIsDeletingAsset(true);
+          try {
+            await onDeleteAsset(assetToDelete);
+            setAssets((prev) => prev.filter((a) => a.id !== assetToDelete.id));
+            setAssetToDelete(null);
+          } finally {
+            setIsDeletingAsset(false);
+          }
+        }}
+      />
     </div>
   );
 }
