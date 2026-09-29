@@ -166,6 +166,7 @@ export default async function ClientDeliveryPage(props: PageProps) {
         status: fullDetails.status,
         isDownloadAllowed: fullDetails.isDownloadAllowed,
         isWatermarked: fullDetails.isWatermarked,
+        appearance: fullDetails.appearance,
         approvedAt: fullDetails.approvedAt,
         approvedByName: fullDetails.approvedByName,
         expiresAt: fullDetails.expiresAt,

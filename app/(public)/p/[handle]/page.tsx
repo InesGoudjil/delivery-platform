@@ -19,6 +19,7 @@ import { PortfolioCta } from "./_components/portfolio-cta";
 import { PortfolioFooter } from "./_components/portfolio-footer";
 import { PortfolioModals } from "./_components/portfolio-modals";
 import { AmbientBackground } from "@/components/ui/ambient-background";
+import { AccentThemeProvider } from "@/components/theme/accent-theme-provider";
 
 interface PageProps {
   params: Promise<{ handle: string }>;
@@ -105,54 +106,36 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     console.warn("Notice resolving workspace/portfolio:", err?.message || err);
   }
 
-  // 3. Fetch Real Projects, Standalone Assets, and Deliveries from DB
+  // 3. Fetch Real Projects and Standalone Assets from DB
   let dbProjects: any[] = [];
   let wsProjects: any[] = [];
-  let wsDeliveries: any[] = [];
   let standaloneAssets: any[] = [];
 
   let workspaceFeatures: any = null;
   if (workspace) {
     try {
-      const [pProjects, wProjects, unassigned, deliveries, features] = await Promise.all([
+      const [pProjects, wProjects, unassigned, features] = await Promise.all([
         portfolio ? services.project.listPortfolioProjects(portfolio.id) : [],
         services.project.listWorkspaceProjects(workspace.id),
         services.asset.listUnassignedAssets(workspace.id),
-        services.delivery.listWorkspaceDeliveries(workspace.id),
         services.subscription.getFeatures(workspace.id),
       ]);
       dbProjects = pProjects;
       wsProjects = wProjects;
       standaloneAssets = unassigned;
-      wsDeliveries = deliveries;
       workspaceFeatures = features;
     } catch (err: any) {
       console.warn("Notice fetching database assets/projects:", err?.message || err);
     }
   }
 
-  // Merge unique projects from DB
+  // Merge unique showcase projects from DB (filter out unpublished)
   const projectMap = new Map<string, any>();
-  dbProjects.forEach((p) => projectMap.set(p.id, p));
-  wsProjects.forEach((p) => {
-    if (!projectMap.has(p.id)) projectMap.set(p.id, p);
+  dbProjects.forEach((p) => {
+    if (p.isPublished !== false) projectMap.set(p.id, p);
   });
-
-  // Include delivered client projects from deliveries table
-  wsDeliveries.forEach((d) => {
-    if (!projectMap.has(d.id)) {
-      projectMap.set(d.id, {
-        id: d.id,
-        title: d.title,
-        clientName: d.title,
-        description: d.description || "Delivered commercial production.",
-        category: "Commercial Delivery",
-        coverAssetUrl: null,
-        year: d.deliveryDate ? new Date(d.deliveryDate).getFullYear().toString() : "2026",
-        location: d.location || "UAE",
-        sourceDeliveryId: d.id,
-      });
-    }
+  wsProjects.forEach((p) => {
+    if (p.isPublished !== false && !projectMap.has(p.id)) projectMap.set(p.id, p);
   });
 
   const combinedProjects = Array.from(projectMap.values());
@@ -162,16 +145,25 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
   const realAssets: PortfolioAsset[] = [];
 
   for (const p of combinedProjects) {
-    const deliveryIdToQuery = p.sourceDeliveryId || p.id;
-    let assets = await services.asset.listAssets(deliveryIdToQuery);
-    if (assets.length === 0 && p.id !== deliveryIdToQuery) {
+    let assets: any[] = [];
+    if (p.sourceDeliveryId) {
+      assets = await services.asset.listAssets(p.sourceDeliveryId);
+    }
+    if (assets.length === 0) {
+      const projectWithAssets = await services.project.getProjectWithAssets(p.id);
+      if (projectWithAssets?.assets && projectWithAssets.assets.length > 0) {
+        assets = projectWithAssets.assets;
+      }
+    }
+    if (assets.length === 0) {
       assets = await services.asset.listAssets(p.id);
     }
 
     const projectAssetIds: string[] = [];
 
     for (const a of assets) {
-      const activeVersion = await services.asset.getActiveVersion(a.id);
+      const activeVersion =
+        (a as any).activeVersion || (await services.asset.getActiveVersion(a.id));
       const isStill = a.type === "photo_gallery" || a.category === "still";
       const rawMedia = resolveMediaUrl(
         activeVersion?.rawFileUrl ||
@@ -281,29 +273,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
   const realExperiences: PortfolioExperienceItem[] = (
     portfolio?.experience && Array.isArray(portfolio.experience) && portfolio.experience.length > 0
       ? portfolio.experience
-      : [
-          {
-            id: "exp-1",
-            role: "Commercial Director & Cinematographer",
-            company: "Gulf Brand Campaigns & Launches",
-            period: "2022 — Present",
-            description: "Directing high-impact commercial campaigns and brand launches for prestige automotive, hospitality, and luxury brands across the UAE.",
-          },
-          {
-            id: "exp-2",
-            role: "Lead DP & Colorist",
-            company: "Independent Studio · Dubai & Sharjah",
-            period: "2020 — 2022",
-            description: "Spearheaded camera operation and DaVinci Resolve color grading for fashion editorial films and private client high-end events.",
-          },
-          {
-            id: "exp-3",
-            role: "Automotive & Action Filmmaker",
-            company: "Prestige Track & Supercar Media",
-            period: "2018 — 2020",
-            description: "Captured high-speed dynamic tracking, roller shots, and precision anamorphic cinema reels across Yas Marina and Dubai Autodrome.",
-          },
-        ]
+      : []
   ).map((exp: any, idx: number) => ({
     id: exp.id || `exp_${idx}`,
     role: exp.role || "Director / Cinematographer",
@@ -425,30 +395,23 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     },
   };
 
-  // Filter projects to only featured projects if specified by the user
-  const featuredProjects = featuredItemIds
-    .map((id) => finalProjects.find((p) => String(p.id) === String(id)))
-    .filter((p): p is PortfolioProject => Boolean(p));
+  // Display showcase projects (prioritizing featured projects first)
+  const projectsToDisplay = [...finalProjects].sort((a, b) => {
+    const aFeat = featuredItemIds.includes(String(a.id));
+    const bFeat = featuredItemIds.includes(String(b.id));
+    if (aFeat && !bFeat) return -1;
+    if (!aFeat && bFeat) return 1;
+    return 0;
+  });
 
-  const projectsToDisplay = featuredProjects.length > 0 ? featuredProjects : finalProjects;
-
-  // Filter assets to those belonging to the displayed featured projects,
-  // PLUS any assets explicitly pinned in featuredItemIds.
-  const featuredProjectAssetIds = new Set(
-    projectsToDisplay.flatMap((p) => p.assetIds.map(String))
-  );
-
-  console.log("featured",featuredProjectAssetIds)
-  const explicitlyFeaturedAssetIds = new Set(featuredItemIds.map(String));
-
-  const assetsToDisplay =
-    featuredProjects.length > 0
-      ? finalAssets.filter(
-          (a) =>
-            featuredProjectAssetIds.has(String(a.id)) ||
-            explicitlyFeaturedAssetIds.has(String(a.id))
-        )
-      : finalAssets;
+  // Display project assets and standalone video/still assets (prioritizing featured items first)
+  const assetsToDisplay = [...finalAssets].sort((a, b) => {
+    const aFeat = featuredItemIds.includes(String(a.id));
+    const bFeat = featuredItemIds.includes(String(b.id));
+    if (aFeat && !bFeat) return -1;
+    if (!aFeat && bFeat) return 1;
+    return 0;
+  });
 
   const primaryFeatured = featuredItems.length > 0 ? featuredItems[0] : null;
   const featuredProject =
@@ -463,48 +426,55 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     null;
 
   return (
-    <PortfolioProvider
-      profile={profile}
-      projects={projectsToDisplay}
-      assets={assetsToDisplay}
-      primaryFeatured={primaryFeatured}
-    >
-      <div className="min-h-screen bg-[#0a0a0b] text-[#f6f3ec] font-sans antialiased selection:bg-[#f5551d] selection:text-black relative">
-        <AmbientBackground variant="full" />
-        <div className="relative z-10">
-          {/* 🎬 1. TOP NAVIGATION HEADER (Server Component) */}
-          <PortfolioHeader profile={profile} />
+    <AccentThemeProvider initialAccent={workspace?.accentColor || "#f5551d"}>
+      <PortfolioProvider
+        profile={profile}
+        projects={projectsToDisplay}
+        assets={assetsToDisplay}
+        appearance={portfolio?.appearance}
+        primaryFeatured={primaryFeatured}
+      >
+        <div className="min-h-screen bg-[#0a0a0b] text-[#f6f3ec] font-sans antialiased selection:bg-primary selection:text-primary-foreground relative">
+          <AmbientBackground variant="subtle" showNoise={false} accentColor={workspace?.accentColor || undefined} />
+          <div className="relative z-10">
+            {/* 🎬 1. TOP NAVIGATION HEADER (Server Component) */}
+            <PortfolioHeader profile={profile} />
 
-          {/* MAIN BODY */}
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-20 space-y-16 sm:space-y-24">
-            {/* 🌟 2. HERO / FEATURED HIGHLIGHT (Server Component) */}
-            <PortfolioHero
+            {/* MAIN BODY */}
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-20 space-y-16 sm:space-y-24">
+              {/* 🌟 2. HERO / FEATURED HIGHLIGHT (Server Component) */}
+              <PortfolioHero
+                profile={profile}
+                primaryFeatured={primaryFeatured}
+                featuredProject={featuredProject}
+                featuredAsset={featuredAsset}
+              />
+
+              {/* 📁 3. LATEST WORK & FILTER SEGMENTS (Client Component) */}
+              <LatestWork
+                projects={projectsToDisplay}
+                assets={assetsToDisplay}
+                appearance={portfolio?.appearance}
+              />
+
+              {/* 👤 4. ABOUT SECTION (Server Component) */}
+              <PortfolioAbout profile={profile} />
+
+              {/* 🎬 5. END CTA BANNER (Server Component) */}
+              <PortfolioCta profile={profile} />
+            </main>
+
+            {/* 📜 6. FOOTER (Server Component) */}
+            <PortfolioFooter
               profile={profile}
-              primaryFeatured={primaryFeatured}
-              featuredProject={featuredProject}
-              featuredAsset={featuredAsset}
+              whiteLabel={Boolean(workspaceFeatures?.white_label)}
             />
 
-            {/* 📁 3. LATEST WORK & FILTER SEGMENTS (Client Component) */}
-            <LatestWork projects={projectsToDisplay} assets={assetsToDisplay} />
-
-            {/* 👤 4. ABOUT SECTION (Server Component) */}
-            <PortfolioAbout profile={profile} />
-
-            {/* 🎬 5. END CTA BANNER (Server Component) */}
-            <PortfolioCta profile={profile} />
-          </main>
-
-          {/* 📜 6. FOOTER (Server Component) */}
-          <PortfolioFooter
-            profile={profile}
-            whiteLabel={Boolean(workspaceFeatures?.white_label)}
-          />
-
-          {/* 🪟 7. INTERACTIVE MODALS (Client Component) */}
-          <PortfolioModals />
+            {/* 🪟 7. INTERACTIVE MODALS (Client Component) */}
+            <PortfolioModals />
+          </div>
         </div>
-      </div>
-    </PortfolioProvider>
+      </PortfolioProvider>
+    </AccentThemeProvider>
   );
 }

@@ -21,7 +21,7 @@ export function BioSection({ bio, onBioChange }: BioSectionProps) {
           </Badge>
         </div>
         <TypographyH2 className="text-xl font-bold font-heading text-foreground tracking-tight flex items-center gap-2 border-none pb-0">
-          <FileText className="size-5 text-[#f5551d]" />
+          <FileText className="size-5 text-primary" />
           BIO &amp; ABOUT DESCRIPTION
         </TypographyH2>
         <TypographyMuted className="text-xs text-muted-foreground mt-0.5">
@@ -50,7 +50,7 @@ export function BioSection({ bio, onBioChange }: BioSectionProps) {
         </div>
 
         <div className="rounded-xl bg-muted/40 border border-border p-4 flex items-start gap-3">
-          <div className="size-2 rounded-full bg-[#f5551d] mt-1.5 shrink-0" />
+          <div className="size-2 rounded-full bg-primary mt-1.5 shrink-0" />
           <TypographyMuted className="text-xs text-muted-foreground leading-relaxed">
             <strong className="text-foreground">Pro-Tip for Gulf Filmmakers:</strong> Mentioning your base city (e.g. Dubai, Abu Dhabi, Riyadh) and primary equipment specialties (e.g. Arri Alexa Mini LF, RED V-Raptor, Anamorphic) increases commercial booking inquiries by 40%.
           </TypographyMuted>

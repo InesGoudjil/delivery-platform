@@ -27,6 +27,45 @@ interface DeliveryAssetsGalleryProps {
   onOpenTrash?: () => void;
 }
 
+function DeliveryMasonryMedia({
+  src,
+  alt,
+  thumbnailScale,
+  children,
+}: {
+  src: string;
+  alt: string;
+  thumbnailScale?: "Fit" | "Fill";
+  children?: React.ReactNode;
+}) {
+  const [naturalAspect, setNaturalAspect] = useState<number | null>(null);
+
+  return (
+    <div
+      className="relative w-full overflow-hidden bg-black/40"
+      style={{
+        aspectRatio: naturalAspect ? `${naturalAspect}` : "16 / 10",
+      }}
+    >
+      <AppImage
+        src={src}
+        alt={alt}
+        fill
+        className={`w-full h-full ${
+          thumbnailScale === "Fit" ? "object-contain bg-black" : "object-cover"
+        } group-hover:scale-105 transition-transform duration-500`}
+        onLoad={(e) => {
+          const img = e.currentTarget;
+          if (img && img.naturalWidth && img.naturalHeight) {
+            setNaturalAspect(img.naturalWidth / img.naturalHeight);
+          }
+        }}
+      />
+      {children}
+    </div>
+  );
+}
+
 export function DeliveryAssetsGallery({
   items,
   appearance,
@@ -47,6 +86,23 @@ export function DeliveryAssetsGallery({
   });
 
   const { cardSize, aspectRatioSetting, thumbnailScale, showCardInfo } = appearance;
+  const isMasonry = aspectRatioSetting === "masonry";
+
+  const containerClasses = isMasonry
+    ? `columns-1 ${
+        cardSize === "S"
+          ? "sm:columns-2 md:columns-3 lg:columns-4"
+          : cardSize === "L"
+          ? "sm:columns-1 md:columns-2"
+          : "sm:columns-2 md:columns-3"
+      } gap-4 space-y-4`
+    : `grid grid-cols-1 ${
+        cardSize === "S"
+          ? "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+          : cardSize === "L"
+          ? "sm:grid-cols-1 md:grid-cols-2"
+          : "sm:grid-cols-2 md:grid-cols-3"
+      } gap-4`;
 
   return (
     <div className="space-y-6">
@@ -110,15 +166,7 @@ export function DeliveryAssetsGallery({
       </div>
 
       {/* Masonry / Responsive Asset Grid */}
-      <div
-        className={`columns-1 ${
-          cardSize === "S"
-            ? "sm:columns-2 md:columns-4"
-            : cardSize === "L"
-            ? "sm:columns-1 md:columns-2"
-            : "sm:columns-2 md:columns-3"
-        } gap-4 space-y-4`}
-      >
+      <div className={containerClasses}>
         {filteredItems.map((item) => {
           const numericRatio =
             aspectRatioSetting === "16:9"
@@ -131,106 +179,121 @@ export function DeliveryAssetsGallery({
               ? 9 / 16
               : 16 / 9;
 
+          const mediaOverlay = (
+            <>
+              <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
+                <div className="size-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white">
+                  {item.type === "video" ? (
+                    <Video className="size-3.5" />
+                  ) : (
+                    <ImageIcon className="size-3.5" />
+                  )}
+                </div>
+                <div className="px-2 h-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-[10px] font-mono font-bold text-white tracking-wider">
+                  V{item.versionNumber || 1}
+                  {item.totalVersions && item.totalVersions > 1 && (
+                    <span className="text-[9px] text-[#ff8a45] ml-1">
+                      ({item.totalVersions})
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {(onEditAsset || onDeleteAsset) && (
+                <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+                  {onEditAsset && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditAsset(item);
+                            }}
+                            className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-white hover:bg-white/20 hover:border-white/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                        }
+                      />
+                      <TooltipContent>Edit asset title &amp; aspect ratio</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {onDeleteAsset && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setItemToDelete(item);
+                            }}
+                            className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        }
+                      />
+                      <TooltipContent>Move asset to trash</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              )}
+
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-2xl scale-90 group-hover:scale-100 transition-transform">
+                  <Play className="size-5 fill-current ml-0.5" />
+                </div>
+              </div>
+
+              <Badge
+                variant="outline"
+                className="absolute bottom-3 right-3 z-10 text-[10px] font-mono bg-black/80 px-2 py-0.5 rounded text-white border-white/10"
+              >
+                {item.duration}
+              </Badge>
+            </>
+          );
+
           return (
             <TiltCard
               key={item.id}
               tiltIntensity={3}
               glareIntensity={0.1}
-              className="break-inside-avoid mb-4 rounded-2xl"
+              className={`${isMasonry ? "break-inside-avoid mb-4" : ""} rounded-2xl`}
             >
               <Card
                 onClick={() => onSelectItem(item)}
                 className="rounded-2xl border border-border/80 overflow-hidden group hover:border-primary/50 transition-all duration-300 cursor-pointer relative shadow-lg p-0 gap-0 hover:translate-y-0"
               >
                 <CardContent className="p-0 relative overflow-hidden">
-                  <AspectRatio ratio={numericRatio} className="relative overflow-hidden bg-black/40">
-                    <AppImage
+                  {isMasonry ? (
+                    <DeliveryMasonryMedia
                       src={item.src}
                       alt={item.title}
-                      fill
-                      className={`w-full h-full ${
-                        thumbnailScale === "Fit" ? "object-contain bg-black" : "object-cover"
-                      } group-hover:scale-105 transition-transform duration-500`}
-                    />
-
-                    <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
-                      <div className="size-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white">
-                        {item.type === "video" ? (
-                          <Video className="size-3.5" />
-                        ) : (
-                          <ImageIcon className="size-3.5" />
-                        )}
-                      </div>
-                      <div className="px-2 h-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-[10px] font-mono font-bold text-white tracking-wider">
-                        V{item.versionNumber || 1}
-                        {item.totalVersions && item.totalVersions > 1 && (
-                          <span className="text-[9px] text-[#ff8a45] ml-1">
-                            ({item.totalVersions})
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {(onEditAsset || onDeleteAsset) && (
-                      <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
-                        {onEditAsset && (
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="icon-xs"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onEditAsset(item);
-                                  }}
-                                  className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-white hover:bg-white/20 hover:border-white/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
-                                >
-                                  <Pencil className="size-3.5" />
-                                </Button>
-                              }
-                            />
-                            <TooltipContent>Edit asset title &amp; aspect ratio</TooltipContent>
-                          </Tooltip>
-                        )}
-                        {onDeleteAsset && (
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="icon-xs"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setItemToDelete(item);
-                                  }}
-                                  className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
-                                >
-                                  <Trash2 className="size-3.5" />
-                                </Button>
-                              }
-                            />
-                            <TooltipContent>Move asset to trash</TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-2xl scale-90 group-hover:scale-100 transition-transform">
-                        <Play className="size-5 fill-current ml-0.5" />
-                      </div>
-                    </div>
-
-                    <Badge
-                      variant="outline"
-                      className="absolute bottom-3 right-3 z-10 text-[10px] font-mono bg-black/80 px-2 py-0.5 rounded text-white border-white/10"
+                      thumbnailScale={thumbnailScale}
                     >
-                      {item.duration}
-                    </Badge>
-                  </AspectRatio>
+                      {mediaOverlay}
+                    </DeliveryMasonryMedia>
+                  ) : (
+                    <AspectRatio ratio={numericRatio} className="relative overflow-hidden bg-black/40">
+                      <AppImage
+                        src={item.src}
+                        alt={item.title}
+                        fill
+                        className={`w-full h-full ${
+                          thumbnailScale === "Fit" ? "object-contain bg-black" : "object-cover"
+                        } group-hover:scale-105 transition-transform duration-500`}
+                      />
+                      {mediaOverlay}
+                    </AspectRatio>
+                  )}
                 </CardContent>
 
                 {showCardInfo && (

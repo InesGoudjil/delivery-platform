@@ -7,6 +7,7 @@ import {
   RectangleVertical,
   Square,
   Grid,
+  LayoutDashboard,
 } from "lucide-react";
 import {
   Card,
@@ -60,7 +61,9 @@ export function DeliveryAppearanceCard({
         <CardAction>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
             <Lock className="size-3.5" />
-            <span className="hidden sm:inline">How your client sees this gallery</span>
+            <span className="hidden sm:inline">
+              How your client sees this gallery
+            </span>
           </div>
         </CardAction>
       </CardHeader>
@@ -147,14 +150,18 @@ export function DeliveryAppearanceCard({
               }`}
               title="Masonry Grid"
             >
-              <Grid className="size-4" />
+              <LayoutDashboard className="size-4" />
+
+              {/* <Grid className="size-4" /> */}
             </Button>
           </div>
         </div>
 
         {/* Thumbnail scale row */}
         <div className="flex items-center justify-between py-2 border-b border-border/40">
-          <span className="text-muted-foreground font-sans">Thumbnail scale</span>
+          <span className="text-muted-foreground font-sans">
+            Thumbnail scale
+          </span>
           <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40">
             {(["Fit", "Fill"] as const).map((scale) => (
               <Button
@@ -177,24 +184,35 @@ export function DeliveryAppearanceCard({
 
         {/* Show card info row */}
         <div className="flex items-center justify-between py-2 border-b border-border/40">
-          <span className="text-muted-foreground font-sans">Show card info</span>
+          <span className="text-muted-foreground font-sans">
+            Show card info
+          </span>
           <Switch
             checked={showCardInfo}
-            onCheckedChange={(checked) => update({ showCardInfo: Boolean(checked) })}
+            onCheckedChange={(checked) =>
+              update({ showCardInfo: Boolean(checked) })
+            }
           />
         </div>
 
         {/* Watermark media PRO row */}
         <div className="flex items-center justify-between py-2">
           <div className="flex items-center gap-2">
-            <span className="text-muted-foreground font-sans">Watermark media</span>
-            <Badge variant="orange" className="text-[9px] px-1.5 py-0.5 font-bold">
+            <span className="text-muted-foreground font-sans">
+              Watermark media
+            </span>
+            <Badge
+              variant="orange"
+              className="text-[9px] px-1.5 py-0.5 font-bold"
+            >
               PRO
             </Badge>
           </div>
           <Switch
             checked={watermarkMedia}
-            onCheckedChange={(checked) => update({ watermarkMedia: Boolean(checked) })}
+            onCheckedChange={(checked) =>
+              update({ watermarkMedia: Boolean(checked) })
+            }
           />
         </div>
       </CardContent>

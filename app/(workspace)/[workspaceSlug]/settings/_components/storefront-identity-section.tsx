@@ -3,6 +3,7 @@
 import React, { useRef } from "react";
 import { MessageCircle, Palette, Check, Camera, Trash2, Upload, Film, Briefcase, MapPin, User } from "lucide-react";
 import { ACCENTS } from "./constants";
+import { getContrastForeground } from "@/lib/theme-utils";
 import { PortfolioStats } from "@/core/entities/portfolio";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -110,7 +111,7 @@ export function StorefrontIdentitySection({
                     {initials}
                   </AvatarFallback>
                   <div className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity rounded-2xl">
-                    <Camera className="size-5 text-[#f5551d]" />
+                    <Camera className="size-5 text-primary" />
                     <span className="text-[9px] font-bold uppercase mt-1 tracking-wider">Change</span>
                   </div>
                 </Avatar>
@@ -123,7 +124,7 @@ export function StorefrontIdentitySection({
 
           <div className="space-y-1.5 flex-1">
             <div className="flex items-center gap-2">
-              <User className="size-4 text-[#f5551d]" />
+              <User className="size-4 text-primary" />
               <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
                 Profile Photo &amp; Avatar
               </h3>
@@ -142,7 +143,7 @@ export function StorefrontIdentitySection({
                       onClick={() => profileInputRef.current?.click()}
                       className="rounded-full bg-muted hover:bg-muted/80 border-border text-foreground text-xs font-semibold px-4 h-8 gap-1.5 cursor-pointer shadow-sm"
                     >
-                      <Upload className="size-3 text-[#f5551d]" />
+                      <Upload className="size-3 text-primary" />
                       <span>{logoUrl ? "Replace Photo" : "Upload Profile Photo"}</span>
                     </Button>
                   }
@@ -213,7 +214,7 @@ export function StorefrontIdentitySection({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <MessageCircle className="size-3.5 text-[#f5551d]" />
+              <MessageCircle className="size-3.5 text-primary" />
               WhatsApp Direct Booking Number
             </label>
             <Input
@@ -231,7 +232,7 @@ export function StorefrontIdentitySection({
           <div className="space-y-2">
             <div className="flex items-center gap-1.5">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                <Palette className="size-3.5 text-[#f5551d]" />
+                <Palette className="size-3.5 text-primary" />
                 Player &amp; Button Accent Color
               </label>
               {!canBranding && (
@@ -240,30 +241,74 @@ export function StorefrontIdentitySection({
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-3 pt-1">
-              {ACCENTS.map((c) => (
-                <Tooltip key={c}>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {ACCENTS.map((preset) => {
+                const isSelected = accent.toLowerCase() === preset.color.toLowerCase();
+                const textColor = getContrastForeground(preset.color);
+                return (
+                  <Tooltip key={preset.color}>
+                    <TooltipTrigger
+                      render={
+                        <button
+                          type="button"
+                          onClick={() => onAccentChange(preset.color)}
+                          style={{ backgroundColor: preset.color }}
+                          className={`size-8 sm:size-9 rounded-full flex items-center justify-center transition-all border-2 cursor-pointer ${
+                            isSelected
+                              ? "border-white scale-110 shadow-lg ring-2 ring-primary/40 ring-offset-2 ring-offset-background"
+                              : "border-transparent opacity-80 hover:opacity-100 hover:scale-105"
+                          } ${!canBranding ? "opacity-60 cursor-not-allowed" : ""}`}
+                        >
+                          {isSelected && <Check className="size-4 font-bold" style={{ color: textColor }} />}
+                        </button>
+                      }
+                    />
+                    <TooltipContent side="top">
+                      {!canBranding
+                        ? "Custom accent colors require Pro, Studio, or Enterprise"
+                        : `${preset.name} (${preset.color})`}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+
+              {/* Custom Color Picker & Hex Input */}
+              <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-border">
+                <Tooltip>
                   <TooltipTrigger
                     render={
-                      <button
-                        type="button"
-                        onClick={() => onAccentChange(c)}
-                        style={{ backgroundColor: c }}
-                        className={`size-9 rounded-full flex items-center justify-center transition-all border-2 cursor-pointer ${
-                          accent === c
-                            ? "border-white scale-110 shadow-lg"
-                            : "border-transparent opacity-80 hover:opacity-100"
-                        } ${!canBranding ? "opacity-60 cursor-not-allowed" : ""}`}
+                      <label
+                        className="size-8 sm:size-9 rounded-full cursor-pointer relative overflow-hidden border-2 border-border hover:border-primary transition-all flex items-center justify-center shadow-inner shrink-0"
+                        style={{ backgroundColor: accent }}
                       >
-                        {accent === c && <Check className="size-4 text-black font-bold" />}
-                      </button>
+                        <input
+                          type="color"
+                          disabled={!canBranding}
+                          value={/^#[0-9a-fA-F]{6}$/.test(accent) ? accent : "#F5551D"}
+                          onChange={(e) => onAccentChange(e.target.value)}
+                          className="opacity-0 absolute inset-0 size-full cursor-pointer"
+                        />
+                      </label>
                     }
                   />
-                  <TooltipContent side="top">
-                    {!canBranding ? "Custom accent colors require Pro, Studio, or Enterprise" : `Select ${c}`}
-                  </TooltipContent>
+                  <TooltipContent side="top">Custom color picker</TooltipContent>
                 </Tooltip>
-              ))}
+                <div className="flex items-center bg-muted/60 border border-border rounded-xl px-2.5 h-8 text-xs font-mono text-muted-foreground focus-within:border-ring">
+                  <span className="select-none font-bold text-muted-foreground mr-0.5">#</span>
+                  <input
+                    type="text"
+                    disabled={!canBranding}
+                    value={accent.replace(/^#/, "").toUpperCase()}
+                    maxLength={6}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/[^0-9a-fA-F]/g, "").slice(0, 6);
+                      onAccentChange("#" + v);
+                    }}
+                    placeholder="F5551D"
+                    className="bg-transparent text-foreground uppercase focus:outline-none w-14 font-mono font-bold text-xs"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -272,7 +317,7 @@ export function StorefrontIdentitySection({
         <div className="pt-2 border-t border-border space-y-3">
           <div>
             <div className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <Film className="size-3.5 text-[#f5551d]" />
+              <Film className="size-3.5 text-primary" />
               Filmmaker Showcase Stats &amp; Badges
             </div>
             <TypographyMuted className="text-xs text-muted-foreground mt-0.5">
@@ -283,7 +328,7 @@ export function StorefrontIdentitySection({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
             <div className="space-y-1">
               <label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
-                <Film className="size-3 text-[#f5551d]" />
+                <Film className="size-3 text-primary" />
                 Films Delivered
               </label>
               <Input
@@ -297,7 +342,7 @@ export function StorefrontIdentitySection({
 
             <div className="space-y-1">
               <label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
-                <Briefcase className="size-3 text-[#f5551d]" />
+                <Briefcase className="size-3 text-primary" />
                 Industry Experience
               </label>
               <Input
@@ -311,7 +356,7 @@ export function StorefrontIdentitySection({
 
             <div className="space-y-1">
               <label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
-                <MapPin className="size-3 text-[#f5551d]" />
+                <MapPin className="size-3 text-primary" />
                 Based / Region
               </label>
               <Input

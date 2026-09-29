@@ -37,6 +37,62 @@ interface ShowcaseGridProps {
   onOpenTrash?: () => void;
 }
 
+function parseItemAspectRatio(ar?: string | number): number | null {
+  if (!ar) return null;
+  if (typeof ar === "number") return ar;
+  if (typeof ar === "string") {
+    if (ar.includes(":")) {
+      const [w, h] = ar.split(":").map(Number);
+      if (w && h && !isNaN(w) && !isNaN(h)) return w / h;
+    }
+    const val = parseFloat(ar);
+    if (!isNaN(val) && val > 0) return val;
+  }
+  return null;
+}
+
+function ShowcaseMasonryMedia({
+  item,
+  thumbnailScale,
+}: {
+  item: PortfolioItem;
+  thumbnailScale?: "fit" | "fill";
+}) {
+  const parsedRatio = parseItemAspectRatio(item.aspectRatio);
+  const defaultRatio =
+    item.type === "film" ? 16 / 9 : item.type === "still" ? 3 / 4 : 4 / 3;
+
+  const [naturalRatio, setNaturalRatio] = useState<number | null>(parsedRatio);
+  const effectiveRatio = naturalRatio || parsedRatio || defaultRatio;
+
+  return (
+    <div
+      className="relative w-full overflow-hidden bg-[#0c0c0e]"
+      style={{
+        aspectRatio: `${effectiveRatio}`,
+      }}
+    >
+      <AppImage
+        src={item.thumbnailUrl}
+        alt={item.title}
+        fill
+        objectFit={thumbnailScale === "fit" ? "contain" : "cover"}
+        fallbackIcon={item.type === "still" ? "image" : "film"}
+        containerClassName="size-full"
+        className="transition-transform duration-500 group-hover:scale-105"
+        onLoad={(e: any) => {
+          if (!parsedRatio && e?.currentTarget?.naturalWidth && e?.currentTarget?.naturalHeight) {
+            const ratio = e.currentTarget.naturalWidth / e.currentTarget.naturalHeight;
+            if (ratio > 0 && isFinite(ratio)) {
+              setNaturalRatio(ratio);
+            }
+          }
+        }}
+      />
+    </div>
+  );
+}
+
 
 export function ShowcaseGrid({
   portfolioId,
@@ -97,6 +153,11 @@ export function ShowcaseGrid({
     return true;
   });
 
+  const isMasonry =
+    appearance.aspectRatio === "grid" ||
+    appearance.aspectRatio === "masonry" ||
+    appearance.aspectRatio === "4:3";
+
   // Dynamic Grid Classes based on Card Size
   const cardSize = appearance.cardSize || "M";
   const gridClasses =
@@ -106,6 +167,16 @@ export function ShowcaseGrid({
       ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-5"
       : "grid-cols-1 sm:grid-cols-2 gap-6";
 
+  const masonryClasses =
+    cardSize === "S"
+      ? "columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-3.5"
+      : cardSize === "M"
+      ? "columns-1 sm:columns-2 md:columns-3 lg:columns-3 gap-5"
+      : "columns-1 sm:columns-2 gap-6";
+
+  const masonryItemSpacing =
+    cardSize === "S" ? "mb-3.5" : cardSize === "L" ? "mb-6" : "mb-5";
+
   // Dynamic Aspect Ratio classes & numeric ratio
   const aspectRatio = appearance.aspectRatio || "16:9";
   const numericRatio =
@@ -113,8 +184,6 @@ export function ShowcaseGrid({
       ? 9 / 16
       : aspectRatio === "1:1"
       ? 1
-      : aspectRatio === "grid" || aspectRatio === "4:3"
-      ? 4 / 3
       : 16 / 9;
 
   return (
@@ -176,29 +245,40 @@ export function ShowcaseGrid({
       </CardHeader>
 
       <CardContent className="pt-2">
-        {/* Showcase Grid */}
-        <div className={`grid ${gridClasses}`}>
+        {/* Showcase Grid / Masonry */}
+        <div className={isMasonry ? masonryClasses : `grid ${gridClasses}`}>
         {filteredProjects.map((item) => {
           const isFeatured = featuredIds.includes(item.id);
           const isVideo = item.type === "film" || item.type === "project";
 
           return (
-            <TiltCard key={item.id} tiltIntensity={4} glareIntensity={0.12} className="h-full">
-              <Card
-                onClick={() => onSelectItem(item)}
-                className="group relative rounded-2xl bg-[#0c0c0e] border border-white/10 overflow-hidden transition-all duration-300 hover:border-white/30 p-0 cursor-pointer h-full"
-              >
-                {/* Media Image in AspectRatio Container */}
-                <AspectRatio ratio={numericRatio} className="w-full">
-                  <AppImage
-                    src={item.thumbnailUrl}
-                    alt={item.title}
-                    objectFit={appearance.thumbnailScale === "fit" ? "contain" : "cover"}
-                    fallbackIcon={item.type === "still" ? "image" : "film"}
-                    containerClassName="size-full"
-                    className="transition-transform duration-500 group-hover:scale-105"
-                  />
-                </AspectRatio>
+            <div
+              key={item.id}
+              className={isMasonry ? `break-inside-avoid ${masonryItemSpacing} w-full` : "h-full"}
+            >
+              <TiltCard tiltIntensity={4} glareIntensity={0.12} className={`w-full ${isMasonry ? "h-auto" : "h-full"}`}>
+                <Card
+                  onClick={() => onSelectItem(item)}
+                  className={`group relative rounded-2xl bg-[#0c0c0e] border border-white/10 overflow-hidden transition-all duration-300 hover:border-white/30 p-0 cursor-pointer w-full ${isMasonry ? "h-auto" : "h-full"}`}
+                >
+                  {/* Media Image */}
+                  {isMasonry ? (
+                    <ShowcaseMasonryMedia
+                      item={item}
+                      thumbnailScale={appearance.thumbnailScale}
+                    />
+                  ) : (
+                    <AspectRatio ratio={numericRatio} className="w-full">
+                      <AppImage
+                        src={item.thumbnailUrl}
+                        alt={item.title}
+                        objectFit={appearance.thumbnailScale === "fit" ? "contain" : "cover"}
+                        fallbackIcon={item.type === "still" ? "image" : "film"}
+                        containerClassName="size-full"
+                        className="transition-transform duration-500 group-hover:scale-105"
+                      />
+                    </AspectRatio>
+                  )}
 
                 {/* Top-Left Badge (FILM / STILL / PROJECT) */}
                 <div className="absolute top-3 left-3 z-10">
@@ -326,11 +406,12 @@ export function ShowcaseGrid({
                 </div>
               </Card>
             </TiltCard>
+          </div>
           );
         })}
 
         {filteredProjects.length === 0 && (
-          <div className="col-span-full py-12 text-center text-zinc-500 text-xs italic">
+          <div className="col-span-full [column-span:all] py-12 text-center text-zinc-500 text-xs italic">
             No {activeTab} yet. Click the upload button above to add your first {activeTab.slice(0, -1)}.
           </div>
         )}

@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { createHash } from "crypto";
 import { getServerServices } from "@/core/server";
 import { presignDeliveryAssets } from "@/lib/media-server";
+import type { DeliveryAppearanceSettings } from "@/core/entities/delivery";
 
 export async function verifyDeliveryPasscodeAction(
   shareToken: string,
@@ -331,6 +332,43 @@ export async function updateDeliveryDetailsAction(
     return { success: true, delivery: updated, project: updated };
   } catch (err: any) {
     return { error: err.message || "Failed to update delivery details." };
+  }
+}
+
+export async function updateDeliveryAppearanceAction(
+  deliveryId: string,
+  appearance: Partial<DeliveryAppearanceSettings>,
+  workspaceSlug?: string
+) {
+  try {
+    const services = await getServerServices();
+    const user = await services.auth.getCurrentUser();
+    if (!user) return { error: "User is not authenticated." };
+
+    const existing = await services.delivery.getDeliveryById(deliveryId);
+    if (!existing) return { error: "Delivery not found." };
+
+    const mergedAppearance: DeliveryAppearanceSettings = {
+      cardSize: (existing.appearance as any)?.cardSize || "M",
+      aspectRatioSetting: (existing.appearance as any)?.aspectRatioSetting || "masonry",
+      thumbnailScale: (existing.appearance as any)?.thumbnailScale || "Fill",
+      showCardInfo: (existing.appearance as any)?.showCardInfo ?? true,
+      watermarkMedia: (existing.appearance as any)?.watermarkMedia ?? true,
+      ...appearance,
+    };
+
+    const updated = await services.delivery.updateDelivery(deliveryId, {
+      appearance: mergedAppearance,
+    });
+
+    if (workspaceSlug) {
+      revalidatePath(`/${workspaceSlug}/deliveries/${deliveryId}`);
+    }
+    revalidatePath(`/deliver/${updated.shareToken}`);
+
+    return { success: true, delivery: updated, appearance: mergedAppearance };
+  } catch (err: any) {
+    return { error: err.message || "Failed to update delivery appearance." };
   }
 }
 

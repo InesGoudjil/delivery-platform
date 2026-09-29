@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { CheckCircle2 } from "lucide-react";
 import { VideoUploader } from "@/components/workspaces/video-uploader";
 import { AssetMultiUploader } from "@/components/workspaces/asset-multi-uploader";
@@ -12,6 +13,7 @@ import {
   deleteAssetAction,
   deleteDeliveryAction,
   updateAssetAction,
+  updateDeliveryAppearanceAction,
 } from "@/app/actions/deliveries";
 import { resolveThumbnailUrl, resolveMediaUrl } from "@/lib/media";
 import { EditAssetDialog, type EditableAssetItem } from "@/components/workspaces/edit-asset-dialog";
@@ -135,12 +137,28 @@ export function DeliveryDetailClient({
 
   // Appearance Settings State
   const [appearance, setAppearance] = useState<AppearanceSettings>({
-    cardSize: "M",
-    aspectRatioSetting: "masonry",
-    thumbnailScale: "Fill",
-    showCardInfo: true,
-    watermarkMedia: true,
+    cardSize: project.appearance?.cardSize || "M",
+    aspectRatioSetting: project.appearance?.aspectRatioSetting || "masonry",
+    thumbnailScale: project.appearance?.thumbnailScale || "Fill",
+    showCardInfo: project.appearance?.showCardInfo ?? true,
+    watermarkMedia: project.appearance?.watermarkMedia ?? true,
   });
+
+  const handleAppearanceChange = async (newSettings: AppearanceSettings) => {
+    setAppearance(newSettings);
+    const res = await updateDeliveryAppearanceAction(project.id, newSettings, workspace.slug);
+    if (res?.success) {
+      const layoutLabel =
+        newSettings.aspectRatioSetting === "masonry"
+          ? "Masonry layout"
+          : `${newSettings.aspectRatioSetting} ratio`;
+      toast.success("Appearance updated", {
+        description: `Saved: ${layoutLabel} (${newSettings.cardSize} cards, ${newSettings.thumbnailScale} scale)`,
+      });
+    } else if (res?.error) {
+      toast.error(res.error || "Failed to update appearance");
+    }
+  };
 
   // Active Lightbox Item & Feedback State
   const [activeItem, setActiveItem] = useState<GalleryItem | null>(null);
@@ -149,8 +167,7 @@ export function DeliveryDetailClient({
   const shareUrl = `/deliver/${project.shareToken}`;
 
   const triggerToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    toast.success(msg);
   };
 
   // Actions
@@ -446,7 +463,7 @@ export function DeliveryDetailClient({
       {/* 4. Appearance Settings Card */}
       <DeliveryAppearanceCard
         settings={appearance}
-        onChangeSettings={setAppearance}
+        onChangeSettings={handleAppearanceChange}
       />
 
       {/* 5. Deliverables & PROJECT ASSETS Gallery */}

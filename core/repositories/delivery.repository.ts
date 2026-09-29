@@ -19,6 +19,7 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
       isDownloadAllowed: row.is_download_allowed ?? false,
       notifyOnDownload: row.notify_on_download ?? false,
       isWatermarked: row.is_watermarked ?? false,
+      appearance: row.appearance ?? null,
       approvedAt: row.approved_at,
       approvedByName: row.approved_by_name,
       expiresAt: row.expires_at,
@@ -86,6 +87,7 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
       is_download_allowed: dto.isDownloadAllowed ?? false,
       notify_on_download: dto.notifyOnDownload ?? false,
       is_watermarked: dto.isWatermarked ?? false,
+      appearance: dto.appearance ?? null,
       status: dto.status ?? "in_review",
       expires_at: dto.expiresAt ?? null,
       location: dto.location ?? null,
@@ -115,6 +117,7 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
     if (data.isDownloadAllowed !== undefined) payload.is_download_allowed = data.isDownloadAllowed;
     if (data.notifyOnDownload !== undefined) payload.notify_on_download = data.notifyOnDownload;
     if (data.isWatermarked !== undefined) payload.is_watermarked = data.isWatermarked;
+    if (data.appearance !== undefined) payload.appearance = data.appearance;
     if (data.status !== undefined) payload.status = data.status;
     if (data.expiresAt !== undefined) payload.expires_at = data.expiresAt;
     if (data.location !== undefined) payload.location = data.location;

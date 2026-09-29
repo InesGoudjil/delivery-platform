@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
+import { generateAccentVariables } from "@/lib/theme-utils";
 
 interface AmbientBackgroundProps {
   children?: React.ReactNode;
@@ -8,14 +9,14 @@ interface AmbientBackgroundProps {
   variant?: "full" | "hero" | "subtle";
   animated?: boolean;
   showNoise?: boolean;
+  accentColor?: string;
 }
 
 /**
  * Production-ready ambient cinematic glow background.
  *
- * Replaces low-resolution stretched raster images with pure CSS vector gradients,
- * high-gamut color blending, hardware-accelerated GPU drift, and SVG noise
- * to eliminate dark-mode gradient banding.
+ * Dynamically retints to the workspace or portfolio accent color via CSS variables
+ * (--acc-rgb, --acc2-rgb) with high-gamut color blending and hardware-accelerated drift.
  */
 export function AmbientBackground({
   children,
@@ -23,15 +24,21 @@ export function AmbientBackground({
   variant = "full",
   animated = true,
   showNoise = true,
+  accentColor,
 }: AmbientBackgroundProps) {
   const isHero = variant === "hero";
   const isSubtle = variant === "subtle";
+
+  const inlineStyles: React.CSSProperties = useMemo(() => {
+    if (!accentColor) return {};
+    return generateAccentVariables(accentColor) as React.CSSProperties;
+  }, [accentColor]);
 
   const renderGlowElements = () => (
     <>
       {/* Left Glowing Fluid Ribbon */}
       <div
-        className={`absolute rounded-full transition-opacity duration-1000 ${
+        className={`absolute rounded-full transition-[background,opacity] duration-700 ease-out ${
           animated ? "animate-aura-drift-left" : ""
         } ${
           isHero
@@ -42,7 +49,7 @@ export function AmbientBackground({
         }`}
         style={{
           background:
-            "radial-gradient(ellipse at 35% 45%, rgba(245, 85, 29, 0.75) 0%, rgba(223, 24, 116, 0.55) 42%, rgba(136, 23, 159, 0.35) 75%, transparent 100%)",
+            "radial-gradient(ellipse at 35% 45%, rgba(var(--acc-rgb, 245, 85, 29), 0.75) 0%, rgba(223, 24, 116, 0.55) 42%, rgba(136, 23, 159, 0.35) 75%, transparent 100%)",
           transform: "rotate(-18deg) translate3d(0, 0, 0)",
           willChange: animated ? "transform" : "auto",
         }}
@@ -50,7 +57,7 @@ export function AmbientBackground({
 
       {/* Right Glowing Fluid Ribbon */}
       <div
-        className={`absolute rounded-full transition-opacity duration-1000 ${
+        className={`absolute rounded-full transition-[background,opacity] duration-700 ease-out ${
           animated ? "animate-aura-drift-right" : ""
         } ${
           isHero
@@ -61,7 +68,7 @@ export function AmbientBackground({
         }`}
         style={{
           background:
-            "radial-gradient(ellipse at 65% 45%, rgba(136, 23, 159, 0.65) 0%, rgba(245, 85, 29, 0.55) 45%, rgba(255, 138, 69, 0.3) 78%, transparent 100%)",
+            "radial-gradient(ellipse at 65% 45%, rgba(136, 23, 159, 0.65) 0%, rgba(var(--acc-rgb, 245, 85, 29), 0.55) 45%, rgba(var(--acc2-rgb, 255, 138, 69), 0.3) 78%, transparent 100%)",
           transform: "rotate(24deg) translate3d(0, 0, 0)",
           willChange: animated ? "transform" : "auto",
         }}
@@ -69,14 +76,14 @@ export function AmbientBackground({
 
       {/* Center-Bottom Subtle Warm Core */}
       <div
-        className={`absolute -bottom-28 left-1/2 -translate-x-1/2 rounded-full blur-[110px] ${
+        className={`absolute -bottom-28 left-1/2 -translate-x-1/2 rounded-full blur-[110px] transition-[background,opacity] duration-700 ease-out ${
           isSubtle
             ? "h-[350px] w-[600px] opacity-30"
             : "h-[450px] w-[800px] opacity-50"
         }`}
         style={{
           background:
-            "radial-gradient(ellipse at center, rgba(245, 85, 29, 0.5) 0%, rgba(223, 24, 116, 0.25) 45%, transparent 80%)",
+            "radial-gradient(ellipse at center, rgba(var(--acc-rgb, 245, 85, 29), 0.5) 0%, rgba(223, 24, 116, 0.25) 45%, transparent 80%)",
           transform: "translate3d(-50%, 0, 0)",
         }}
       />
@@ -98,6 +105,7 @@ export function AmbientBackground({
       <div
         className={`pointer-events-none fixed inset-0 z-0 overflow-hidden select-none ${className}`}
         aria-hidden="true"
+        style={inlineStyles}
       >
         {renderGlowElements()}
       </div>
@@ -105,7 +113,7 @@ export function AmbientBackground({
   }
 
   return (
-    <div className={`relative w-full overflow-hidden ${className}`}>
+    <div className={`relative w-full overflow-hidden ${className}`} style={inlineStyles}>
       <div
         className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none"
         aria-hidden="true"
