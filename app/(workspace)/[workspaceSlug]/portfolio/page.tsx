@@ -129,7 +129,7 @@ export default async function PortfolioPage({
         assetCount: 1,
         thumbnailUrl: resolvedThumb,
         mediaUrl: resolveMediaUrl(rawMedia || resolvedThumb),
-        aspectRatio: asset.aspectRatio || (isStill ? "1:1" : "16:9"),
+        aspectRatio: asset.aspectRatio || undefined,
         isFeatured,
       };
     })

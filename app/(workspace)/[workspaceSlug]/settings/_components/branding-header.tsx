@@ -35,9 +35,9 @@ export function BrandingHeader({
                 <Link
                   href={`/p/${workspaceSlug}`}
                   target="_blank"
-                  className="text-xs text-muted-foreground hover:text-[#f5551d] flex items-center gap-1 transition-colors font-mono"
+                  className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors font-mono"
                 >
-                  <Badge variant="outline" className="text-[10px] font-mono hover:border-[#f5551d]/40 flex items-center gap-1 cursor-pointer">
+                  <Badge variant="outline" className="text-[10px] font-mono hover:border-primary/40 flex items-center gap-1 cursor-pointer">
                     <span>Live Preview</span>
                     <ExternalLink className="size-2.5" />
                   </Badge>
@@ -61,7 +61,7 @@ export function BrandingHeader({
             <Button
               onClick={onSave}
               disabled={isPending}
-              className="rounded-full bg-[#f5551d] hover:bg-[#ff8a45] text-black font-extrabold text-xs px-6 py-2.5 shadow-lg shadow-[#f5551d]/20 transition-all uppercase tracking-wider h-auto shrink-0 cursor-pointer"
+              className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs px-6 py-2.5 shadow-lg shadow-primary/25 transition-all uppercase tracking-wider h-auto shrink-0 cursor-pointer"
             >
               <Sparkles className="size-4 mr-1.5" />
               <span>{isPending ? "Saving..." : "SAVE BRAND SETTINGS"}</span>

@@ -5,7 +5,21 @@ export interface CoverPreset {
   gradient: string;
 }
 
-export const ACCENTS = ["#F5551D", "#E23B3B", "#7C5CFF", "#1D9E75", "#378ADD"];
+export interface AccentPreset {
+  name: string;
+  color: string;
+}
+
+export const ACCENTS: AccentPreset[] = [
+  { name: "Ember", color: "#F5551D" },
+  { name: "Crimson", color: "#E23B3B" },
+  { name: "Violet", color: "#7C5CFF" },
+  { name: "Emerald", color: "#1D9E75" },
+  { name: "Ocean", color: "#378ADD" },
+  { name: "Gold", color: "#E0A82E" },
+  { name: "Magenta", color: "#D8408F" },
+  { name: "Slate", color: "#5B6B7C" },
+];
 
 export const COVER_PRESETS: CoverPreset[] = [
   {

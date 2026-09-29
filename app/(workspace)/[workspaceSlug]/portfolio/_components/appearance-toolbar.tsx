@@ -8,6 +8,7 @@ import {
   Square,
   RectangleVertical,
   LayoutGrid,
+  LayoutDashboard,
 } from "lucide-react";
 import {
   Card,
@@ -41,7 +42,7 @@ export function AppearanceToolbar({
     initialAppearance.cardSize || "M"
   );
   const [aspectRatio, setAspectRatio] = useState<
-    "16:9" | "1:1" | "9:16" | "grid" | "4:3"
+    PortfolioAppearance["aspectRatio"]
   >(initialAppearance.aspectRatio || "16:9");
   const [thumbnailScale, setThumbnailScale] = useState<"fit" | "fill">(
     initialAppearance.thumbnailScale || "fill"
@@ -210,22 +211,23 @@ export function AppearanceToolbar({
                   <Button
                     type="button"
                     size="icon-xs"
-                    variant={aspectRatio === "grid" || aspectRatio === "4:3" ? "default" : "ghost"}
+                    variant={aspectRatio === "grid" || aspectRatio === "4:3" || aspectRatio === "masonry" ? "default" : "ghost"}
                     onClick={() => {
                       setAspectRatio("grid");
                       persistAppearance({ aspectRatio: "grid" });
                     }}
                     className={`p-1.5 px-2 h-auto rounded-md transition-all cursor-pointer flex items-center justify-center ${
-                      aspectRatio === "grid" || aspectRatio === "4:3"
+                      aspectRatio === "grid" || aspectRatio === "4:3" || aspectRatio === "masonry"
                         ? "bg-[#f5551d] text-white hover:bg-[#ff8a45] shadow-sm"
                         : "text-zinc-400 hover:text-white hover:bg-transparent"
                     }`}
                   >
-                    <LayoutGrid className="size-3.5" />
+                    {/* <LayoutGrid className="size-3.5" /> */}
+                    <LayoutDashboard className="size-3.5" />
                   </Button>
                 }
               />
-              <TooltipContent>4:3 Classic / Grid</TooltipContent>
+              <TooltipContent>Masonry Layout (Pinterest style)</TooltipContent>
             </Tooltip>
           </div>
         </div>

@@ -348,6 +348,7 @@ export interface Database {
           location: string | null;
           delivery_date: string | null;
           is_watermarked: boolean;
+          appearance: Json | null;
           created_at: string;
           updated_at: string;
         };
@@ -368,6 +369,7 @@ export interface Database {
           location?: string | null;
           delivery_date?: string | null;
           is_watermarked?: boolean;
+          appearance?: Json | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -388,6 +390,7 @@ export interface Database {
           location?: string | null;
           delivery_date?: string | null;
           is_watermarked?: boolean;
+          appearance?: Json | null;
           created_at?: string;
           updated_at?: string;
         };

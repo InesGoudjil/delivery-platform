@@ -24,6 +24,7 @@ export function PortfolioModals() {
     profile,
     projects,
     assets,
+    appearance,
     activeStill,
     setActiveStill,
     activeFilm,
@@ -420,7 +421,7 @@ export function PortfolioModals() {
                       <img
                         src={asset.image}
                         alt={asset.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className={`w-full h-full ${appearance?.thumbnailScale === "fit" ? "object-contain bg-black" : "object-cover"} group-hover:scale-105 transition-transform duration-300`}
                       />
 
                       {/* Tag */}

@@ -12,6 +12,7 @@ import { StorefrontIdentitySection } from "./_components/storefront-identity-sec
 import { BioSection } from "./_components/bio-section";
 import { ExperienceCredentialsSection } from "./_components/experience-credentials-section";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { useAccentTheme } from "@/components/theme/accent-theme-provider";
 
 interface BrandingClientProps {
   workspace: {
@@ -36,6 +37,7 @@ interface BrandingClientProps {
 export function BrandingClient({ workspace, portfolio, features }: BrandingClientProps) {
   const [isPending, startTransition] = useTransition();
   const [toast, setToast] = useState<string | null>(null);
+  const { setAccent: setLiveAccent } = useAccentTheme();
 
   const canBranding = features ? Boolean(features.branding) : true;
 
@@ -43,6 +45,13 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
   const [brandName, setBrandName] = useState(workspace.brandName || "Pedro Concreato");
   const [handle, setHandle] = useState(workspace.slug);
   const [accent, setAccent] = useState(workspace.accentColor || "#F5551D");
+
+  const handleAccentChange = (newColor: string) => {
+    setAccent(newColor);
+    if (canBranding) {
+      setLiveAccent(newColor);
+    }
+  };
   const [whatsapp, setWhatsapp] = useState(portfolio.whatsappNumber || "+971501234567");
 
   // Profile image / avatar
@@ -162,7 +171,7 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
       <div className="max-w-5xl mx-auto space-y-10 animate-in fade-in duration-200 pb-16">
         {/* Toast Notification */}
         {toast && (
-          <div className="fixed bottom-6 right-6 z-50 bg-[#f5551d] text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-2xl animate-in fade-in slide-in-from-bottom-2 border border-white/20">
+          <div className="fixed bottom-6 right-6 z-50 bg-primary text-primary-foreground font-semibold text-xs px-4 py-2.5 rounded-xl shadow-2xl shadow-primary/20 animate-in fade-in slide-in-from-bottom-2 border border-white/20">
             {toast}
           </div>
         )}
@@ -197,7 +206,7 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
           whatsapp={whatsapp}
           onWhatsappChange={setWhatsapp}
           accent={accent}
-          onAccentChange={setAccent}
+          onAccentChange={handleAccentChange}
           logoUrl={logoUrl}
           onProfileUpload={handleProfileUpload}
           onRemoveProfile={handleRemoveProfile}
@@ -225,7 +234,7 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
                 <Button
                   onClick={handleSaveAll}
                   disabled={isPending}
-                  className="rounded-full bg-[#f5551d] hover:bg-[#ff8a45] text-black font-extrabold text-xs px-8 py-3 shadow-xl shadow-[#f5551d]/20 transition-all uppercase tracking-wider h-auto cursor-pointer"
+                  className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs px-8 py-3 shadow-xl shadow-primary/25 transition-all uppercase tracking-wider h-auto cursor-pointer"
                 >
                   <Sparkles className="size-4 mr-1.5" />
                   <span>{isPending ? "Saving changes..." : "SAVE ALL BRAND SETTINGS"}</span>

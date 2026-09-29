@@ -73,6 +73,7 @@ export interface DeliveryDetailClientProps {
     isDownloadAllowed: boolean;
     passcodeProtected: boolean;
     clientName: string;
+    appearance?: AppearanceSettings | null;
     createdAt: string;
     updatedAt: string;
   };

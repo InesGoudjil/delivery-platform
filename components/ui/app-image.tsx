@@ -122,11 +122,14 @@ export function AppImage({
             sizes={sizes || (fill ? "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" : undefined)}
             unoptimized={unoptimized ?? true}
             onError={handleImageError}
-            onLoad={() => setIsLoading(false)}
             className={`transition-opacity duration-300 ${
               isLoading ? "opacity-40" : "opacity-100"
             } ${objectFit === "contain" ? "object-contain" : "object-cover"} ${className}`}
             {...props}
+            onLoad={(e) => {
+              setIsLoading(false);
+              props.onLoad?.(e);
+            }}
           />
         </>
       ) : (

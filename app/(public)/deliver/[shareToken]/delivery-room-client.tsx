@@ -36,6 +36,7 @@ import {
 } from "@/app/actions/deliveries";
 import { addFeedbackAction, toggleFeedbackResolvedAction } from "@/app/actions/feedback";
 import { AmbientBackground } from "@/components/ui/ambient-background";
+import { AccentThemeProvider } from "@/components/theme/accent-theme-provider";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -100,6 +101,13 @@ export interface DeliveryRoomProps {
     status: "draft" | "in_review" | "approved" | "archived";
     isDownloadAllowed: boolean;
     isWatermarked: boolean;
+    appearance?: {
+      cardSize?: "S" | "M" | "L";
+      aspectRatioSetting?: "masonry" | "16:9" | "1:1" | "9:16";
+      thumbnailScale?: "Fit" | "Fill";
+      showCardInfo?: boolean;
+      watermarkMedia?: boolean;
+    } | null;
     approvedAt?: string | null;
     approvedByName?: string | null;
     expiresAt?: string | null;
@@ -127,6 +135,45 @@ export interface DeliveryRoomProps {
   } | null;
   isWorkspaceMember?: boolean;
   whiteLabel?: boolean;
+}
+
+function DeliveryRoomMasonryMedia({
+  src,
+  alt,
+  thumbnailScale,
+  children,
+}: {
+  src: string;
+  alt: string;
+  thumbnailScale?: "Fit" | "Fill";
+  children?: React.ReactNode;
+}) {
+  const [naturalAspect, setNaturalAspect] = useState<number | null>(null);
+
+  return (
+    <div
+      className="relative w-full overflow-hidden bg-black/40"
+      style={{
+        aspectRatio: naturalAspect ? `${naturalAspect}` : "16 / 10",
+      }}
+    >
+      <AppImage
+        src={src}
+        alt={alt}
+        fill
+        className={`w-full h-full ${
+          thumbnailScale === "Fit" ? "object-contain bg-black" : "object-cover"
+        } group-hover:scale-105 transition-transform duration-500`}
+        onLoad={(e) => {
+          const img = e.currentTarget;
+          if (img && img.naturalWidth && img.naturalHeight) {
+            setNaturalAspect(img.naturalWidth / img.naturalHeight);
+          }
+        }}
+      />
+      {children}
+    </div>
+  );
 }
 
 export function DeliveryRoomClient({
@@ -522,9 +569,10 @@ export function DeliveryRoomClient({
 
   // 🎬 MAIN CLIENT DELIVERY VIEW SCREEN WITH MODAL PASSCODE DIALOG
   return (
-    <TooltipProvider delay={150}>
-      <div className={`min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased selection:bg-[#f5551d] selection:text-black relative ${isLocked ? "overflow-hidden max-h-screen" : ""}`}>
-        <AmbientBackground variant="subtle"  showNoise={false} />
+    <AccentThemeProvider initialAccent={workspace?.accentColor || "#f5551d"}>
+      <TooltipProvider delay={150}>
+        <div className={`min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased selection:bg-primary selection:text-primary-foreground relative ${isLocked ? "overflow-hidden max-h-screen" : ""}`}>
+          <AmbientBackground variant="subtle" showNoise={false} accentColor={workspace?.accentColor || undefined} />
 
         {/* 🔒 PASSCODE VERIFICATION MODAL DIALOG */}
         <Dialog open={isLocked} onOpenChange={() => {}}>
@@ -831,69 +879,149 @@ export function DeliveryRoomClient({
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 pt-1">
-                {filteredAssets.map((asset) => {
-                  const ver = asset.activeVersion || asset.versions[0] || null;
-                  const isPhoto =
-                    asset.type === "photo_gallery" ||
-                    asset.type === "image" ||
-                    asset.type === "photo" ||
-                    asset.type === "still";
-                  const poster =
-                    resolveThumbnailUrl(ver?.thumbnailUrl, ver?.rawFileUrl, isPhoto) ||
-                    "/images/projects/mercedes-amg-gt/1.webp";
+              (() => {
+                const app = delivery.appearance || {
+                  cardSize: "M",
+                  aspectRatioSetting: "masonry",
+                  thumbnailScale: "Fill",
+                  showCardInfo: true,
+                  watermarkMedia: true,
+                };
+                const cardSize = app.cardSize || "M";
+                const aspectRatioSetting = app.aspectRatioSetting || "masonry";
+                const isMasonry = aspectRatioSetting === "masonry";
+                const thumbnailScale = app.thumbnailScale || "Fill";
+                const showCardInfo = app.showCardInfo ?? true;
 
-                  const durationSec = ver?.durationSeconds ? Math.round(ver.durationSeconds) : null;
-                  const durationLabel = isPhoto
-                    ? null
-                    : durationSec
-                    ? `${Math.floor(durationSec / 60)
-                        .toString()
-                        .padStart(1, "0")}:${(durationSec % 60).toString().padStart(2, "0")}`
-                    : "VIDEO";
+                const containerClasses = isMasonry
+                  ? `columns-1 ${
+                      cardSize === "S"
+                        ? "sm:columns-2 md:columns-3 lg:columns-4"
+                        : cardSize === "L"
+                        ? "sm:columns-1 md:columns-2"
+                        : "sm:columns-2 md:columns-3"
+                    } gap-5 space-y-5 pt-1`
+                  : `grid grid-cols-1 ${
+                      cardSize === "S"
+                        ? "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                        : cardSize === "L"
+                        ? "sm:grid-cols-1 md:grid-cols-2"
+                        : "sm:grid-cols-2 lg:grid-cols-3"
+                    } gap-5 pt-1`;
 
-                  return (
-                    <div
-                      key={asset.id}
-                      onClick={() => openAssetModal(asset)}
-                      className="group relative rounded-2xl overflow-hidden border border-white/10 bg-[#141416] cursor-pointer hover:border-white/30 transition-all duration-300 shadow-xl hover:-translate-y-1"
-                    >
-                      <AspectRatio ratio={16 / 10} className="w-full relative overflow-hidden bg-black/40">
-                        <AppImage
-                          src={poster}
-                          alt={asset.title}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/5 transition-colors" />
+                const numericRatio =
+                  aspectRatioSetting === "16:9"
+                    ? 16 / 9
+                    : aspectRatioSetting === "1:1"
+                    ? 1
+                    : aspectRatioSetting === "9:16"
+                    ? 9 / 16
+                    : 16 / 10;
 
-                        {/* Top-Left: Type Icon Badge */}
-                        <div className="absolute top-3 left-3 size-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center text-white shadow-md">
-                          {isPhoto ? (
-                            <ImageIcon className="size-3.5" />
+                return (
+                  <div className={containerClasses}>
+                    {filteredAssets.map((asset) => {
+                      const ver = asset.activeVersion || asset.versions[0] || null;
+                      const isPhoto =
+                        asset.type === "photo_gallery" ||
+                        asset.type === "image" ||
+                        asset.type === "photo" ||
+                        asset.type === "still";
+                      const poster =
+                        resolveThumbnailUrl(ver?.thumbnailUrl, ver?.rawFileUrl, isPhoto) ||
+                        "/images/projects/mercedes-amg-gt/1.webp";
+
+                      const durationSec = ver?.durationSeconds ? Math.round(ver.durationSeconds) : null;
+                      const durationLabel = isPhoto
+                        ? null
+                        : durationSec
+                        ? `${Math.floor(durationSec / 60)
+                            .toString()
+                            .padStart(1, "0")}:${(durationSec % 60).toString().padStart(2, "0")}`
+                        : "VIDEO";
+
+                      const mediaBadges = (
+                        <>
+                          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/5 transition-colors" />
+
+                          {/* Top-Left: Type Icon Badge */}
+                          <div className="absolute top-3 left-3 size-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center text-white shadow-md">
+                            {isPhoto ? (
+                              <ImageIcon className="size-3.5" />
+                            ) : (
+                              <Play className="size-3.5 fill-white" />
+                            )}
+                          </div>
+
+                          {/* Top-Right: Approved Badge */}
+                          {asset.isApproved && (
+                            <div className="absolute top-3 right-3 size-6 rounded-full bg-[#86b98f] flex items-center justify-center text-black shadow-md font-bold">
+                              <Check className="size-3.5 stroke-[3]" />
+                            </div>
+                          )}
+
+                          {/* Bottom-Right: Duration timecode (videos only) */}
+                          {!isPhoto && durationLabel && (
+                            <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[11px] font-mono font-semibold text-white border border-white/10">
+                              {durationLabel}
+                            </div>
+                          )}
+                        </>
+                      );
+
+                      return (
+                        <div
+                          key={asset.id}
+                          onClick={() => openAssetModal(asset)}
+                          className={`group relative rounded-2xl overflow-hidden border border-white/10 bg-[#141416] cursor-pointer hover:border-white/30 transition-all duration-300 shadow-xl hover:-translate-y-1 ${
+                            isMasonry ? "break-inside-avoid mb-5" : ""
+                          }`}
+                        >
+                          {isMasonry ? (
+                            <DeliveryRoomMasonryMedia
+                              src={poster}
+                              alt={asset.title}
+                              thumbnailScale={thumbnailScale}
+                            >
+                              {mediaBadges}
+                            </DeliveryRoomMasonryMedia>
                           ) : (
-                            <Play className="size-3.5 fill-white" />
+                            <AspectRatio ratio={numericRatio} className="w-full relative overflow-hidden bg-black/40">
+                              <AppImage
+                                src={poster}
+                                alt={asset.title}
+                                fill
+                                className={`w-full h-full ${
+                                  thumbnailScale === "Fit" ? "object-contain bg-black" : "object-cover"
+                                } group-hover:scale-105 transition-transform duration-500`}
+                              />
+                              {mediaBadges}
+                            </AspectRatio>
+                          )}
+
+                          {showCardInfo && (
+                            <div className="p-3.5 border-t border-white/10 flex items-center justify-between gap-2 bg-[#141416]">
+                              <span className="text-xs font-semibold text-white truncate">
+                                {asset.title}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className={`text-[10px] shrink-0 font-medium ${
+                                  asset.isApproved
+                                    ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+                                    : "border-amber-500/30 text-amber-400 bg-amber-500/10"
+                                }`}
+                              >
+                                {asset.isApproved ? "Approved" : "In Review"}
+                              </Badge>
+                            </div>
                           )}
                         </div>
-
-                        {/* Top-Right: Approved Badge */}
-                        {asset.isApproved && (
-                          <div className="absolute top-3 right-3 size-6 rounded-full bg-[#86b98f] flex items-center justify-center text-black shadow-md font-bold">
-                            <Check className="size-3.5 stroke-[3]" />
-                          </div>
-                        )}
-
-                        {/* Bottom-Right: Duration timecode (videos only) */}
-                        {!isPhoto && durationLabel && (
-                          <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[11px] font-mono font-semibold text-white border border-white/10">
-                            {durationLabel}
-                          </div>
-                        )}
-                      </AspectRatio>
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()
             )}
           </div>
 
@@ -1212,5 +1340,6 @@ export function DeliveryRoomClient({
       </div>
     </div>
     </TooltipProvider>
+    </AccentThemeProvider>
   );
 }

@@ -94,7 +94,7 @@ export function CoverBannerSection({
               {/* Top Badge: Active Cover Status */}
               <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
                 <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/20 text-white font-mono text-[10px] uppercase font-bold px-3 py-1 flex items-center gap-1.5 shadow-lg">
-                  <Eye className="size-3 text-[#f5551d]" />
+                  <Eye className="size-3 text-primary" />
                   Live Preview
                 </Badge>
                 {isCustomCover && (
@@ -133,7 +133,7 @@ export function CoverBannerSection({
                             )}
                             {onProfileUpload && (
                               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/avatar:opacity-100 flex flex-col items-center justify-center text-white transition-opacity">
-                                <Camera className="size-4 text-[#f5551d]" />
+                                <Camera className="size-4 text-primary" />
                                 <span className="text-[8px] font-bold uppercase mt-0.5 tracking-wider">Photo</span>
                               </div>
                             )}
@@ -165,7 +165,7 @@ export function CoverBannerSection({
                           onClick={() => fileInputRef.current?.click()}
                           className="rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border-white/20 text-white text-[11px] font-bold px-3.5 py-1.5 transition-all flex items-center gap-1.5 cursor-pointer shadow-lg h-7"
                         >
-                          <Camera className="size-3 text-[#f5551d]" />
+                          <Camera className="size-3 text-primary" />
                           <span>Change Image</span>
                         </Button>
                       }
@@ -217,7 +217,7 @@ export function CoverBannerSection({
                           onClick={() => onSelectPreset(preset.url)}
                           className={`relative rounded-xl overflow-hidden border-2 transition-all group cursor-pointer text-left shadow-sm ${
                             isSelected
-                              ? "border-[#f5551d] scale-[1.02] shadow-[#f5551d]/20 shadow-lg"
+                              ? "border-primary scale-[1.02] shadow-primary/20 shadow-lg"
                               : "border-border hover:border-primary/40 opacity-75 hover:opacity-100"
                           }`}
                         >
@@ -233,8 +233,8 @@ export function CoverBannerSection({
                               {preset.title}
                             </span>
                             {isSelected && (
-                              <div className="absolute top-1.5 right-1.5 bg-[#f5551d] rounded-full p-0.5 shadow-md">
-                                <Check className="size-2.5 text-black stroke-[3]" />
+                              <div className="absolute top-1.5 right-1.5 bg-primary text-primary-foreground rounded-full p-0.5 shadow-md">
+                                <Check className="size-2.5 stroke-[3]" />
                               </div>
                             )}
                           </AspectRatio>
@@ -258,9 +258,9 @@ export function CoverBannerSection({
               />
               <Card
                 onClick={() => fileInputRef.current?.click()}
-                className="rounded-xl border border-dashed border-border hover:border-[#f5551d]/60 bg-muted/40 hover:bg-muted/60 p-4 text-center cursor-pointer transition-all flex items-center justify-center gap-3 shadow-none hover:translate-y-0"
+                className="rounded-xl border border-dashed border-border hover:border-primary/60 bg-muted/40 hover:bg-muted/60 p-4 text-center cursor-pointer transition-all flex items-center justify-center gap-3 shadow-none hover:translate-y-0"
               >
-                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-[#f5551d]">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-primary">
                   <Upload className="size-4" />
                 </div>
                 <div className="text-left">

@@ -1,5 +1,13 @@
 export type DeliveryStatus = "draft" | "in_review" | "approved" | "archived";
 
+export interface DeliveryAppearanceSettings {
+  cardSize: "S" | "M" | "L";
+  aspectRatioSetting: "masonry" | "16:9" | "1:1" | "9:16";
+  thumbnailScale: "Fit" | "Fill";
+  showCardInfo: boolean;
+  watermarkMedia: boolean;
+}
+
 export interface Delivery {
   id: string;
   workspaceId: string;
@@ -12,6 +20,7 @@ export interface Delivery {
   isDownloadAllowed: boolean;
   notifyOnDownload: boolean;
   isWatermarked: boolean;
+  appearance?: DeliveryAppearanceSettings | null;
   approvedAt?: string | null;
   approvedByName?: string | null;
   expiresAt?: string | null;
@@ -32,6 +41,7 @@ export interface CreateDeliveryDTO {
   isDownloadAllowed?: boolean;
   notifyOnDownload?: boolean;
   isWatermarked?: boolean;
+  appearance?: DeliveryAppearanceSettings | null;
   expiresAt?: string | null;
   location?: string | null;
   deliveryDate?: string | null;
