@@ -3,6 +3,17 @@
 import React, { useState, useTransition } from "react";
 import { Star, Play } from "lucide-react";
 import { AppImage } from "@/components/ui/app-image";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardAction,
+  CardContent,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { toggleFeaturedItemAction } from "@/app/actions/portfolio";
 import { PortfolioItem } from "../portfolio-client";
 
@@ -65,71 +76,86 @@ export function FeaturedReel({
   };
 
   return (
-    <section
-      className="rounded-2xl bg-[#141416]/75 backdrop-blur-2xl border border-white/10 p-5 sm:p-6 shadow-xl space-y-3"
+    <Card
+      className="rounded-2xl bg-[#141416]/75 backdrop-blur-2xl border border-white/10 shadow-xl space-y-2 hover:translate-y-0 hover:shadow-xl"
       style={{
         boxShadow:
           "0 20px 40px -20px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
       }}
     >
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-bold text-white font-heading tracking-wide">
+      <CardHeader className="flex-row items-center justify-between pb-0">
+        <CardTitle className="text-sm font-bold text-white font-heading tracking-wide">
           Featured on your Work page
-        </h2>
-        <span className="text-[11px] text-zinc-500 font-mono">
-          {featuredItems.length} featured
-        </span>
-      </div>
+        </CardTitle>
+        <CardAction>
+          <Badge variant="outline" className="text-[11px] text-zinc-400 font-mono border-white/10 bg-white/5">
+            {featuredItems.length} featured
+          </Badge>
+        </CardAction>
+      </CardHeader>
 
-      <div className="flex items-center gap-3.5 overflow-x-auto pb-1 pt-0.5 scrollbar-thin scrollbar-thumb-white/10">
-        {featuredItems.map((item) => (
-          <div
-            key={item.id}
-            onClick={() => (onSelectItem ? onSelectItem(item) : handleToggleFeature(item))}
-            className="relative w-36 h-20 sm:w-44 sm:h-24 rounded-xl overflow-hidden shrink-0 border border-white/10 hover:border-white/30 cursor-pointer transition-all duration-200 group hover:scale-[1.02] bg-[#0c0c0e]"
-          >
-            <AppImage
-              src={item.thumbnailUrl}
-              alt={item.title}
-              fallbackIcon={item.type === "still" ? "image" : "film"}
-              containerClassName="size-full"
-            />
-
-            {/* Unpin Button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleToggleFeature(item);
-              }}
-              className="absolute top-1.5 right-1.5 z-10 size-6 rounded-full bg-black/60 hover:bg-[#f5551d] text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer shadow-md"
-              title="Unpin from featured reel"
+      <CardContent className="pt-2">
+        <div className="flex items-center gap-3.5 overflow-x-auto pb-1 pt-0.5 scrollbar-thin scrollbar-thumb-white/10">
+          {featuredItems.map((item) => (
+            <Card
+              key={item.id}
+              size="sm"
+              onClick={() => (onSelectItem ? onSelectItem(item) : handleToggleFeature(item))}
+              className="group relative w-36 sm:w-44 p-0 rounded-xl overflow-hidden shrink-0 border border-white/10 hover:border-white/30 cursor-pointer bg-[#0c0c0e]"
             >
-              <Star className="size-3 fill-current text-[#f5551d] group-hover:text-white" />
-            </button>
+              <AspectRatio ratio={16 / 9} className="w-full">
+                <AppImage
+                  src={item.thumbnailUrl}
+                  alt={item.title}
+                  fallbackIcon={item.type === "still" ? "image" : "film"}
+                  containerClassName="size-full"
+                />
+              </AspectRatio>
 
-            {/* Play overlay for video/project */}
-            {(item.type === "film" || item.type === "project") && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="size-8 rounded-full bg-black/60 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-lg">
-                  <Play className="size-3.5 ml-0.5 fill-current" />
+              {/* Unpin Button with Tooltip */}
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      size="icon-xs"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleFeature(item);
+                      }}
+                      className="absolute top-1.5 right-1.5 z-10 size-6 rounded-full bg-black/60 hover:bg-[#f5551d] text-white border border-white/20 p-0 flex items-center justify-center transition-all cursor-pointer shadow-md"
+                    >
+                      <Star className="size-3 fill-current text-[#f5551d] group-hover:text-white" />
+                    </Button>
+                  }
+                />
+                <TooltipContent>Unpin from featured reel</TooltipContent>
+              </Tooltip>
+
+              {/* Play overlay for video/project */}
+              {(item.type === "film" || item.type === "project") && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="size-8 rounded-full bg-black/60 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-lg">
+                    <Play className="size-3.5 ml-0.5 fill-current" />
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex items-end p-2.5 pointer-events-none">
-              <span className="text-xs font-bold text-white truncate max-w-full font-heading leading-tight">
-                {item.title}
-              </span>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex items-end p-2.5 pointer-events-none">
+                <CardTitle className="text-xs font-bold text-white truncate max-w-full font-heading leading-tight">
+                  {item.title}
+                </CardTitle>
+              </div>
+            </Card>
+          ))}
+          {featuredItems.length === 0 && (
+            <div className="text-xs text-zinc-500 italic py-4">
+              No items currently featured. Star any item in the portfolio grid below to feature it here.
             </div>
-          </div>
-        ))}
-        {featuredItems.length === 0 && (
-          <div className="text-xs text-zinc-500 italic py-4">
-            No items currently featured. Star any item in the portfolio grid below to feature it here.
-          </div>
-        )}
-      </div>
-    </section>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

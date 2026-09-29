@@ -3,6 +3,8 @@
 import React from "react";
 import { ExperienceSection } from "../../portfolio/_components/experience-section";
 import { PortfolioExperience } from "@/core/entities/portfolio";
+import { Badge } from "@/components/ui/badge";
+import { TypographyH2, TypographyMuted } from "@/components/ui/typography";
 
 interface ExperienceCredentialsSectionProps {
   portfolioId: string;
@@ -20,15 +22,17 @@ export function ExperienceCredentialsSection({
   return (
     <section className="space-y-4">
       <div>
-        <div className="text-xs font-mono text-[#f5551d] uppercase tracking-wider mb-0.5">
-          Industry Track Record
+        <div className="flex items-center gap-2 mb-1">
+          <Badge variant="orange" className="font-mono text-[10px] tracking-wider uppercase">
+            Industry Track Record
+          </Badge>
         </div>
-        <h2 className="text-xl font-bold font-heading text-foreground tracking-tight">
+        <TypographyH2 className="text-xl font-bold font-heading text-foreground tracking-tight border-none pb-0">
           EXPERIENCE &amp; CLIENT CREDENTIALS
-        </h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
+        </TypographyH2>
+        <TypographyMuted className="text-xs text-muted-foreground mt-0.5">
           Add key roles, production houses, agencies, or brand campaigns you have worked with.
-        </p>
+        </TypographyMuted>
       </div>
 
       <ExperienceSection

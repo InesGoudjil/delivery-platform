@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { CheckCircle2, AlertCircle } from "lucide-react";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { ActiveSubscriptionCard } from "./active-subscription-card";
 import { PlanComparisonGrid, PlanItem } from "./plan-comparison-grid";
 import { InvoicesHistoryCard } from "./invoices-history-card";
@@ -153,71 +154,73 @@ export function SubscriptionClient({
   };
 
   return (
-    <div className="flex flex-col gap-8">
-      {/* Toast Notification */}
-      {toast && (
-        <div
-          className={`fixed bottom-6 right-6 z-50 font-semibold text-xs px-4 py-3 rounded-xl shadow-2xl animate-in fade-in slide-in-from-bottom-2 flex items-center gap-2.5 ${
-            toast.type === "error"
-              ? "bg-destructive text-destructive-foreground"
-              : toast.type === "success"
-                ? "bg-emerald-600 text-white"
-                : "bg-primary text-primary-foreground"
-          }`}
-        >
-          {toast.type === "success" ? (
-            <CheckCircle2 className="size-4 shrink-0" />
-          ) : toast.type === "error" ? (
-            <AlertCircle className="size-4 shrink-0" />
-          ) : null}
-          <span>{toast.message}</span>
-        </div>
-      )}
-
-      {/* Success banner if upgraded */}
-      {billingBanner === "success" && (
-        <div className="flex items-center justify-between p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-sm">
-          <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="size-5 shrink-0 text-emerald-500" />
-            <span>
-              <strong>Success!</strong> Your subscription has been successfully synchronized and upgraded.
-            </span>
-          </div>
-          <button
-            onClick={() => setBillingBanner(null)}
-            className="text-xs font-mono font-semibold underline hover:opacity-80 cursor-pointer"
+    <TooltipProvider delay={150}>
+      <div className="flex flex-col gap-8">
+        {/* Toast Notification */}
+        {toast && (
+          <div
+            className={`fixed bottom-6 right-6 z-50 font-semibold text-xs px-4 py-3 rounded-xl shadow-2xl animate-in fade-in slide-in-from-bottom-2 flex items-center gap-2.5 ${
+              toast.type === "error"
+                ? "bg-destructive text-destructive-foreground"
+                : toast.type === "success"
+                  ? "bg-emerald-600 text-white"
+                  : "bg-primary text-primary-foreground"
+            }`}
           >
-            Dismiss
-          </button>
-        </div>
-      )}
+            {toast.type === "success" ? (
+              <CheckCircle2 className="size-4 shrink-0" />
+            ) : toast.type === "error" ? (
+              <AlertCircle className="size-4 shrink-0" />
+            ) : null}
+            <span>{toast.message}</span>
+          </div>
+        )}
 
-      {/* 1. Active Subscription Hero Card */}
-      <ActiveSubscriptionCard
-        workspaceId={workspaceId}
-        currentPlanName={currentPlanName}
-        currentPlanSlug={currentPlanSlug}
-        subStatus={subStatus}
-        periodEnd={periodEnd}
-        features={workspaceFeatures}
-        storageUsedBytes={storageUsedBytes}
-        canManageBilling={canManageBilling}
-        hasBillingHistory={hasBillingHistory}
-        onOpenPortal={handleOpenPortal}
-        isLoadingPortal={isLoadingPortal}
-      />
+        {/* Success banner if upgraded */}
+        {billingBanner === "success" && (
+          <div className="flex items-center justify-between p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-sm">
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="size-5 shrink-0 text-emerald-500" />
+              <span>
+                <strong>Success!</strong> Your subscription has been successfully synchronized and upgraded.
+              </span>
+            </div>
+            <button
+              onClick={() => setBillingBanner(null)}
+              className="text-xs font-mono font-semibold underline hover:opacity-80 cursor-pointer"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
-      {/* 2. Compare & Upgrade Plans Grid */}
-      <PlanComparisonGrid
-        currentPlanSlug={currentPlanSlug}
-        plans={plans}
-        onCheckout={handleCheckout}
-        loadingPlanId={loadingPlanId}
-        canManageBilling={canManageBilling}
-      />
+        {/* 1. Active Subscription Hero Card */}
+        <ActiveSubscriptionCard
+          workspaceId={workspaceId}
+          currentPlanName={currentPlanName}
+          currentPlanSlug={currentPlanSlug}
+          subStatus={subStatus}
+          periodEnd={periodEnd}
+          features={workspaceFeatures}
+          storageUsedBytes={storageUsedBytes}
+          canManageBilling={canManageBilling}
+          hasBillingHistory={hasBillingHistory}
+          onOpenPortal={handleOpenPortal}
+          isLoadingPortal={isLoadingPortal}
+        />
 
-      {/* 3. Invoices History Card */}
-      <InvoicesHistoryCard invoices={invoices} />
-    </div>
+        {/* 2. Compare & Upgrade Plans Grid */}
+        <PlanComparisonGrid
+          currentPlanSlug={currentPlanSlug}
+          plans={plans}
+          onCheckout={handleCheckout}
+          loadingPlanId={loadingPlanId}
+          canManageBilling={canManageBilling}
+        />
+
+        {/* 3. Invoices History Card */}
+        <InvoicesHistoryCard invoices={invoices} />
+      </div>
+    </TooltipProvider>
   );
 }

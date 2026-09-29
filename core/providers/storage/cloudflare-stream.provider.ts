@@ -197,7 +197,8 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
    * Deletes a video from Cloudflare Stream
    */
   async deleteAsset(providerUid: string): Promise<void> {
-    const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/stream/${providerUid}`;
+    const cleanUid = providerUid.match(/([a-f0-9]{32})/i)?.[1] || providerUid.trim();
+    const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/stream/${cleanUid}`;
 
     const response = await fetch(url, {
       method: "DELETE",

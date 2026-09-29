@@ -8,6 +8,17 @@ import {
   Square,
   Grid,
 } from "lucide-react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardAction,
+  CardContent,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import type { AppearanceSettings } from "./types";
 
 interface DeliveryAppearanceCardProps {
@@ -32,158 +43,161 @@ export function DeliveryAppearanceCard({
   };
 
   return (
-    <div className="rounded-2xl bg-[#121215] border border-white/10 p-6 space-y-6 shadow-lg">
-      <div className="flex items-center justify-between border-b border-white/10 pb-4">
-        <div className="flex items-center gap-2.5 text-white font-heading font-bold text-base">
-          <Pencil className="size-4 text-[#f5551d]" />
-          <span>Appearance</span>
+    <Card className="rounded-2xl border border-border shadow-lg hover:translate-y-0 hover:shadow-lg">
+      <CardHeader className="border-b border-border/50 pb-4 flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5">
+          <Pencil className="size-4 text-primary" />
+          <div>
+            <CardTitle className="text-base font-bold font-heading text-card-foreground">
+              Appearance
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">
+              Customize how your client sees and interacts with this gallery
+            </CardDescription>
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
-          <Lock className="size-3.5" />
-          <span>How your client sees this gallery</span>
-        </div>
-      </div>
+        <CardAction>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
+            <Lock className="size-3.5" />
+            <span className="hidden sm:inline">How your client sees this gallery</span>
+          </div>
+        </CardAction>
+      </CardHeader>
 
-      <div className="space-y-4 text-xs font-medium">
+      <CardContent className="space-y-4 pt-4 text-xs font-medium">
         {/* Card size row */}
-        <div className="flex items-center justify-between py-2 border-b border-white/5">
+        <div className="flex items-center justify-between py-2 border-b border-border/40">
           <span className="text-muted-foreground font-sans">Card size</span>
-          <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10">
+          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40">
             {(["S", "M", "L"] as const).map((size) => (
-              <button
+              <Button
                 key={size}
                 type="button"
+                variant={cardSize === size ? "default" : "ghost"}
+                size="sm"
                 onClick={() => update({ cardSize: size })}
-                className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                className={`h-7 px-3 text-xs font-bold rounded-lg cursor-pointer transition-all ${
                   cardSize === size
-                    ? "bg-[#f5551d] text-black"
-                    : "text-muted-foreground hover:text-white"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
               >
                 {size}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
 
         {/* Aspect ratio row */}
-        <div className="flex items-center justify-between py-2 border-b border-white/5">
+        <div className="flex items-center justify-between py-2 border-b border-border/40">
           <span className="text-muted-foreground font-sans">Aspect ratio</span>
-          <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10">
-            <button
+          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40">
+            <Button
               type="button"
+              variant={aspectRatioSetting === "16:9" ? "default" : "ghost"}
+              size="icon-xs"
               onClick={() => update({ aspectRatioSetting: "16:9" })}
-              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`rounded-lg cursor-pointer transition-all ${
                 aspectRatioSetting === "16:9"
-                  ? "bg-[#f5551d] text-black"
-                  : "text-muted-foreground hover:text-white"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
               title="16:9 Landscape"
             >
               <RectangleHorizontal className="size-4" />
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant={aspectRatioSetting === "1:1" ? "default" : "ghost"}
+              size="icon-xs"
               onClick={() => update({ aspectRatioSetting: "1:1" })}
-              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`rounded-lg cursor-pointer transition-all ${
                 aspectRatioSetting === "1:1"
-                  ? "bg-[#f5551d] text-black"
-                  : "text-muted-foreground hover:text-white"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
               title="1:1 Square"
             >
               <Square className="size-4" />
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant={aspectRatioSetting === "9:16" ? "default" : "ghost"}
+              size="icon-xs"
               onClick={() => update({ aspectRatioSetting: "9:16" })}
-              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`rounded-lg cursor-pointer transition-all ${
                 aspectRatioSetting === "9:16"
-                  ? "bg-[#f5551d] text-black"
-                  : "text-muted-foreground hover:text-white"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
               title="9:16 Vertical"
             >
               <RectangleVertical className="size-4" />
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant={aspectRatioSetting === "masonry" ? "default" : "ghost"}
+              size="icon-xs"
               onClick={() => update({ aspectRatioSetting: "masonry" })}
-              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`rounded-lg cursor-pointer transition-all ${
                 aspectRatioSetting === "masonry"
-                  ? "bg-[#f5551d] text-black"
-                  : "text-muted-foreground hover:text-white"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
               title="Masonry Grid"
             >
               <Grid className="size-4" />
-            </button>
+            </Button>
           </div>
         </div>
 
         {/* Thumbnail scale row */}
-        <div className="flex items-center justify-between py-2 border-b border-white/5">
+        <div className="flex items-center justify-between py-2 border-b border-border/40">
           <span className="text-muted-foreground font-sans">Thumbnail scale</span>
-          <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10">
+          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40">
             {(["Fit", "Fill"] as const).map((scale) => (
-              <button
+              <Button
                 key={scale}
                 type="button"
+                variant={thumbnailScale === scale ? "default" : "ghost"}
+                size="sm"
                 onClick={() => update({ thumbnailScale: scale })}
-                className={`px-3.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                className={`h-7 px-3.5 text-xs font-bold rounded-lg cursor-pointer transition-all ${
                   thumbnailScale === scale
-                    ? "bg-[#f5551d] text-black"
-                    : "text-muted-foreground hover:text-white"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
               >
                 {scale}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
 
         {/* Show card info row */}
-        <div className="flex items-center justify-between py-2 border-b border-white/5">
+        <div className="flex items-center justify-between py-2 border-b border-border/40">
           <span className="text-muted-foreground font-sans">Show card info</span>
-          <button
-            type="button"
-            onClick={() => update({ showCardInfo: !showCardInfo })}
-            className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-              showCardInfo ? "bg-[#f5551d]" : "bg-white/20"
-            }`}
-          >
-            <span
-              className={`absolute top-1 left-1 size-4 rounded-full bg-black transition-transform ${
-                showCardInfo ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+          <Switch
+            checked={showCardInfo}
+            onCheckedChange={(checked) => update({ showCardInfo: Boolean(checked) })}
+          />
         </div>
 
         {/* Watermark media PRO row */}
         <div className="flex items-center justify-between py-2">
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground font-sans">Watermark media</span>
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-[#f5551d]/20 text-[#f5551d] border border-[#f5551d]/30">
+            <Badge variant="orange" className="text-[9px] px-1.5 py-0.5 font-bold">
               PRO
-            </span>
+            </Badge>
           </div>
-          <button
-            type="button"
-            onClick={() => update({ watermarkMedia: !watermarkMedia })}
-            className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-              watermarkMedia ? "bg-[#f5551d]" : "bg-white/20"
-            }`}
-          >
-            <span
-              className={`absolute top-1 left-1 size-4 rounded-full bg-black transition-transform ${
-                watermarkMedia ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+          <Switch
+            checked={watermarkMedia}
+            onCheckedChange={(checked) => update({ watermarkMedia: Boolean(checked) })}
+          />
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -57,7 +57,7 @@ export default async function WorkspaceLayout({
 
   return (
     <SidebarProvider defaultOpen={true}>
-
+      <AmbientBackground variant="subtle" />
       <MetaComplregEcho />
       <WorkspaceSidebar
         workspace={workspace}
@@ -66,8 +66,7 @@ export default async function WorkspaceLayout({
         profile={profile}
         plan={plan}
       />
-      <SidebarInset className="bg-background text-foreground min-h-screen flex flex-col transition-colors duration-200 relative overflow-hidden">
-        <AmbientBackground variant="subtle" showNoise={false} />
+      <SidebarInset className="bg-transparent text-foreground min-h-screen flex flex-col transition-colors duration-200 relative overflow-hidden">
         {/* Top Header matching CineSpace Dashboard with LIVE PREVIEW */}
         <div className="relative z-10">
           <WorkspaceHeader

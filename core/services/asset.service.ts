@@ -88,6 +88,26 @@ export class AssetService {
     });
   }
 
+  async updateAsset(id: string, data: Partial<Asset>): Promise<Asset> {
+    return this.assetRepo.update(id, data);
+  }
+
+  async updateThumbnail(versionId: string, thumbnailUrl: string): Promise<AssetVersion> {
+    return this.assetVersionRepo.update(versionId, { thumbnailUrl });
+  }
+
+  async archiveAsset(id: string): Promise<Asset> {
+    return this.assetRepo.archive(id);
+  }
+
+  async restoreAsset(id: string): Promise<Asset> {
+    return this.assetRepo.restore(id);
+  }
+
+  async listTrashAssets(workspaceId: string): Promise<Asset[]> {
+    return this.assetRepo.listArchivedByWorkspaceId(workspaceId);
+  }
+
   async deleteAsset(id: string): Promise<void> {
     return this.assetRepo.delete(id);
   }

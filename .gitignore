@@ -17,3 +17,9 @@ skills-lock.json
 # /public/images
 
 /prototype
+
+.env
+/package-lock.json
+
+CUTGRID-developer-brief.pdf
+template.html

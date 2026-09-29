@@ -48,16 +48,27 @@ export default async function ClientDeliveryPage(props: PageProps) {
     notFound();
   }
 
-  // 2. Fetch workspace identity & subscription features for custom branding & studio header
-  const [workspace, workspaceFeatures] = await Promise.all([
+  // 2. Fetch workspace identity, features, and portfolio branding
+  const [workspace, workspaceFeatures, portfolio] = await Promise.all([
     services.workspace.getWorkspaceById(fullDetails.workspaceId),
     services.subscription.getFeatures(fullDetails.workspaceId),
+    services.portfolio.getPortfolioByWorkspace(fullDetails.workspaceId).catch(() => null),
   ]);
   const brandName = workspace?.brandName || "Studio Workspace";
   const workspaceSlug = workspace?.slug || "studio";
   const logoUrl = workspace?.logoUrl || null;
   const accentColor = workspace?.accentColor || "#f5551d";
   const isWhiteLabel = Boolean(workspaceFeatures?.white_label);
+  const brandingLocation = portfolio?.stats?.location || null;
+
+  // Calculate delivery asset stats based strictly on the assets present on this delivery alone
+  const initialAssetCount = (fullDetails.assets || []).length;
+  const initialTotalSizeBytes = (fullDetails.assets || []).reduce((acc, asset) => {
+    const activeVer =
+      asset.versions?.find((v) => v.isActiveVersion) ||
+      asset.versions?.[0];
+    return acc + (Number(activeVer?.fileSizeBytes) || 0);
+  }, 0);
 
   // 3. Resolve client name
   const clientName = fullDetails.client?.name || null;
@@ -169,6 +180,9 @@ export default async function ClientDeliveryPage(props: PageProps) {
         accentColor,
       }}
       clientName={clientName}
+      brandingLocation={brandingLocation}
+      initialTotalSizeBytes={initialTotalSizeBytes}
+      initialAssetCount={initialAssetCount}
       initialAssets={deliveredAssets}
       isPasscodeProtected={isPasscodeProtected}
       isInitiallyUnlocked={isInitiallyUnlocked}

@@ -11,6 +11,7 @@ import { CoverBannerSection } from "./_components/cover-banner-section";
 import { StorefrontIdentitySection } from "./_components/storefront-identity-section";
 import { BioSection } from "./_components/bio-section";
 import { ExperienceCredentialsSection } from "./_components/experience-credentials-section";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 interface BrandingClientProps {
   workspace: {
@@ -157,75 +158,86 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-10 animate-in fade-in duration-200 pb-16">
-      {/* Toast Notification */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#f5551d] text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-2xl animate-in fade-in slide-in-from-bottom-2 border border-white/20">
-          {toast}
+    <TooltipProvider delay={150}>
+      <div className="max-w-5xl mx-auto space-y-10 animate-in fade-in duration-200 pb-16">
+        {/* Toast Notification */}
+        {toast && (
+          <div className="fixed bottom-6 right-6 z-50 bg-[#f5551d] text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-2xl animate-in fade-in slide-in-from-bottom-2 border border-white/20">
+            {toast}
+          </div>
+        )}
+
+        {/* Page Header */}
+        <BrandingHeader
+          workspaceSlug={workspace.slug}
+          isPending={isPending}
+          onSave={handleSaveAll}
+        />
+
+        {/* 1. Cover Image & Banner Selection */}
+        <CoverBannerSection
+          coverUrl={coverUrl}
+          isCustomCover={isCustomCover}
+          brandName={brandName}
+          handle={handle}
+          accent={accent}
+          logoUrl={logoUrl}
+          onSelectPreset={handleSelectPreset}
+          onCustomUpload={handleCustomUpload}
+          onRemoveCover={handleRemoveCover}
+          onProfileUpload={handleProfileUpload}
+        />
+
+        {/* 2. Brand & Storefront Identity */}
+        <StorefrontIdentitySection
+          brandName={brandName}
+          onBrandNameChange={setBrandName}
+          handle={handle}
+          onHandleChange={setHandle}
+          whatsapp={whatsapp}
+          onWhatsappChange={setWhatsapp}
+          accent={accent}
+          onAccentChange={setAccent}
+          logoUrl={logoUrl}
+          onProfileUpload={handleProfileUpload}
+          onRemoveProfile={handleRemoveProfile}
+          stats={stats}
+          onStatsChange={setStats}
+          canBranding={canBranding}
+        />
+
+        {/* 3. Bio & About Description */}
+        <BioSection bio={bio} onBioChange={setBio} />
+
+        {/* 4. Experience & Credentials */}
+        <ExperienceCredentialsSection
+          portfolioId={portfolio.id}
+          initialExperiences={experiences}
+          showFlash={showFlash}
+          onExperiencesChange={setExperiences}
+        />
+
+        {/* Bottom Save Action */}
+        <div className="flex justify-end pt-4">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  onClick={handleSaveAll}
+                  disabled={isPending}
+                  className="rounded-full bg-[#f5551d] hover:bg-[#ff8a45] text-black font-extrabold text-xs px-8 py-3 shadow-xl shadow-[#f5551d]/20 transition-all uppercase tracking-wider h-auto cursor-pointer"
+                >
+                  <Sparkles className="size-4 mr-1.5" />
+                  <span>{isPending ? "Saving changes..." : "SAVE ALL BRAND SETTINGS"}</span>
+                </Button>
+              }
+            />
+            <TooltipContent side="top">
+              Publishes your logo, cover, bio, and credentials live
+            </TooltipContent>
+          </Tooltip>
         </div>
-      )}
-
-      {/* Page Header */}
-      <BrandingHeader
-        workspaceSlug={workspace.slug}
-        isPending={isPending}
-        onSave={handleSaveAll}
-      />
-
-      {/* 1. Cover Image & Banner Selection */}
-      <CoverBannerSection
-        coverUrl={coverUrl}
-        isCustomCover={isCustomCover}
-        brandName={brandName}
-        handle={handle}
-        accent={accent}
-        logoUrl={logoUrl}
-        onSelectPreset={handleSelectPreset}
-        onCustomUpload={handleCustomUpload}
-        onRemoveCover={handleRemoveCover}
-        onProfileUpload={handleProfileUpload}
-      />
-
-      {/* 2. Brand & Storefront Identity */}
-      <StorefrontIdentitySection
-        brandName={brandName}
-        onBrandNameChange={setBrandName}
-        handle={handle}
-        onHandleChange={setHandle}
-        whatsapp={whatsapp}
-        onWhatsappChange={setWhatsapp}
-        accent={accent}
-        onAccentChange={setAccent}
-        logoUrl={logoUrl}
-        onProfileUpload={handleProfileUpload}
-        onRemoveProfile={handleRemoveProfile}
-        stats={stats}
-        onStatsChange={setStats}
-        canBranding={canBranding}
-      />
-
-      {/* 3. Bio & About Description */}
-      <BioSection bio={bio} onBioChange={setBio} />
-
-      {/* 4. Experience & Credentials */}
-      <ExperienceCredentialsSection
-        portfolioId={portfolio.id}
-        initialExperiences={experiences}
-        showFlash={showFlash}
-        onExperiencesChange={setExperiences}
-      />
-
-      {/* Bottom Save Action */}
-      <div className="flex justify-end pt-4">
-        <Button
-          onClick={handleSaveAll}
-          disabled={isPending}
-          className="rounded-full bg-[#f5551d] hover:bg-[#ff8a45] text-black font-extrabold text-xs px-8 py-3 shadow-xl shadow-[#f5551d]/20 transition-all uppercase tracking-wider h-auto cursor-pointer"
-        >
-          <Sparkles className="size-4 mr-1.5" />
-          <span>{isPending ? "Saving changes..." : "SAVE ALL BRAND SETTINGS"}</span>
-        </Button>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }

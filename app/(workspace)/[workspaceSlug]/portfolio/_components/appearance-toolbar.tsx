@@ -9,7 +9,16 @@ import {
   RectangleVertical,
   LayoutGrid,
 } from "lucide-react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardAction,
+  CardContent,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { updatePortfolioAction } from "@/app/actions/portfolio";
 import { PortfolioAppearance } from "@/core/entities/portfolio";
 
@@ -48,7 +57,7 @@ export function AppearanceToolbar({
       aspectRatio,
       thumbnailScale,
       showClientInfo,
-      featuredItemIds:initialAppearance.featuredItemIds,
+      featuredItemIds: initialAppearance.featuredItemIds,
       ...updates,
     };
 
@@ -65,48 +74,52 @@ export function AppearanceToolbar({
   };
 
   return (
-    <section
-      className="rounded-2xl bg-[#141416]/75 backdrop-blur-2xl border border-white/10 p-5 sm:p-6 shadow-xl space-y-4"
+    <Card
+      className="rounded-2xl bg-[#141416]/75 backdrop-blur-2xl border border-white/10 shadow-xl space-y-2 hover:translate-y-0 hover:shadow-xl"
       style={{
         boxShadow:
           "0 20px 40px -20px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
       }}
     >
-      {/* Header matching Screenshot 3 */}
-      <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
-        <div className="flex items-center gap-2 text-sm font-bold text-white font-heading tracking-wide">
+      {/* Header using CardHeader, CardTitle, and CardAction */}
+      <CardHeader className="border-b border-white/[0.06] pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm font-bold text-white font-heading tracking-wide">
           <SlidersHorizontal className="size-4 text-[#f5551d]" />
           <span>Appearance</span>
-        </div>
+        </CardTitle>
 
-        <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-sans">
-          <Lock className="size-3.5 text-zinc-500" />
-          <span>How visitors see your work grid</span>
-        </div>
-      </div>
+        <CardAction>
+          <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-sans">
+            <Lock className="size-3.5 text-zinc-500" />
+            <span>How visitors see your work grid</span>
+          </div>
+        </CardAction>
+      </CardHeader>
 
-      {/* Settings Rows */}
-      <div className="divide-y divide-white/[0.05] text-xs">
+      {/* Settings Rows encapsulated in CardContent */}
+      <CardContent className="divide-y divide-white/[0.05] text-xs pt-1">
         {/* Row 1: Card size */}
         <div className="flex items-center justify-between py-3">
           <span className="text-zinc-300 font-medium">Card size</span>
-          <div className="inline-flex rounded-lg bg-[#0c0c0e]/90 border border-white/10 p-0.5">
+          <div className="inline-flex rounded-lg bg-[#0c0c0e]/90 border border-white/10 p-0.5 gap-0.5">
             {(["S", "M", "L"] as const).map((sz) => (
-              <button
+              <Button
                 key={sz}
                 type="button"
+                size="xs"
+                variant={cardSize === sz ? "default" : "ghost"}
                 onClick={() => {
                   setCardSize(sz);
                   persistAppearance({ cardSize: sz });
                 }}
-                className={`px-3.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                className={`px-3 py-1 h-auto rounded-md text-xs font-semibold transition-all cursor-pointer ${
                   cardSize === sz
-                    ? "bg-[#f5551d] text-white font-bold shadow-sm"
-                    : "text-zinc-400 hover:text-white"
+                    ? "bg-[#f5551d] text-white font-bold hover:bg-[#ff8a45] shadow-sm"
+                    : "text-zinc-400 hover:text-white hover:bg-transparent"
                 }`}
               >
                 {sz}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -116,95 +129,137 @@ export function AppearanceToolbar({
           <span className="text-zinc-300 font-medium">Aspect ratio</span>
           <div className="inline-flex items-center rounded-lg bg-[#0c0c0e]/90 border border-white/10 p-0.5 gap-0.5">
             {/* 16:9 Landscape */}
-            <button
-              type="button"
-              onClick={() => {
-                setAspectRatio("16:9");
-                persistAppearance({ aspectRatio: "16:9" });
-              }}
-              className={`p-1.5 px-2 rounded-md transition-all cursor-pointer flex items-center justify-center ${
-                aspectRatio === "16:9"
-                  ? "bg-[#f5551d] text-white shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-              title="16:9 Landscape"
-            >
-              <RectangleHorizontal className="size-4" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    size="icon-xs"
+                    variant={aspectRatio === "16:9" ? "default" : "ghost"}
+                    onClick={() => {
+                      setAspectRatio("16:9");
+                      persistAppearance({ aspectRatio: "16:9" });
+                    }}
+                    className={`p-1.5 px-2 h-auto rounded-md transition-all cursor-pointer flex items-center justify-center ${
+                      aspectRatio === "16:9"
+                        ? "bg-[#f5551d] text-white hover:bg-[#ff8a45] shadow-sm"
+                        : "text-zinc-400 hover:text-white hover:bg-transparent"
+                    }`}
+                  >
+                    <RectangleHorizontal className="size-4" />
+                  </Button>
+                }
+              />
+              <TooltipContent>16:9 Landscape Video</TooltipContent>
+            </Tooltip>
 
             {/* 1:1 Square */}
-            <button
-              type="button"
-              onClick={() => {
-                setAspectRatio("1:1");
-                persistAppearance({ aspectRatio: "1:1" });
-              }}
-              className={`p-1.5 px-2 rounded-md transition-all cursor-pointer flex items-center justify-center ${
-                aspectRatio === "1:1"
-                  ? "bg-[#f5551d] text-white shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-              title="1:1 Square"
-            >
-              <Square className="size-3.5" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    size="icon-xs"
+                    variant={aspectRatio === "1:1" ? "default" : "ghost"}
+                    onClick={() => {
+                      setAspectRatio("1:1");
+                      persistAppearance({ aspectRatio: "1:1" });
+                    }}
+                    className={`p-1.5 px-2 h-auto rounded-md transition-all cursor-pointer flex items-center justify-center ${
+                      aspectRatio === "1:1"
+                        ? "bg-[#f5551d] text-white hover:bg-[#ff8a45] shadow-sm"
+                        : "text-zinc-400 hover:text-white hover:bg-transparent"
+                    }`}
+                  >
+                    <Square className="size-3.5" />
+                  </Button>
+                }
+              />
+              <TooltipContent>1:1 Square</TooltipContent>
+            </Tooltip>
 
             {/* 9:16 Portrait */}
-            <button
-              type="button"
-              onClick={() => {
-                setAspectRatio("9:16");
-                persistAppearance({ aspectRatio: "9:16" });
-              }}
-              className={`p-1.5 px-2 rounded-md transition-all cursor-pointer flex items-center justify-center ${
-                aspectRatio === "9:16"
-                  ? "bg-[#f5551d] text-white shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-              title="9:16 Vertical"
-            >
-              <RectangleVertical className="size-4" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    size="icon-xs"
+                    variant={aspectRatio === "9:16" ? "default" : "ghost"}
+                    onClick={() => {
+                      setAspectRatio("9:16");
+                      persistAppearance({ aspectRatio: "9:16" });
+                    }}
+                    className={`p-1.5 px-2 h-auto rounded-md transition-all cursor-pointer flex items-center justify-center ${
+                      aspectRatio === "9:16"
+                        ? "bg-[#f5551d] text-white hover:bg-[#ff8a45] shadow-sm"
+                        : "text-zinc-400 hover:text-white hover:bg-transparent"
+                    }`}
+                  >
+                    <RectangleVertical className="size-4" />
+                  </Button>
+                }
+              />
+              <TooltipContent>9:16 Vertical Reel / TikTok</TooltipContent>
+            </Tooltip>
 
             {/* Grid / Masonry */}
-            <button
-              type="button"
-              onClick={() => {
-                setAspectRatio("grid");
-                persistAppearance({ aspectRatio: "grid" });
-              }}
-              className={`p-1.5 px-2 rounded-md transition-all cursor-pointer flex items-center justify-center ${
-                aspectRatio === "grid" || aspectRatio === "4:3"
-                  ? "bg-[#f5551d] text-white shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-              title="Grid / Multi"
-            >
-              <LayoutGrid className="size-3.5" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    size="icon-xs"
+                    variant={aspectRatio === "grid" || aspectRatio === "4:3" ? "default" : "ghost"}
+                    onClick={() => {
+                      setAspectRatio("grid");
+                      persistAppearance({ aspectRatio: "grid" });
+                    }}
+                    className={`p-1.5 px-2 h-auto rounded-md transition-all cursor-pointer flex items-center justify-center ${
+                      aspectRatio === "grid" || aspectRatio === "4:3"
+                        ? "bg-[#f5551d] text-white hover:bg-[#ff8a45] shadow-sm"
+                        : "text-zinc-400 hover:text-white hover:bg-transparent"
+                    }`}
+                  >
+                    <LayoutGrid className="size-3.5" />
+                  </Button>
+                }
+              />
+              <TooltipContent>4:3 Classic / Grid</TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
         {/* Row 3: Thumbnail scale */}
         <div className="flex items-center justify-between py-3">
           <span className="text-zinc-300 font-medium">Thumbnail scale</span>
-          <div className="inline-flex rounded-lg bg-[#0c0c0e]/90 border border-white/10 p-0.5">
+          <div className="inline-flex rounded-lg bg-[#0c0c0e]/90 border border-white/10 p-0.5 gap-0.5">
             {(["fit", "fill"] as const).map((sc) => (
-              <button
-                key={sc}
-                type="button"
-                onClick={() => {
-                  setThumbnailScale(sc);
-                  persistAppearance({ thumbnailScale: sc });
-                }}
-                className={`px-3.5 py-1 rounded-md text-xs font-semibold capitalize transition-all cursor-pointer ${
-                  thumbnailScale === sc
-                    ? "bg-[#f5551d] text-white font-bold shadow-sm"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                {sc}
-              </button>
+              <Tooltip key={sc}>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant={thumbnailScale === sc ? "default" : "ghost"}
+                      onClick={() => {
+                        setThumbnailScale(sc);
+                        persistAppearance({ thumbnailScale: sc });
+                      }}
+                      className={`px-3 py-1 h-auto rounded-md text-xs font-semibold capitalize transition-all cursor-pointer ${
+                        thumbnailScale === sc
+                          ? "bg-[#f5551d] text-white font-bold hover:bg-[#ff8a45] shadow-sm"
+                          : "text-zinc-400 hover:text-white hover:bg-transparent"
+                      }`}
+                    >
+                      {sc}
+                    </Button>
+                  }
+                />
+                <TooltipContent>
+                  {sc === "fit" ? "Fit full asset within card (contain)" : "Fill entire card frame (crop & cover)"}
+                </TooltipContent>
+              </Tooltip>
             ))}
           </div>
         </div>
@@ -221,7 +276,7 @@ export function AppearanceToolbar({
             className="data-[state=checked]:bg-[#f5551d]"
           />
         </div>
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }

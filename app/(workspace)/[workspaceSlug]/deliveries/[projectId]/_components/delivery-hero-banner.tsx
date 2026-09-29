@@ -9,7 +9,9 @@ import {
   Sparkles,
   ExternalLink,
 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface DeliveryHeroBannerProps {
   coverThumbnailUrl: string;
@@ -39,7 +41,7 @@ export function DeliveryHeroBanner({
   onOpenPublishDialog,
 }: DeliveryHeroBannerProps) {
   return (
-    <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-card">
+    <Card className="relative rounded-3xl overflow-hidden border border-border/80 shadow-2xl bg-card hover:translate-y-0 hover:shadow-2xl">
       {/* Dark Hero Image Background with Gradient Overlay */}
       <div
         className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-luminosity scale-105"
@@ -47,15 +49,15 @@ export function DeliveryHeroBanner({
           backgroundImage: `url('${coverThumbnailUrl}')`,
         }}
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/80 to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0c]/90 via-[#0a0a0c]/60 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/60 to-transparent" />
 
       {/* Hero Content Overlay */}
-      <div className="relative z-10 p-6 sm:p-10 md:p-12 space-y-8">
+      <CardContent className="relative z-10 p-6 sm:p-10 md:p-12 space-y-8">
         <div className="space-y-3 max-w-3xl">
           {/* Status Category Prefix */}
-          <div className="flex items-center gap-2 text-xs font-bold text-[#f5551d] tracking-wide uppercase">
-            <span className="size-2 rounded-full bg-[#f5551d] animate-pulse" />
+          <div className="flex items-center gap-2 text-xs font-bold text-primary tracking-wide uppercase">
+            <span className="size-2 rounded-full bg-primary animate-pulse" />
             <span>Editing · {projectTitle}</span>
           </div>
 
@@ -66,16 +68,18 @@ export function DeliveryHeroBanner({
         </div>
 
         {/* Stats Bar (STATUS, ASSETS, CLIENT APPROVED) */}
-        <div className="flex flex-wrap items-center gap-8 pt-2 border-t border-white/10">
+        <div className="flex flex-wrap items-center gap-8 pt-2 border-t border-border/40">
           <div>
             <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
               STATUS
             </span>
-            <div className="flex items-center gap-1.5 mt-1">
-              <span className="size-2 rounded-full bg-[#f5551d]" />
-              <span className="text-xs font-extrabold uppercase text-white tracking-wider">
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <Badge
+                variant={projectStatus === "approved" ? "sage" : "orange"}
+                className="font-mono text-xs uppercase tracking-wider font-extrabold"
+              >
                 {projectStatus === "approved" ? "APPROVED" : "DRAFT"}
-              </span>
+              </Badge>
             </div>
           </div>
 
@@ -83,7 +87,7 @@ export function DeliveryHeroBanner({
             <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
               ASSETS
             </span>
-            <span className="text-base font-extrabold text-white mt-0.5 block">
+            <span className="text-base font-extrabold text-foreground mt-0.5 block">
               {totalAssetsCount}
             </span>
           </div>
@@ -92,7 +96,7 @@ export function DeliveryHeroBanner({
             <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
               CLIENT APPROVED
             </span>
-            <span className="text-base font-extrabold text-[#f5551d] mt-0.5 block">
+            <span className="text-base font-extrabold text-primary mt-0.5 block">
               {approvedCount}/{totalAssetsCount}
             </span>
           </div>
@@ -103,7 +107,7 @@ export function DeliveryHeroBanner({
           {/* SHARE A LINK Button -> Opens Share Dialog */}
           <Button
             onClick={onOpenShareDialog}
-            className="rounded-full bg-[#f5551d] hover:bg-[#ff8a45] text-black font-extrabold text-xs px-5 py-2.5 shadow-lg shadow-[#f5551d]/20 transition-all cursor-pointer flex items-center gap-2"
+            className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs px-5 py-2.5 shadow-lg shadow-primary/20 transition-all cursor-pointer flex items-center gap-2"
           >
             <Share2 className="size-3.5" />
             <span>SHARE A LINK</span>
@@ -113,7 +117,7 @@ export function DeliveryHeroBanner({
           <Button
             asChild
             variant="outline"
-            className="rounded-full border-white/20 bg-black/40 backdrop-blur-md hover:bg-white/10 text-white font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
+            className="rounded-full border-border/60 bg-background/50 backdrop-blur-md hover:bg-muted text-foreground font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
           >
             <a
               href={`https://wa.me/?text=${encodeURIComponent(
@@ -133,7 +137,7 @@ export function DeliveryHeroBanner({
           <Button
             onClick={onOpenEditDialog}
             variant="outline"
-            className="rounded-full border-white/20 bg-black/40 backdrop-blur-md hover:bg-white/10 text-white font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
+            className="rounded-full border-border/60 bg-background/50 backdrop-blur-md hover:bg-muted text-foreground font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
           >
             <Pencil className="size-3.5" />
             <span>EDIT DELIVERY</span>
@@ -143,7 +147,7 @@ export function DeliveryHeroBanner({
           <Button
             onClick={onArchive}
             variant="outline"
-            className="rounded-full border-white/20 bg-black/40 backdrop-blur-md hover:bg-white/10 text-white font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
+            className="rounded-full border-border/60 bg-background/50 backdrop-blur-md hover:bg-muted text-foreground font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
           >
             <Lock className="size-3.5 text-muted-foreground" />
             <span>ARCHIVE TO THE SILO</span>
@@ -153,7 +157,7 @@ export function DeliveryHeroBanner({
           <Button
             onClick={onOpenPublishDialog}
             variant="outline"
-            className="rounded-full border-[#f5551d]/40 bg-[#f5551d]/10 hover:bg-[#f5551d]/20 text-[#ff8a45] font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
+            className="rounded-full border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
           >
             <Sparkles className="size-3.5" />
             <span>PUBLISH TO PORTFOLIO</span>
@@ -164,7 +168,7 @@ export function DeliveryHeroBanner({
             asChild
             variant="ghost"
             size="icon"
-            className="rounded-full bg-white/10 hover:bg-white/20 text-white size-9 ml-auto"
+            className="rounded-full bg-muted/50 hover:bg-muted text-foreground size-9 ml-auto"
             title="Open Public Client Room"
           >
             <Link href={shareUrl} target="_blank">
@@ -172,7 +176,7 @@ export function DeliveryHeroBanner({
             </Link>
           </Button>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
