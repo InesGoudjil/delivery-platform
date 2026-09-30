@@ -16,7 +16,7 @@ skills-lock.json
 
 # /public/images
 
-/prototype
+# /prototype
 
 .env
 /package-lock.json
