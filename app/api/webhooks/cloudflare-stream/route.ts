@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServerCore } from "@/core/server";
 
 export async function POST(req: NextRequest) {
@@ -25,6 +26,12 @@ export async function POST(req: NextRequest) {
     }
 
     await core.services.upload.handleTranscodeWebhook(payload);
+
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
+    revalidatePath("/deliver/[shareToken]", "page");
+    revalidatePath("/[workspaceSlug]/portfolio", "page");
+    revalidatePath("/p/[handle]", "page");
 
     return NextResponse.json({ received: true });
   } catch (error: any) {

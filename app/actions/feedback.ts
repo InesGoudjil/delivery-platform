@@ -44,9 +44,8 @@ export async function addFeedbackAction(params: AddFeedbackParams) {
     if (params.shareToken) {
       revalidatePath(`/deliver/${params.shareToken}`);
     }
-    if (params.deliveryId) {
-      revalidatePath(`/deliveries/${params.deliveryId}`);
-    }
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
     return { success: true, feedback };
   } catch (err: any) {
     return { error: err.message || "Failed to add feedback." };
@@ -61,9 +60,7 @@ export async function toggleFeedbackResolvedAction(feedbackId: string, isResolve
     if (shareToken) {
       revalidatePath(`/deliver/${shareToken}`);
     }
-    if (deliveryId) {
-      revalidatePath(`/deliveries/${deliveryId}`);
-    }
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
     return { success: true, feedback };
   } catch (err: any) {
     return { error: err.message || "Failed to toggle feedback status." };
@@ -78,9 +75,8 @@ export async function deleteFeedbackAction(feedbackId: string, shareToken?: stri
     if (shareToken) {
       revalidatePath(`/deliver/${shareToken}`);
     }
-    if (deliveryId) {
-      revalidatePath(`/deliveries/${deliveryId}`);
-    }
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
     return { success: true };
   } catch (err: any) {
     return { error: err.message || "Failed to delete feedback." };

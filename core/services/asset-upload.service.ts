@@ -199,8 +199,12 @@ export class AssetUploadService {
     let initialHlsUrl: string | null = null;
     let initialThumbnailUrl: string | null = null;
 
+    const isStreamUid = Boolean(
+      directUpload.providerUid && /^[a-f0-9]{32}$/i.test(directUpload.providerUid)
+    );
     const isStreamVideo =
       storageAssetType === "video" &&
+      isStreamUid &&
       !directUpload.uploadUrl.startsWith("/api/mock-upload");
 
     if (isStreamVideo && directUpload.providerUid) {
@@ -213,6 +217,10 @@ export class AssetUploadService {
     } else if (directUpload.providerUid) {
       if (directUpload.uploadUrl.startsWith("/api/mock-upload")) {
         cleanInitialUrl = `/api/mock-upload/${directUpload.providerUid}`;
+        initialThumbnailUrl =
+          storageAssetType === "video"
+            ? `https://files.vidstack.io/sprite-fight/poster.webp`
+            : cleanInitialUrl;
       } else if (isPublic) {
         const r2Domain = (
           process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_DOMAIN ||
@@ -227,9 +235,11 @@ export class AssetUploadService {
         cleanInitialUrl = hasRealR2
           ? `${r2Domain}/${directUpload.providerUid}`
           : directUpload.providerUid;
+        initialThumbnailUrl = cleanInitialUrl;
       } else {
         // Private asset: store canonical key (e.g. private/workspaces/...)
         cleanInitialUrl = directUpload.providerUid;
+        initialThumbnailUrl = directUpload.providerUid;
       }
     }
 
@@ -320,22 +330,38 @@ export class AssetUploadService {
 
     const isImage =
       asset.type === "photo_gallery" ||
+      (asset.type as string) === "photo" ||
+      (asset.type as string) === "still" ||
       /\.(jpe?g|png|avif|webp|gif|svg|bmp)$/i.test(cleanRawUrl || "") ||
       /\.(jpe?g|png|avif|webp|gif|svg|bmp)$/i.test(dto.providerUid || "");
 
     let resolvedThumbnailUrl = playbackInfo?.thumbnailUrl || version.thumbnailUrl;
-    if (isStreamUid && (!resolvedThumbnailUrl || isPlaceholderUrl(resolvedThumbnailUrl))) {
-      const streamDomain = (env.CLOUDFLARE_STREAM_SUBDOMAIN || "videodelivery.net")
-        .replace(/^https?:\/\//, "")
-        .replace(/\/+$/, "");
-      resolvedThumbnailUrl = `https://${streamDomain}/${dto.providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`;
-    } else if (isImage) {
+
+    if (isStreamUid) {
       if (
         !resolvedThumbnailUrl ||
         isPlaceholderUrl(resolvedThumbnailUrl) ||
-        resolvedThumbnailUrl.includes("X-Amz-Signature")
+        resolvedThumbnailUrl.includes("workspaces/")
       ) {
+        const streamDomain = (env.CLOUDFLARE_STREAM_SUBDOMAIN || "videodelivery.net")
+          .replace(/^https?:\/\//, "")
+          .replace(/\/+$/, "");
+        resolvedThumbnailUrl = `https://${streamDomain}/${dto.providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`;
+      }
+    } else if (isImage) {
+      // For images, the image file itself is always the thumbnail
+      resolvedThumbnailUrl = cleanRawUrl;
+    } else {
+      // For non-stream videos or other files in private or public storage
+      if (!resolvedThumbnailUrl || isPlaceholderUrl(resolvedThumbnailUrl)) {
         resolvedThumbnailUrl = cleanRawUrl;
+      } else if (resolvedThumbnailUrl.includes("workspaces/")) {
+        const parts = resolvedThumbnailUrl.split("workspaces/");
+        const keySuffix = parts[1].split("?")[0];
+        const key = dto.providerUid.includes("workspaces/")
+          ? dto.providerUid
+          : (isExplicitlyPrivate ? `private/workspaces/${keySuffix}` : `public/workspaces/${keySuffix}`);
+        resolvedThumbnailUrl = (!isExplicitlyPrivate && hasRealR2) ? `${r2Domain}/${key}` : key;
       }
     }
 

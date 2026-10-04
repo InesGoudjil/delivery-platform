@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import Stripe from 'stripe';
 import { createAdminClient } from '@/lib/supabase/server';
 import { createCoreServices } from '@/core/container';
@@ -241,6 +242,11 @@ export async function POST(req: Request) {
       default:
         console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
     }
+
+    revalidatePath("/[workspaceSlug]", "layout");
+    revalidatePath("/[workspaceSlug]/subscription", "page");
+    revalidatePath("/[workspaceSlug]/storage", "page");
+    revalidatePath("/admin/subscriptions", "page");
 
     return NextResponse.json({ received: true });
   } catch (err: any) {

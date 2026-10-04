@@ -28,6 +28,9 @@ import { toast } from "sonner";
 import { CutReviewPlayer, type CutReviewPlayerRef } from "@/components/video/cut-review-player";
 import { formatTimecode, parseTimecodeToSeconds } from "@/lib/timecode";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
+import { WatermarkOverlay } from "@/components/ui/watermark-overlay";
+import { DownloadPackageModal } from "@/components/workspaces/download-package-modal";
+import { getDownloadFilename, triggerDirectDownload } from "@/lib/download";
 import {
   verifyDeliveryPasscodeAction,
   toggleAssetApprovalAction,
@@ -61,6 +64,7 @@ export interface AssetVersionItem {
   id: string;
   versionNumber: number;
   rawFileUrl: string;
+  downloadUrl?: string | null;
   hlsManifestUrl?: string | null;
   thumbnailUrl?: string | null;
   fileSizeBytes?: number | null;
@@ -140,11 +144,13 @@ export interface DeliveryRoomProps {
 function DeliveryRoomMasonryMedia({
   src,
   alt,
+  type = "video",
   thumbnailScale,
   children,
 }: {
   src: string;
   alt: string;
+  type?: "video" | "photo";
   thumbnailScale?: "Fit" | "Fill";
   children?: React.ReactNode;
 }) {
@@ -161,6 +167,8 @@ function DeliveryRoomMasonryMedia({
         src={src}
         alt={alt}
         fill
+        containerClassName="absolute inset-0 w-full h-full"
+        fallbackIcon={type === "photo" ? "image" : "film"}
         className={`w-full h-full ${
           thumbnailScale === "Fit" ? "object-contain bg-black" : "object-cover"
         } group-hover:scale-105 transition-transform duration-500`}
@@ -203,6 +211,7 @@ export function DeliveryRoomClient({
   const [activeAssetId, setActiveAssetId] = useState<string | null>(null);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [assetTab, setAssetTab] = useState<"all" | "video" | "photo">("all");
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
 
   // Comments state
   const [commentAuthor, setCommentAuthor] = useState(
@@ -539,22 +548,7 @@ export function DeliveryRoomClient({
 
   // 7. Master Files Download
   const handleDownloadAll = () => {
-    if (!delivery.isDownloadAllowed) {
-      toast.error("Downloads are currently locked by the creator pending sign-off.");
-      return;
-    }
-    const firstWithUrl = assets.find(
-      (a) => a.activeVersion?.rawFileUrl || a.versions[0]?.rawFileUrl
-    );
-    const downloadUrl =
-      firstWithUrl?.activeVersion?.rawFileUrl ||
-      firstWithUrl?.versions[0]?.rawFileUrl;
-    if (downloadUrl) {
-      window.open(downloadUrl, "_blank");
-      toast.success("Opening master cut download...");
-    } else {
-      toast.error("No direct master file attached to download.");
-    }
+    setShowDownloadModal(true);
   };
 
   // Open asset modal and initialize version
@@ -940,12 +934,23 @@ export function DeliveryRoomClient({
                             .padStart(1, "0")}:${(durationSec % 60).toString().padStart(2, "0")}`
                         : "VIDEO";
 
+                      const isWatermarkedSetting = app.watermarkMedia ?? delivery.isWatermarked ?? true;
+                      const showWatermarkOnAsset = isWatermarkedSetting && !asset.isApproved;
+
                       const mediaBadges = (
                         <>
                           <div className="absolute inset-0 bg-black/20 group-hover:bg-black/5 transition-colors" />
 
+                          {/* Watermark overlay on thumbnail cards */}
+                          {showWatermarkOnAsset && (
+                            <WatermarkOverlay
+                              text={workspace?.brandName || "STUDIO PREVIEW"}
+                              variant="card"
+                            />
+                          )}
+
                           {/* Top-Left: Type Icon Badge */}
-                          <div className="absolute top-3 left-3 size-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center text-white shadow-md">
+                          <div className="absolute top-3 left-3 size-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center text-white shadow-md z-10">
                             {isPhoto ? (
                               <ImageIcon className="size-3.5" />
                             ) : (
@@ -955,14 +960,14 @@ export function DeliveryRoomClient({
 
                           {/* Top-Right: Approved Badge */}
                           {asset.isApproved && (
-                            <div className="absolute top-3 right-3 size-6 rounded-full bg-[#86b98f] flex items-center justify-center text-black shadow-md font-bold">
+                            <div className="absolute top-3 right-3 size-6 rounded-full bg-[#86b98f] flex items-center justify-center text-black shadow-md font-bold z-10">
                               <Check className="size-3.5 stroke-[3]" />
                             </div>
                           )}
 
                           {/* Bottom-Right: Duration timecode (videos only) */}
                           {!isPhoto && durationLabel && (
-                            <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[11px] font-mono font-semibold text-white border border-white/10">
+                            <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[11px] font-mono font-semibold text-white border border-white/10 z-10">
                               {durationLabel}
                             </div>
                           )}
@@ -973,6 +978,9 @@ export function DeliveryRoomClient({
                         <div
                           key={asset.id}
                           onClick={() => openAssetModal(asset)}
+                          onContextMenu={(e) => {
+                            if (showWatermarkOnAsset) e.preventDefault();
+                          }}
                           className={`group relative rounded-2xl overflow-hidden border border-white/10 bg-[#141416] cursor-pointer hover:border-white/30 transition-all duration-300 shadow-xl hover:-translate-y-1 ${
                             isMasonry ? "break-inside-avoid mb-5" : ""
                           }`}
@@ -981,6 +989,7 @@ export function DeliveryRoomClient({
                             <DeliveryRoomMasonryMedia
                               src={poster}
                               alt={asset.title}
+                              type={isPhoto ? "photo" : "video"}
                               thumbnailScale={thumbnailScale}
                             >
                               {mediaBadges}
@@ -991,6 +1000,8 @@ export function DeliveryRoomClient({
                                 src={poster}
                                 alt={asset.title}
                                 fill
+                                containerClassName="absolute inset-0 w-full h-full"
+                                fallbackIcon={isPhoto ? "image" : "film"}
                                 className={`w-full h-full ${
                                   thumbnailScale === "Fit" ? "object-contain bg-black" : "object-cover"
                                 } group-hover:scale-105 transition-transform duration-500`}
@@ -1004,16 +1015,43 @@ export function DeliveryRoomClient({
                               <span className="text-xs font-semibold text-white truncate">
                                 {asset.title}
                               </span>
-                              <Badge
-                                variant="outline"
-                                className={`text-[10px] shrink-0 font-medium ${
-                                  asset.isApproved
-                                    ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
-                                    : "border-amber-500/30 text-amber-400 bg-amber-500/10"
-                                }`}
-                              >
-                                {asset.isApproved ? "Approved" : "In Review"}
-                              </Badge>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] shrink-0 font-medium ${
+                                    asset.isApproved
+                                      ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+                                      : "border-amber-500/30 text-amber-400 bg-amber-500/10"
+                                  }`}
+                                >
+                                  {asset.isApproved ? "Approved" : "In Review"}
+                                </Badge>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  disabled={!delivery.isDownloadAllowed}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const activeVer = asset.activeVersion || asset.versions[0];
+                                    const dlUrl = activeVer?.downloadUrl || activeVer?.rawFileUrl;
+                                    if (dlUrl) {
+                                      const filename = getDownloadFilename(
+                                        asset.title,
+                                        activeVer?.versionNumber,
+                                        dlUrl,
+                                        asset.type
+                                      );
+                                      triggerDirectDownload(dlUrl, filename);
+                                      toast.success(`Started download for ${asset.title}`);
+                                    }
+                                  }}
+                                  className="size-6 rounded-md text-[#aeaeb4] hover:text-white hover:bg-white/10 transition-colors p-0 cursor-pointer disabled:opacity-30"
+                                  title={delivery.isDownloadAllowed ? `Download ${asset.title}` : "Downloads locked"}
+                                >
+                                  <Download className="size-3" />
+                                </Button>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1055,21 +1093,65 @@ export function DeliveryRoomClient({
                   </TypographyMuted>
                 </div>
               </div>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setActiveAssetId(null)}
-                      className="size-9 rounded-full bg-white/10 text-[#aeaeb4] hover:text-[#f6f3ec] hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer shrink-0 ml-2"
-                    >
-                      <X className="size-5" />
-                    </Button>
-                  }
-                />
-                <TooltipContent>Close preview (Esc)</TooltipContent>
-              </Tooltip>
+
+              <div className="flex items-center gap-2 shrink-0 ml-2">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={!delivery.isDownloadAllowed}
+                        onClick={() => {
+                          if (!delivery.isDownloadAllowed) {
+                            toast.error("Downloads are currently locked by the creator pending sign-off.");
+                            return;
+                          }
+                          const dlUrl = activeVersion?.downloadUrl || activeVersion?.rawFileUrl;
+                          if (!dlUrl) {
+                            toast.error("No download file attached for this version.");
+                            return;
+                          }
+                          const filename = getDownloadFilename(
+                            activeAsset.title,
+                            activeVersion?.versionNumber,
+                            dlUrl,
+                            activeAsset.type
+                          );
+                          triggerDirectDownload(dlUrl, filename);
+                          toast.success(`Downloading ${activeAsset.title} (V${activeVersion?.versionNumber || 1})`);
+                        }}
+                        className="rounded-full border-white/20 text-white bg-white/10 hover:bg-white/20 text-xs font-bold px-3 py-1.5 cursor-pointer flex items-center gap-1.5 disabled:opacity-40"
+                      >
+                        <Download className="size-3.5 text-[#f5551d]" />
+                        <span className="hidden sm:inline">Download Cut</span>
+                      </Button>
+                    }
+                  />
+                  <TooltipContent>
+                    {!delivery.isDownloadAllowed
+                      ? "Downloads locked by creator"
+                      : `Download ${activeAsset.title} V${activeVersion?.versionNumber || 1}`}
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setActiveAssetId(null)}
+                        className="size-9 rounded-full bg-white/10 text-[#aeaeb4] hover:text-[#f6f3ec] hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                      >
+                        <X className="size-5" />
+                      </Button>
+                    }
+                  />
+                  <TooltipContent>Close preview (Esc)</TooltipContent>
+                </Tooltip>
+              </div>
             </div>
 
             {/* Video Player Stage & Comment Sidebar */}
@@ -1082,6 +1164,10 @@ export function DeliveryRoomClient({
                     activeAsset.type === "image" ||
                     activeAsset.type === "still" ||
                     activeAsset.type === "photo";
+
+                  const isWatermarkedSetting =
+                    delivery.appearance?.watermarkMedia ?? delivery.isWatermarked ?? true;
+                  const showWatermarkOnAsset = isWatermarkedSetting && !activeAsset.isApproved;
 
                   return activeVersion ? (
                     <CutReviewPlayer
@@ -1098,6 +1184,8 @@ export function DeliveryRoomClient({
                       poster={resolveThumbnailUrl(activeVersion.thumbnailUrl, activeVersion.rawFileUrl, isStill) || "/images/hero.jpg"}
                       aspectRatio={activeAsset.aspectRatio || "16:9"}
                       fps={24}
+                      showWatermark={showWatermarkOnAsset}
+                      watermarkText={workspace?.brandName || "STUDIO PREVIEW"}
                       comments={activeFeedback.map((c) => ({
                         id: c.id,
                         timestampSeconds: isStill ? null : (c.timestampSeconds ?? 0),
@@ -1337,6 +1425,48 @@ export function DeliveryRoomClient({
           </div>
         </div>
       )}
+
+      {/* 📦 Master Deliverables Package Modal */}
+      <DownloadPackageModal
+        isOpen={showDownloadModal}
+        onOpenChange={setShowDownloadModal}
+        projectTitle={delivery.title}
+        isDownloadAllowed={delivery.isDownloadAllowed}
+        brandName={workspace?.brandName}
+        items={assets.map((a) => {
+          const activeVer = a.activeVersion || a.versions[0];
+          const isPhoto =
+            a.type === "photo" ||
+            a.type === "photo_gallery" ||
+            a.type === "still";
+          let durationStr: string | null = null;
+          if (!isPhoto && activeVer?.durationSeconds) {
+            const mins = Math.floor(activeVer.durationSeconds / 60);
+            const secs = Math.round(activeVer.durationSeconds % 60);
+            durationStr = `${mins.toString().padStart(2, "0")}:${secs
+              .toString()
+              .padStart(2, "0")}`;
+          }
+          return {
+            id: a.id,
+            title: a.title,
+            type: a.type,
+            versionNumber: activeVer?.versionNumber || 1,
+            fileSizeBytes: activeVer?.fileSizeBytes,
+            duration: durationStr,
+            aspectRatio: a.aspectRatio,
+            thumbnailUrl: resolveThumbnailUrl(
+              activeVer?.thumbnailUrl,
+              activeVer?.rawFileUrl,
+              isPhoto
+            ),
+            downloadUrl: resolveMediaUrl(
+              activeVer?.downloadUrl || activeVer?.rawFileUrl
+            ),
+            isApproved: a.isApproved,
+          };
+        })}
+      />
       </div>
     </div>
     </TooltipProvider>

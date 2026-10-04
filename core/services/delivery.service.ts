@@ -86,8 +86,9 @@ export class DeliveryService {
         const activeVersion = versions.find((v) => v.isActiveVersion) || versions[0] || null;
 
         let feedback: Feedback[] = [];
-        if (activeVersion) {
-          feedback = await this.feedbackRepo.listByAssetVersionId(activeVersion.id);
+        if (versions.length > 0) {
+          const versionIds = versions.map((v) => v.id);
+          feedback = await this.feedbackRepo.listByAssetVersionIds(versionIds);
         }
 
         return {

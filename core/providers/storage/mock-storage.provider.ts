@@ -68,6 +68,13 @@ export class MockStorageProvider implements IStorageProvider {
     this.mockAssets.delete(providerUid);
   }
 
+  async getSecureDownloadUrl(
+    providerUid: string,
+    filename: string
+  ): Promise<string> {
+    return `/api/media/${providerUid}?download=true&filename=${encodeURIComponent(filename)}`;
+  }
+
   verifyWebhookSignature(): boolean {
     return true;
   }

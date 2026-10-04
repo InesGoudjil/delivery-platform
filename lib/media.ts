@@ -73,6 +73,14 @@ export function resolveMediaUrl(url: string | null | undefined): string {
     return isRealR2 ? `${r2Domain}/${trimmed}` : `/api/media/${trimmed}`;
   }
 
+  // Direct presigned GET URL (AWS SigV4 with signature) - preserve direct fast R2 CDN delivery
+  if (
+    trimmed.includes("X-Amz-Signature") &&
+    !trimmed.includes("x-id=PutObject")
+  ) {
+    return trimmed;
+  }
+
   // Detect Cloudflare R2 direct endpoint, presigned upload/download URLs, or pub-xxxx placeholder domain
   if (
     trimmed.includes("r2.cloudflarestorage.com") ||

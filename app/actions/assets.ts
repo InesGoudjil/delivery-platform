@@ -82,14 +82,7 @@ export async function deleteAssetAction(
     await services.asset.archiveAsset(assetId);
 
     // Revalidate relevant cache paths
-    revalidatePath("/portfolio");
-    revalidatePath("/deliveries");
-
     const deliveryIdToRevalidate = asset.deliveryId || options?.deliveryId;
-    if (deliveryIdToRevalidate) {
-      revalidatePath(`/deliveries/${deliveryIdToRevalidate}`);
-    }
-
     if (options?.workspaceSlug) {
       revalidatePath(`/${options.workspaceSlug}/portfolio`);
       revalidatePath(`/${options.workspaceSlug}/deliveries`);
@@ -98,6 +91,11 @@ export async function deleteAssetAction(
       }
       revalidatePath(`/p/${options.workspaceSlug}`);
     }
+    revalidatePath("/[workspaceSlug]/portfolio", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/deliver/[shareToken]", "page");
+    revalidatePath("/p/[handle]", "page");
 
     return { success: true };
   } catch (error: any) {
@@ -141,14 +139,7 @@ export async function restoreAssetAction(
 
     await services.asset.restoreAsset(assetId);
 
-    revalidatePath("/portfolio");
-    revalidatePath("/deliveries");
-
     const deliveryIdToRevalidate = asset.deliveryId || options?.deliveryId;
-    if (deliveryIdToRevalidate) {
-      revalidatePath(`/deliveries/${deliveryIdToRevalidate}`);
-    }
-
     if (options?.workspaceSlug) {
       revalidatePath(`/${options.workspaceSlug}/portfolio`);
       revalidatePath(`/${options.workspaceSlug}/deliveries`);
@@ -157,6 +148,11 @@ export async function restoreAssetAction(
       }
       revalidatePath(`/p/${options.workspaceSlug}`);
     }
+    revalidatePath("/[workspaceSlug]/portfolio", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/deliver/[shareToken]", "page");
+    revalidatePath("/p/[handle]", "page");
 
     return { success: true };
   } catch (error: any) {
@@ -288,14 +284,7 @@ export async function permanentDeleteAssetAction(
     await services.asset.deleteAsset(assetId);
 
     // Revalidate relevant cache paths
-    revalidatePath("/portfolio");
-    revalidatePath("/deliveries");
-
     const deliveryIdToRevalidate = asset.deliveryId || options?.deliveryId;
-    if (deliveryIdToRevalidate) {
-      revalidatePath(`/deliveries/${deliveryIdToRevalidate}`);
-    }
-
     if (options?.workspaceSlug) {
       revalidatePath(`/${options.workspaceSlug}/portfolio`);
       revalidatePath(`/${options.workspaceSlug}/deliveries`);
@@ -304,6 +293,11 @@ export async function permanentDeleteAssetAction(
       }
       revalidatePath(`/p/${options.workspaceSlug}`);
     }
+    revalidatePath("/[workspaceSlug]/portfolio", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/deliver/[shareToken]", "page");
+    revalidatePath("/p/[handle]", "page");
 
     return { success: true };
   } catch (error: any) {
@@ -422,13 +416,14 @@ export async function emptyTrashAction(
       count++;
     }
 
-    revalidatePath("/portfolio");
-    revalidatePath("/deliveries");
     if (workspaceSlug) {
       revalidatePath(`/${workspaceSlug}/portfolio`);
       revalidatePath(`/${workspaceSlug}/deliveries`);
       revalidatePath(`/p/${workspaceSlug}`);
     }
+    revalidatePath("/[workspaceSlug]/portfolio", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
 
     return { success: true, count };
   } catch (error: any) {
@@ -498,11 +493,12 @@ export async function deletePortfolioItemAction(
       // Delete the project
       await services.project.deleteProject(itemId);
 
-      revalidatePath("/portfolio");
       if (workspaceSlug) {
         revalidatePath(`/${workspaceSlug}/portfolio`);
         revalidatePath(`/p/${workspaceSlug}`);
       }
+      revalidatePath("/[workspaceSlug]/portfolio", "page");
+      revalidatePath("/p/[handle]", "page");
 
       return { success: true };
     } else {
@@ -567,10 +563,11 @@ export async function deleteDeliveryAction(
     // Delete delivery entity
     await services.delivery.deleteDelivery(deliveryId);
 
-    revalidatePath("/deliveries");
     if (workspaceSlug) {
       revalidatePath(`/${workspaceSlug}/deliveries`);
     }
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
 
     return { success: true };
   } catch (error: any) {
@@ -637,11 +634,12 @@ export async function updateAssetAction(
         ...(data.thumbnailUrl !== undefined && { coverAssetUrl: data.thumbnailUrl.trim() }),
       });
 
-      revalidatePath("/portfolio");
       if (options?.workspaceSlug) {
         revalidatePath(`/${options.workspaceSlug}/portfolio`);
         revalidatePath(`/p/${options.workspaceSlug}`);
       }
+      revalidatePath("/[workspaceSlug]/portfolio", "page");
+      revalidatePath("/p/[handle]", "page");
 
       return { success: true, item: updatedProject };
     }
@@ -670,11 +668,12 @@ export async function updateAssetAction(
           ...(data.thumbnailUrl !== undefined && { coverAssetUrl: data.thumbnailUrl.trim() }),
         });
 
-        revalidatePath("/portfolio");
         if (options?.workspaceSlug) {
           revalidatePath(`/${options.workspaceSlug}/portfolio`);
           revalidatePath(`/p/${options.workspaceSlug}`);
         }
+        revalidatePath("/[workspaceSlug]/portfolio", "page");
+        revalidatePath("/p/[handle]", "page");
 
         return { success: true, item: updatedProject };
       }
@@ -717,14 +716,7 @@ export async function updateAssetAction(
       }
     }
 
-    revalidatePath("/deliveries");
-    revalidatePath("/portfolio");
-
     const deliveryIdToRevalidate = asset.deliveryId || options?.deliveryId;
-    if (deliveryIdToRevalidate) {
-      revalidatePath(`/deliveries/${deliveryIdToRevalidate}`);
-    }
-
     if (options?.workspaceSlug) {
       revalidatePath(`/${options.workspaceSlug}/portfolio`);
       revalidatePath(`/${options.workspaceSlug}/deliveries`);
@@ -733,6 +725,11 @@ export async function updateAssetAction(
       }
       revalidatePath(`/p/${options.workspaceSlug}`);
     }
+    revalidatePath("/[workspaceSlug]/portfolio", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/deliver/[shareToken]", "page");
+    revalidatePath("/p/[handle]", "page");
 
     return {
       success: true,

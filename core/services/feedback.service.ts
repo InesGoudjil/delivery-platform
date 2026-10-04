@@ -61,4 +61,8 @@ export class FeedbackService {
   async deleteFeedback(id: string): Promise<void> {
     return this.feedbackRepo.delete(id);
   }
+
+  async listFeedbackForVersions(assetVersionIds: string[]): Promise<Feedback[]> {
+    return this.feedbackRepo.listByAssetVersionIds(assetVersionIds);
+  }
 }

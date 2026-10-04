@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Video, ImageIcon, Play, Trash2, Pencil } from "lucide-react";
+import { Check, Video, ImageIcon, Play, Trash2, Pencil, Download } from "lucide-react";
+import { getDownloadFilename, triggerDirectDownload } from "@/lib/download";
 import {
   Card,
   CardContent,
@@ -15,6 +16,7 @@ import { AppImage } from "@/components/ui/app-image";
 import { TiltCard } from "@/components/ui/motion";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
+import { WatermarkOverlay } from "@/components/ui/watermark-overlay";
 import type { GalleryItem, AppearanceSettings } from "./types";
 
 interface DeliveryAssetsGalleryProps {
@@ -30,11 +32,13 @@ interface DeliveryAssetsGalleryProps {
 function DeliveryMasonryMedia({
   src,
   alt,
+  type = "video",
   thumbnailScale,
   children,
 }: {
   src: string;
   alt: string;
+  type?: "video" | "photo";
   thumbnailScale?: "Fit" | "Fill";
   children?: React.ReactNode;
 }) {
@@ -51,6 +55,8 @@ function DeliveryMasonryMedia({
         src={src}
         alt={alt}
         fill
+        containerClassName="absolute inset-0 w-full h-full"
+        fallbackIcon={type === "photo" ? "image" : "film"}
         className={`w-full h-full ${
           thumbnailScale === "Fit" ? "object-contain bg-black" : "object-cover"
         } group-hover:scale-105 transition-transform duration-500`}
@@ -85,7 +91,7 @@ export function DeliveryAssetsGallery({
     return true;
   });
 
-  const { cardSize, aspectRatioSetting, thumbnailScale, showCardInfo } = appearance;
+  const { cardSize, aspectRatioSetting, thumbnailScale, showCardInfo, watermarkMedia } = appearance;
   const isMasonry = aspectRatioSetting === "masonry";
 
   const containerClasses = isMasonry
@@ -181,6 +187,15 @@ export function DeliveryAssetsGallery({
 
           const mediaOverlay = (
             <>
+              {/* Creator preview of watermark when enabled */}
+              {watermarkMedia && (
+                <WatermarkOverlay
+                  text="WATERMARK ACTIVE"
+                  variant="card"
+                  opacity={0.16}
+                />
+              )}
+
               <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
                 <div className="size-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white">
                   {item.type === "video" ? (
@@ -199,52 +214,79 @@ export function DeliveryAssetsGallery({
                 </div>
               </div>
 
-              {(onEditAsset || onDeleteAsset) && (
-                <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
-                  {onEditAsset && (
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon-xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEditAsset(item);
-                            }}
-                            className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-white hover:bg-white/20 hover:border-white/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
-                          >
-                            <Pencil className="size-3.5" />
-                          </Button>
-                        }
-                      />
-                      <TooltipContent>Edit asset title &amp; aspect ratio</TooltipContent>
-                    </Tooltip>
-                  )}
-                  {onDeleteAsset && (
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon-xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setItemToDelete(item);
-                            }}
-                            className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        }
-                      />
-                      <TooltipContent>Move asset to trash</TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
-              )}
+              <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const dlUrl = item.downloadUrl || item.rawUrl;
+                          if (dlUrl) {
+                            const filename = getDownloadFilename(
+                              item.title,
+                              item.versionNumber,
+                              dlUrl,
+                              item.type
+                            );
+                            triggerDirectDownload(dlUrl, filename);
+                          }
+                        }}
+                        className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-white hover:bg-white/20 hover:border-white/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
+                      >
+                        <Download className="size-3.5" />
+                      </Button>
+                    }
+                  />
+                  <TooltipContent>Download master file</TooltipContent>
+                </Tooltip>
+
+                {onEditAsset && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditAsset(item);
+                          }}
+                          className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-white hover:bg-white/20 hover:border-white/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
+                        >
+                          <Pencil className="size-3.5" />
+                        </Button>
+                      }
+                    />
+                    <TooltipContent>Edit asset title &amp; aspect ratio</TooltipContent>
+                  </Tooltip>
+                )}
+                {onDeleteAsset && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setItemToDelete(item);
+                          }}
+                          className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      }
+                    />
+                    <TooltipContent>Move asset to trash</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
 
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-2xl scale-90 group-hover:scale-100 transition-transform">
@@ -277,16 +319,19 @@ export function DeliveryAssetsGallery({
                     <DeliveryMasonryMedia
                       src={item.src}
                       alt={item.title}
+                      type={item.type}
                       thumbnailScale={thumbnailScale}
                     >
                       {mediaOverlay}
                     </DeliveryMasonryMedia>
                   ) : (
-                    <AspectRatio ratio={numericRatio} className="relative overflow-hidden bg-black/40">
+                    <AspectRatio ratio={numericRatio} className="w-full relative overflow-hidden bg-black/40">
                       <AppImage
                         src={item.src}
                         alt={item.title}
                         fill
+                        containerClassName="absolute inset-0 w-full h-full"
+                        fallbackIcon={item.type === "photo" ? "image" : "film"}
                         className={`w-full h-full ${
                           thumbnailScale === "Fit" ? "object-contain bg-black" : "object-cover"
                         } group-hover:scale-105 transition-transform duration-500`}
@@ -303,12 +348,36 @@ export function DeliveryAssetsGallery({
                     </CardTitle>
                     <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground w-full">
                       <span>Aspect: {item.aspectRatio}</span>
-                      <Badge
-                        variant={item.status === "approved" ? "sage" : "orange"}
-                        className="text-[10px] px-1.5 py-0 font-medium"
-                      >
-                        {item.status === "approved" ? "✓ Approved" : "In Review"}
-                      </Badge>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Badge
+                          variant={item.status === "approved" ? "sage" : "orange"}
+                          className="text-[10px] px-1.5 py-0 font-medium"
+                        >
+                          {item.status === "approved" ? "✓ Approved" : "In Review"}
+                        </Badge>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const dlUrl = item.downloadUrl || item.rawUrl;
+                            if (dlUrl) {
+                              const filename = getDownloadFilename(
+                                item.title,
+                                item.versionNumber,
+                                dlUrl,
+                                item.type
+                              );
+                              triggerDirectDownload(dlUrl, filename);
+                            }
+                          }}
+                          className="size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted p-0 transition-colors"
+                          title={`Download ${item.title}`}
+                        >
+                          <Download className="size-3" />
+                        </Button>
+                      </div>
                     </div>
                   </CardFooter>
                 )}

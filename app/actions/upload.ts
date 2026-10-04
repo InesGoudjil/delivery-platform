@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { getServerServices, getServerAdminServices, getServerCore } from "@/core/server";
 import { AssetType } from "@/core/entities/asset";
 
@@ -80,6 +81,24 @@ export async function confirmUploadCompletedAction(input: ConfirmUploadInput) {
       durationSeconds: input.durationSeconds,
       fileSizeBytes: input.fileSizeBytes,
     });
+
+    try {
+      const asset = await userServices.asset.getAssetById(updatedVersion.assetId);
+      if (asset?.deliveryId) {
+        const delivery = await userServices.delivery.getDeliveryById(asset.deliveryId);
+        if (delivery?.shareToken) {
+          revalidatePath(`/deliver/${delivery.shareToken}`);
+        }
+      }
+    } catch {
+      // Non-critical if lookup fails
+    }
+
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
+    revalidatePath("/deliver/[shareToken]", "page");
+    revalidatePath("/[workspaceSlug]/portfolio", "page");
+    revalidatePath("/p/[handle]", "page");
 
     return {
       success: true,

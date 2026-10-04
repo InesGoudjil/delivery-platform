@@ -143,6 +143,7 @@ export function PortfolioClient({
 
   const handleProjectCreated = (newItem: PortfolioItem) => {
     setProjects((prev) => [newItem, ...prev]);
+    router.refresh();
   };
 
   const handleDeleteItem = async (item: PortfolioItem | ProjectAsset) => {

@@ -49,8 +49,10 @@ export async function updatePortfolioAction(
     if (current.slug) {
       revalidatePath(`/${current.slug}/portfolio`);
       revalidatePath(`/p/${current.slug}`);
+      revalidatePath(`/${current.slug}`, "layout");
     }
-    revalidatePath("/portfolio");
+    revalidatePath("/[workspaceSlug]/portfolio", "page");
+    revalidatePath("/p/[handle]", "page");
 
     return { success: true, portfolio: updated };
   } catch (error: any) {
@@ -111,7 +113,8 @@ export async function toggleFeaturedItemAction(
       revalidatePath(`/${portfolio.slug}/portfolio`);
       revalidatePath(`/p/${portfolio.slug}`);
     }
-    revalidatePath("/portfolio");
+    revalidatePath("/[workspaceSlug]/portfolio", "page");
+    revalidatePath("/p/[handle]", "page");
 
     return { success: true, featuredItemIds: updatedFeaturedIds };
   } catch (error: any) {
@@ -155,7 +158,8 @@ export async function reorderFeaturedItemsAction(
       revalidatePath(`/${portfolio.slug}/portfolio`);
       revalidatePath(`/p/${portfolio.slug}`);
     }
-    revalidatePath("/portfolio");
+    revalidatePath("/[workspaceSlug]/portfolio", "page");
+    revalidatePath("/p/[handle]", "page");
 
     return { success: true };
   } catch (error: any) {
@@ -217,9 +221,15 @@ export async function updateBrandingAction(
     }
 
     if (data.slug) {
+      revalidatePath(`/${data.slug}`, "layout");
       revalidatePath(`/${data.slug}/settings`);
       revalidatePath(`/${data.slug}/portfolio`);
       revalidatePath(`/p/${data.slug}`);
+    } else {
+      revalidatePath("/[workspaceSlug]", "layout");
+      revalidatePath("/[workspaceSlug]/settings", "page");
+      revalidatePath("/[workspaceSlug]/portfolio", "page");
+      revalidatePath("/p/[handle]", "page");
     }
 
     return { success: true, portfolio: updatedPortfolio };
