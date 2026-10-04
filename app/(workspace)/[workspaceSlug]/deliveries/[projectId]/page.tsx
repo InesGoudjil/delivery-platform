@@ -90,6 +90,7 @@ export default async function DeliveryDetailPage({
     isApproved?: boolean;
     versions: AssetVersionItem[];
     activeVersion?: AssetVersionItem | null;
+    feedback?: FeedbackItem[];
   }> = [];
 
   let initialFeedback: FeedbackItem[] = [];
@@ -101,7 +102,12 @@ export default async function DeliveryDetailPage({
         versionNumber: v.versionNumber,
         rawFileUrl: v.rawFileUrl,
         hlsManifestUrl: v.hlsManifestUrl,
-        thumbnailUrl: v.thumbnailUrl || "/images/hero.jpg",
+        thumbnailUrl:
+          v.thumbnailUrl ||
+          (a.type === "photo_gallery" || (a.type as string) === "photo" || (a.type as string) === "still"
+            ? v.rawFileUrl
+            : null) ||
+          "/images/hero.jpg",
         durationSeconds: v.durationSeconds,
         fileSizeBytes: v.fileSizeBytes,
         transcodingStatus: v.transcodingStatus,
@@ -112,6 +118,16 @@ export default async function DeliveryDetailPage({
       const activeVersion =
         mappedVersions.find((v) => v.isActiveVersion) || mappedVersions[0] || null;
 
+      const mappedFeedback: FeedbackItem[] = (a.feedback || []).map((f) => ({
+        id: f.id,
+        assetVersionId: f.assetVersionId,
+        authorName: f.authorName,
+        commentText: f.commentText,
+        timestampSeconds: f.timestampSeconds ? Number(f.timestampSeconds) : null,
+        createdAt: f.createdAt,
+        isResolved: f.isResolved,
+      }));
+
       return {
         id: a.id,
         title: a.title,
@@ -120,20 +136,11 @@ export default async function DeliveryDetailPage({
         isApproved: a.isApproved,
         versions: mappedVersions,
         activeVersion,
+        feedback: mappedFeedback,
       };
     });
 
-    const primaryAsset = fullDetails.assets[0];
-    if (primaryAsset?.feedback && primaryAsset.feedback.length > 0) {
-      initialFeedback = primaryAsset.feedback.map((f) => ({
-        id: f.id,
-        authorName: f.authorName,
-        commentText: f.commentText,
-        timestampSeconds: f.timestampSeconds,
-        createdAt: f.createdAt,
-        isResolved: f.isResolved,
-      }));
-    }
+    initialFeedback = mappedAssets.flatMap((a) => a.feedback || []);
   } else {
     // If fallback or assets directly from asset repo
     const dbAssets = await services.asset.listAssets(project.id);
@@ -145,8 +152,14 @@ export default async function DeliveryDetailPage({
             id: v.id,
             versionNumber: v.versionNumber,
             rawFileUrl: v.rawFileUrl,
+            downloadUrl: v.rawFileUrl,
             hlsManifestUrl: v.hlsManifestUrl,
-            thumbnailUrl: v.thumbnailUrl || "/images/hero.jpg",
+            thumbnailUrl:
+              v.thumbnailUrl ||
+              (a.type === "photo_gallery" || (a.type as string) === "photo" || (a.type as string) === "still"
+                ? v.rawFileUrl
+                : null) ||
+              "/images/hero.jpg",
             durationSeconds: v.durationSeconds,
             fileSizeBytes: v.fileSizeBytes,
             transcodingStatus: v.transcodingStatus,
@@ -156,6 +169,21 @@ export default async function DeliveryDetailPage({
 
           const activeVersion = mappedVersions.find((v) => v.isActiveVersion) || mappedVersions[0] || null;
 
+          let assetFeedback: FeedbackItem[] = [];
+          if (mappedVersions.length > 0) {
+            const versionIds = mappedVersions.map((v) => v.id);
+            const feedbackRows = await services.feedback.listFeedbackForVersions(versionIds);
+            assetFeedback = feedbackRows.map((f) => ({
+              id: f.id,
+              assetVersionId: f.assetVersionId,
+              authorName: f.authorName,
+              commentText: f.commentText,
+              timestampSeconds: f.timestampSeconds ? Number(f.timestampSeconds) : null,
+              createdAt: f.createdAt,
+              isResolved: f.isResolved,
+            }));
+          }
+
           return {
             id: a.id,
             title: a.title,
@@ -164,43 +192,34 @@ export default async function DeliveryDetailPage({
             isApproved: a.isApproved,
             versions: mappedVersions,
             activeVersion,
+            feedback: assetFeedback,
           };
         })
       );
 
-      const primaryActiveVersion = mappedAssets[0]?.activeVersion;
-      if (primaryActiveVersion) {
-        const threads = await services.feedback.getThreadedFeedback(primaryActiveVersion.id);
-        initialFeedback = threads.map((f) => ({
-          id: f.id,
-          authorName: f.authorName,
-          commentText: f.commentText,
-          timestampSeconds: f.timestampSeconds,
-          createdAt: f.createdAt,
-          isResolved: f.isResolved,
-        }));
-      }
+      initialFeedback = mappedAssets.flatMap((a) => a.feedback || []);
     }
   }
 
   // If no feedback yet, provide sample cues
   if (initialFeedback.length === 0) {
-    initialFeedback = [
-      {
-        id: "fb_1",
-        authorName: clientName,
-        commentText: "Love this cut! Can we make the intro sequence a touch faster?",
-        timestampSeconds: 12,
-        createdAt: new Date(Date.now() - 3600 * 1000 * 2).toISOString(),
-      },
-      {
-        id: "fb_2",
-        authorName: workspace.brandName || "Filmmaker",
-        commentText: "On it — adjusting speed ramp on the sushi prep shot.",
-        timestampSeconds: 14,
-        createdAt: new Date(Date.now() - 3600 * 1000).toISOString(),
-      },
-    ];
+    // initialFeedback = [
+    //   {
+    //     id: "fb_1",
+    //     authorName: clientName,
+    //     commentText: "Love this cut! Can we make the intro sequence a touch faster?",
+    //     timestampSeconds: 12,
+    //     createdAt: new Date(Date.now() - 3600 * 1000 * 2).toISOString(),
+    //   },
+    //   {
+    //     id: "fb_2",
+    //     authorName: workspace.brandName || "Filmmaker",
+    //     commentText: "On it — adjusting speed ramp on the sushi prep shot.",
+    //     timestampSeconds: 14,
+    //     createdAt: new Date(Date.now() - 3600 * 1000).toISOString(),
+    //   },
+    // ];
+    initialFeedback = []
   }
 
   // Batch presign private delivery assets so creator streams/views directly from Cloudflare R2

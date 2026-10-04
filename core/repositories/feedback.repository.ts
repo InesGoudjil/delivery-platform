@@ -14,6 +14,7 @@ export interface CreateFeedbackDTO {
 export interface IFeedbackRepository {
   findById(id: string): Promise<Feedback | null>;
   listByAssetVersionId(assetVersionId: string): Promise<Feedback[]>;
+  listByAssetVersionIds(assetVersionIds: string[]): Promise<Feedback[]>;
   create(dto: CreateFeedbackDTO): Promise<Feedback>;
   update(id: string, data: Partial<Feedback>): Promise<Feedback>;
   resolve(id: string, isResolved: boolean): Promise<Feedback>;
@@ -58,6 +59,19 @@ export class SupabaseFeedbackRepository implements IFeedbackRepository {
       .order('created_at', { ascending: true });
 
     if (error) throw new Error(`Error listing feedback: ${error.message}`);
+    return data ? data.map((r: any) => this.mapRowToEntity(r)) : [];
+  }
+
+  async listByAssetVersionIds(assetVersionIds: string[]): Promise<Feedback[]> {
+    if (!assetVersionIds || assetVersionIds.length === 0) return [];
+    const { data, error } = await (this.supabase as any)
+      .from('feedback')
+      .select('*')
+      .in('asset_version_id', assetVersionIds)
+      .order('timestamp_seconds', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: true });
+
+    if (error) throw new Error(`Error listing feedback by version IDs: ${error.message}`);
     return data ? data.map((r: any) => this.mapRowToEntity(r)) : [];
   }
 

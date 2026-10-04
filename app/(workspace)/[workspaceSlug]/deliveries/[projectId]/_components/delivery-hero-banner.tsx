@@ -8,6 +8,7 @@ import {
   Lock,
   Sparkles,
   ExternalLink,
+  Download,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ interface DeliveryHeroBannerProps {
   onOpenEditDialog: () => void;
   onArchive: () => void;
   onOpenPublishDialog: () => void;
+  onOpenDownloadDialog?: () => void;
 }
 
 export function DeliveryHeroBanner({
@@ -39,6 +41,7 @@ export function DeliveryHeroBanner({
   onOpenEditDialog,
   onArchive,
   onOpenPublishDialog,
+  onOpenDownloadDialog,
 }: DeliveryHeroBannerProps) {
   return (
     <Card className="relative rounded-3xl overflow-hidden border border-border/80 shadow-2xl bg-card hover:translate-y-0 hover:shadow-2xl">
@@ -162,6 +165,18 @@ export function DeliveryHeroBanner({
             <Sparkles className="size-3.5" />
             <span>PUBLISH TO PORTFOLIO</span>
           </Button>
+
+          {/* DOWNLOAD ALL Button -> Opens Download Package Modal */}
+          {onOpenDownloadDialog && (
+            <Button
+              onClick={onOpenDownloadDialog}
+              variant="outline"
+              className="rounded-full border-border/60 bg-background/50 backdrop-blur-md hover:bg-muted text-foreground font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
+            >
+              <Download className="size-3.5 text-primary" />
+              <span>DOWNLOAD ALL</span>
+            </Button>
+          )}
 
           {/* Preview Room Link Icon */}
           <Button

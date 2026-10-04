@@ -2,6 +2,7 @@ export interface AssetVersionItem {
   id: string;
   versionNumber: number;
   rawFileUrl: string;
+  downloadUrl?: string | null;
   hlsManifestUrl?: string | null;
   thumbnailUrl?: string | null;
   durationSeconds?: number | null;
@@ -13,6 +14,7 @@ export interface AssetVersionItem {
 
 export interface FeedbackItem {
   id: string;
+  assetVersionId?: string;
   authorName: string;
   commentText: string;
   timestampSeconds?: number | null;
@@ -33,8 +35,11 @@ export interface GalleryItem {
   src: string;
   status: "approved" | "review";
   rawUrl?: string;
+  downloadUrl?: string;
+  fileSizeBytes?: number;
   hlsUrl?: string | null;
   videoUrl?: string;
+  feedback?: FeedbackItem[];
 }
 
 export interface AppearanceSettings {
@@ -85,6 +90,7 @@ export interface DeliveryDetailClientProps {
     isApproved?: boolean;
     versions: AssetVersionItem[];
     activeVersion?: AssetVersionItem | null;
+    feedback?: FeedbackItem[];
   }>;
   initialFeedback: FeedbackItem[];
 }

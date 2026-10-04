@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { formatTimecode, stepByFrames } from "@/lib/timecode";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
+import { WatermarkOverlay } from "@/components/ui/watermark-overlay";
 
 export function isImageSource(url?: string): boolean {
   if (!url) return false;
@@ -81,6 +82,8 @@ export interface CutReviewPlayerProps {
   onTimeChange?: (time: number, timecode: string) => void;
   className?: string;
   autoPlay?: boolean;
+  showWatermark?: boolean;
+  watermarkText?: string;
 }
 
 export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerProps>(
@@ -99,6 +102,8 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
       onTimeChange,
       className = "",
       autoPlay = false,
+      showWatermark = false,
+      watermarkText,
     },
     ref
   ) => {
@@ -320,11 +325,15 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
             /* Dedicated High-Res Photo Still Review */
             <div
               className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden cursor-zoom-in"
+              onContextMenu={(e) => {
+                if (showWatermark) e.preventDefault();
+              }}
               onDoubleClick={() => setZoomLevel((prev) => (prev > 1 ? 1 : 2))}
             >
               <img
                 src={resolvedVideoSrc || resolvedPoster || src || poster}
                 alt={title || "Still Asset"}
+                draggable={false}
                 onError={(e) => {
                   e.currentTarget.onerror = null;
                   e.currentTarget.src = "/api/media/placeholder.svg";
@@ -335,6 +344,9 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                 }}
                 className="max-w-full max-h-full object-contain pointer-events-none select-none"
               />
+              {showWatermark && (
+                <WatermarkOverlay text={watermarkText} variant="player" showBadge />
+              )}
               <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
                 <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-black/80 text-emerald-400 border border-emerald-500/30 backdrop-blur-md shadow-lg flex items-center gap-1.5">
                   <ImageIcon className="size-3.5" />
@@ -356,6 +368,9 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                   allowFullScreen
                   className="w-full h-full border-0"
                 />
+                {showWatermark && (
+                  <WatermarkOverlay text={watermarkText} variant="player" showBadge />
+                )}
               </div>
             ) : (
               <>
@@ -410,6 +425,10 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                       />
                     )}
                   </MediaProvider>
+
+                  {showWatermark && (
+                    <WatermarkOverlay text={watermarkText} variant="player" showBadge />
+                  )}
                 </MediaPlayer>
 
                 {/* Cloudflare Edge Encoding In Progress Overlay */}
@@ -495,7 +514,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                           Use Cloudflare Player
                         </button>
                       )}
-                      {resolvedVideoSrc && !resolvedVideoSrc.includes("manifest/video.m3u8") && (
+                      {!showWatermark && resolvedVideoSrc && !resolvedVideoSrc.includes("manifest/video.m3u8") && (
                         <a
                           href={resolvedVideoSrc}
                           target="_blank"

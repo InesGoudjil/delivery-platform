@@ -19,7 +19,7 @@ export async function createWorkspaceProjectAction(
       description: description || undefined,
     });
 
-    revalidatePath("/deliveries");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
     return { success: true, project: delivery, delivery };
   } catch (err: any) {
     return { error: err.message || "Failed to create delivery." };
@@ -42,7 +42,10 @@ export async function createProjectAction(formData: FormData) {
       description: description || undefined,
     });
 
-    revalidatePath("/deliveries");
+    if (workspace?.slug) {
+      revalidatePath(`/${workspace.slug}/deliveries`);
+    }
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
     return { success: true, project: delivery, delivery };
   } catch (err: any) {
     return { error: err.message || "Failed to create delivery." };
@@ -55,7 +58,8 @@ export async function approveCutAction(deliveryId: string, approvedByName?: stri
     const delivery = await services.delivery.approveCut(deliveryId, approvedByName);
 
     revalidatePath(`/deliver/${delivery.shareToken}`);
-    revalidatePath(`/deliveries/${delivery.id}`);
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
     return { success: true, project: delivery, delivery };
   } catch (err: any) {
     return { error: err.message || "Failed to approve cut." };
@@ -99,8 +103,9 @@ export async function updateProjectDetailsAction(
       ...(data.deliveryDate !== undefined ? { deliveryDate: data.deliveryDate } : {}),
     });
 
-    revalidatePath(`/deliveries/${deliveryId}`);
     revalidatePath(`/deliver/${updated.shareToken}`);
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
     return { success: true, project: updated, delivery: updated };
   } catch (err: any) {
     return { error: err.message || "Failed to update project details." };
@@ -112,8 +117,8 @@ export async function archiveProjectAction(deliveryId: string) {
     const services = await getServerServices();
     const delivery = await services.delivery.updateStatus(deliveryId, "archived");
 
-    revalidatePath(`/deliveries/${deliveryId}`);
-    revalidatePath("/deliveries");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
     return { success: true, project: delivery, delivery };
   } catch (err: any) {
     return { error: err.message || "Failed to archive delivery." };
@@ -143,7 +148,8 @@ export async function createShowcaseProjectAction(
       coverAssetUrl: data.coverAssetUrl,
     });
 
-    revalidatePath("/portfolio");
+    revalidatePath("/[workspaceSlug]/portfolio", "page");
+    revalidatePath("/p/[handle]", "page");
     return { success: true, project };
   } catch (err: any) {
     return { error: err.message || "Failed to create showcase project." };

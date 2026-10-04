@@ -189,7 +189,11 @@ export async function createDeliveryAction(
       clientId,
     });
 
-    revalidatePath("/deliveries");
+    const workspace = await services.workspace.getWorkspaceById(workspaceId);
+    if (workspace?.slug) {
+      revalidatePath(`/${workspace.slug}/deliveries`);
+    }
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
     return { success: true, delivery, project: delivery };
   } catch (err: any) {
     return { error: err.message || "Failed to create delivery." };
@@ -230,7 +234,8 @@ export async function approveCutAction(deliveryId: string, approvedByName?: stri
     });
 
     revalidatePath(`/deliver/${delivery.shareToken}`);
-    revalidatePath(`/deliveries/${delivery.id}`);
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
     return { success: true, delivery, project: delivery };
   } catch (err: any) {
     return { error: err.message || "Failed to approve cut." };
@@ -250,7 +255,7 @@ export async function toggleAssetApprovalAction(
     if (delivery?.shareToken) {
       revalidatePath(`/deliver/${delivery.shareToken}`);
     }
-    revalidatePath(`/deliveries/${deliveryId}`);
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
     return { success: true, asset, delivery };
   } catch (err: any) {
     return { error: err.message || "Failed to toggle asset approval." };
@@ -266,7 +271,7 @@ export async function approveAllAssetsAction(deliveryId: string, approvedByName?
     if (delivery?.shareToken) {
       revalidatePath(`/deliver/${delivery.shareToken}`);
     }
-    revalidatePath(`/deliveries/${deliveryId}`);
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
     return { success: true, delivery };
   } catch (err: any) {
     return { error: err.message || "Failed to approve all assets." };
@@ -282,8 +287,9 @@ export async function publishDeliveryToPortfolioAction(
     const services = await getServerServices();
     const showcaseProject = await services.delivery.publishToPortfolio(deliveryId, portfolioId, options);
 
-    revalidatePath("/portfolio");
-    revalidatePath(`/deliveries/${deliveryId}`);
+    revalidatePath("/[workspaceSlug]/portfolio", "page");
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/p/[handle]", "page");
     return { success: true, showcaseProject };
   } catch (err: any) {
     return { error: err.message || "Failed to publish delivery to portfolio." };
@@ -327,8 +333,9 @@ export async function updateDeliveryDetailsAction(
       ...(data.deliveryDate !== undefined ? { deliveryDate: data.deliveryDate } : {}),
     });
 
-    revalidatePath(`/deliveries/${deliveryId}`);
     revalidatePath(`/deliver/${updated.shareToken}`);
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
     return { success: true, delivery: updated, project: updated };
   } catch (err: any) {
     return { error: err.message || "Failed to update delivery details." };
@@ -364,6 +371,7 @@ export async function updateDeliveryAppearanceAction(
     if (workspaceSlug) {
       revalidatePath(`/${workspaceSlug}/deliveries/${deliveryId}`);
     }
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
     revalidatePath(`/deliver/${updated.shareToken}`);
 
     return { success: true, delivery: updated, appearance: mergedAppearance };
@@ -377,8 +385,8 @@ export async function archiveDeliveryAction(deliveryId: string) {
     const services = await getServerServices();
     const updated = await services.delivery.updateStatus(deliveryId, "archived");
 
-    revalidatePath("/deliveries");
-    revalidatePath(`/deliveries/${deliveryId}`);
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
     return { success: true, delivery: updated, project: updated };
   } catch (err: any) {
     return { error: err.message || "Failed to archive delivery." };
@@ -416,7 +424,7 @@ export async function updateDeliverySecurityAction(
       ...(data.expiresAt !== undefined ? { expiresAt: data.expiresAt } : {}),
     });
 
-    revalidatePath(`/deliveries/${deliveryId}`);
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
     revalidatePath(`/deliver/${updated.shareToken}`);
 
     return {
@@ -457,7 +465,7 @@ export async function sendDeliveryEmailAction(
       origin,
     });
 
-    revalidatePath(`/deliveries/${deliveryId}`);
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
     return { success: res.success, log: res.log, error: res.error };
   } catch (err: any) {
     return { success: false, error: err.message || "Failed to send delivery email." };

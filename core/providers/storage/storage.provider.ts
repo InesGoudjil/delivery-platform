@@ -77,6 +77,17 @@ export interface IStorageProvider {
   getSecurePlaybackUrl?(providerUid: string, isPublic?: boolean, expiresInSeconds?: number): Promise<string>;
 
   /**
+   * Returns a presigned GET URL with ResponseContentDisposition set to attachment,
+   * guaranteeing native browser download directly to disk.
+   */
+  getSecureDownloadUrl?(
+    providerUid: string,
+    filename: string,
+    isPublic?: boolean,
+    expiresInSeconds?: number
+  ): Promise<string>;
+
+  /**
    * Validates incoming webhook signature (e.g. from Cloudflare)
    */
   verifyWebhookSignature?(rawBody: string, headers: Record<string, string>): boolean;

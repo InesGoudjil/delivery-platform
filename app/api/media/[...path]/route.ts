@@ -171,9 +171,19 @@ export async function GET(
         return new NextResponse("Unauthorized access to private media", { status: 401 });
       }
 
+      const downloadParam = req.nextUrl.searchParams.get("download");
+      const filenameParam = req.nextUrl.searchParams.get("filename");
+      const isDownload = downloadParam === "true" || Boolean(filenameParam);
+      const safeFilename = (filenameParam || key.split("/").pop() || "download").replace(/[/\\?%*:|"<>]/g, "_");
+
       const command = new GetObjectCommand({
         Bucket: targetBucket,
         Key: key,
+        ...(isDownload
+          ? {
+              ResponseContentDisposition: `attachment; filename="${encodeURIComponent(safeFilename)}"`,
+            }
+          : {}),
       });
 
       const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 });
@@ -182,6 +192,10 @@ export async function GET(
 
     // 4. Fallback direct proxy (only reached in local development without public domain)
     const rangeHeader = req.headers.get("range");
+    const downloadParam = req.nextUrl.searchParams.get("download");
+    const filenameParam = req.nextUrl.searchParams.get("filename");
+    const isDownload = downloadParam === "true" || Boolean(filenameParam);
+    const safeFilename = (filenameParam || key.split("/").pop() || "download").replace(/[/\\?%*:|"<>]/g, "_");
 
     const command = new GetObjectCommand({
       Bucket: targetBucket,
@@ -201,6 +215,10 @@ export async function GET(
     const headers = new Headers();
     headers.set("Content-Type", contentType);
     headers.set("Accept-Ranges", "bytes");
+
+    if (isDownload) {
+      headers.set("Content-Disposition", `attachment; filename="${encodeURIComponent(safeFilename)}"`);
+    }
 
     if (res.ContentLength !== undefined) {
       headers.set("Content-Length", res.ContentLength.toString());

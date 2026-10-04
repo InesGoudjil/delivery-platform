@@ -79,6 +79,7 @@ export default async function ClientDeliveryPage(props: PageProps) {
       id: v.id,
       versionNumber: v.versionNumber,
       rawFileUrl: v.rawFileUrl,
+      downloadUrl: v.rawFileUrl,
       hlsManifestUrl: v.hlsManifestUrl || null,
       thumbnailUrl: v.thumbnailUrl || null,
       fileSizeBytes: v.fileSizeBytes || null,

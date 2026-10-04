@@ -195,6 +195,29 @@ export class CloudflareR2StorageProvider implements IStorageProvider {
     return getSignedUrl(this.s3Client, command, { expiresIn: expiresInSeconds });
   }
 
+  /**
+   * Generates a direct presigned GET URL with ResponseContentDisposition set to attachment,
+   * forcing the client browser to download the file directly to disk with the specified filename.
+   */
+  async getSecureDownloadUrl(
+    providerUid: string,
+    filename: string,
+    isPublic?: boolean,
+    expiresInSeconds: number = 7200
+  ): Promise<string> {
+    const bucket = this.getTargetBucket(providerUid, isPublic);
+    const safeFilename = filename.replace(/[/\\?%*:|"<>]/g, "_").trim() || "download";
+    const cleanAscii = safeFilename.replace(/["\r\n]/g, "");
+
+    const command = new GetObjectCommand({
+      Bucket: bucket,
+      Key: providerUid,
+      ResponseContentDisposition: `attachment; filename="${cleanAscii}"; filename*=UTF-8''${encodeURIComponent(cleanAscii)}`,
+    });
+
+    return getSignedUrl(this.s3Client, command, { expiresIn: expiresInSeconds });
+  }
+
   async getPlaybackInfo(providerUid: string): Promise<PlaybackInfo | null> {
     const assetUrl = this.getAssetUrl(providerUid);
 

@@ -15,6 +15,18 @@ export interface AppImageProps extends Omit<ImageProps, "src" | "alt"> {
   objectFit?: "cover" | "contain";
 }
 
+function isVideoUrl(url: string | null | undefined): boolean {
+  if (!url || typeof url !== "string") return false;
+  const clean = url.split("?")[0].toLowerCase();
+  return (
+    clean.endsWith(".mp4") ||
+    clean.endsWith(".mov") ||
+    clean.endsWith(".webm") ||
+    clean.endsWith(".m4v") ||
+    clean.endsWith(".ogv")
+  );
+}
+
 export function AppImage({
   src,
   alt = "Media asset",
@@ -35,6 +47,7 @@ export function AppImage({
   const [retryAttempt, setRetryAttempt] = useState(0);
 
   const isImageOrStill = fallbackIcon === "image" || fallbackIcon === "camera";
+  const isVideo = isVideoUrl(currentSrc);
 
   useEffect(() => {
     setHasError(false);
@@ -70,12 +83,19 @@ export function AppImage({
   }, [src, isImageOrStill, retryAttempt]);
 
   const handleImageError = () => {
-    // If the image failed on the direct R2 public CDN, gracefully fall back to the authenticated /api/media proxy
-    if (currentSrc.includes(".r2.dev/workspaces/")) {
-      const workspaceKey = currentSrc.slice(currentSrc.indexOf("workspaces/"));
-      const proxyUrl = `/api/media/${workspaceKey}`;
+    // If the media failed on direct R2 public CDN or S3 endpoint, gracefully fall back to the authenticated /api/media proxy
+    if (!currentSrc.startsWith("/api/media/") && currentSrc.includes("workspaces/")) {
+      const workspaceKey = currentSrc.slice(currentSrc.indexOf("workspaces/")).split("?")[0];
+      const isPrivate = currentSrc.includes("private/") || workspaceKey.startsWith("private/");
+      const cleanKey =
+        workspaceKey.startsWith("private/") || workspaceKey.startsWith("public/")
+          ? workspaceKey
+          : isPrivate
+          ? `private/${workspaceKey}`
+          : workspaceKey;
+      const proxyUrl = `/api/media/${cleanKey}`;
       if (currentSrc !== proxyUrl) {
-        console.warn(`[AppImage] R2 CDN returned error for ${currentSrc}. Falling back to proxy ${proxyUrl}`);
+        console.warn(`[AppImage] Media failed to load at ${currentSrc}. Falling back to proxy ${proxyUrl}`);
         setCurrentSrc(proxyUrl);
         return;
       }
@@ -104,9 +124,24 @@ export function AppImage({
     }
   };
 
+  const hasCustomPosition =
+    containerClassName.includes("absolute") ||
+    containerClassName.includes("relative") ||
+    containerClassName.includes("fixed");
+
+  const hasCustomSize =
+    containerClassName.includes("h-") ||
+    containerClassName.includes("size-") ||
+    containerClassName.includes("aspect-") ||
+    Boolean(aspectRatioClass);
+
+  const fillClasses = fill
+    ? `${hasCustomPosition || aspectRatioClass ? "" : "absolute inset-0"} ${hasCustomSize ? "" : "w-full h-full"}`
+    : "relative w-full";
+
   return (
     <div
-      className={`relative overflow-hidden bg-[#0c0c0e] ${aspectRatioClass || ""} ${containerClassName}`}
+      className={`relative overflow-hidden bg-[#0c0c0e] ${fillClasses} ${aspectRatioClass || ""} ${containerClassName}`}
     >
       {!hasError && currentSrc ? (
         <>
@@ -115,22 +150,48 @@ export function AppImage({
               <div className="size-5 rounded-full border-2 border-white/20 border-t-[#f5551d] animate-spin" />
             </div>
           )}
-          <Image
-            src={currentSrc}
-            alt={alt}
-            fill={fill}
-            sizes={sizes || (fill ? "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" : undefined)}
-            unoptimized={unoptimized ?? true}
-            onError={handleImageError}
-            className={`transition-opacity duration-300 ${
-              isLoading ? "opacity-40" : "opacity-100"
-            } ${objectFit === "contain" ? "object-contain" : "object-cover"} ${className}`}
-            {...props}
-            onLoad={(e) => {
-              setIsLoading(false);
-              props.onLoad?.(e);
-            }}
-          />
+          {isVideo ? (
+            <video
+              src={`${currentSrc}#t=0.001`}
+              preload="metadata"
+              muted
+              playsInline
+              className={`w-full h-full transition-opacity duration-300 ${
+                isLoading ? "opacity-40" : "opacity-100"
+              } ${objectFit === "contain" ? "object-contain" : "object-cover"} ${className}`}
+              onLoadedData={() => setIsLoading(false)}
+              onLoadedMetadata={(e) => {
+                setIsLoading(false);
+                const video = e.currentTarget;
+                if (props.onLoad && video.videoWidth && video.videoHeight) {
+                  props.onLoad({
+                    currentTarget: {
+                      naturalWidth: video.videoWidth,
+                      naturalHeight: video.videoHeight,
+                    },
+                  } as any);
+                }
+              }}
+              onError={handleImageError}
+            />
+          ) : (
+            <Image
+              src={currentSrc}
+              alt={alt}
+              fill={fill}
+              sizes={sizes || (fill ? "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" : undefined)}
+              unoptimized={unoptimized ?? true}
+              onError={handleImageError}
+              className={`transition-opacity duration-300 ${
+                isLoading ? "opacity-40" : "opacity-100"
+              } ${objectFit === "contain" ? "object-contain" : "object-cover"} ${className}`}
+              {...props}
+              onLoad={(e) => {
+                setIsLoading(false);
+                props.onLoad?.(e);
+              }}
+            />
+          )}
         </>
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center p-3 text-center bg-[#141416] border border-white/5 text-[#8e8e93] space-y-1.5 select-none">

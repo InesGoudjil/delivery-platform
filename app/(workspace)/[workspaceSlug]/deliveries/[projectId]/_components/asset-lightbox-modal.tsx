@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   FileVideo,
   Check,
@@ -11,6 +11,7 @@ import {
   Image as ImageIcon,
   Trash2,
   Pencil,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,19 +23,22 @@ import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dial
 import { CutReviewPlayer, type CutReviewPlayerRef } from "@/components/video/cut-review-player";
 import { formatTimecode } from "@/lib/timecode";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
+import { getDownloadFilename, triggerDirectDownload } from "@/lib/download";
 import { addFeedbackAction } from "@/app/actions/feedback";
 import type { GalleryItem, FeedbackItem } from "./types";
 
 interface AssetLightboxModalProps {
   activeItem: GalleryItem | null;
   onClose: () => void;
-  feedbackList: FeedbackItem[];
+  feedbackList?: FeedbackItem[];
   onAddFeedback: (feedback: FeedbackItem) => void;
   onToggleApproval: (itemId: string, currentStatus: string) => void;
   onDeleteAsset?: (item: GalleryItem) => Promise<void> | void;
   onEditAsset?: (item: GalleryItem) => void;
   authorName: string;
   triggerToast: (msg: string) => void;
+  watermarkMedia?: boolean;
+  watermarkText?: string;
 }
 
 export function AssetLightboxModal({
@@ -47,6 +51,8 @@ export function AssetLightboxModal({
   onEditAsset,
   authorName,
   triggerToast,
+  watermarkMedia = false,
+  watermarkText,
 }: AssetLightboxModalProps) {
   const cutPlayerRef = useRef<CutReviewPlayerRef | null>(null);
   const [currentCutTime, setCurrentCutTime] = useState(0);
@@ -57,6 +63,24 @@ export function AssetLightboxModal({
   const [replyText, setReplyText] = useState("");
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
 
+  // Synchronize selectedVersionId when activeItem changes
+  useEffect(() => {
+    if (activeItem) {
+      const defaultVer =
+        (activeItem.versionId && activeItem.versions?.find((v) => v.id === activeItem.versionId)) ||
+        activeItem.versions?.find((v) => v.isActiveVersion) ||
+        activeItem.versions?.[activeItem.versions.length - 1] ||
+        activeItem.versions?.[0];
+      setSelectedVersionId(defaultVer?.id || null);
+      setActiveCommentId(null);
+      setCurrentCutTime(0);
+      setCurrentCutTimecode("00:00:00");
+    } else {
+      setSelectedVersionId(null);
+      setActiveCommentId(null);
+    }
+  }, [activeItem?.id, activeItem?.versionId]);
+
   if (!activeItem) return null;
 
   const isStill = activeItem.type === "photo" || activeItem.duration === "STILL";
@@ -64,11 +88,28 @@ export function AssetLightboxModal({
   const currentVersion =
     (selectedVersionId && activeItem.versions?.find((v) => v.id === selectedVersionId)) ||
     (activeItem.versionId && activeItem.versions?.find((v) => v.id === activeItem.versionId)) ||
+    activeItem.versions?.find((v) => v.isActiveVersion) ||
     activeItem.versions?.[activeItem.versions.length - 1] ||
+    activeItem.versions?.[0] ||
     null;
 
   const activeVersionNumber = currentVersion?.versionNumber || activeItem.versionNumber || 1;
   const targetVersionId = currentVersion?.id || activeItem.versionId;
+
+  // Source all feedback: prefer activeItem.feedback if populated, otherwise feedbackList prop
+  const allAssetFeedback =
+    activeItem.feedback && activeItem.feedback.length > 0
+      ? activeItem.feedback
+      : (feedbackList || []);
+
+  // Filter feedback for the currently selected version
+  const currentVersionFeedback = allAssetFeedback.filter((f) => {
+    if (f.assetVersionId && targetVersionId) {
+      return f.assetVersionId === targetVersionId;
+    }
+    // For legacy feedback items without an assetVersionId, show them on V1
+    return activeVersionNumber === 1;
+  });
 
   const handleSendFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,6 +123,7 @@ export function AssetLightboxModal({
 
     const tempFeedback: FeedbackItem = {
       id: `temp_${Date.now()}`,
+      assetVersionId: targetVersionId,
       authorName: authorName || "Filmmaker",
       commentText: newCommentText,
       timestampSeconds: roundedTime,
@@ -92,8 +134,8 @@ export function AssetLightboxModal({
     setActiveCommentId(tempFeedback.id);
     triggerToast(
       isStill
-        ? "Note added to still image"
-        : `Note tagged at [${formatTimecode(roundedTime || 0, 24)}]`
+        ? `Note added to V${activeVersionNumber} still photo`
+        : `Note tagged at [${formatTimecode(roundedTime || 0, 24)}] on V${activeVersionNumber}`
     );
 
     if (targetVersionId) {
@@ -139,6 +181,38 @@ export function AssetLightboxModal({
           </div>
 
           <div className="flex items-center gap-2.5">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const dlUrl = currentVersion?.downloadUrl || currentVersion?.rawFileUrl || activeItem.rawUrl;
+                      if (!dlUrl) {
+                        triggerToast("No master file available for download.");
+                        return;
+                      }
+                      const filename = getDownloadFilename(
+                        activeItem.title,
+                        currentVersion?.versionNumber || activeVersionNumber,
+                        dlUrl,
+                        activeItem.type
+                      );
+                      triggerDirectDownload(dlUrl, filename);
+                      triggerToast(`Downloading ${activeItem.title} (V${activeVersionNumber})`);
+                    }}
+                    className="rounded-full border-white/20 text-white bg-white/10 hover:bg-white/20 text-xs font-bold px-3.5 py-1.5 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Download className="size-3.5 text-primary" />
+                    <span className="hidden sm:inline">Download</span>
+                  </Button>
+                }
+              />
+              <TooltipContent>Download master file to disk</TooltipContent>
+            </Tooltip>
+
             {onEditAsset && (
               <Tooltip>
                 <TooltipTrigger
@@ -226,21 +300,40 @@ export function AssetLightboxModal({
             </span>
             <div className="flex items-center gap-1.5 flex-wrap">
               {activeItem.versions.map((ver) => {
-                const isActive = (currentVersion?.id || activeItem.versionId) === ver.id;
+                const isActive = currentVersion?.id === ver.id;
+                const verFeedbackCount = allAssetFeedback.filter(
+                  (f) => f.assetVersionId === ver.id || (!f.assetVersionId && ver.versionNumber === 1)
+                ).length;
                 return (
                   <Button
                     key={ver.id}
                     type="button"
                     size="sm"
                     variant={isActive ? "default" : "outline"}
-                    onClick={() => setSelectedVersionId(ver.id)}
-                    className={`px-3 py-1 h-7 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                    onClick={() => {
+                      setSelectedVersionId(ver.id);
+                      setActiveCommentId(null);
+                      setCurrentCutTime(0);
+                      setCurrentCutTimecode("00:00:00");
+                    }}
+                    className={`px-3 py-1 h-7 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                       isActive
                         ? "bg-[#f5551d] text-black hover:bg-[#e0440d] shadow-md shadow-[#f5551d]/20 border-transparent"
                         : "bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10"
                     }`}
                   >
-                    V{ver.versionNumber}
+                    <span>V{ver.versionNumber}</span>
+                    {verFeedbackCount > 0 && (
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                          isActive
+                            ? "bg-black/25 text-black"
+                            : "bg-white/15 text-white/90"
+                        }`}
+                      >
+                        {verFeedbackCount}
+                      </span>
+                    )}
                   </Button>
                 );
               })}
@@ -251,14 +344,17 @@ export function AssetLightboxModal({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div className="lg:col-span-7 space-y-3">
             <CutReviewPlayer
+              key={currentVersion?.id || activeItem.id}
               ref={cutPlayerRef}
               isPhoto={isStill}
               src={videoOrPhotoSrc}
-              title={activeItem.title}
+              title={`${activeItem.title} (V${activeVersionNumber})`}
               poster={resolveThumbnailUrl(currentVersion?.thumbnailUrl || activeItem.src, videoOrPhotoSrc, isStill)}
               aspectRatio={activeItem.aspectRatio || "16:9"}
               fps={24}
-              comments={feedbackList.map((f) => ({
+              showWatermark={watermarkMedia}
+              watermarkText={watermarkText || "PREVIEW WATERMARK"}
+              comments={currentVersionFeedback.map((f) => ({
                 id: f.id,
                 timestampSeconds: f.timestampSeconds,
                 authorName: f.authorName,
@@ -286,7 +382,7 @@ export function AssetLightboxModal({
               <div className="flex items-center justify-between border-b border-white/10 pb-2.5 shrink-0">
                 <h4 className="font-bold text-sm flex items-center gap-2 text-white">
                   <MessageCircle className="size-4 text-[#f5551d]" />
-                  {isStill ? "Photo Notes" : "Timecoded Notes"} ({feedbackList.length})
+                  {isStill ? "Photo Notes" : "Timecoded Notes"} (V{activeVersionNumber}: {currentVersionFeedback.length})
                 </h4>
                 {isStill ? (
                   <Badge variant="sage" className="text-[11px] font-mono px-2 py-0.5">
@@ -300,12 +396,12 @@ export function AssetLightboxModal({
               </div>
 
               <div className="space-y-2 overflow-y-auto pr-1 flex-1">
-                {feedbackList.length === 0 ? (
+                {currentVersionFeedback.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
                     {isStill ? (
                       <>
                         <ImageIcon className="size-8 opacity-30 mb-2" />
-                        <p className="text-xs">No feedback notes yet.</p>
+                        <p className="text-xs">No feedback notes yet for V{activeVersionNumber}.</p>
                         <p className="text-[11px] text-muted-foreground/60">
                           Leave comments or revision notes on this still photo.
                         </p>
@@ -313,15 +409,15 @@ export function AssetLightboxModal({
                     ) : (
                       <>
                         <MessageCircle className="size-8 opacity-30 mb-2" />
-                        <p className="text-xs">No timecoded notes yet.</p>
+                        <p className="text-xs">No timecoded notes yet for V{activeVersionNumber}.</p>
                         <p className="text-[11px] text-muted-foreground/60">
-                          Pause the video at any frame and leave a precise comment.
+                          Pause the video at any frame and leave a precise comment for V{activeVersionNumber}.
                         </p>
                       </>
                     )}
                   </div>
                 ) : (
-                  feedbackList.map((f) => {
+                  currentVersionFeedback.map((f) => {
                     const isTimecoded =
                       !isStill &&
                       f.timestampSeconds !== undefined &&
@@ -373,7 +469,7 @@ export function AssetLightboxModal({
                 <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
                   <span>{isStill ? "Note on:" : "Tagging at:"}</span>
                   <Badge variant={isStill ? "sage" : "orange"} className="text-[10px] font-mono py-0 h-4">
-                    {isStill ? "Full Still" : currentCutTimecode}
+                    {isStill ? `Full Still (V${activeVersionNumber})` : `${currentCutTimecode} (V${activeVersionNumber})`}
                   </Badge>
                 </div>
                 <div className="flex gap-2">
@@ -381,8 +477,8 @@ export function AssetLightboxModal({
                     type="text"
                     placeholder={
                       isStill
-                        ? "Add note for this still photo..."
-                        : `Add note at ${currentCutTimecode}...`
+                        ? `Add note for V${activeVersionNumber} still photo...`
+                        : `Add note at ${currentCutTimecode} on V${activeVersionNumber}...`
                     }
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
