@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import { Star, Play, Film, Image as ImageIcon, FolderKanban, Maximize2, Trash2, Pencil } from "lucide-react";
+import { Star, Play, Film, Image as ImageIcon, FolderKanban, Maximize2, Trash2, Pencil, Loader2, CheckCircle2 } from "lucide-react";
 import { AppImage } from "@/components/ui/app-image";
 import {
   Card,
@@ -146,12 +146,36 @@ export function ShowcaseGrid({
     });
   };
 
+  const PAGE_SIZE = 12;
+  const [visibleCounts, setVisibleCounts] = useState<Record<"films" | "stills" | "projects", number>>({
+    films: PAGE_SIZE,
+    stills: PAGE_SIZE,
+    projects: PAGE_SIZE,
+  });
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   const filteredProjects = projects.filter((p) => {
     if (activeTab === "films") return p.type === "film";
     if (activeTab === "stills") return p.type === "still";
     if (activeTab === "projects") return p.type === "project";
     return true;
   });
+
+  const currentVisibleCount = visibleCounts[activeTab] || PAGE_SIZE;
+  const visibleProjects = filteredProjects.slice(0, currentVisibleCount);
+  const hasMore = filteredProjects.length > currentVisibleCount;
+  const remainingCount = Math.max(0, filteredProjects.length - currentVisibleCount);
+
+  const handleLoadMore = () => {
+    setIsLoadingMore(true);
+    setTimeout(() => {
+      setVisibleCounts((prev) => ({
+        ...prev,
+        [activeTab]: (prev[activeTab] || PAGE_SIZE) + PAGE_SIZE,
+      }));
+      setIsLoadingMore(false);
+    }, 200);
+  };
 
   const isMasonry =
     appearance.aspectRatio === "grid" ||
@@ -247,7 +271,7 @@ export function ShowcaseGrid({
       <CardContent className="pt-2">
         {/* Showcase Grid / Masonry */}
         <div className={isMasonry ? masonryClasses : `grid ${gridClasses}`}>
-        {filteredProjects.map((item) => {
+        {visibleProjects.map((item) => {
           const isFeatured = featuredIds.includes(item.id);
           const isVideo = item.type === "film" || item.type === "project";
 
@@ -413,6 +437,49 @@ export function ShowcaseGrid({
         {filteredProjects.length === 0 && (
           <div className="col-span-full [column-span:all] py-12 text-center text-zinc-500 text-xs italic">
             No {activeTab} yet. Click the upload button above to add your first {activeTab.slice(0, -1)}.
+          </div>
+        )}
+
+        {/* Load More Button & Stats Footer */}
+        {hasMore && (
+          <div className="col-span-full [column-span:all] flex flex-col items-center justify-center pt-8 pb-4 space-y-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              disabled={isLoadingMore}
+              onClick={handleLoadMore}
+              className="group relative rounded-full px-8 py-3 bg-[#0c0c0e]/80 hover:bg-[#141416] border-white/10 hover:border-[#f5551d]/50 text-white font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-xl cursor-pointer"
+            >
+              {isLoadingMore ? (
+                <div className="flex items-center gap-2.5">
+                  <Loader2 className="size-4 animate-spin text-[#f5551d]" />
+                  <span>Loading {activeTab}...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span>Load More {activeTab}</span>
+                  {remainingCount > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-[#f5551d]/15 text-[#f5551d] border border-[#f5551d]/30"
+                    >
+                      +{remainingCount} more
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </Button>
+            <p className="text-[11px] font-mono text-zinc-400">
+              Showing {visibleProjects.length} of {filteredProjects.length} {activeTab}
+            </p>
+          </div>
+        )}
+
+        {!hasMore && filteredProjects.length > PAGE_SIZE && (
+          <div className="col-span-full [column-span:all] text-center pt-6 pb-2 text-[11px] font-mono text-zinc-500 flex items-center justify-center gap-2">
+            <CheckCircle2 className="size-3.5 text-emerald-400" />
+            <span>All {filteredProjects.length} {activeTab} displayed</span>
           </div>
         )}
       </div>

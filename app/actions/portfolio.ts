@@ -198,6 +198,26 @@ export async function updateBrandingAction(
       return { success: false, error: "Unauthorized. Please log in." };
     }
 
+    if (data.accentColor !== undefined || data.logoUrl !== undefined) {
+      const canBranding = await services.subscription.isBrandingAllowed(workspaceId);
+      if (!canBranding) {
+        return {
+          success: false,
+          error: "Custom studio logo and accent color branding are available on Pro and Studio plans. Please upgrade your subscription.",
+        };
+      }
+    }
+
+    if (data.whatsappNumber && data.whatsappNumber.trim()) {
+      const canWhatsApp = await services.subscription.canDeliverWhatsApp(workspaceId);
+      if (!canWhatsApp) {
+        return {
+          success: false,
+          error: "WhatsApp integration is available on Basic, Pro, and Studio plans. Please upgrade your subscription.",
+        };
+      }
+    }
+
     const wsUpdate: any = {};
     if (data.brandName !== undefined) wsUpdate.brandName = data.brandName;
     if (data.accentColor !== undefined) wsUpdate.accentColor = data.accentColor;

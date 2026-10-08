@@ -13,6 +13,9 @@ import { NotificationService } from "./notification.service";
 
 export interface DeliveryWithDetails extends Delivery {
   client?: Client | null;
+  totalAssetsCount?: number;
+  approvedAssetsCount?: number;
+  hasMore?: boolean;
   assets: Array<
     Asset & {
       versions: AssetVersion[];
@@ -66,7 +69,10 @@ export class DeliveryService {
     return this.deliveryRepo.listByWorkspaceId(workspaceId);
   }
 
-  async getDeliveryWithFullDetails(identifier: string): Promise<DeliveryWithDetails | null> {
+  async getDeliveryWithFullDetails(
+    identifier: string,
+    options?: { page?: number; limit?: number; type?: string }
+  ): Promise<DeliveryWithDetails | null> {
     let delivery = await this.deliveryRepo.findByShareToken(identifier);
     if (!delivery) {
       delivery = await this.deliveryRepo.findById(identifier);
@@ -78,7 +84,29 @@ export class DeliveryService {
       client = await this.clientRepo.findById(delivery.clientId);
     }
 
-    const assets = await this.assetRepo.listByDeliveryId(delivery.id);
+    let assets: Asset[] = [];
+    let totalAssetsCount = 0;
+    let approvedAssetsCount = 0;
+    let hasMore = false;
+
+    if (options?.limit !== undefined) {
+      const page = options.page || 1;
+      const offset = (page - 1) * options.limit;
+      const res = await this.assetRepo.listByDeliveryIdPaginated(delivery.id, {
+        limit: options.limit,
+        offset,
+        type: options.type,
+      });
+      assets = res.assets;
+      totalAssetsCount = res.totalCount;
+      approvedAssetsCount = await this.assetRepo.countByDeliveryId(delivery.id, { isApproved: true });
+      hasMore = offset + assets.length < totalAssetsCount;
+    } else {
+      assets = await this.assetRepo.listByDeliveryId(delivery.id);
+      totalAssetsCount = assets.length;
+      approvedAssetsCount = assets.filter((a) => a.isApproved).length;
+      hasMore = false;
+    }
 
     const enrichedAssets = await Promise.all(
       assets.map(async (asset) => {
@@ -103,7 +131,73 @@ export class DeliveryService {
     return {
       ...delivery,
       client,
+      totalAssetsCount,
+      approvedAssetsCount,
+      hasMore,
       assets: enrichedAssets,
+    };
+  }
+
+  async getDeliveryAssetsPage(
+    deliveryId: string,
+    options?: { page?: number; limit?: number; type?: "all" | "video" | "photo" }
+  ): Promise<{
+    assets: Array<
+      Asset & {
+        versions: AssetVersion[];
+        activeVersion?: AssetVersion | null;
+        feedback: Feedback[];
+      }
+    >;
+    totalCount: number;
+    approvedCount: number;
+    hasMore: boolean;
+  }> {
+    const page = options?.page || 1;
+    const limit = options?.limit || 12;
+    const offset = (page - 1) * limit;
+
+    let dbType: string | undefined = undefined;
+    if (options?.type === "video") {
+      dbType = "video";
+    } else if (options?.type === "photo") {
+      dbType = "photo_gallery";
+    }
+
+    const [paginatedResult, approvedCount] = await Promise.all([
+      this.assetRepo.listByDeliveryIdPaginated(deliveryId, {
+        limit,
+        offset,
+        type: dbType,
+      }),
+      this.assetRepo.countByDeliveryId(deliveryId, { isApproved: true }),
+    ]);
+
+    const enrichedAssets = await Promise.all(
+      paginatedResult.assets.map(async (asset) => {
+        const versions = await this.assetVersionRepo.listByAssetId(asset.id);
+        const activeVersion = versions.find((v) => v.isActiveVersion) || versions[0] || null;
+
+        let feedback: Feedback[] = [];
+        if (versions.length > 0) {
+          const versionIds = versions.map((v) => v.id);
+          feedback = await this.feedbackRepo.listByAssetVersionIds(versionIds);
+        }
+
+        return {
+          ...asset,
+          versions,
+          activeVersion,
+          feedback,
+        };
+      })
+    );
+
+    return {
+      assets: enrichedAssets,
+      totalCount: paginatedResult.totalCount,
+      approvedCount,
+      hasMore: offset + paginatedResult.assets.length < paginatedResult.totalCount,
     };
   }
 

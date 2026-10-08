@@ -4,6 +4,8 @@ import {
   IAssetVersionRepository,
   CreateAssetDTO,
   CreateAssetVersionDTO,
+  ListDeliveryAssetsOptions,
+  PaginatedAssetsResult,
 } from "@/core/repositories/i-asset-repository";
 
 export class AssetService {
@@ -20,17 +22,31 @@ export class AssetService {
     return this.assetRepo.findById(id);
   }
 
-  async listDeliveryAssets(deliveryId: string): Promise<Asset[]> {
-    return this.assetRepo.listByDeliveryId(deliveryId);
+  async listDeliveryAssets(deliveryId: string, options?: ListDeliveryAssetsOptions): Promise<Asset[]> {
+    return this.assetRepo.listByDeliveryId(deliveryId, options);
+  }
+
+  async listDeliveryAssetsPaginated(
+    deliveryId: string,
+    options?: ListDeliveryAssetsOptions
+  ): Promise<PaginatedAssetsResult> {
+    return this.assetRepo.listByDeliveryIdPaginated(deliveryId, options);
+  }
+
+  async countDeliveryAssets(
+    deliveryId: string,
+    options?: { type?: string; isApproved?: boolean }
+  ): Promise<number> {
+    return this.assetRepo.countByDeliveryId(deliveryId, options);
   }
 
   // Alias for backward-compatibility
-  async listAssets(deliveryId: string): Promise<Asset[]> {
-    return this.listDeliveryAssets(deliveryId);
+  async listAssets(deliveryId: string, options?: ListDeliveryAssetsOptions): Promise<Asset[]> {
+    return this.listDeliveryAssets(deliveryId, options);
   }
 
-  async listProjectAssets(deliveryId: string): Promise<Asset[]> {
-    return this.listDeliveryAssets(deliveryId);
+  async listProjectAssets(deliveryId: string, options?: ListDeliveryAssetsOptions): Promise<Asset[]> {
+    return this.listDeliveryAssets(deliveryId, options);
   }
 
   async listWorkspaceAssets(workspaceId: string): Promise<Asset[]> {

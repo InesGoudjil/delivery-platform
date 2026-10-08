@@ -25,6 +25,12 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
       expiresAt: row.expires_at,
       location: row.location,
       deliveryDate: row.delivery_date,
+      siloStatus: row.silo_status ?? null,
+      siloArchivedAt: row.silo_archived_at ?? null,
+      siloRestoreRequestedAt: row.silo_restore_requested_at ?? null,
+      siloRestoreTier: row.silo_restore_tier ?? null,
+      siloRestoredAt: row.silo_restored_at ?? null,
+      siloMetadata: row.silo_metadata ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -124,6 +130,12 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
     if (data.deliveryDate !== undefined) payload.delivery_date = data.deliveryDate;
     if (data.approvedAt !== undefined) payload.approved_at = data.approvedAt;
     if (data.approvedByName !== undefined) payload.approved_by_name = data.approvedByName;
+    if (data.siloStatus !== undefined) payload.silo_status = data.siloStatus;
+    if (data.siloArchivedAt !== undefined) payload.silo_archived_at = data.siloArchivedAt;
+    if (data.siloRestoreRequestedAt !== undefined) payload.silo_restore_requested_at = data.siloRestoreRequestedAt;
+    if (data.siloRestoreTier !== undefined) payload.silo_restore_tier = data.siloRestoreTier;
+    if (data.siloRestoredAt !== undefined) payload.silo_restored_at = data.siloRestoredAt;
+    if (data.siloMetadata !== undefined) payload.silo_metadata = data.siloMetadata;
 
     const { data: updated, error } = await (this.supabase as any)
       .from("deliveries")

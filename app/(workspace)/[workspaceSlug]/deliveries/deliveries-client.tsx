@@ -48,11 +48,16 @@ export function DeliveriesClient({
     (d) => d.status === "in_review" || d.status === "draft"
   ).length;
   const approvedCount = deliveries.filter((d) => d.status === "approved").length;
+  const activeDeliveriesCount = deliveries.filter((d) => d.status !== "archived").length;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-200">
       {/* 1. Header & New Delivery Room Modal */}
-      <DeliveriesHeader workspace={workspace} />
+      <DeliveriesHeader
+        workspace={workspace}
+        features={features}
+        activeCount={activeDeliveriesCount}
+      />
 
       {/* 2. Filter Tab Bar */}
       <DeliveryFilterBar

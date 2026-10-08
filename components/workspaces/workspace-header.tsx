@@ -69,7 +69,9 @@ export interface WorkspaceHeaderProps {
   plan?: {
     id: string;
     name: string;
+    features?: any;
   } | null;
+  features?: any;
 }
 
 export function WorkspaceHeader({
@@ -78,6 +80,7 @@ export function WorkspaceHeader({
   user,
   profile,
   plan,
+  features,
 }: WorkspaceHeaderProps) {
   const [isPending, startTransition] = React.useTransition();
 
@@ -144,7 +147,10 @@ export function WorkspaceHeader({
           </Link>
         </Button>
 
-        <LanguageToggle />
+        <LanguageToggle
+          allowedLanguages={features?.languages || plan?.features?.languages}
+          workspaceSlug={workspaceSlug}
+        />
         {/* <ModeToggle /> */}
 
         {/* User Avatar Menu */}

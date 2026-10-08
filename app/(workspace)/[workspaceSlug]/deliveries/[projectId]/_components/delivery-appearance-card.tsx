@@ -17,6 +17,7 @@ import {
   CardAction,
   CardContent,
 } from "@/components/ui/card";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -25,11 +26,15 @@ import type { AppearanceSettings } from "./types";
 interface DeliveryAppearanceCardProps {
   settings: AppearanceSettings;
   onChangeSettings: (settings: AppearanceSettings) => void;
+  canWatermark?: boolean;
+  workspaceSlug?: string;
 }
 
 export function DeliveryAppearanceCard({
   settings,
   onChangeSettings,
+  canWatermark = true,
+  workspaceSlug,
 }: DeliveryAppearanceCardProps) {
   const {
     cardSize,
@@ -197,19 +202,30 @@ export function DeliveryAppearanceCard({
 
         {/* Watermark media PRO row */}
         <div className="flex items-center justify-between py-2">
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground font-sans">
-              Watermark media
-            </span>
-            <Badge
-              variant="orange"
-              className="text-[9px] px-1.5 py-0.5 font-bold"
-            >
-              PRO
-            </Badge>
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+              <span className={`font-sans text-xs ${canWatermark ? "text-muted-foreground" : "text-muted-foreground/60"}`}>
+                Watermark media
+              </span>
+              <Badge
+                variant="orange"
+                className="text-[9px] px-1.5 py-0.5 font-bold"
+              >
+                PRO
+              </Badge>
+            </div>
+            {!canWatermark && (
+              <Link
+                href={workspaceSlug ? `/${workspaceSlug}/subscription` : "#"}
+                className="text-[10px] text-primary hover:underline font-mono"
+              >
+                Upgrade to Pro to enable watermarking
+              </Link>
+            )}
           </div>
           <Switch
-            checked={watermarkMedia}
+            checked={canWatermark && watermarkMedia}
+            disabled={!canWatermark}
             onCheckedChange={(checked) =>
               update({ watermarkMedia: Boolean(checked) })
             }

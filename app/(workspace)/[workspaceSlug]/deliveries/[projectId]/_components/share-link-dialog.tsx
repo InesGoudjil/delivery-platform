@@ -18,7 +18,9 @@ import {
   Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import Link from "next/link";
 import {
   updateDeliverySecurityAction,
   verifyPassphraseWithTokenAction,
@@ -34,6 +36,8 @@ interface ShareLinkDialogProps {
   initialPasscodeProtected: boolean;
   initialDownloadAllowed: boolean;
   triggerToast: (msg: string) => void;
+  features?: Record<string, any>;
+  workspaceSlug?: string;
 }
 
 export function ShareLinkDialog({
@@ -45,8 +49,14 @@ export function ShareLinkDialog({
   initialPasscodeProtected,
   initialDownloadAllowed,
   triggerToast,
+  features,
+  workspaceSlug,
 }: ShareLinkDialogProps) {
   const shareUrl = `/deliver/${shareToken}`;
+
+  const canPasswordProtect = features ? Boolean(features.password_protected) : false;
+  const canWhatsApp = features ? Boolean(features.whatsapp_delivery) : false;
+  const canNotifyDownloads = features ? Boolean(features.download_notifications) : false;
 
   const [sharePassphrase, setSharePassphrase] = useState(initialPasscodeProtected);
   const [passphraseValue, setPassphraseValue] = useState("");
@@ -106,6 +116,10 @@ export function ShareLinkDialog({
   };
 
   const handleTogglePassphrase = async (enabled: boolean) => {
+    if (enabled && !canPasswordProtect) {
+      triggerToast("Passcode protection is available on Pro and Studio plans. Upgrade to unlock.");
+      return;
+    }
     setSharePassphrase(enabled);
     setVerificationStatus("idle");
     setVerificationMsg(null);
@@ -135,11 +149,16 @@ export function ShareLinkDialog({
       triggerToast("Please enter or generate a passphrase first.");
       return;
     }
+    if (sharePassphrase && !canPasswordProtect) {
+      triggerToast("Passcode protection is available on Pro and Studio plans. Upgrade to unlock.");
+      return;
+    }
     setIsSavingSecurity(true);
     try {
       const res = await updateDeliverySecurityAction(projectId, {
         passphrase: sharePassphrase ? passphraseValue.trim() : null,
         isDownloadAllowed: shareDownloads,
+        notifyOnDownload: canNotifyDownloads ? notifyDownloads : false,
       });
       if (res.success) {
         setIsPasscodeSaved(Boolean(res.passcodeProtected));
@@ -244,24 +263,42 @@ export function ShareLinkDialog({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
-                SECURITY
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+                  SECURITY
+                </span>
+                <Badge variant="orange" className="text-[9px] px-1.5 py-0 font-bold">
+                  PRO
+                </Badge>
+              </div>
               <p className="text-[11px] text-muted-foreground">
                 Protect review room with a client access passphrase
               </p>
+              {!canPasswordProtect && (
+                <Link
+                  href={workspaceSlug ? `/${workspaceSlug}/subscription` : "#"}
+                  className="text-[10px] text-primary hover:underline font-mono inline-block mt-0.5"
+                >
+                  Upgrade to Pro to unlock passcode protection
+                </Link>
+              )}
             </div>
             <button
               type="button"
+              disabled={!canPasswordProtect}
               onClick={() => handleTogglePassphrase(!sharePassphrase)}
               className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                sharePassphrase ? "bg-[#f5551d]" : "bg-white/20"
+                !canPasswordProtect
+                  ? "bg-white/10 opacity-50 cursor-not-allowed"
+                  : sharePassphrase
+                    ? "bg-[#f5551d]"
+                    : "bg-white/20"
               }`}
               aria-label="Toggle passphrase protection"
             >
               <span
                 className={`absolute top-1 left-1 size-4 rounded-full bg-black transition-transform ${
-                  sharePassphrase ? "translate-x-5" : "translate-x-0"
+                  canPasswordProtect && sharePassphrase ? "translate-x-5" : "translate-x-0"
                 }`}
               />
             </button>
@@ -484,18 +521,35 @@ export function ShareLinkDialog({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5 text-white">
                 <Download className="size-4 text-muted-foreground" />
-                <span>Downloads files</span>
+                <div className="flex items-center gap-1.5">
+                  <span>Downloads files</span>
+                  <Badge variant="orange" className="text-[9px] px-1.5 py-0 font-bold">
+                    PRO
+                  </Badge>
+                </div>
               </div>
               <button
                 type="button"
-                onClick={() => setNotifyDownloads(!notifyDownloads)}
+                disabled={!canNotifyDownloads}
+                onClick={() => {
+                  if (!canNotifyDownloads) {
+                    triggerToast("Download notifications are available on Pro and Studio plans.");
+                    return;
+                  }
+                  setNotifyDownloads(!notifyDownloads);
+                }}
                 className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                  notifyDownloads ? "bg-[#f5551d]" : "bg-white/20"
+                  !canNotifyDownloads
+                    ? "bg-white/10 opacity-50 cursor-not-allowed"
+                    : notifyDownloads
+                      ? "bg-[#f5551d]"
+                      : "bg-white/20"
                 }`}
+                title={!canNotifyDownloads ? "Available on Pro and Studio plans" : undefined}
               >
                 <span
                   className={`absolute top-1 left-1 size-4 rounded-full bg-black transition-transform ${
-                    notifyDownloads ? "translate-x-5" : "translate-x-0"
+                    canNotifyDownloads && notifyDownloads ? "translate-x-5" : "translate-x-0"
                   }`}
                 />
               </button>
@@ -548,28 +602,44 @@ export function ShareLinkDialog({
 
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-3 pt-2">
-          <Button
-            asChild
-            variant="outline"
-            className="rounded-full border-white/20 bg-black/40 hover:bg-white/10 text-white font-extrabold text-xs py-3 h-auto cursor-pointer"
-          >
-            <a
-              href={`https://wa.me/?text=${encodeURIComponent(
-                sharePassphrase && passphraseValue
-                  ? `🎬 Here is your private review link for "${projectTitle}":\n${
-                      typeof window !== "undefined" ? window.location.origin : ""
-                    }${shareUrl}\n\n🔐 Passphrase: ${passphraseValue}`
-                  : `🎬 Here is your review link for "${projectTitle}":\n${
-                      typeof window !== "undefined" ? window.location.origin : ""
-                    }${shareUrl}`
-              )}`}
-              target="_blank"
-              rel="noreferrer"
+          {canWhatsApp ? (
+            <Button
+              asChild
+              variant="outline"
+              className="rounded-full border-white/20 bg-black/40 hover:bg-white/10 text-white font-extrabold text-xs py-3 h-auto cursor-pointer"
             >
-              <MessageCircle className="size-3.5 mr-1.5 text-emerald-400" />
-              SEND ON WHATSAPP
-            </a>
-          </Button>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(
+                  sharePassphrase && passphraseValue
+                    ? `🎬 Here is your private review link for "${projectTitle}":\n${
+                        typeof window !== "undefined" ? window.location.origin : ""
+                      }${shareUrl}\n\n🔐 Passphrase: ${passphraseValue}`
+                    : `🎬 Here is your review link for "${projectTitle}":\n${
+                        typeof window !== "undefined" ? window.location.origin : ""
+                      }${shareUrl}`
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <MessageCircle className="size-3.5 mr-1.5 text-emerald-400" />
+                SEND ON WHATSAPP
+              </a>
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                triggerToast(
+                  "WhatsApp delivery is available on Basic, Pro, and Studio plans. Upgrade to unlock."
+                )
+              }
+              className="rounded-full border-white/10 bg-black/20 text-muted-foreground font-extrabold text-xs py-3 h-auto opacity-70 cursor-not-allowed"
+            >
+              <MessageCircle className="size-3.5 mr-1.5 text-muted-foreground" />
+              WHATSAPP <Badge variant="secondary" className="text-[9px] ml-1.5 py-0 px-1 font-mono">BASIC+</Badge>
+            </Button>
+          )}
 
           <Button
             type="button"

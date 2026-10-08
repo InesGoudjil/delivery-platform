@@ -40,6 +40,7 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
   const { setAccent: setLiveAccent } = useAccentTheme();
 
   const canBranding = features ? Boolean(features.branding) : true;
+  const canWhatsapp = features ? Boolean(features.whatsapp_delivery ?? features.whatsappDelivery) : true;
 
   // Brand details
   const [brandName, setBrandName] = useState(workspace.brandName || "Pedro Concreato");
@@ -213,6 +214,8 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
           stats={stats}
           onStatsChange={setStats}
           canBranding={canBranding}
+          canWhatsapp={canWhatsapp}
+          workspaceSlug={workspace.slug}
         />
 
         {/* 3. Bio & About Description */}

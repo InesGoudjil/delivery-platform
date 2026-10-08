@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import Link from "next/link";
+import { Plus, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -22,15 +23,25 @@ interface DeliveriesHeaderProps {
     brandName: string;
     slug: string;
   };
+  features?: Record<string, any>;
+  activeCount?: number;
 }
 
-export function DeliveriesHeader({ workspace }: DeliveriesHeaderProps) {
+export function DeliveriesHeader({
+  workspace,
+  features,
+  activeCount = 0,
+}: DeliveriesHeaderProps) {
   const router = useRouter();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newClient, setNewClient] = useState("");
   const [creating, setCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const clientLinksLimit = features?.client_links ?? 1;
+  const isUnlimited = clientLinksLimit === -1;
+  const isAtLimit = !isUnlimited && activeCount >= clientLinksLimit;
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +98,31 @@ export function DeliveriesHeader({ workspace }: DeliveriesHeaderProps) {
             </div>
           </DialogHeader>
 
+          {isAtLimit && (
+            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-2">
+              <div className="flex items-center gap-2 font-bold text-amber-400">
+                <AlertTriangle className="size-4 shrink-0" />
+                <span>
+                  Delivery Link Limit Reached ({activeCount} / {clientLinksLimit} Active)
+                </span>
+              </div>
+              <p className="text-muted-foreground text-[11px] leading-relaxed">
+                Your current plan allows up to {clientLinksLimit} active project delivery link{clientLinksLimit > 1 ? "s" : ""}. To create more review rooms, archive an existing project or upgrade your plan.
+              </p>
+              <div className="pt-1">
+                <Button
+                  asChild
+                  size="sm"
+                  className="bg-[#f5551d] hover:bg-[#ff8a45] text-black font-extrabold text-xs h-8 rounded-full"
+                >
+                  <Link href={`/${workspace.slug}/subscription`}>
+                    Upgrade Plan (Unlimited Links)
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          )}
+
           {errorMessage && (
             <div className="p-3 rounded-xl bg-destructive/15 border border-destructive/30 text-destructive text-xs font-semibold">
               {errorMessage}
@@ -101,6 +137,7 @@ export function DeliveriesHeader({ workspace }: DeliveriesHeaderProps) {
               <Input
                 type="text"
                 required
+                disabled={isAtLimit}
                 placeholder="e.g. Omakase Counter Launch Film"
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
@@ -114,6 +151,7 @@ export function DeliveriesHeader({ workspace }: DeliveriesHeaderProps) {
               </Label>
               <Input
                 type="text"
+                disabled={isAtLimit}
                 placeholder="e.g. Lost in Tokyo Group"
                 value={newClient}
                 onChange={(e) => setNewClient(e.target.value)}
@@ -133,11 +171,11 @@ export function DeliveriesHeader({ workspace }: DeliveriesHeaderProps) {
               </Button>
               <Button
                 type="submit"
-                disabled={creating}
+                disabled={creating || isAtLimit}
                 size="sm"
-                className="bg-primary hover:bg-primary/90 text-black font-bold text-xs rounded-full shadow-md disabled:opacity-60"
+                className="bg-primary hover:bg-primary/90 text-black font-bold text-xs rounded-full shadow-md disabled:opacity-50"
               >
-                {creating ? "Creating..." : "Create & Upload Cut"}
+                {creating ? "Creating..." : isAtLimit ? "Plan Limit Reached" : "Create & Upload Cut"}
               </Button>
             </div>
           </form>
@@ -159,6 +197,11 @@ export function DeliveriesHeader({ workspace }: DeliveriesHeaderProps) {
         </div>
 
         <div className="flex items-center gap-3">
+          {!isUnlimited && (
+            <span className="text-xs font-mono text-muted-foreground hidden sm:inline px-3 py-1.5 rounded-full border border-border bg-card/60">
+              {activeCount} / {clientLinksLimit} active links
+            </span>
+          )}
           <Button
             onClick={() => setShowCreateModal(true)}
             className="bg-primary hover:bg-primary/90 text-black font-bold text-xs px-5 py-2.5 h-auto rounded-full shadow-md flex items-center gap-2 cursor-pointer"

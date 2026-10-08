@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
+import Link from "next/link";
 import {
   Upload,
   Plus,
@@ -9,6 +10,7 @@ import {
   Film,
   AlertCircle,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { createWorkspaceProjectAction } from "@/app/actions/projects";
 import {
@@ -37,6 +39,9 @@ interface UploadProjectModalProps {
   onClose: () => void;
   onProjectCreated: (item: PortfolioItem) => void;
   showFlash: (msg: string) => void;
+  isAtLimit?: boolean;
+  limit?: number;
+  workspaceSlug?: string;
 }
 
 export function UploadProjectModal({
@@ -45,6 +50,9 @@ export function UploadProjectModal({
   onClose,
   onProjectCreated,
   showFlash,
+  isAtLimit = false,
+  limit = 4,
+  workspaceSlug,
 }: UploadProjectModalProps) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -304,6 +312,27 @@ export function UploadProjectModal({
           </p>
         </div>
 
+        {/* Plan Limit Warning */}
+        {isAtLimit && (
+          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="size-4 text-amber-400 shrink-0" />
+              <span>
+                Portfolio film limit reached ({limit} allowed on Starter plan).
+              </span>
+            </div>
+            {workspaceSlug && (
+              <Link
+                href={`/${workspaceSlug}/subscription`}
+                className="text-amber-400 hover:text-amber-300 font-semibold underline flex items-center gap-1 shrink-0 text-[11px]"
+              >
+                <Sparkles className="size-3" />
+                Upgrade
+              </Link>
+            )}
+          </div>
+        )}
+
         {/* Error Alert */}
         {errorMessage && (
           <div className="p-3.5 rounded-xl bg-destructive/15 border border-destructive/30 text-destructive text-xs flex items-center gap-2 animate-in fade-in">
@@ -513,7 +542,7 @@ export function UploadProjectModal({
           <div className="pt-2">
             <Button
               type="submit"
-              disabled={!projectName.trim() || uploading}
+              disabled={!projectName.trim() || uploading || isAtLimit}
               className="w-full rounded-xl py-3 px-4 h-auto bg-gradient-to-r from-[#b8481e] via-[#db5722] to-[#8d3615] hover:brightness-110 active:brightness-95 text-white text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-orange-950/40 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border border-white/10"
             >
               {uploading ? (
@@ -521,6 +550,8 @@ export function UploadProjectModal({
                   <Loader2 className="size-4 animate-spin" />
                   <span>CREATING PROJECT...</span>
                 </>
+              ) : isAtLimit ? (
+                <span>PLAN LIMIT REACHED (UPGRADE TO UPLOAD)</span>
               ) : (
                 <>
                   <Plus className="size-4 stroke-[3]" />

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useRef } from "react";
-import { MessageCircle, Palette, Check, Camera, Trash2, Upload, Film, Briefcase, MapPin, User } from "lucide-react";
+import Link from "next/link";
+import { MessageCircle, Palette, Check, Camera, Trash2, Upload, Film, Briefcase, MapPin, User, Sparkles } from "lucide-react";
 import { ACCENTS } from "./constants";
 import { getContrastForeground } from "@/lib/theme-utils";
 import { PortfolioStats } from "@/core/entities/portfolio";
@@ -28,6 +29,8 @@ interface StorefrontIdentitySectionProps {
   stats: PortfolioStats;
   onStatsChange: (val: PortfolioStats) => void;
   canBranding?: boolean;
+  canWhatsapp?: boolean;
+  workspaceSlug?: string;
 }
 
 export function StorefrontIdentitySection({
@@ -45,6 +48,8 @@ export function StorefrontIdentitySection({
   stats,
   onStatsChange,
   canBranding = true,
+  canWhatsapp = true,
+  workspaceSlug,
 }: StorefrontIdentitySectionProps) {
   const profileInputRef = useRef<HTMLInputElement>(null);
 
@@ -73,6 +78,25 @@ export function StorefrontIdentitySection({
       </div>
 
       <Card className="rounded-2xl bg-card/90 border border-border p-5 md:p-6 shadow-sm space-y-6 hover:translate-y-0">
+        {!canBranding && (
+          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <Sparkles className="size-4 text-amber-400 shrink-0" />
+              <span>
+                Custom studio branding (logo, profile avatar, and custom accent colors) requires a Pro or Studio plan.
+              </span>
+            </div>
+            {workspaceSlug && (
+              <Link
+                href={`/${workspaceSlug}/subscription`}
+                className="text-amber-400 hover:text-amber-300 font-semibold underline flex items-center gap-1 shrink-0 text-[11px]"
+              >
+                Upgrade to Pro
+              </Link>
+            )}
+          </div>
+        )}
+
         {/* Profile Image & Avatar Upload Card */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 p-4 rounded-xl bg-muted/40 border border-border">
           <input
@@ -80,6 +104,7 @@ export function StorefrontIdentitySection({
             ref={profileInputRef}
             onChange={onProfileUpload}
             accept="image/*"
+            disabled={!canBranding}
             className="hidden"
           />
 
@@ -89,8 +114,9 @@ export function StorefrontIdentitySection({
                 render={
                   <button
                     type="button"
+                    disabled={!canBranding}
                     onClick={() => profileInputRef.current?.click()}
-                    className="relative shrink-0 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background cursor-pointer"
+                    className="relative shrink-0 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background cursor-pointer disabled:cursor-not-allowed"
                   />
                 }
               >
@@ -117,7 +143,9 @@ export function StorefrontIdentitySection({
                 </Avatar>
               </TooltipTrigger>
               <TooltipContent side="top">
-                Click to upload new director avatar or studio portrait
+                {!canBranding
+                  ? "Custom profile photo requires Pro or Studio plan"
+                  : "Click to upload new director avatar or studio portrait"}
               </TooltipContent>
             </Tooltip>
           </div>
@@ -128,6 +156,11 @@ export function StorefrontIdentitySection({
               <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
                 Profile Photo &amp; Avatar
               </h3>
+              {!canBranding && (
+                <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[9px] font-mono font-bold">
+                  PRO+
+                </Badge>
+              )}
             </div>
             <TypographyMuted className="text-xs text-muted-foreground leading-relaxed">
               Upload your director portrait, logo, or headshot. Displayed in your public portfolio header, about card, and client delivery rooms.
@@ -140,8 +173,9 @@ export function StorefrontIdentitySection({
                       type="button"
                       variant="outline"
                       size="sm"
+                      disabled={!canBranding}
                       onClick={() => profileInputRef.current?.click()}
-                      className="rounded-full bg-muted hover:bg-muted/80 border-border text-foreground text-xs font-semibold px-4 h-8 gap-1.5 cursor-pointer shadow-sm"
+                      className="rounded-full bg-muted hover:bg-muted/80 border-border text-foreground text-xs font-semibold px-4 h-8 gap-1.5 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Upload className="size-3 text-primary" />
                       <span>{logoUrl ? "Replace Photo" : "Upload Profile Photo"}</span>
@@ -149,7 +183,9 @@ export function StorefrontIdentitySection({
                   }
                 />
                 <TooltipContent side="bottom">
-                  JPG, PNG or WebP up to 10MB
+                  {!canBranding
+                    ? "Custom profile photo requires Pro or Studio plan"
+                    : "JPG, PNG or WebP up to 10MB"}
                 </TooltipContent>
               </Tooltip>
               {logoUrl && (
@@ -213,19 +249,29 @@ export function StorefrontIdentitySection({
         {/* WhatsApp & Accent Palette */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <MessageCircle className="size-3.5 text-primary" />
-              WhatsApp Direct Booking Number
-            </label>
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <MessageCircle className="size-3.5 text-primary" />
+                WhatsApp Direct Booking Number
+              </label>
+              {!canWhatsapp && (
+                <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[9px] font-mono font-bold">
+                  BASIC+
+                </Badge>
+              )}
+            </div>
             <Input
               type="text"
+              disabled={!canWhatsapp}
               value={whatsapp}
               onChange={(e) => onWhatsappChange(e.target.value)}
               placeholder="+971501234567"
-              className="h-10 rounded-xl bg-muted/50 border-border text-foreground text-sm font-mono px-4"
+              className="h-10 rounded-xl bg-muted/50 border-border text-foreground text-sm font-mono px-4 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <TypographyMuted className="text-[11px] text-muted-foreground">
-              Powers one-click WhatsApp client inquiries and rapid review links across the Gulf.
+              {!canWhatsapp
+                ? "WhatsApp client inquiries & rapid review links require Basic, Pro, or Studio plan."
+                : "Powers one-click WhatsApp client inquiries and rapid review links across the Gulf."}
             </TypographyMuted>
           </div>
 

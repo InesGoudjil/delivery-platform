@@ -9,10 +9,15 @@ import {
   Sparkles,
   ExternalLink,
   Download,
+  ArchiveRestore,
+  Loader2,
+  RefreshCw,
+  CheckCircle2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface DeliveryHeroBannerProps {
   coverThumbnailUrl: string;
@@ -22,9 +27,14 @@ interface DeliveryHeroBannerProps {
   approvedCount: number;
   shareUrl: string;
   clientName: string;
+  siloStatus?: "archived" | "restoring" | "restored" | null;
+  siloTier?: "Bulk" | "Standard" | null;
   onOpenShareDialog: () => void;
   onOpenEditDialog: () => void;
   onArchive: () => void;
+  onRestoreFromSilo?: (tier: "Bulk" | "Standard") => void;
+  onCheckSiloStatus?: () => void;
+  isSiloActionPending?: boolean;
   onOpenPublishDialog: () => void;
   onOpenDownloadDialog?: () => void;
 }
@@ -37,9 +47,14 @@ export function DeliveryHeroBanner({
   approvedCount,
   shareUrl,
   clientName,
+  siloStatus,
+  siloTier,
   onOpenShareDialog,
   onOpenEditDialog,
   onArchive,
+  onRestoreFromSilo,
+  onCheckSiloStatus,
+  isSiloActionPending = false,
   onOpenPublishDialog,
   onOpenDownloadDialog,
 }: DeliveryHeroBannerProps) {
@@ -146,15 +161,54 @@ export function DeliveryHeroBanner({
             <span>EDIT DELIVERY</span>
           </Button>
 
-          {/* ARCHIVE TO THE SILO Button */}
-          <Button
-            onClick={onArchive}
-            variant="outline"
-            className="rounded-full border-border/60 bg-background/50 backdrop-blur-md hover:bg-muted text-foreground font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
-          >
-            <Lock className="size-3.5 text-muted-foreground" />
-            <span>ARCHIVE TO THE SILO</span>
-          </Button>
+          {/* THE SILO — AWS S3 Glacier Deep Archive Button & Status */}
+          {siloStatus === "restoring" ? (
+            <div className="flex items-center gap-2">
+              <Button
+                disabled
+                className="rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 font-extrabold text-xs px-5 py-2.5 flex items-center gap-2 cursor-wait"
+              >
+                <Loader2 className="size-3.5 animate-spin text-blue-400" />
+                <span>THAWING IN SILO ({siloTier || "Bulk"} Tier · 12–48h)</span>
+              </Button>
+              {onCheckSiloStatus && (
+                <Button
+                  onClick={onCheckSiloStatus}
+                  disabled={isSiloActionPending}
+                  variant="outline"
+                  className="rounded-full border-border/60 bg-background/50 hover:bg-muted text-xs px-3 py-2.5"
+                  title="Check AWS S3 Glacier Thaw Status"
+                >
+                  <RefreshCw className={cn("size-3.5", isSiloActionPending && "animate-spin")} />
+                </Button>
+              )}
+            </div>
+          ) : siloStatus === "restored" ? (
+            <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-xs px-3 py-1 font-semibold flex items-center gap-1.5 rounded-full">
+              <CheckCircle2 className="size-3.5 text-emerald-400" />
+              <span>THAWED FROM SILO (ACTIVE)</span>
+            </Badge>
+          ) : projectStatus === "archived" || siloStatus === "archived" ? (
+            <Button
+              onClick={() => onRestoreFromSilo?.("Bulk")}
+              disabled={isSiloActionPending}
+              variant="outline"
+              className="rounded-full border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
+            >
+              <ArchiveRestore className="size-3.5 text-blue-400" />
+              <span>RESTORE FROM THE SILO</span>
+            </Button>
+          ) : (
+            <Button
+              onClick={onArchive}
+              disabled={isSiloActionPending}
+              variant="outline"
+              className="rounded-full border-border/60 bg-background/50 backdrop-blur-md hover:bg-muted text-foreground font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
+            >
+              <Lock className="size-3.5 text-muted-foreground" />
+              <span>ARCHIVE TO THE SILO</span>
+            </Button>
+          )}
 
           {/* PUBLISH TO PORTFOLIO Button */}
           <Button

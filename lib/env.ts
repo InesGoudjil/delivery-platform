@@ -31,6 +31,14 @@ const envSchema = z.object({
   CLOUDFLARE_R2_ENDPOINT: z.string().optional().default(""),
   CLOUDFLARE_R2_PUBLIC_DOMAIN: z.string().optional().default(""),
 
+  // AWS S3 Glacier Deep Archive Configuration (The Silo)
+  AWS_REGION: z.string().optional().default("us-east-1"),
+  AWS_ACCESS_KEY_ID: z.string().optional().default(""),
+  AWS_SECRET_ACCESS_KEY: z.string().optional().default(""),
+  AWS_S3_SILO_BUCKET: z.string().optional().default(""),
+  AWS_SILO_STORAGE_CLASS: z.enum(["DEEP_ARCHIVE", "GLACIER"]).default("DEEP_ARCHIVE"),
+  SILO_WEBHOOK_SECRET: z.string().optional().default(""),
+
   // Stripe Billing Configuration
   STRIPE_SECRET_KEY: z.string().optional().default(""),
   STRIPE_WEBHOOK_SECRET: z.string().optional().default(""),
@@ -86,6 +94,7 @@ const envSchema = z.object({
 export type Env = z.infer<typeof envSchema> & {
   isCloudflareStreamConfigured: boolean;
   isCloudflareR2Configured: boolean;
+  isAwsSiloConfigured: boolean;
   isMetaPixelEnabled: boolean;
   isMetaCapiEnabled: boolean;
   isPostHogClientEnabled: boolean;
@@ -126,6 +135,11 @@ function parseEnv(): Env {
     Boolean(parsed.CLOUDFLARE_R2_ACCESS_KEY_ID) &&
     Boolean(parsed.CLOUDFLARE_R2_SECRET_ACCESS_KEY);
 
+  const isAwsSiloConfigured =
+    Boolean(parsed.AWS_S3_SILO_BUCKET) &&
+    Boolean(parsed.AWS_ACCESS_KEY_ID) &&
+    Boolean(parsed.AWS_SECRET_ACCESS_KEY);
+
   const isMetaPixelEnabled = Boolean(parsed.NEXT_PUBLIC_META_PIXEL_ID);
   const isMetaCapiEnabled =
     isMetaPixelEnabled &&
@@ -150,6 +164,7 @@ function parseEnv(): Env {
     CLOUDFLARE_R2_PRIVATE_BUCKET: privateBucket,
     isCloudflareStreamConfigured,
     isCloudflareR2Configured,
+    isAwsSiloConfigured,
     isMetaPixelEnabled,
     isMetaCapiEnabled,
     isPostHogClientEnabled,

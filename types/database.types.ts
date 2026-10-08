@@ -349,6 +349,12 @@ export interface Database {
           delivery_date: string | null;
           is_watermarked: boolean;
           appearance: Json | null;
+          silo_status: "archived" | "restoring" | "restored" | null;
+          silo_archived_at: string | null;
+          silo_restore_requested_at: string | null;
+          silo_restore_tier: "Bulk" | "Standard" | null;
+          silo_restored_at: string | null;
+          silo_metadata: Json | null;
           created_at: string;
           updated_at: string;
         };
@@ -370,6 +376,12 @@ export interface Database {
           delivery_date?: string | null;
           is_watermarked?: boolean;
           appearance?: Json | null;
+          silo_status?: "archived" | "restoring" | "restored" | null;
+          silo_archived_at?: string | null;
+          silo_restore_requested_at?: string | null;
+          silo_restore_tier?: "Bulk" | "Standard" | null;
+          silo_restored_at?: string | null;
+          silo_metadata?: Json | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -391,6 +403,12 @@ export interface Database {
           delivery_date?: string | null;
           is_watermarked?: boolean;
           appearance?: Json | null;
+          silo_status?: "archived" | "restoring" | "restored" | null;
+          silo_archived_at?: string | null;
+          silo_restore_requested_at?: string | null;
+          silo_restore_tier?: "Bulk" | "Standard" | null;
+          silo_restored_at?: string | null;
+          silo_metadata?: Json | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -528,6 +546,8 @@ export interface Database {
           duration_seconds: number | null;
           transcoding_status: "pending" | "processing" | "ready" | "failed";
           is_active_version: boolean;
+          silo_archive_key: string | null;
+          silo_storage_class: string | null;
           created_at: string;
         };
         Insert: {
@@ -542,6 +562,8 @@ export interface Database {
           duration_seconds?: number | null;
           transcoding_status?: "pending" | "processing" | "ready" | "failed";
           is_active_version?: boolean;
+          silo_archive_key?: string | null;
+          silo_storage_class?: string | null;
           created_at?: string;
         };
         Update: {
@@ -556,6 +578,8 @@ export interface Database {
           duration_seconds?: number | null;
           transcoding_status?: "pending" | "processing" | "ready" | "failed";
           is_active_version?: boolean;
+          silo_archive_key?: string | null;
+          silo_storage_class?: string | null;
           created_at?: string;
         };
       };

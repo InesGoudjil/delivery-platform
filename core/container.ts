@@ -6,6 +6,8 @@ import {
   IStorageProvider,
   StorageProviderFactory,
   StorageFactoryOptions,
+  ISiloStorageProvider,
+  SiloProviderFactory,
 } from "./providers/storage";
 
 // Repositories
@@ -47,10 +49,12 @@ import {
   NotificationService,
   StripeService,
   WaitlistService,
+  SiloService,
 } from "./services";
 
 export interface CoreServices {
   storageProvider: IStorageProvider;
+  siloProvider: ISiloStorageProvider;
   repositories: {
     workspace: SupabaseWorkspaceRepository;
     workspaceFeatures: SupabaseWorkspaceFeaturesRepository;
@@ -86,6 +90,8 @@ export interface CoreServices {
     stripe: StripeService;
     waitlist: WaitlistService;
     storage: IStorageProvider;
+    silo: SiloService;
+    siloProvider: ISiloStorageProvider;
   };
 }
 
@@ -104,6 +110,7 @@ export function createCoreServices(
 ): CoreServices {
   // 0. Storage Provider
   const storageProvider = StorageProviderFactory.createProvider(options?.storageOptions);
+  const siloProvider = SiloProviderFactory.createProvider();
 
   // Privileged client to bypass RLS for system/billing tables (subscriptions, plans, features, invoices)
   const systemClient = options?.adminSupabase || supabase;
@@ -177,13 +184,14 @@ export function createCoreServices(
     assetVersionRepo,
     feedbackRepo,
     projectRepo,
-    undefined,
+    subscriptionService,
     notificationService
   );
   const projectService = new ProjectService(
     projectRepo,
     assetRepo,
-    assetVersionRepo
+    assetVersionRepo,
+    subscriptionService
   );
   const assetService = new AssetService(assetRepo, assetVersionRepo);
   const uploadService = new AssetUploadService(
@@ -193,7 +201,8 @@ export function createCoreServices(
     assetRepo,
     assetVersionRepo,
     subscriptionRepo,
-    planRepo
+    planRepo,
+    workspaceFeaturesRepo
   );
   const feedbackService = new FeedbackService(feedbackRepo, notificationService);
   const stripeService = new StripeService(
@@ -203,9 +212,21 @@ export function createCoreServices(
     workspaceRepo
   );
   const waitlistService = new WaitlistService(waitlistRepo, emailProvider);
+  const siloService = new SiloService(
+    siloProvider,
+    storageProvider,
+    deliveryRepo,
+    assetRepo,
+    assetVersionRepo,
+    workspaceRepo,
+    subscriptionService,
+    notificationService,
+    memberService
+  );
 
   return {
     storageProvider,
+    siloProvider,
     repositories: {
       workspace: workspaceRepo,
       workspaceFeatures: workspaceFeaturesRepo,
@@ -241,6 +262,8 @@ export function createCoreServices(
       stripe: stripeService,
       waitlist: waitlistService,
       storage: storageProvider,
+      silo: siloService,
+      siloProvider,
     },
   };
 }

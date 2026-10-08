@@ -12,7 +12,12 @@ import {
   deleteDeliveryAction,
   updateAssetAction,
   updateDeliveryAppearanceAction,
+  loadMoreDeliveryAssetsAction,
 } from "@/app/actions/deliveries";
+import {
+  restoreDeliveryFromSiloAction,
+  checkDeliverySiloStatusAction,
+} from "@/app/actions/silo";
 import { resolveThumbnailUrl, resolveMediaUrl } from "@/lib/media";
 import { EditAssetDialog, type EditableAssetItem } from "@/components/workspaces/edit-asset-dialog";
 import { TrashBinDialog } from "@/components/workspaces/trash-bin-dialog";
@@ -80,7 +85,11 @@ export function DeliveryDetailClient({
   portfolio,
   project,
   assets,
+  initialTotalAssetsCount,
+  initialApprovedCount,
+  initialHasMore = false,
   initialFeedback,
+  features,
 }: DeliveryDetailClientProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -142,9 +151,27 @@ export function DeliveryDetailClient({
       : [];
   }, [assets]);
 
+  // Master loaded items state that persists across chunk loads
+  const [loadedItems, setLoadedItems] = useState<GalleryItem[]>(initialItems);
+
+  useEffect(() => {
+    setLoadedItems(initialItems);
+  }, [initialItems]);
+
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [totalAssetsCountState, setTotalAssetsCountState] = useState(
+    initialTotalAssetsCount ?? initialItems.length
+  );
+  const [approvedCountState, setApprovedCountState] = useState(
+    initialApprovedCount ?? initialItems.filter((i) => i.status === "approved").length
+  );
+
   // 5. React 19 Optimistic Gallery (Eliminates manual state duplication and stale router.refresh() bugs)
   const [items, setOptimisticItems] = useOptimistic(
-    initialItems,
+    loadedItems,
     (prev: GalleryItem[], action: GalleryOptimisticAction): GalleryItem[] => {
       switch (action.type) {
         case "approve-all":
@@ -234,7 +261,7 @@ export function DeliveryDetailClient({
     }
   );
 
-  // 6. Project Metadata Object (Consolidates 4 separate string states)
+  // 6. Project Metadata Object (Consolidates separate string states)
   const [projectMeta, setProjectMeta] = useState({
     title: project.title || "Boxing Event",
     clientName: project.clientName || "Boxing Event",
@@ -242,7 +269,10 @@ export function DeliveryDetailClient({
       project.description ||
       "A cinematic boxing project featuring films and stills captured across the event.",
     status: project.status || "draft",
+    siloStatus: (project as any).siloStatus || (project.status === "archived" ? "archived" : null),
+    siloTier: (project as any).siloRestoreTier || "Bulk",
   });
+  const [isSiloPending, setIsSiloPending] = useState(false);
 
   // 7. Cover Thumbnail (Derived with optional custom override)
   const [customCoverUrl, setCustomCoverUrl] = useState<string | null>(null);
@@ -321,20 +351,91 @@ export function DeliveryDetailClient({
   };
 
   const handleArchive = async () => {
-    if (confirm("Are you sure you want to archive this delivery to the Silo?")) {
-      const res = await archiveDeliveryAction(project.id);
-      if (res.success) {
-        setProjectMeta((prev) => ({ ...prev, status: "archived" }));
-        triggerToast("Delivery archived to Silo");
-      } else {
-        triggerToast(res.error || "Failed to archive delivery");
+    if (
+      confirm(
+        "Archive this project to The Silo (AWS S3 Glacier Deep Archive)?\n\n• Frees active workspace storage quota.\n• Master cut files are safely preserved in cold storage.\n• Restoring takes 12–48 hours."
+      )
+    ) {
+      setIsSiloPending(true);
+      try {
+        const res = await archiveDeliveryAction(project.id);
+        if (res.success) {
+          setProjectMeta((prev) => ({
+            ...prev,
+            status: "archived",
+            siloStatus: "archived",
+          }));
+          triggerToast("Project archived to The Silo (active storage freed)");
+        } else {
+          triggerToast(res.error || "Failed to archive delivery to The Silo");
+        }
+      } finally {
+        setIsSiloPending(false);
       }
+    }
+  };
+
+  const handleRestoreFromSilo = async (tier: "Bulk" | "Standard" = "Bulk") => {
+    const hoursText = tier === "Standard" ? "~12 hours (Standard Tier)" : "24–48 hours (Bulk Tier)";
+    if (
+      confirm(
+        `Thaw this project from AWS S3 Glacier Deep Archive?\n\n• Retrieval SLA: ${hoursText}.\n• Master cut assets will be thawed and restored into your active workspace.\n• You will receive an email once files are ready.`
+      )
+    ) {
+      setIsSiloPending(true);
+      try {
+        const res = await restoreDeliveryFromSiloAction(project.id, tier);
+        if (res.success) {
+          setProjectMeta((prev) => ({
+            ...prev,
+            siloStatus: "restoring",
+            siloTier: tier,
+          }));
+          toast.success("AWS S3 Glacier Thaw Initiated", {
+            description: `Restoration in progress (${tier} Tier · ${hoursText}).`,
+          });
+        } else {
+          toast.error(res.error || "Failed to initiate Silo restore");
+        }
+      } finally {
+        setIsSiloPending(false);
+      }
+    }
+  };
+
+  const handleCheckSiloStatus = async () => {
+    setIsSiloPending(true);
+    try {
+      const res = await checkDeliverySiloStatusAction(project.id);
+      if (res.success) {
+        if (res.isReady) {
+          setProjectMeta((prev) => ({
+            ...prev,
+            status: "approved",
+            siloStatus: "restored",
+          }));
+          toast.success("Project Thawed & Restored!", {
+            description: "All master cut assets are back in active storage and ready.",
+          });
+          router.refresh();
+        } else {
+          toast.info("Glacier Thaw In Progress", {
+            description: `${res.thawedVersionsCount} of ${res.totalVersionsCount} assets ready. AWS Glacier retrieval takes 12–48h.`,
+          });
+        }
+      } else {
+        toast.error(res.error || "Failed to check Silo status");
+      }
+    } finally {
+      setIsSiloPending(false);
     }
   };
 
   const handleApproveCut = async () => {
     startTransition(async () => {
       setOptimisticItems({ type: "approve-all" });
+      setLoadedItems((prev) => prev.map((item) => ({ ...item, status: "approved" as const })));
+      setApprovedCountState(totalAssetsCountState);
       setProjectMeta((prev) => ({ ...prev, status: "approved" }));
       const res = await approveCutAction(project.id, workspace.brandName || "Filmmaker");
       if (res.success) {
@@ -349,6 +450,14 @@ export function DeliveryDetailClient({
     const newIsApproved = currentStatus !== "approved";
     startTransition(async () => {
       setOptimisticItems({ type: "toggle-approval", id: itemId, isApproved: newIsApproved });
+      setLoadedItems((prev) =>
+        prev.map((item) =>
+          item.id === itemId
+            ? { ...item, status: newIsApproved ? "approved" : "review" }
+            : item
+        )
+      );
+      setApprovedCountState((prev) => (newIsApproved ? prev + 1 : Math.max(0, prev - 1)));
       const res = await toggleAssetApprovalAction(project.id, itemId, newIsApproved);
       if (res.success) {
         triggerToast(newIsApproved ? "Asset approved" : "Asset marked for revision");
@@ -361,6 +470,11 @@ export function DeliveryDetailClient({
   const handleDeleteAsset = async (item: GalleryItem) => {
     startTransition(async () => {
       setOptimisticItems({ type: "delete", id: item.id });
+      setLoadedItems((prev) => prev.filter((i) => i.id !== item.id));
+      setTotalAssetsCountState((prev) => Math.max(0, prev - 1));
+      if (item.status === "approved") {
+        setApprovedCountState((prev) => Math.max(0, prev - 1));
+      }
       if (activeAssetId === item.id) {
         handleCloseLightbox();
       }
@@ -419,6 +533,19 @@ export function DeliveryDetailClient({
           src: updated.thumbnailUrl,
         },
       });
+
+      setLoadedItems((prev) =>
+        prev.map((i) =>
+          i.id === updated.id
+            ? {
+                ...i,
+                title: updated.title,
+                aspectRatio: updated.aspectRatio || i.aspectRatio,
+                src: updated.thumbnailUrl || i.src,
+              }
+            : i
+        )
+      );
 
       try {
         const res = await updateAssetAction(
@@ -485,6 +612,62 @@ export function DeliveryDetailClient({
         resolvedSrc,
         isPhoto,
       });
+
+      setLoadedItems((prev) => {
+        const existingIdx = prev.findIndex((item) => item.id === uploadedAsset.id);
+        if (existingIdx >= 0) {
+          const existing = prev[existingIdx];
+          const newTotalVersions = (existing.totalVersions || 1) + 1;
+          const newVersionNumber = uploadedVersion?.versionNumber || newTotalVersions;
+          const updatedVersions = uploadedVersion
+            ? [...(existing.versions || []).filter((v) => v.id !== uploadedVersion.id), uploadedVersion]
+            : existing.versions || [];
+          const updatedItem: GalleryItem = {
+            ...existing,
+            title: uploadedAsset.title || existing.title,
+            versionId: uploadedVersion?.id || existing.versionId,
+            versionNumber: newVersionNumber,
+            totalVersions: newTotalVersions,
+            versions: updatedVersions,
+            src: resolvedSrc,
+            rawUrl: uploadedVersion?.rawFileUrl || existing.rawUrl,
+            hlsUrl: uploadedVersion?.hlsManifestUrl || existing.hlsUrl,
+            videoUrl:
+              uploadedVersion?.hlsManifestUrl ||
+              uploadedVersion?.rawFileUrl ||
+              existing.videoUrl,
+            duration: durationStr,
+          };
+          const next = [...prev];
+          next[existingIdx] = updatedItem;
+          return next;
+        } else {
+          const newItem: GalleryItem = {
+            id: uploadedAsset.id,
+            versionId: uploadedVersion?.id,
+            versionNumber: uploadedVersion?.versionNumber || 1,
+            totalVersions: 1,
+            title: uploadedAsset.title || "Untitled Asset",
+            type: isPhoto ? ("photo" as const) : ("video" as const),
+            aspectRatio: uploadedAsset.aspectRatio || "16:9",
+            duration: durationStr,
+            src: resolvedSrc,
+            status: "review",
+            rawUrl: uploadedVersion?.rawFileUrl,
+            hlsUrl: uploadedVersion?.hlsManifestUrl,
+            videoUrl:
+              uploadedVersion?.hlsManifestUrl ||
+              uploadedVersion?.rawFileUrl ||
+              (isPhoto ? undefined : "https://files.vidstack.io/sprite-fight/hls/stream.m3u8"),
+          };
+          return [newItem, ...prev];
+        }
+      });
+
+      const isNew = !loadedItems.some((i) => i.id === uploadedAsset.id);
+      if (isNew) {
+        setTotalAssetsCountState((prev) => prev + 1);
+      }
     });
 
     setShowAssetAddedBadge(true);
@@ -496,11 +679,48 @@ export function DeliveryDetailClient({
     );
   };
 
-  const totalAssetsCount = items.length;
+  const handleLoadMore = async (filterTab: "ALL" | "VIDEOS" | "PHOTOS" = "ALL") => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const res = await loadMoreDeliveryAssetsAction({
+        deliveryId: project.id,
+        page: nextPage,
+        pageSize: 12,
+        filter: filterTab,
+      });
+
+      if (res.success && res.items) {
+        setLoadedItems((prev) => {
+          const existingIds = new Set(prev.map((i) => i.id));
+          const uniqueNew = (res.items || []).filter((i) => !existingIds.has(i.id));
+          return [...prev, ...uniqueNew];
+        });
+        setPage(nextPage);
+        setHasMore(Boolean(res.hasMore));
+        if (res.totalCount !== undefined) {
+          setTotalAssetsCountState(res.totalCount);
+        }
+        if (res.approvedCount !== undefined) {
+          setApprovedCountState(res.approvedCount);
+        }
+        toast.success(`Loaded ${res.items.length} more deliverables`);
+      } else {
+        toast.error(res.error || "Failed to load more assets");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to load more assets");
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  const totalAssetsCount = totalAssetsCountState;
   const approvedCount =
     projectMeta.status === "approved"
       ? totalAssetsCount
-      : items.filter((item) => item.status === "approved").length;
+      : approvedCountState;
 
   return (
     <TooltipProvider delay={150}>
@@ -514,9 +734,14 @@ export function DeliveryDetailClient({
           approvedCount={approvedCount}
           shareUrl={shareUrl}
           clientName={projectMeta.clientName}
+          siloStatus={projectMeta.siloStatus}
+          siloTier={projectMeta.siloTier}
           onOpenShareDialog={() => setActiveDialog("share")}
           onOpenEditDialog={() => setActiveDialog("edit-delivery")}
           onArchive={handleArchive}
+          onRestoreFromSilo={handleRestoreFromSilo}
+          onCheckSiloStatus={handleCheckSiloStatus}
+          isSiloActionPending={isSiloPending}
           onOpenPublishDialog={() => setActiveDialog("publish")}
           onOpenDownloadDialog={() => setActiveDialog("download-package")}
         />
@@ -559,6 +784,8 @@ export function DeliveryDetailClient({
         <DeliveryAppearanceCard
           settings={appearance}
           onChangeSettings={handleAppearanceChange}
+          canWatermark={features ? Boolean(features.watermark) : false}
+          workspaceSlug={workspace.slug}
         />
 
         {/* 5. Deliverables & PROJECT ASSETS Gallery */}
@@ -566,6 +793,10 @@ export function DeliveryDetailClient({
           items={items}
           appearance={appearance}
           showAssetAddedBadge={showAssetAddedBadge}
+          totalCount={totalAssetsCount}
+          hasMore={hasMore}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={handleLoadMore}
           onSelectItem={handleOpenLightbox}
           onDeleteAsset={handleDeleteAsset}
           onEditAsset={handleOpenEditAsset}
@@ -599,6 +830,8 @@ export function DeliveryDetailClient({
           initialPasscodeProtected={project.passcodeProtected ?? false}
           initialDownloadAllowed={project.isDownloadAllowed ?? false}
           triggerToast={triggerToast}
+          features={features}
+          workspaceSlug={workspace.slug}
         />
 
         {/* 8. EDIT DELIVERY Modal Dialog */}

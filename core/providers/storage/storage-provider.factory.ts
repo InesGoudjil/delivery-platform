@@ -142,6 +142,29 @@ class CompositeStorageProvider implements IStorageProvider {
     }
     return true;
   }
+
+  async getObjectStream(providerUid: string): Promise<{
+    stream: NodeJS.ReadableStream;
+    contentType?: string;
+    contentLength?: number;
+  }> {
+    if (typeof this.r2Provider.getObjectStream === "function") {
+      return this.r2Provider.getObjectStream(providerUid);
+    }
+    throw new Error("getObjectStream not implemented on current storage provider");
+  }
+
+  async putObjectStream(
+    providerUid: string,
+    body: NodeJS.ReadableStream | Buffer | Uint8Array,
+    contentType?: string,
+    contentLength?: number
+  ): Promise<void> {
+    if (typeof this.r2Provider.putObjectStream === "function") {
+      return this.r2Provider.putObjectStream(providerUid, body, contentType, contentLength);
+    }
+    throw new Error("putObjectStream not implemented on current storage provider");
+  }
 }
 
 export class StorageProviderFactory {

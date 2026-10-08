@@ -1,4 +1,5 @@
 export type DeliveryStatus = "draft" | "in_review" | "approved" | "archived";
+export type SiloStatus = "archived" | "restoring" | "restored";
 
 export interface DeliveryAppearanceSettings {
   cardSize: "S" | "M" | "L";
@@ -26,6 +27,12 @@ export interface Delivery {
   expiresAt?: string | null;
   location?: string | null;
   deliveryDate?: string | null;
+  siloStatus?: SiloStatus | null;
+  siloArchivedAt?: string | null;
+  siloRestoreRequestedAt?: string | null;
+  siloRestoreTier?: "Bulk" | "Standard" | null;
+  siloRestoredAt?: string | null;
+  siloMetadata?: Record<string, any> | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -45,6 +52,12 @@ export interface CreateDeliveryDTO {
   expiresAt?: string | null;
   location?: string | null;
   deliveryDate?: string | null;
+  siloStatus?: SiloStatus | null;
+  siloArchivedAt?: string | null;
+  siloRestoreRequestedAt?: string | null;
+  siloRestoreTier?: "Bulk" | "Standard" | null;
+  siloRestoredAt?: string | null;
+  siloMetadata?: Record<string, any> | null;
 }
 
 export interface UpdateDeliveryDTO extends Partial<CreateDeliveryDTO> {

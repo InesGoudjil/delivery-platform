@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Video, ImageIcon, Play, Trash2, Pencil, Download } from "lucide-react";
+import { Check, Video, ImageIcon, Play, Trash2, Pencil, Download, Loader2, CheckCircle2 } from "lucide-react";
 import { getDownloadFilename, triggerDirectDownload } from "@/lib/download";
 import {
   Card,
@@ -23,6 +23,10 @@ interface DeliveryAssetsGalleryProps {
   items: GalleryItem[];
   appearance: AppearanceSettings;
   showAssetAddedBadge: boolean;
+  totalCount?: number;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: (filterTab: "ALL" | "VIDEOS" | "PHOTOS") => Promise<void> | void;
   onSelectItem: (item: GalleryItem) => void;
   onDeleteAsset?: (item: GalleryItem) => Promise<void> | void;
   onEditAsset?: (item: GalleryItem) => void;
@@ -76,6 +80,10 @@ export function DeliveryAssetsGallery({
   items,
   appearance,
   showAssetAddedBadge,
+  totalCount,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore,
   onSelectItem,
   onDeleteAsset,
   onEditAsset,
@@ -289,9 +297,9 @@ export function DeliveryAssetsGallery({
               </div>
 
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-2xl scale-90 group-hover:scale-100 transition-transform">
+                {/*<div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-2xl scale-90 group-hover:scale-100 transition-transform">
                   <Play className="size-5 fill-current ml-0.5" />
-                </div>
+                </div>*/}
               </div>
 
               <Badge
@@ -386,6 +394,58 @@ export function DeliveryAssetsGallery({
           );
         })}
       </div>
+
+      {/* Empty Filter State */}
+      {filteredItems.length === 0 && (
+        <div className="py-16 text-center text-muted-foreground text-xs italic bg-card/20 rounded-2xl border border-dashed border-border/40">
+          No {filterTab.toLowerCase()} in this delivery yet.
+        </div>
+      )}
+
+      {/* Pagination / Load More Footer */}
+      {hasMore && (
+        <div className="flex flex-col items-center justify-center pt-8 pb-4 space-y-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            disabled={isLoadingMore}
+            onClick={() => onLoadMore?.(filterTab)}
+            className="group relative rounded-full px-8 py-3 bg-card/60 hover:bg-card border-border hover:border-primary/50 text-foreground font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-lg cursor-pointer"
+          >
+            {isLoadingMore ? (
+              <div className="flex items-center gap-2.5">
+                <Loader2 className="size-4 animate-spin text-primary" />
+                <span>Loading assets...</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span>Load More Assets</span>
+                {totalCount !== undefined && totalCount > items.length && (
+                  <Badge
+                    variant="secondary"
+                    className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-primary/10 text-primary border border-primary/20"
+                  >
+                    +{totalCount - items.length} more
+                  </Badge>
+                )}
+              </div>
+            )}
+          </Button>
+          {totalCount !== undefined && totalCount > 0 && (
+            <p className="text-[11px] font-mono text-muted-foreground">
+              Showing {filteredItems.length} of {totalCount} total assets
+            </p>
+          )}
+        </div>
+      )}
+
+      {!hasMore && items.length > 12 && (
+        <div className="text-center pt-6 pb-2 text-[11px] font-mono text-muted-foreground/60 flex items-center justify-center gap-2">
+          <CheckCircle2 className="size-3.5 text-sage-400" />
+          <span>All deliverables loaded ({totalCount || items.length} total)</span>
+        </div>
+      )}
 
       <DeleteConfirmDialog
         isOpen={Boolean(itemToDelete)}

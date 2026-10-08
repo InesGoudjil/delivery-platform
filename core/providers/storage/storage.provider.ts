@@ -91,4 +91,23 @@ export interface IStorageProvider {
    * Validates incoming webhook signature (e.g. from Cloudflare)
    */
   verifyWebhookSignature?(rawBody: string, headers: Record<string, string>): boolean;
+
+  /**
+   * Retrieves a readable stream of the object for transferring/archiving
+   */
+  getObjectStream?(providerUid: string): Promise<{
+    stream: NodeJS.ReadableStream | any;
+    contentType?: string;
+    contentLength?: number;
+  }>;
+
+  /**
+   * Streams a file into storage (e.g. restoring a thawed asset back into active storage)
+   */
+  putObjectStream?(
+    providerUid: string,
+    body: NodeJS.ReadableStream | Buffer | Uint8Array,
+    contentType?: string,
+    contentLength?: number
+  ): Promise<void>;
 }

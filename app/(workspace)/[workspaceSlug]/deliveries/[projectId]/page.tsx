@@ -26,8 +26,13 @@ export default async function DeliveryDetailPage({
     redirect("/");
   }
 
-  // 1. Fetch full delivery details (delivery, client, assets, versions, feedback)
-  const fullDetails = await services.delivery.getDeliveryWithFullDetails(projectId);
+  const INITIAL_PAGE_SIZE = 12;
+
+  // 1. Fetch delivery details with first page of assets, versions, and counts
+  const fullDetails = await services.delivery.getDeliveryWithFullDetails(projectId, {
+    page: 1,
+    limit: INITIAL_PAGE_SIZE,
+  });
 
   // 2. Fetch or prepare workspace portfolio for 1-click publishing
   const portfolio = await services.portfolio.getOrCreatePortfolio(
@@ -225,6 +230,9 @@ export default async function DeliveryDetailPage({
   // Batch presign private delivery assets so creator streams/views directly from Cloudflare R2
   mappedAssets = await presignDeliveryAssets(mappedAssets, services.storage, 7200);
 
+  // Fetch workspace features to enforce plan tier controls
+  const workspaceFeatures = await services.subscription.getFeatures(workspace.id);
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-16 animate-in fade-in duration-200 text-foreground selection:bg-[#f5551d] selection:text-black">
       <DeliveryNavHeader
@@ -240,7 +248,11 @@ export default async function DeliveryDetailPage({
           passcodeProtected: Boolean(project.passcodeHash),
         }}
         assets={mappedAssets}
+        initialTotalAssetsCount={fullDetails?.totalAssetsCount ?? mappedAssets.length}
+        initialApprovedCount={fullDetails?.approvedAssetsCount ?? mappedAssets.filter((a) => a.isApproved).length}
+        initialHasMore={fullDetails?.hasMore ?? false}
         initialFeedback={initialFeedback}
+        features={workspaceFeatures}
       />
     </div>
   );

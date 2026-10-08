@@ -549,3 +549,67 @@ export function renderConfirmSignupEmail({
     }),
   };
 }
+
+// ------------------------------------------------------------------------------------------------
+// 9. THE SILO — RESTORE / THAW COMPLETED
+// ------------------------------------------------------------------------------------------------
+export interface SiloRestoreCompletedEmailProps {
+  projectTitle: string;
+  manageUrl: string;
+  brandName?: string;
+  thawedDays?: number;
+}
+
+export function renderSiloRestoreCompletedEmail({
+  projectTitle,
+  manageUrl,
+  brandName = "CineSpace",
+  thawedDays = 7,
+}: SiloRestoreCompletedEmailProps): { subject: string; html: string } {
+  const subject = `🧊 S3 Glacier Thaw Complete: "${projectTitle}" is ready`;
+  const contentHtml = `
+    <div style="display: inline-block; background-color: #0c4a6e; color: #38bdf8; font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 4px 10px; border-radius: 20px; margin-bottom: 16px;">
+      The Silo — Restored from Cold Archive
+    </div>
+
+    <h1 style="margin: 0 0 12px 0; font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">
+      "${projectTitle}" is thawed and ready!
+    </h1>
+    <p style="margin: 0 0 20px 0; font-size: 15px; color: #a1a1aa; line-height: 1.6;">
+      Your project has been successfully retrieved from <strong style="color: #ffffff;">AWS S3 Glacier Deep Archive</strong>.
+      All master cut files, asset versions, and deliverables have been restored and are now accessible in your workspace for download or re-delivery.
+    </p>
+
+    <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 16px; margin: 24px 0;">
+      <div style="font-size: 13px; color: #e4e4e7; font-weight: 600; margin-bottom: 6px;">
+        ⏱️ Active Window Notice
+      </div>
+      <div style="font-size: 13px; color: #a1a1aa; line-height: 1.5;">
+        This thawed project will remain in active storage for <strong style="color: #ffffff;">${thawedDays} days</strong>. You can re-archive it to The Silo at any time to preserve active space.
+      </div>
+    </div>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${manageUrl}" class="btn" style="background-color: #0284c7; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 34px; border-radius: 8px; display: inline-block;">
+        Open Project in Workspace &rarr;
+      </a>
+    </div>
+
+    <p style="font-size: 12px; color: #71717a; margin-bottom: 8px;">
+      Direct workspace link:
+    </p>
+    <div style="background-color: #0c0a09; border: 1px solid #27272a; border-radius: 6px; padding: 10px; font-size: 12px; color: #a1a1aa; word-break: break-all;">
+      ${manageUrl}
+    </div>
+  `;
+
+  return {
+    subject,
+    html: wrapEmailTemplate({
+      title: subject,
+      previewText: `AWS S3 Glacier Thaw Complete: "${projectTitle}" has been retrieved from cold storage and is ready.`,
+      brandName,
+      contentHtml,
+    }),
+  };
+}
