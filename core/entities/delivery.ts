@@ -7,6 +7,7 @@ export interface DeliveryAppearanceSettings {
   thumbnailScale: "Fit" | "Fill";
   showCardInfo: boolean;
   watermarkMedia: boolean;
+  coverThumbnailUrl?: string | null;
 }
 
 export interface Delivery {

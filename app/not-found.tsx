@@ -1,14 +1,15 @@
 import React from "react";
 import Link from "next/link";
-import { Film, Home, ArrowLeft } from "lucide-react";
+import { Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BrandLogo } from "@/components/ui/brand-logo";
 
 export default function NotFound() {
   return (
     <div className="min-h-screen w-full bg-[#0a0a0b] flex flex-col items-center justify-center p-6 text-[#f6f3ec]">
       <div className="max-w-md w-full rounded-3xl bg-[#141416] border border-white/10 p-8 shadow-2xl space-y-6 text-center animate-in fade-in duration-200">
-        <div className="size-16 rounded-2xl bg-[#f5551d]/15 border border-[#f5551d]/30 text-[#f5551d] flex items-center justify-center mx-auto">
-          <Film className="size-8" />
+        <div className="flex justify-center pb-1">
+          <BrandLogo href="/" size="md" />
         </div>
 
         <div className="space-y-2">

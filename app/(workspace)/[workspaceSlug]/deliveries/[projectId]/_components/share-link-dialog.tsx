@@ -26,6 +26,7 @@ import {
   verifyPassphraseWithTokenAction,
   sendDeliveryEmailAction,
 } from "@/app/actions/deliveries";
+import { toast } from "sonner";
 
 interface ShareLinkDialogProps {
   isOpen: boolean;
@@ -82,7 +83,7 @@ export function ShareLinkDialog({
 
   const handleSendEmail = async () => {
     if (!clientEmail.trim()) {
-      triggerToast("Please enter a valid client email address.");
+      toast.error("Please enter a valid client email address.");
       return;
     }
     setIsSendingEmail(true);
@@ -93,10 +94,10 @@ export function ShareLinkDialog({
         setShowEmailInput(false);
         setClientEmail("");
       } else {
-        triggerToast(res.error || "Failed to send email");
+        toast.error(res.error || "Failed to send email");
       }
     } catch (err: any) {
-      triggerToast(err.message || "Failed to send email");
+      toast.error(err.message || "Failed to send email");
     } finally {
       setIsSendingEmail(false);
     }
@@ -117,7 +118,7 @@ export function ShareLinkDialog({
 
   const handleTogglePassphrase = async (enabled: boolean) => {
     if (enabled && !canPasswordProtect) {
-      triggerToast("Passcode protection is available on Pro and Studio plans. Upgrade to unlock.");
+      toast.error("Passcode protection is available on Pro and Studio plans. Upgrade to unlock.");
       return;
     }
     setSharePassphrase(enabled);
@@ -130,9 +131,9 @@ export function ShareLinkDialog({
         if (res.success) {
           setIsPasscodeSaved(false);
           setPassphraseValue("");
-          triggerToast("Passphrase removed. Link is now public.");
+          toast.info("Passphrase removed. Link is now public.");
         } else {
-          triggerToast(res.error || "Failed to disable passphrase.");
+          toast.error(res.error || "Failed to disable passphrase.");
         }
       } finally {
         setIsSavingSecurity(false);
@@ -146,11 +147,11 @@ export function ShareLinkDialog({
 
   const handleSaveSecuritySettings = async () => {
     if (sharePassphrase && !passphraseValue.trim()) {
-      triggerToast("Please enter or generate a passphrase first.");
+      toast.error("Please enter or generate a passphrase first.");
       return;
     }
     if (sharePassphrase && !canPasswordProtect) {
-      triggerToast("Passcode protection is available on Pro and Studio plans. Upgrade to unlock.");
+      toast.error("Passcode protection is available on Pro and Studio plans. Upgrade to unlock.");
       return;
     }
     setIsSavingSecurity(true);
@@ -166,7 +167,7 @@ export function ShareLinkDialog({
         setVerificationMsg("Passphrase verified and locked with delivery token!");
         triggerToast("Passphrase secured & linked with delivery token!");
       } else {
-        triggerToast(res.error || "Failed to save security settings.");
+        toast.error(res.error || "Failed to save security settings.");
       }
     } finally {
       setIsSavingSecurity(false);
@@ -175,7 +176,7 @@ export function ShareLinkDialog({
 
   const handleVerifyPassphraseWithToken = async () => {
     if (!passphraseValue.trim()) {
-      triggerToast("Enter a passphrase to test verification against token.");
+      toast.error("Enter a passphrase to test verification against token.");
       return;
     }
     setIsVerifyingSecurity(true);
@@ -188,7 +189,7 @@ export function ShareLinkDialog({
       } else {
         setVerificationStatus("invalid");
         setVerificationMsg(res.error || "Passphrase does not match token security key. Click 'Save & Lock'.");
-        triggerToast(res.error || "Verification mismatch.");
+        toast.error(res.error || "Verification mismatch.");
       }
     } finally {
       setIsVerifyingSecurity(false);
@@ -533,7 +534,7 @@ export function ShareLinkDialog({
                 disabled={!canNotifyDownloads}
                 onClick={() => {
                   if (!canNotifyDownloads) {
-                    triggerToast("Download notifications are available on Pro and Studio plans.");
+                    toast.error("Download notifications are available on Pro and Studio plans.");
                     return;
                   }
                   setNotifyDownloads(!notifyDownloads);
@@ -630,7 +631,7 @@ export function ShareLinkDialog({
               type="button"
               variant="outline"
               onClick={() =>
-                triggerToast(
+                toast.error(
                   "WhatsApp delivery is available on Basic, Pro, and Studio plans. Upgrade to unlock."
                 )
               }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Check, Video, ImageIcon, Play, Trash2, Pencil, Download, Loader2, CheckCircle2 } from "lucide-react";
 import { getDownloadFilename, triggerDirectDownload } from "@/lib/download";
 import {
@@ -28,6 +29,7 @@ interface DeliveryAssetsGalleryProps {
   isLoadingMore?: boolean;
   onLoadMore?: (filterTab: "ALL" | "VIDEOS" | "PHOTOS") => Promise<void> | void;
   onSelectItem: (item: GalleryItem) => void;
+  onToggleApproval?: (itemId: string, currentStatus: string) => void;
   onDeleteAsset?: (item: GalleryItem) => Promise<void> | void;
   onEditAsset?: (item: GalleryItem) => void;
   onOpenTrash?: () => void;
@@ -85,6 +87,7 @@ export function DeliveryAssetsGallery({
   isLoadingMore = false,
   onLoadMore,
   onSelectItem,
+  onToggleApproval,
   onDeleteAsset,
   onEditAsset,
   onOpenTrash,
@@ -223,6 +226,36 @@ export function DeliveryAssetsGallery({
               </div>
 
               <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+                {onToggleApproval && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleApproval(item.id, item.status);
+                          }}
+                          className={`size-7 rounded-lg backdrop-blur-md transition-all cursor-pointer shadow-md ${
+                            item.status === "approved"
+                              ? "bg-emerald-500/80 border-emerald-400/50 text-black hover:bg-amber-500/80 hover:border-amber-400/50 hover:text-black opacity-100"
+                              : "bg-black/60 border-white/20 text-zinc-300 hover:text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 opacity-0 group-hover:opacity-100 max-sm:opacity-100"
+                          }`}
+                        >
+                          <Check className="size-3.5 stroke-[2.5]" />
+                        </Button>
+                      }
+                    />
+                    <TooltipContent>
+                      {item.status === "approved"
+                        ? "Approved — click to unapprove"
+                        : "Approve asset"}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
                 <Tooltip>
                   <TooltipTrigger
                     render={
@@ -232,16 +265,24 @@ export function DeliveryAssetsGallery({
                         size="icon-xs"
                         onClick={(e) => {
                           e.stopPropagation();
-                          const dlUrl = item.downloadUrl || item.rawUrl;
-                          if (dlUrl) {
-                            const filename = getDownloadFilename(
-                              item.title,
-                              item.versionNumber,
-                              dlUrl,
-                              item.type
-                            );
-                            triggerDirectDownload(dlUrl, filename);
+                          const dlUrl =
+                            item.downloadUrl ||
+                            item.rawUrl ||
+                            (item.type === "photo" ? item.src : "");
+                          if (!dlUrl) {
+                            toast.error("No master file available for download.");
+                            return;
                           }
+                          const filename = getDownloadFilename(
+                            item.title,
+                            item.versionNumber,
+                            dlUrl,
+                            item.type
+                          );
+                          triggerDirectDownload(dlUrl, filename);
+                          toast.success(`Downloading ${item.title}`, {
+                            description: `Saving as ${filename}`,
+                          });
                         }}
                         className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-white hover:bg-white/20 hover:border-white/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
                       >
@@ -357,30 +398,61 @@ export function DeliveryAssetsGallery({
                     <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground w-full">
                       <span>Aspect: {item.aspectRatio}</span>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <Badge
-                          variant={item.status === "approved" ? "sage" : "orange"}
-                          className="text-[10px] px-1.5 py-0 font-medium"
-                        >
-                          {item.status === "approved" ? "✓ Approved" : "In Review"}
-                        </Badge>
+                        {onToggleApproval ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onToggleApproval(item.id, item.status);
+                            }}
+                            title={
+                              item.status === "approved"
+                                ? "Click to unapprove asset"
+                                : "Click to approve asset"
+                            }
+                            className="cursor-pointer focus:outline-none"
+                          >
+                            <Badge
+                              variant={item.status === "approved" ? "sage" : "orange"}
+                              className="text-[10px] px-1.5 py-0 font-medium hover:opacity-80 transition-opacity"
+                            >
+                              {item.status === "approved" ? "✓ Approved" : "In Review"}
+                            </Badge>
+                          </button>
+                        ) : (
+                          <Badge
+                            variant={item.status === "approved" ? "sage" : "orange"}
+                            className="text-[10px] px-1.5 py-0 font-medium"
+                          >
+                            {item.status === "approved" ? "✓ Approved" : "In Review"}
+                          </Badge>
+                        )}
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const dlUrl = item.downloadUrl || item.rawUrl;
-                            if (dlUrl) {
-                              const filename = getDownloadFilename(
-                                item.title,
-                                item.versionNumber,
-                                dlUrl,
-                                item.type
-                              );
-                              triggerDirectDownload(dlUrl, filename);
+                            const dlUrl =
+                              item.downloadUrl ||
+                              item.rawUrl ||
+                              (item.type === "photo" ? item.src : "");
+                            if (!dlUrl) {
+                              toast.error("No master file available for download.");
+                              return;
                             }
+                            const filename = getDownloadFilename(
+                              item.title,
+                              item.versionNumber,
+                              dlUrl,
+                              item.type
+                            );
+                            triggerDirectDownload(dlUrl, filename);
+                            toast.success(`Downloading ${item.title}`, {
+                              description: `Saving as ${filename}`,
+                            });
                           }}
-                          className="size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted p-0 transition-colors"
+                          className="size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted p-0 transition-colors cursor-pointer"
                           title={`Download ${item.title}`}
                         >
                           <Download className="size-3" />

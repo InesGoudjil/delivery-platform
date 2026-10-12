@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Plus } from "lucide-react";
+import { Check, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardAction } from "@/components/ui/card";
 
@@ -9,6 +9,7 @@ interface DeliveryProgressBarProps {
   totalAssetsCount: number;
   projectStatus: string;
   onApproveCut: () => void;
+  onUnapproveCut?: () => void;
   onToggleUploader: () => void;
 }
 
@@ -17,6 +18,7 @@ export function DeliveryProgressBar({
   totalAssetsCount,
   projectStatus,
   onApproveCut,
+  onUnapproveCut,
   onToggleUploader,
 }: DeliveryProgressBarProps) {
   const percentage = totalAssetsCount > 0 ? Math.round((approvedCount / totalAssetsCount) * 100) : 0;
@@ -40,8 +42,8 @@ export function DeliveryProgressBar({
       </CardContent>
 
       <CardAction className="flex items-center gap-2 shrink-0 w-full sm:w-auto self-auto">
-        {/* MARK APPROVED / APPROVE CUT Button */}
-        {projectStatus !== "approved" && (
+        {/* MARK APPROVED / UNAPPROVE CUT Button */}
+        {projectStatus !== "approved" ? (
           <Button
             onClick={onApproveCut}
             variant="outline"
@@ -50,6 +52,19 @@ export function DeliveryProgressBar({
             <Check className="size-4" />
             <span>APPROVE CUT</span>
           </Button>
+        ) : (
+          onUnapproveCut && (
+            <Button
+              onClick={onUnapproveCut}
+              variant="outline"
+              className="group rounded-full border-emerald-500/30 bg-emerald-500/10 hover:border-amber-500/40 hover:bg-amber-500/15 text-emerald-400 hover:text-amber-300 font-extrabold text-xs px-4 py-2.5 shadow-sm cursor-pointer flex items-center gap-1.5 w-full sm:w-auto justify-center transition-colors"
+              title="Click to undo approval and return cut to review"
+            >
+              <Check className="size-4 group-hover:hidden" />
+              <RotateCcw className="size-3.5 hidden group-hover:block" />
+              <span>APPROVED · UNDO</span>
+            </Button>
+          )
         )}
 
         {/* UPLOAD ASSET Button */}

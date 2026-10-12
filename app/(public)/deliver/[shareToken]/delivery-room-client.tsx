@@ -23,6 +23,7 @@ import {
   Eye,
   EyeOff,
   Image as ImageIcon,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CutReviewPlayer, type CutReviewPlayerRef } from "@/components/video/cut-review-player";
@@ -35,7 +36,9 @@ import {
   verifyDeliveryPasscodeAction,
   toggleAssetApprovalAction,
   approveAllAssetsAction,
+  unapproveAllAssetsAction,
   approveCutAction,
+  recordClientDownloadAction,
 } from "@/app/actions/deliveries";
 import { addFeedbackAction, toggleFeedbackResolvedAction } from "@/app/actions/feedback";
 import { AmbientBackground } from "@/components/ui/ambient-background";
@@ -207,7 +210,16 @@ export function DeliveryRoomClient({
 
   // Delivery data state
   const [deliveryStatus, setDeliveryStatus] = useState(delivery.status);
-  const [assets, setAssets] = useState<DeliveryAssetItem[]>(initialAssets);
+  const [assets, setAssets] = useState<DeliveryAssetItem[]>(() => {
+    if (
+      delivery.status === "approved" &&
+      initialAssets.length > 0 &&
+      initialAssets.every((a) => !a.isApproved)
+    ) {
+      return initialAssets.map((a) => ({ ...a, isApproved: true }));
+    }
+    return initialAssets;
+  });
   const [activeAssetId, setActiveAssetId] = useState<string | null>(null);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [assetTab, setAssetTab] = useState<"all" | "video" | "photo">("all");
@@ -248,8 +260,9 @@ export function DeliveryRoomClient({
 
   // Check if all assets are approved
   const allApproved =
-    deliveryStatus === "approved" ||
-    (assets.length > 0 && assets.every((a) => a.isApproved));
+    assets.length > 0
+      ? assets.every((a) => a.isApproved)
+      : deliveryStatus === "approved";
 
   const approvedCount = assets.filter((a) => a.isApproved).length;
 
@@ -320,12 +333,15 @@ export function DeliveryRoomClient({
     firstAsset?.type === "image" ||
     firstAsset?.type === "photo" ||
     firstAsset?.type === "still";
+  const customDeliveryCover = (delivery.appearance as any)?.coverThumbnailUrl;
   const heroCoverUrl =
+    (customDeliveryCover ? resolveMediaUrl(customDeliveryCover) : "") ||
     resolveThumbnailUrl(
       firstVersion?.thumbnailUrl,
       firstVersion?.rawFileUrl,
       isFirstPhoto
-    ) || "/images/projects/mercedes-amg-gt/1.webp";
+    ) ||
+    "/images/projects/mercedes-amg-gt/1.webp";
 
   const filteredAssets = assets.filter((a) => {
     if (assetTab === "all") return true;
@@ -389,11 +405,16 @@ export function DeliveryRoomClient({
     const asset = assets.find((a) => a.id === assetId);
     if (!asset) return;
     const nextApproved = !asset.isApproved;
+    const prevStatus = deliveryStatus;
+    const nextAllApproved =
+      assets.length > 0 &&
+      assets.every((a) => (a.id === assetId ? nextApproved : a.isApproved));
 
     // Optimistic UI
     setAssets((prev) =>
       prev.map((a) => (a.id === assetId ? { ...a, isApproved: nextApproved } : a))
     );
+    setDeliveryStatus(nextAllApproved ? "approved" : "in_review");
 
     setApprovingAssetId(assetId);
     try {
@@ -412,6 +433,7 @@ export function DeliveryRoomClient({
         setAssets((prev) =>
           prev.map((a) => (a.id === assetId ? { ...a, isApproved: asset.isApproved } : a))
         );
+        setDeliveryStatus(prevStatus);
         toast.error(res.error || "Failed to update asset approval.");
       }
     } finally {
@@ -419,8 +441,10 @@ export function DeliveryRoomClient({
     }
   };
 
-  // 3. Bulk Approval
+  // 3. Bulk Approval & Unapproval
   const handleApproveAll = async () => {
+    const prevAssets = assets;
+    const prevStatus = deliveryStatus;
     setAssets((prev) => prev.map((a) => ({ ...a, isApproved: true })));
     setDeliveryStatus("approved");
 
@@ -430,7 +454,30 @@ export function DeliveryRoomClient({
       if (res.success) {
         toast.success("All delivery cuts approved & locked!");
       } else {
+        setAssets(prevAssets);
+        setDeliveryStatus(prevStatus);
         toast.error(res.error || "Failed to approve all cuts.");
+      }
+    } finally {
+      setIsApprovingAll(false);
+    }
+  };
+
+  const handleUnapproveAll = async () => {
+    const prevAssets = assets;
+    const prevStatus = deliveryStatus;
+    setAssets((prev) => prev.map((a) => ({ ...a, isApproved: false })));
+    setDeliveryStatus("in_review");
+
+    setIsApprovingAll(true);
+    try {
+      const res = await unapproveAllAssetsAction(delivery.id);
+      if (res.success) {
+        toast.info("Project approval undone — cuts returned to review");
+      } else {
+        setAssets(prevAssets);
+        setDeliveryStatus(prevStatus);
+        toast.error(res.error || "Failed to undo approval.");
       }
     } finally {
       setIsApprovingAll(false);
@@ -546,7 +593,65 @@ export function DeliveryRoomClient({
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
-  // 7. Master Files Download
+  // 7. Master Files Download & Creator Notification
+  const hasNotifiedDownloadRef = useRef(false);
+  const isGlobalDownloadUnlocked = Boolean(
+    delivery.isDownloadAllowed || deliveryStatus === "approved" || allApproved
+  );
+
+  const notifyCreatorOfDownload = (info: {
+    assetTitle?: string;
+    downloadedCount?: number;
+  }) => {
+    if (hasNotifiedDownloadRef.current) return;
+    hasNotifiedDownloadRef.current = true;
+    void recordClientDownloadAction({
+      deliveryId: delivery.id,
+      assetTitle: info.assetTitle,
+      downloadedCount: info.downloadedCount,
+    });
+  };
+
+  const handleSingleAssetDownload = (
+    asset: DeliveryAssetItem,
+    versionOverride?: AssetVersionItem | null
+  ) => {
+    const canDownloadThisAsset = isGlobalDownloadUnlocked || Boolean(asset.isApproved);
+    if (!canDownloadThisAsset) {
+      toast.error("Downloads are locked until this cut is approved.");
+      return;
+    }
+
+    const targetVer = versionOverride || asset.activeVersion || asset.versions[0];
+    const isPhoto =
+      asset.type === "photo" ||
+      asset.type === "photo_gallery" ||
+      asset.type === "still" ||
+      asset.type === "image";
+    const dlUrl = resolveMediaUrl(
+      targetVer?.downloadUrl ||
+        targetVer?.rawFileUrl ||
+        (isPhoto ? targetVer?.thumbnailUrl : "")
+    );
+
+    if (!dlUrl) {
+      toast.error("No master file available for download.");
+      return;
+    }
+
+    const filename = getDownloadFilename(
+      asset.title,
+      targetVer?.versionNumber || 1,
+      dlUrl,
+      asset.type
+    );
+    triggerDirectDownload(dlUrl, filename);
+    toast.success(`Downloading ${asset.title}`, {
+      description: `Saving as ${filename}`,
+    });
+    notifyCreatorOfDownload({ assetTitle: asset.title, downloadedCount: 1 });
+  };
+
   const handleDownloadAll = () => {
     setShowDownloadModal(true);
   };
@@ -742,11 +847,20 @@ export function DeliveryRoomClient({
               <div className="mt-6">
                 <Button
                   onClick={handleDownloadAll}
-                  disabled={!delivery.isDownloadAllowed}
-                  className="rounded-full bg-gradient-to-r from-[#d9481d] to-[#802010] hover:from-[#f5551d] hover:to-[#992e10] text-white font-bold text-xs tracking-wider uppercase px-6 py-3 shadow-lg shadow-[#d9481d]/30 border border-[#f5551d]/40 transition-all duration-200 hover:scale-[1.02] cursor-pointer h-auto gap-2 disabled:opacity-50"
+                  className="rounded-full bg-gradient-to-r from-[#d9481d] to-[#802010] hover:from-[#f5551d] hover:to-[#992e10] text-white font-bold text-xs tracking-wider uppercase px-6 py-3 shadow-lg shadow-[#d9481d]/30 border border-[#f5551d]/40 transition-all duration-200 hover:scale-[1.02] cursor-pointer h-auto gap-2"
                 >
-                  <Download className="size-4" />
-                  <span>DOWNLOAD ALL</span>
+                  {isGlobalDownloadUnlocked || approvedCount > 0 ? (
+                    <Download className="size-4" />
+                  ) : (
+                    <Lock className="size-4" />
+                  )}
+                  <span>
+                    {isGlobalDownloadUnlocked
+                      ? "DOWNLOAD ALL"
+                      : approvedCount > 0
+                      ? `DOWNLOAD APPROVED (${approvedCount})`
+                      : "DOWNLOADS LOCKED"}
+                  </span>
                 </Button>
               </div>
             </div>
@@ -787,11 +901,18 @@ export function DeliveryRoomClient({
               {allApproved ? (
                 <Button
                   variant="outline"
-                  onClick={handleApproveAll}
+                  onClick={handleUnapproveAll}
                   disabled={isApprovingAll}
-                  className="rounded-full bg-[#86b98f]/20 hover:bg-[#86b98f]/30 text-[#86b98f] border-[#86b98f]/40 font-bold text-xs tracking-wider uppercase px-5 py-2.5 transition-colors cursor-pointer h-auto gap-2"
+                  className="group rounded-full bg-[#86b98f]/20 hover:bg-amber-500/20 text-[#86b98f] hover:text-amber-300 border-[#86b98f]/40 hover:border-amber-500/40 font-bold text-xs tracking-wider uppercase px-5 py-2.5 transition-colors cursor-pointer h-auto gap-2"
                 >
-                  <Check className="size-4" />
+                  {isApprovingAll ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Check className="size-4 group-hover:hidden" />
+                      <RotateCcw className="size-3.5 hidden group-hover:block" />
+                    </>
+                  )}
                   <span>PROJECT APPROVED · UNDO</span>
                 </Button>
               ) : (
@@ -958,12 +1079,47 @@ export function DeliveryRoomClient({
                             )}
                           </div>
 
-                          {/* Top-Right: Approved Badge */}
-                          {asset.isApproved && (
-                            <div className="absolute top-3 right-3 size-6 rounded-full bg-[#86b98f] flex items-center justify-center text-black shadow-md font-bold z-10">
-                              <Check className="size-3.5 stroke-[3]" />
-                            </div>
-                          )}
+                          {/* Top-Right: Interactive Approve / Unapprove + Quick Download */}
+                          <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+                            {(isGlobalDownloadUnlocked || asset.isApproved) && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSingleAssetDownload(asset);
+                                }}
+                                title={`Download ${asset.title}`}
+                                className="size-7 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white/90 hover:text-white hover:bg-white/20 hover:border-white/40 flex items-center justify-center shadow-md transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100"
+                              >
+                                <Download className="size-3.5" />
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              disabled={approvingAssetId === asset.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleAssetApproval(asset.id);
+                              }}
+                              title={
+                                asset.isApproved
+                                  ? "Approved — click to unapprove"
+                                  : "Click to approve cut"
+                              }
+                              className={`size-7 rounded-full flex items-center justify-center shadow-md font-bold transition-all cursor-pointer ${
+                                asset.isApproved
+                                  ? "bg-[#86b98f] hover:bg-amber-400 text-black opacity-100"
+                                  : "bg-black/60 backdrop-blur-md border border-white/20 text-white/80 hover:text-black hover:bg-[#86b98f] hover:border-[#86b98f] opacity-0 group-hover:opacity-100 max-sm:opacity-100"
+                              }`}
+                            >
+                              {approvingAssetId === asset.id ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                              ) : (
+                                <Check className="size-3.5 stroke-[3]" />
+                              )}
+                            </button>
+                          </div>
 
                           {/* Bottom-Right: Duration timecode (videos only) */}
                           {!isPhoto && durationLabel && (
@@ -1016,38 +1172,46 @@ export function DeliveryRoomClient({
                                 {asset.title}
                               </span>
                               <div className="flex items-center gap-1.5 shrink-0">
-                                <Badge
-                                  variant="outline"
-                                  className={`text-[10px] shrink-0 font-medium ${
+                                <button
+                                  type="button"
+                                  disabled={approvingAssetId === asset.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleAssetApproval(asset.id);
+                                  }}
+                                  title={
                                     asset.isApproved
-                                      ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
-                                      : "border-amber-500/30 text-amber-400 bg-amber-500/10"
-                                  }`}
+                                      ? "Click to unapprove"
+                                      : "Click to approve"
+                                  }
+                                  className="cursor-pointer focus:outline-none"
                                 >
-                                  {asset.isApproved ? "Approved" : "In Review"}
-                                </Badge>
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[10px] shrink-0 font-medium transition-colors ${
+                                      asset.isApproved
+                                        ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10 hover:bg-amber-500/15 hover:text-amber-300 hover:border-amber-500/30"
+                                        : "border-amber-500/30 text-amber-400 bg-amber-500/10 hover:bg-emerald-500/15 hover:text-emerald-300 hover:border-emerald-500/30"
+                                    }`}
+                                  >
+                                    {asset.isApproved ? "✓ Approved" : "In Review"}
+                                  </Badge>
+                                </button>
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="icon"
-                                  disabled={!delivery.isDownloadAllowed}
+                                  disabled={!isGlobalDownloadUnlocked && !asset.isApproved}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    const activeVer = asset.activeVersion || asset.versions[0];
-                                    const dlUrl = activeVer?.downloadUrl || activeVer?.rawFileUrl;
-                                    if (dlUrl) {
-                                      const filename = getDownloadFilename(
-                                        asset.title,
-                                        activeVer?.versionNumber,
-                                        dlUrl,
-                                        asset.type
-                                      );
-                                      triggerDirectDownload(dlUrl, filename);
-                                      toast.success(`Started download for ${asset.title}`);
-                                    }
+                                    handleSingleAssetDownload(asset);
                                   }}
                                   className="size-6 rounded-md text-[#aeaeb4] hover:text-white hover:bg-white/10 transition-colors p-0 cursor-pointer disabled:opacity-30"
-                                  title={delivery.isDownloadAllowed ? `Download ${asset.title}` : "Downloads locked"}
+                                  title={
+                                    isGlobalDownloadUnlocked || asset.isApproved
+                                      ? `Download ${asset.title}`
+                                      : "Approve cut to unlock download"
+                                  }
                                 >
                                   <Download className="size-3" />
                                 </Button>
@@ -1066,9 +1230,12 @@ export function DeliveryRoomClient({
           {/* 5. Studio Branding Footer */}
           <footer className="border-t border-white/10 mt-16 sm:mt-24 py-8 flex items-center justify-between text-xs text-[#aeaeb4] font-mono">
             <div className="flex items-center gap-2">
-              <span className="font-heading font-black text-base tracking-tight text-white">
-                <span className="text-[#f5551d]">Cine</span>Space
-              </span>
+              <img
+                src="/images/logo.svg"
+                alt="CineSpace"
+                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                className="h-5 sm:h-6 w-auto block object-contain cursor-pointer transition-opacity hover:opacity-90 select-none"
+              />
             </div>
             <div className="text-white/40 hover:text-white/70 transition-colors">
               cinespace.pro
@@ -1100,28 +1267,43 @@ export function DeliveryRoomClient({
                     render={
                       <Button
                         type="button"
+                        variant={activeAsset.isApproved ? "outline" : "default"}
+                        size="sm"
+                        disabled={approvingAssetId === activeAsset.id}
+                        onClick={() => handleToggleAssetApproval(activeAsset.id)}
+                        className={`rounded-full text-xs font-bold px-3.5 py-1.5 cursor-pointer flex items-center gap-1.5 transition-all ${
+                          activeAsset.isApproved
+                            ? "border-[#86b98f]/40 bg-[#86b98f]/20 hover:bg-amber-500/20 text-[#86b98f] hover:text-amber-300 hover:border-amber-500/40"
+                            : "bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/30 shadow-md shadow-emerald-950/50"
+                        }`}
+                      >
+                        {approvingAssetId === activeAsset.id ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <Check className="size-3.5 stroke-[2.5]" />
+                        )}
+                        <span>
+                          {activeAsset.isApproved ? "Approved · Undo" : "Approve Cut"}
+                        </span>
+                      </Button>
+                    }
+                  />
+                  <TooltipContent>
+                    {activeAsset.isApproved
+                      ? "Click to remove approval for this asset"
+                      : "Approve this asset"}
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        type="button"
                         variant="outline"
                         size="sm"
-                        disabled={!delivery.isDownloadAllowed}
-                        onClick={() => {
-                          if (!delivery.isDownloadAllowed) {
-                            toast.error("Downloads are currently locked by the creator pending sign-off.");
-                            return;
-                          }
-                          const dlUrl = activeVersion?.downloadUrl || activeVersion?.rawFileUrl;
-                          if (!dlUrl) {
-                            toast.error("No download file attached for this version.");
-                            return;
-                          }
-                          const filename = getDownloadFilename(
-                            activeAsset.title,
-                            activeVersion?.versionNumber,
-                            dlUrl,
-                            activeAsset.type
-                          );
-                          triggerDirectDownload(dlUrl, filename);
-                          toast.success(`Downloading ${activeAsset.title} (V${activeVersion?.versionNumber || 1})`);
-                        }}
+                        disabled={!isGlobalDownloadUnlocked && !activeAsset.isApproved}
+                        onClick={() => handleSingleAssetDownload(activeAsset, activeVersion)}
                         className="rounded-full border-white/20 text-white bg-white/10 hover:bg-white/20 text-xs font-bold px-3 py-1.5 cursor-pointer flex items-center gap-1.5 disabled:opacity-40"
                       >
                         <Download className="size-3.5 text-[#f5551d]" />
@@ -1130,8 +1312,8 @@ export function DeliveryRoomClient({
                     }
                   />
                   <TooltipContent>
-                    {!delivery.isDownloadAllowed
-                      ? "Downloads locked by creator"
+                    {!isGlobalDownloadUnlocked && !activeAsset.isApproved
+                      ? "Approve cut to unlock download"
                       : `Download ${activeAsset.title} V${activeVersion?.versionNumber || 1}`}
                   </TooltipContent>
                 </Tooltip>
@@ -1431,14 +1613,19 @@ export function DeliveryRoomClient({
         isOpen={showDownloadModal}
         onOpenChange={setShowDownloadModal}
         projectTitle={delivery.title}
-        isDownloadAllowed={delivery.isDownloadAllowed}
+        isDownloadAllowed={isGlobalDownloadUnlocked}
         brandName={workspace?.brandName}
+        deliveryId={delivery.id}
+        shareToken={delivery.shareToken}
+        totalAssetsCount={displayAssetCount}
+        onClientDownload={notifyCreatorOfDownload}
         items={assets.map((a) => {
           const activeVer = a.activeVersion || a.versions[0];
           const isPhoto =
             a.type === "photo" ||
             a.type === "photo_gallery" ||
-            a.type === "still";
+            a.type === "still" ||
+            a.type === "image";
           let durationStr: string | null = null;
           if (!isPhoto && activeVer?.durationSeconds) {
             const mins = Math.floor(activeVer.durationSeconds / 60);
@@ -1447,6 +1634,11 @@ export function DeliveryRoomClient({
               .toString()
               .padStart(2, "0")}`;
           }
+          const thumbUrl = resolveThumbnailUrl(
+            activeVer?.thumbnailUrl,
+            activeVer?.rawFileUrl,
+            isPhoto
+          );
           return {
             id: a.id,
             title: a.title,
@@ -1455,14 +1647,11 @@ export function DeliveryRoomClient({
             fileSizeBytes: activeVer?.fileSizeBytes,
             duration: durationStr,
             aspectRatio: a.aspectRatio,
-            thumbnailUrl: resolveThumbnailUrl(
-              activeVer?.thumbnailUrl,
-              activeVer?.rawFileUrl,
-              isPhoto
-            ),
-            downloadUrl: resolveMediaUrl(
-              activeVer?.downloadUrl || activeVer?.rawFileUrl
-            ),
+            thumbnailUrl: thumbUrl,
+            downloadUrl:
+              resolveMediaUrl(
+                activeVer?.downloadUrl || activeVer?.rawFileUrl
+              ) || (isPhoto ? thumbUrl : ""),
             isApproved: a.isApproved,
           };
         })}

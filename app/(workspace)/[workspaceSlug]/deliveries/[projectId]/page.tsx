@@ -106,6 +106,7 @@ export default async function DeliveryDetailPage({
         id: v.id,
         versionNumber: v.versionNumber,
         rawFileUrl: v.rawFileUrl,
+        downloadUrl: v.rawFileUrl,
         hlsManifestUrl: v.hlsManifestUrl,
         thumbnailUrl:
           v.thumbnailUrl ||

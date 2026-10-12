@@ -15,6 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { publishDeliveryToPortfolioAction } from "@/app/actions/deliveries";
+import { toast } from "sonner";
 
 interface PublishPortfolioDialogProps {
   isOpen: boolean;
@@ -48,7 +49,7 @@ export function PublishPortfolioDialog({
 
   const handlePublish = async () => {
     if (!portfolio?.id) {
-      triggerToast("No portfolio found for this workspace");
+      toast.error("No portfolio found for this workspace");
       return;
     }
     setIsPublishing(true);
@@ -63,7 +64,7 @@ export function PublishPortfolioDialog({
         onOpenChange(false);
         triggerToast("✨ Published cut to your public Portfolio!");
       } else {
-        triggerToast(res.error || "Failed to publish to portfolio");
+        toast.error(res.error || "Failed to publish to portfolio");
       }
     } finally {
       setIsPublishing(false);

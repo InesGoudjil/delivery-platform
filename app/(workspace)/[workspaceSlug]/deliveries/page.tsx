@@ -80,6 +80,7 @@ export default async function DeliveriesPage({
         shareToken: delivery.shareToken,
         passcodeProtected: Boolean(delivery.passcodeHash),
         downloadsAllowed: Boolean(delivery.isDownloadAllowed),
+        assetsCount: assets.length,
         commentsCount,
         lastActivity,
       };

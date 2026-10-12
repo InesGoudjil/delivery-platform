@@ -27,7 +27,8 @@ export function getDownloadFilename(
     const cleanUrl = rawUrl.split("?")[0];
     const matchExt = cleanUrl.match(/\.([a-zA-Z0-9]+)$/);
     if (matchExt) {
-      ext = matchExt[1].toLowerCase();
+      const rawExt = matchExt[1].toLowerCase();
+      ext = rawExt === "m3u8" || rawExt === "mpd" ? "mp4" : rawExt;
     } else if (type === "photo" || type === "photo_gallery" || type === "still") {
       ext = "jpg";
     }
@@ -41,45 +42,105 @@ export function getDownloadFilename(
 }
 
 /**
+ * Normalizes any media URL (presigned R2 URL, public R2 CDN URL, canonical key,
+ * Cloudflare Stream URL, or /api/media route) into a guaranteed attachment download URL
+ * without ever corrupting existing AWS S3 signatures.
+ */
+export function buildAttachmentDownloadUrl(url: string, filename?: string): string {
+  if (!url || typeof url !== "string") return "";
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+
+  const safeFilename = (filename || "Deliverable.mp4")
+    .replace(/[/\\?%*:|"<>]/g, "_")
+    .trim();
+
+  // 1. Local static assets, blob URLs, or data URLs
+  if (
+    trimmed.startsWith("blob:") ||
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("/images/") ||
+    trimmed.startsWith("/videos/")
+  ) {
+    return trimmed;
+  }
+
+  // 2. Bare canonical R2 keys (e.g. private/workspaces/... or public/workspaces/...)
+  if (
+    trimmed.startsWith("private/") ||
+    trimmed.startsWith("public/") ||
+    trimmed.startsWith("workspaces/")
+  ) {
+    const cleanKey = trimmed.split("?")[0];
+    return `/api/media/${cleanKey}?download=true&filename=${encodeURIComponent(safeFilename)}`;
+  }
+
+  // 3. Internal /api/media/ or /api/mock-upload/ proxy routes
+  if (trimmed.startsWith("/api/media/") || trimmed.startsWith("/api/mock-upload/")) {
+    const base = trimmed.split("?")[0];
+    return `${base}?download=true&filename=${encodeURIComponent(safeFilename)}`;
+  }
+
+  // 4. Already-presigned S3 / Cloudflare R2 URL
+  if (trimmed.includes("X-Amz-Signature=") || trimmed.includes("X-Amz-Algorithm=")) {
+    // If already signed with ResponseContentDisposition: attachment, return untouched!
+    if (trimmed.toLowerCase().includes("response-content-disposition=")) {
+      return trimmed;
+    }
+    // Otherwise extract the canonical key and route via /api/media so it gets signed with attachment disposition
+    const keyMatch = trimmed.match(/((?:private|public)\/workspaces\/[^\s?#]+)/);
+    if (keyMatch) {
+      return `/api/media/${keyMatch[1]}?download=true&filename=${encodeURIComponent(safeFilename)}`;
+    }
+    return trimmed;
+  }
+
+  // 5. Public R2 CDN URL containing a workspace object key (no Content-Disposition header on raw CDN)
+  if (trimmed.includes("/private/workspaces/") || trimmed.includes("/public/workspaces/")) {
+    const keyMatch = trimmed.match(/((?:private|public)\/workspaces\/[^\s?#]+)/);
+    if (keyMatch) {
+      return `/api/media/${keyMatch[1]}?download=true&filename=${encodeURIComponent(safeFilename)}`;
+    }
+  }
+
+  // 6. Cloudflare Stream URLs (videodelivery.net / cloudflarestream.com)
+  // Route through /api/media/{uid}?download=true so the server guarantees MP4 downloads are enabled on Cloudflare Stream
+  if (trimmed.includes("videodelivery.net/") || trimmed.includes("cloudflarestream.com/")) {
+    try {
+      const parsed = new URL(trimmed);
+      const uidMatch = parsed.pathname.match(/\/([a-f0-9]{32})(?:\/|$)/i);
+      if (uidMatch) {
+        return `/api/media/${uidMatch[1]}?download=true&filename=${encodeURIComponent(safeFilename)}`;
+      }
+    } catch {
+      // ignore URL parse error
+    }
+  }
+
+  return trimmed;
+}
+
+/**
  * Triggers a direct native browser download without buffering the file in JavaScript memory
  * and WITHOUT opening any new tab ("onglet").
- * 
- * Uses an invisible iframe so that:
- * 1. Zero new tabs or blank pages are spawned.
- * 2. Download managers (like Free Download Manager / FDM or IDM) immediately capture the stream.
- * 3. Browser native download manager starts saving directly to disk (~/Downloads).
+ *
+ * Ensures the target URL carries a `Content-Disposition: attachment` header (via R2 presigning
+ * or `/api/media/...?download=true`) or uses same-origin `<a download>` for static assets.
  */
 export function triggerDirectDownload(url: string, filename?: string): void {
   if (!url || typeof window === "undefined") return;
 
-  try {
-    const iframe = document.createElement("iframe");
-    iframe.style.position = "fixed";
-    iframe.style.top = "-9999px";
-    iframe.style.left = "-9999px";
-    iframe.style.width = "1px";
-    iframe.style.height = "1px";
-    iframe.style.opacity = "0";
-    iframe.style.border = "none";
-    iframe.src = url;
-    document.body.appendChild(iframe);
+  const safeFilename = (filename || "Deliverable")
+    .replace(/[/\\?%*:|"<>]/g, "_")
+    .trim();
+  const targetUrl = buildAttachmentDownloadUrl(url, safeFilename);
+  if (!targetUrl) return;
 
-    setTimeout(() => {
-      if (document.body.contains(iframe)) {
-        document.body.removeChild(iframe);
-      }
-    }, 45000);
-    return;
-  } catch (err) {
-    console.warn("[Download] Iframe dispatch failed, using fallback anchor:", err);
-  }
-
-  // Fallback: direct anchor without target="_blank"
   const link = document.createElement("a");
-  link.href = url;
-  if (filename) {
-    link.setAttribute("download", filename);
-  }
+  link.href = targetUrl;
+  link.setAttribute("download", safeFilename);
+  link.rel = "noopener";
+  link.style.display = "none";
   document.body.appendChild(link);
   link.click();
 
@@ -87,7 +148,7 @@ export function triggerDirectDownload(url: string, filename?: string): void {
     if (document.body.contains(link)) {
       document.body.removeChild(link);
     }
-  }, 1000);
+  }, 2000);
 }
 
 export interface SequentialDownloadItem {

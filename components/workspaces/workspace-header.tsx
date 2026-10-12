@@ -38,6 +38,7 @@ import {
 import { signOutAction } from "@/app/actions/auth";
 
 import { WorkspaceHeaderSwitcher, WorkspaceHeaderItem } from "./workspace-header-switcher";
+import { BrandLogo } from "@/components/ui/brand-logo";
 
 export interface WorkspaceHeaderProps {
   workspace: {
@@ -118,12 +119,7 @@ export function WorkspaceHeader({
       <div className="flex items-center gap-3.5">
         <SidebarTrigger className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer" />
 
-        <Link href={`/${workspaceSlug}`} className="flex items-center gap-2.5">
-          <div className="text-lg font-bold tracking-tight">
-            <span className="text-primary">Cine</span>
-            <span className="text-foreground">Space</span>
-          </div>
-        </Link>
+        <BrandLogo href={`/${workspaceSlug}`} size="sm" />
 
         <span className="text-muted-foreground/30 font-mono text-sm hidden sm:inline">/</span>
 

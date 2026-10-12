@@ -142,7 +142,9 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
     <TooltipProvider delay={150}>
       <section id="features" className="py-16 space-y-24">
         {/* 1. 6-Card Feature Grid Section with TiltCard */}
-        <ScrollReveal className="space-y-12 text-center">
+        <ScrollReveal
+          className="space-y-12 text-center"
+        >
           <TypographyKicker color="orange">
             Everything you send clients
           </TypographyKicker>
@@ -152,7 +154,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
               const Icon = item.icon;
               return (
                 <StaggerItem key={index}>
-                  <TiltCard tiltIntensity={6} glareIntensity={0.18} className="h-full">
+                  <TiltCard tiltIntensity={6} glareIntensity={0.18} className="h-full rounded-2xl">
                     <Card className="group relative rounded-2xl border border-white/10 bg-[#121217]/90 p-8 shadow-xl transition-all duration-300 hover:border-white/25 hover:bg-[#16161c] h-full flex flex-col justify-between">
                       <div>
                         <div className="mb-6 flex size-12 items-center justify-center rounded-xl bg-[#2a1b18] text-[#f5551d] border border-[#f5551d]/20 transition-transform group-hover:scale-110">

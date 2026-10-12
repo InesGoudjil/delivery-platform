@@ -16,6 +16,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { createDeliveryAction } from "@/app/actions/deliveries";
+import { toast } from "sonner";
 
 interface DeliveriesHeaderProps {
   workspace: {
@@ -50,21 +51,25 @@ export function DeliveriesHeader({
     setCreating(true);
     setErrorMessage(null);
 
+    const trimmedTitle = newTitle.trim();
     const res = await createDeliveryAction(
       workspace.id,
-      newTitle.trim(),
+      trimmedTitle,
       undefined,
       newClient.trim() || undefined
     );
 
     if (res?.success && (res.delivery || res.project)) {
       const createdId = res.delivery?.id || res.project?.id;
+      toast.success(`Delivery room "${trimmedTitle}" created!`);
       setShowCreateModal(false);
       setNewTitle("");
       setNewClient("");
       router.push(`/${workspace.slug}/deliveries/${createdId}`);
     } else {
-      setErrorMessage(res?.error || "Failed to create project delivery room.");
+      const errMsg = res?.error || "Failed to create project delivery room.";
+      setErrorMessage(errMsg);
+      toast.error(errMsg);
     }
     setCreating(false);
   };

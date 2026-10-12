@@ -15,6 +15,7 @@ import {
   requestAssetUploadAction,
   confirmUploadCompletedAction,
 } from "@/app/actions/upload";
+import { createUploadProgressToast } from "@/lib/upload-toast";
 import {
   Attachment,
   AttachmentContent,
@@ -173,6 +174,7 @@ export function VideoUploader({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
+  const uploadToastRef = useRef<ReturnType<typeof createUploadProgressToast> | null>(null);
 
   const handleFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -222,17 +224,28 @@ export function VideoUploader({
   const startDirectUpload = async () => {
     if (!selectedFile || uploading) return;
 
+    const displayTitle = title.trim() || selectedFile.name;
     setUploading(true);
     setErrorMessage(null);
     setProgress(0);
     setStatusText("Requesting Cloudflare direct upload token...");
+
+    const uploadToast = createUploadProgressToast();
+    uploadToastRef.current = uploadToast;
+    uploadToast.start({
+      title: `Uploading "${displayTitle}"`,
+      fileName: selectedFile.name,
+      fileSize: formatBytes(selectedFile.size),
+      percentage: 0,
+      statusText: "Requesting direct upload token...",
+    });
 
     try {
       const result = await directUploadMediaFile({
         workspaceId,
         projectId,
         file: selectedFile,
-        title: title || selectedFile.name,
+        title: displayTitle,
         assetType,
         assetId: selectedAssetId || undefined,
         onProgress: (percent, loaded, total) => {
@@ -240,8 +253,18 @@ export function VideoUploader({
           setStatusText(
             `Uploading: ${percent}% (${formatBytes(loaded)} / ${formatBytes(total)})`
           );
+          uploadToast.update({
+            title: `Uploading "${displayTitle}"`,
+            fileName: selectedFile.name,
+            percentage: percent,
+            loadedBytes: loaded,
+            totalBytes: total,
+            statusText: percent < 100 ? "Uploading directly to edge..." : "Finalizing asset...",
+          });
         },
-        onStatusChange: (status) => setStatusText(status),
+        onStatusChange: (status) => {
+          setStatusText(status);
+        },
         onXhrCreated: (xhr) => {
           xhrRef.current = xhr;
         },
@@ -250,21 +273,32 @@ export function VideoUploader({
       setProgress(100);
       setStatusText("Upload complete & ready!");
       setCompletedAsset(result.asset);
+      uploadToast.success(`"${displayTitle}" uploaded successfully!`);
 
       if (onUploadComplete) {
         onUploadComplete(result.asset, result.assetVersion);
       }
     } catch (err: any) {
-      setErrorMessage(err.message || "An error occurred during upload.");
+      const msg = err.message || "An error occurred during upload.";
+      setErrorMessage(msg);
+      if (msg.toLowerCase().includes("cancel")) {
+        uploadToast.info("Upload cancelled");
+      } else {
+        uploadToast.error(`Upload failed: ${displayTitle}`, msg);
+      }
     } finally {
       setUploading(false);
       xhrRef.current = null;
+      uploadToastRef.current = null;
     }
   };
 
   const cancelUpload = () => {
     if (xhrRef.current) {
       xhrRef.current.abort();
+    } else if (uploadToastRef.current) {
+      uploadToastRef.current.info("Upload cancelled");
+      uploadToastRef.current = null;
     }
     setUploading(false);
     setProgress(0);

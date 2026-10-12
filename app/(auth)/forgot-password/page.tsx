@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { Film } from "lucide-react";
 import type { Metadata } from "next";
 
 import { ForgotPasswordForm } from "@/components/forgot-password/forgot-password-form";
+import { BrandLogo } from "@/components/ui/brand-logo";
 
 export const metadata: Metadata = {
   title: "Reset Password | CineSpace",
@@ -14,17 +13,7 @@ export default function ForgotPasswordPage() {
     <div className="grid min-h-svh lg:grid-cols-2">
       <div className="flex flex-col gap-4 p-6 md:p-10">
         <div className="flex justify-center gap-2 md:justify-start">
-          <Link
-            href="/"
-            className="flex items-center gap-2.5 font-medium transition-opacity hover:opacity-90"
-          >
-            <div className="flex size-7 items-center justify-center rounded-lg bg-[#f5551d] text-[#160a03] font-bold">
-              <Film className="size-4 text-black" />
-            </div>
-            <span className="text-lg font-bold tracking-tight text-foreground">
-              CineSpace
-            </span>
-          </Link>
+          <BrandLogo href="/" size="md" />
         </div>
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-sm">

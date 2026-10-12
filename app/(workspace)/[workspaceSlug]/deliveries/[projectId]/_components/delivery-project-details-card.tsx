@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { toast } from "sonner";
 
 interface DeliveryProjectDetailsCardProps {
   projectId: string;
@@ -48,7 +49,7 @@ export function DeliveryProjectDetailsCard({
         onSaved(title, clientName, description);
         triggerToast("Delivery details updated successfully");
       } else {
-        triggerToast(res.error || "Failed to update delivery details");
+        toast.error(res.error || "Failed to update delivery details");
       }
     } finally {
       setIsSaving(false);

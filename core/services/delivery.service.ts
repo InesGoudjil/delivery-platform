@@ -214,6 +214,15 @@ export class DeliveryService {
     approvedByName?: string,
     options?: { origin?: string; notifyEmails?: string[] }
   ): Promise<Delivery> {
+    const allAssets = await this.assetRepo.listByDeliveryId(id);
+    if (allAssets.length > 0) {
+      await Promise.all(
+        allAssets
+          .filter((a) => !a.isApproved)
+          .map((a) => this.assetRepo.toggleApproval(a.id, true))
+      );
+    }
+
     const delivery = await this.deliveryRepo.updateStatus(id, "approved", approvedByName || "Client Guest");
 
     if (this.notificationService && options?.notifyEmails && options.notifyEmails.length > 0) {
@@ -246,19 +255,40 @@ export class DeliveryService {
   }
 
   async toggleAssetApproval(deliveryId: string, assetId: string, isApproved: boolean): Promise<Asset> {
+    const currentDelivery = await this.deliveryRepo.findById(deliveryId);
+    const allAssets = await this.assetRepo.listByDeliveryId(deliveryId);
+
+    // If delivery was previously marked approved at the project level without asset flags,
+    // and one asset is being unapproved, persist approval on the remaining assets first.
+    if (
+      !isApproved &&
+      currentDelivery?.status === "approved" &&
+      allAssets.length > 0 &&
+      allAssets.every((a) => !a.isApproved)
+    ) {
+      await Promise.all(
+        allAssets
+          .filter((a) => a.id !== assetId)
+          .map((a) => this.assetRepo.toggleApproval(a.id, true))
+      );
+    }
+
     const updatedAsset = await this.assetRepo.toggleApproval(assetId, isApproved);
 
     // Auto-update delivery status based on all assets
-    const allAssets = await this.assetRepo.listByDeliveryId(deliveryId);
     if (allAssets.length > 0) {
-      const allApproved = allAssets.every((a) => (a.id === assetId ? isApproved : a.isApproved));
+      const wasLegacyApproved =
+        !isApproved &&
+        currentDelivery?.status === "approved" &&
+        allAssets.every((a) => !a.isApproved);
+      const allApproved = wasLegacyApproved
+        ? false
+        : allAssets.every((a) => (a.id === assetId ? isApproved : a.isApproved));
+
       if (allApproved) {
         await this.updateStatus(deliveryId, "approved", "Client Review");
-      } else {
-        const currentDelivery = await this.deliveryRepo.findById(deliveryId);
-        if (currentDelivery && currentDelivery.status === "approved") {
-          await this.updateStatus(deliveryId, "in_review");
-        }
+      } else if (currentDelivery && currentDelivery.status === "approved") {
+        await this.updateStatus(deliveryId, "in_review");
       }
     }
 
@@ -270,9 +300,19 @@ export class DeliveryService {
     approvedByName?: string,
     options?: { origin?: string; notifyEmails?: string[] }
   ): Promise<void> {
-    const allAssets = await this.assetRepo.listByDeliveryId(deliveryId);
-    await Promise.all(allAssets.map((a) => this.assetRepo.toggleApproval(a.id, true)));
     await this.approveCut(deliveryId, approvedByName, options);
+  }
+
+  async unapproveAllAssets(deliveryId: string): Promise<Delivery> {
+    const allAssets = await this.assetRepo.listByDeliveryId(deliveryId);
+    if (allAssets.length > 0) {
+      await Promise.all(
+        allAssets
+          .filter((a) => a.isApproved)
+          .map((a) => this.assetRepo.toggleApproval(a.id, false))
+      );
+    }
+    return this.deliveryRepo.updateStatus(deliveryId, "in_review");
   }
 
   /**

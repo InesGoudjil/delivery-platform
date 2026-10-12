@@ -13,6 +13,7 @@ import {
   Loader2,
   RefreshCw,
   CheckCircle2,
+  Trash2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,8 @@ interface DeliveryHeroBannerProps {
   isSiloActionPending?: boolean;
   onOpenPublishDialog: () => void;
   onOpenDownloadDialog?: () => void;
+  onDeleteDelivery?: () => void;
+  isDeletingDelivery?: boolean;
 }
 
 export function DeliveryHeroBanner({
@@ -57,6 +60,8 @@ export function DeliveryHeroBanner({
   isSiloActionPending = false,
   onOpenPublishDialog,
   onOpenDownloadDialog,
+  onDeleteDelivery,
+  isDeletingDelivery = false,
 }: DeliveryHeroBannerProps) {
   return (
     <Card className="relative rounded-3xl overflow-hidden border border-border/80 shadow-2xl bg-card hover:translate-y-0 hover:shadow-2xl">
@@ -232,18 +237,42 @@ export function DeliveryHeroBanner({
             </Button>
           )}
 
-          {/* Preview Room Link Icon */}
-          <Button
-            asChild
-            variant="ghost"
-            size="icon"
-            className="rounded-full bg-muted/50 hover:bg-muted text-foreground size-9 ml-auto"
-            title="Open Public Client Room"
-          >
-            <Link href={shareUrl} target="_blank">
-              <ExternalLink className="size-4" />
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2 ml-auto">
+            {onDeleteDelivery && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                disabled={isDeletingDelivery}
+                onClick={onDeleteDelivery}
+                className="rounded-full border-border/60 bg-background/50 hover:bg-destructive/15 hover:border-destructive/40 text-muted-foreground hover:text-destructive size-9 transition-colors cursor-pointer"
+                title={
+                  totalAssetsCount > 0
+                    ? `Delete delivery (${totalAssetsCount} ${totalAssetsCount === 1 ? "asset" : "assets"})`
+                    : "Delete empty delivery"
+                }
+              >
+                {isDeletingDelivery ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Trash2 className="size-4" />
+                )}
+              </Button>
+            )}
+
+            {/* Preview Room Link Icon */}
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className="rounded-full bg-muted/50 hover:bg-muted text-foreground size-9"
+              title="Open Public Client Room"
+            >
+              <Link href={shareUrl} target="_blank">
+                <ExternalLink className="size-4" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

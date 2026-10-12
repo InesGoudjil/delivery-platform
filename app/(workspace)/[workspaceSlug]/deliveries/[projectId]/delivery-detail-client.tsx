@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AssetMultiUploader } from "@/components/workspaces/asset-multi-uploader";
 import {
   approveCutAction,
+  unapproveAllAssetsAction,
   archiveDeliveryAction,
   toggleAssetApprovalAction,
   deleteAssetAction,
@@ -21,6 +22,7 @@ import {
 import { resolveThumbnailUrl, resolveMediaUrl } from "@/lib/media";
 import { EditAssetDialog, type EditableAssetItem } from "@/components/workspaces/edit-asset-dialog";
 import { TrashBinDialog } from "@/components/workspaces/trash-bin-dialog";
+import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 // Modular Subcomponents
@@ -56,10 +58,18 @@ export type {
   DeliveryDetailClientProps,
 };
 
-type ActiveDialog = "share" | "edit-delivery" | "publish" | "trash" | "download-package" | null;
+type ActiveDialog =
+  | "share"
+  | "edit-delivery"
+  | "publish"
+  | "trash"
+  | "download-package"
+  | "confirm-delete-delivery"
+  | null;
 
 type GalleryOptimisticAction =
   | { type: "approve-all" }
+  | { type: "unapprove-all" }
   | { type: "toggle-approval"; id: string; isApproved: boolean }
   | { type: "delete"; id: string }
   | {
@@ -97,6 +107,7 @@ export function DeliveryDetailClient({
 
   // 1. Consolidated Dialog Discriminator (Replaces 4 boolean useStates)
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
+  const [isDeletingDelivery, setIsDeletingDelivery] = useState(false);
 
   // 2. Asset Editing State (Replaces isOpen + item duplication)
   const [editingAssetItem, setEditingAssetItem] = useState<EditableAssetItem | null>(null);
@@ -108,6 +119,12 @@ export function DeliveryDetailClient({
 
   // 4. Initial Gallery Items Derivation from Server Props
   const initialItems: GalleryItem[] = useMemo(() => {
+    const isLegacyProjectApproved =
+      project.status === "approved" &&
+      assets &&
+      assets.length > 0 &&
+      assets.every((a) => !a.isApproved);
+
     return assets && assets.length > 0
       ? assets.map((a) => {
           const activeVer = a.activeVersion || a.versions[0];
@@ -136,7 +153,7 @@ export function DeliveryDetailClient({
             duration: durationStr,
             src:
               resolveThumbnailUrl(activeVer?.thumbnailUrl, activeVer?.rawFileUrl, isPhoto) || "",
-            status: a.isApproved ? "approved" : "review",
+            status: a.isApproved || isLegacyProjectApproved ? "approved" : "review",
             rawUrl: resolveMediaUrl(activeVer?.rawFileUrl),
             downloadUrl: resolveMediaUrl(activeVer?.downloadUrl || activeVer?.rawFileUrl),
             fileSizeBytes: activeVer?.fileSizeBytes || 0,
@@ -149,7 +166,7 @@ export function DeliveryDetailClient({
           };
         })
       : [];
-  }, [assets]);
+  }, [assets, project.status]);
 
   // Master loaded items state that persists across chunk loads
   const [loadedItems, setLoadedItems] = useState<GalleryItem[]>(initialItems);
@@ -166,7 +183,9 @@ export function DeliveryDetailClient({
     initialTotalAssetsCount ?? initialItems.length
   );
   const [approvedCountState, setApprovedCountState] = useState(
-    initialApprovedCount ?? initialItems.filter((i) => i.status === "approved").length
+    project.status === "approved" && (initialApprovedCount ?? 0) === 0
+      ? initialTotalAssetsCount ?? initialItems.length
+      : initialApprovedCount ?? initialItems.filter((i) => i.status === "approved").length
   );
 
   // 5. React 19 Optimistic Gallery (Eliminates manual state duplication and stale router.refresh() bugs)
@@ -176,6 +195,8 @@ export function DeliveryDetailClient({
       switch (action.type) {
         case "approve-all":
           return prev.map((item) => ({ ...item, status: "approved" as const }));
+        case "unapprove-all":
+          return prev.map((item) => ({ ...item, status: "review" as const }));
         case "toggle-approval":
           return prev.map((item) =>
             item.id === action.id
@@ -213,11 +234,15 @@ export function DeliveryDetailClient({
               totalVersions: newTotalVersions,
               versions: updatedVersions,
               src: resolvedSrc,
-              rawUrl: uploadedVersion?.rawFileUrl || existing.rawUrl,
-              hlsUrl: uploadedVersion?.hlsManifestUrl || existing.hlsUrl,
+              rawUrl: resolveMediaUrl(uploadedVersion?.rawFileUrl) || existing.rawUrl,
+              downloadUrl:
+                resolveMediaUrl(uploadedVersion?.downloadUrl || uploadedVersion?.rawFileUrl) ||
+                existing.downloadUrl ||
+                existing.rawUrl,
+              hlsUrl: resolveMediaUrl(uploadedVersion?.hlsManifestUrl) || existing.hlsUrl,
               videoUrl:
-                uploadedVersion?.hlsManifestUrl ||
-                uploadedVersion?.rawFileUrl ||
+                resolveMediaUrl(uploadedVersion?.hlsManifestUrl) ||
+                resolveMediaUrl(uploadedVersion?.rawFileUrl) ||
                 existing.videoUrl,
               duration: durationStr,
             };
@@ -236,11 +261,14 @@ export function DeliveryDetailClient({
               duration: durationStr,
               src: resolvedSrc,
               status: "review",
-              rawUrl: uploadedVersion?.rawFileUrl,
-              hlsUrl: uploadedVersion?.hlsManifestUrl,
+              rawUrl: resolveMediaUrl(uploadedVersion?.rawFileUrl),
+              downloadUrl: resolveMediaUrl(
+                uploadedVersion?.downloadUrl || uploadedVersion?.rawFileUrl
+              ),
+              hlsUrl: resolveMediaUrl(uploadedVersion?.hlsManifestUrl),
               videoUrl:
-                uploadedVersion?.hlsManifestUrl ||
-                uploadedVersion?.rawFileUrl ||
+                resolveMediaUrl(uploadedVersion?.hlsManifestUrl) ||
+                resolveMediaUrl(uploadedVersion?.rawFileUrl) ||
                 (isPhoto ? undefined : "https://files.vidstack.io/sprite-fight/hls/stream.m3u8"),
             };
             return [newItem, ...prev];
@@ -274,9 +302,23 @@ export function DeliveryDetailClient({
   });
   const [isSiloPending, setIsSiloPending] = useState(false);
 
-  // 7. Cover Thumbnail (Derived with optional custom override)
-  const [customCoverUrl, setCustomCoverUrl] = useState<string | null>(null);
+  // 7. Cover Thumbnail (Derived with persisted custom override)
+  const [customCoverUrl, setCustomCoverUrl] = useState<string | null>(
+    (project.appearance as any)?.coverThumbnailUrl || null
+  );
   const coverThumbnailUrl = customCoverUrl || items[0]?.src || "";
+
+  const handlePersistCoverUrl = async (newCoverUrl: string) => {
+    setCustomCoverUrl(newCoverUrl);
+    const res = await updateDeliveryAppearanceAction(
+      project.id,
+      { coverThumbnailUrl: newCoverUrl },
+      workspace.slug
+    );
+    if (!res.success) {
+      toast.error(res.error || "Failed to save delivery cover");
+    }
+  };
 
   // 8. Appearance Settings State
   const [appearance, setAppearance] = useState<AppearanceSettings>({
@@ -367,7 +409,7 @@ export function DeliveryDetailClient({
           }));
           triggerToast("Project archived to The Silo (active storage freed)");
         } else {
-          triggerToast(res.error || "Failed to archive delivery to The Silo");
+          toast.error(res.error || "Failed to archive delivery to The Silo");
         }
       } finally {
         setIsSiloPending(false);
@@ -441,13 +483,38 @@ export function DeliveryDetailClient({
       if (res.success) {
         triggerToast("Delivery room marked as APPROVED");
       } else {
-        triggerToast(res.error || "Failed to approve cut");
+        toast.error(res.error || "Failed to approve cut");
+      }
+    });
+  };
+
+  const handleUnapproveCut = async () => {
+    startTransition(async () => {
+      setOptimisticItems({ type: "unapprove-all" });
+      setLoadedItems((prev) => prev.map((item) => ({ ...item, status: "review" as const })));
+      setApprovedCountState(0);
+      setProjectMeta((prev) => ({ ...prev, status: "in_review" }));
+      const res = await unapproveAllAssetsAction(project.id);
+      if (res.success) {
+        toast.info("Delivery approval undone — assets returned to review");
+      } else {
+        toast.error(res.error || "Failed to unapprove cut");
       }
     });
   };
 
   const handleToggleAssetApproval = async (itemId: string, currentStatus: string) => {
     const newIsApproved = currentStatus !== "approved";
+    const nextApprovedCount = newIsApproved
+      ? Math.min(totalAssetsCountState, approvedCountState + 1)
+      : Math.max(0, approvedCountState - 1);
+    const nextProjectStatus =
+      totalAssetsCountState > 0 && nextApprovedCount >= totalAssetsCountState
+        ? "approved"
+        : projectMeta.status === "approved"
+        ? "in_review"
+        : projectMeta.status;
+
     startTransition(async () => {
       setOptimisticItems({ type: "toggle-approval", id: itemId, isApproved: newIsApproved });
       setLoadedItems((prev) =>
@@ -457,12 +524,20 @@ export function DeliveryDetailClient({
             : item
         )
       );
-      setApprovedCountState((prev) => (newIsApproved ? prev + 1 : Math.max(0, prev - 1)));
+      setApprovedCountState(nextApprovedCount);
+      setProjectMeta((prev) => ({ ...prev, status: nextProjectStatus }));
       const res = await toggleAssetApprovalAction(project.id, itemId, newIsApproved);
       if (res.success) {
-        triggerToast(newIsApproved ? "Asset approved" : "Asset marked for revision");
+        if (res.delivery?.status) {
+          setProjectMeta((prev) => ({ ...prev, status: res.delivery!.status }));
+        }
+        if (newIsApproved) {
+          triggerToast("Asset approved");
+        } else {
+          toast.info("Approval removed — asset marked for review");
+        }
       } else {
-        triggerToast(res.error || "Failed to toggle asset approval");
+        toast.error(res.error || "Failed to toggle asset approval");
       }
     });
   };
@@ -486,10 +561,10 @@ export function DeliveryDetailClient({
         if (res.success) {
           triggerToast(`Asset "${item.title}" moved to Trash`);
         } else {
-          triggerToast(res.error || "Failed to move asset to trash");
+          toast.error(res.error || "Failed to move asset to trash");
         }
       } catch (err: any) {
-        triggerToast(err.message || "Failed to move asset to trash");
+        toast.error(err.message || "Failed to move asset to trash");
       }
     });
   };
@@ -565,12 +640,11 @@ export function DeliveryDetailClient({
 
         if (res.success) {
           triggerToast(`Updated "${updated.title}" successfully`);
-          setEditingAssetItem(null);
         } else {
-          triggerToast(res.error || "Failed to update asset");
+          toast.error(res.error || "Failed to update asset");
         }
       } catch (err: any) {
-        triggerToast(err.message || "Failed to update asset");
+        toast.error(err.message || "Failed to update asset");
       }
     });
   };
@@ -630,11 +704,15 @@ export function DeliveryDetailClient({
             totalVersions: newTotalVersions,
             versions: updatedVersions,
             src: resolvedSrc,
-            rawUrl: uploadedVersion?.rawFileUrl || existing.rawUrl,
-            hlsUrl: uploadedVersion?.hlsManifestUrl || existing.hlsUrl,
+            rawUrl: resolveMediaUrl(uploadedVersion?.rawFileUrl) || existing.rawUrl,
+            downloadUrl:
+              resolveMediaUrl(uploadedVersion?.downloadUrl || uploadedVersion?.rawFileUrl) ||
+              existing.downloadUrl ||
+              existing.rawUrl,
+            hlsUrl: resolveMediaUrl(uploadedVersion?.hlsManifestUrl) || existing.hlsUrl,
             videoUrl:
-              uploadedVersion?.hlsManifestUrl ||
-              uploadedVersion?.rawFileUrl ||
+              resolveMediaUrl(uploadedVersion?.hlsManifestUrl) ||
+              resolveMediaUrl(uploadedVersion?.rawFileUrl) ||
               existing.videoUrl,
             duration: durationStr,
           };
@@ -653,11 +731,14 @@ export function DeliveryDetailClient({
             duration: durationStr,
             src: resolvedSrc,
             status: "review",
-            rawUrl: uploadedVersion?.rawFileUrl,
-            hlsUrl: uploadedVersion?.hlsManifestUrl,
+            rawUrl: resolveMediaUrl(uploadedVersion?.rawFileUrl),
+            downloadUrl: resolveMediaUrl(
+              uploadedVersion?.downloadUrl || uploadedVersion?.rawFileUrl
+            ),
+            hlsUrl: resolveMediaUrl(uploadedVersion?.hlsManifestUrl),
             videoUrl:
-              uploadedVersion?.hlsManifestUrl ||
-              uploadedVersion?.rawFileUrl ||
+              resolveMediaUrl(uploadedVersion?.hlsManifestUrl) ||
+              resolveMediaUrl(uploadedVersion?.rawFileUrl) ||
               (isPhoto ? undefined : "https://files.vidstack.io/sprite-fight/hls/stream.m3u8"),
           };
           return [newItem, ...prev];
@@ -672,11 +753,6 @@ export function DeliveryDetailClient({
 
     setShowAssetAddedBadge(true);
     setTimeout(() => setShowAssetAddedBadge(false), 5000);
-    triggerToast(
-      uploadedVersion?.versionNumber && uploadedVersion.versionNumber > 1
-        ? `Added V${uploadedVersion.versionNumber} to "${uploadedAsset.title}"`
-        : `Asset "${uploadedAsset.title}" uploaded successfully`
-    );
   };
 
   const handleLoadMore = async (filterTab: "ALL" | "VIDEOS" | "PHOTOS" = "ALL") => {
@@ -717,10 +793,33 @@ export function DeliveryDetailClient({
   };
 
   const totalAssetsCount = totalAssetsCountState;
-  const approvedCount =
-    projectMeta.status === "approved"
-      ? totalAssetsCount
-      : approvedCountState;
+  const approvedCount = approvedCountState;
+
+  const executeDeleteDelivery = async () => {
+    setIsDeletingDelivery(true);
+    try {
+      const res = await deleteDeliveryAction(project.id, workspace.slug);
+      if (res.success) {
+        triggerToast(`Delivery "${projectMeta.title}" deleted`);
+        setActiveDialog(null);
+        router.push(`/${workspace.slug}/deliveries`);
+      } else {
+        toast.error(res.error || "Failed to delete delivery");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to delete delivery");
+    } finally {
+      setIsDeletingDelivery(false);
+    }
+  };
+
+  const handleRequestDeleteDelivery = () => {
+    if (totalAssetsCount > 0) {
+      setActiveDialog("confirm-delete-delivery");
+    } else {
+      void executeDeleteDelivery();
+    }
+  };
 
   return (
     <TooltipProvider delay={150}>
@@ -744,6 +843,8 @@ export function DeliveryDetailClient({
           isSiloActionPending={isSiloPending}
           onOpenPublishDialog={() => setActiveDialog("publish")}
           onOpenDownloadDialog={() => setActiveDialog("download-package")}
+          onDeleteDelivery={handleRequestDeleteDelivery}
+          isDeletingDelivery={isDeletingDelivery}
         />
 
         {/* 2. Client Approval Progress Bar Container */}
@@ -752,6 +853,7 @@ export function DeliveryDetailClient({
           totalAssetsCount={totalAssetsCount}
           projectStatus={projectMeta.status}
           onApproveCut={handleApproveCut}
+          onUnapproveCut={handleUnapproveCut}
           onToggleUploader={() => setShowUploader(!showUploader)}
         />
 
@@ -770,8 +872,7 @@ export function DeliveryDetailClient({
               onUploadComplete={(asset, version) => {
                 handleAssetUploaded(asset, version);
               }}
-              onBatchComplete={(results) => {
-                triggerToast(`All ${results.length} assets ready in project gallery`);
+              onBatchComplete={() => {
                 router.refresh();
               }}
               onProgressChange={setUploadProgress}
@@ -798,6 +899,7 @@ export function DeliveryDetailClient({
           isLoadingMore={isLoadingMore}
           onLoadMore={handleLoadMore}
           onSelectItem={handleOpenLightbox}
+          onToggleApproval={handleToggleAssetApproval}
           onDeleteAsset={handleDeleteAsset}
           onEditAsset={handleOpenEditAsset}
           onOpenTrash={() => setActiveDialog("trash")}
@@ -839,27 +941,36 @@ export function DeliveryDetailClient({
           isOpen={activeDialog === "edit-delivery"}
           onOpenChange={(open) => setActiveDialog(open ? "edit-delivery" : null)}
           coverThumbnailUrl={coverThumbnailUrl}
-          onChangeCoverUrl={setCustomCoverUrl}
+          onChangeCoverUrl={(newUrl) => {
+            void handlePersistCoverUrl(newUrl);
+          }}
           items={items}
           onDeleteItem={handleDeleteItemFromGallery}
           onEditItem={handleOpenEditAsset}
           onAddAssetClick={() => setShowUploader(true)}
           onSaveChanges={() => {
-            setActiveDialog(null);
-            triggerToast("Delivery details updated successfully");
-          }}
-          onDeleteDelivery={async () => {
-            if (confirm("Are you sure you want to permanently delete this delivery and all its assets?")) {
-              const res = await deleteDeliveryAction(project.id, workspace.slug);
-              if (res.success) {
-                triggerToast("Delivery deleted successfully");
-                setActiveDialog(null);
-                router.push(`/${workspace.slug}/deliveries`);
-              } else {
-                triggerToast(res.error || "Failed to delete delivery");
-              }
+            if (customCoverUrl) {
+              void handlePersistCoverUrl(customCoverUrl);
             }
+            setActiveDialog(null);
+            triggerToast("Delivery cover and details saved");
           }}
+          onDeleteDelivery={handleRequestDeleteDelivery}
+        />
+
+        {/* 8b. Conditional Delete Delivery Confirmation Dialog (only when totalAssetsCount > 0) */}
+        <DeleteConfirmDialog
+          isOpen={activeDialog === "confirm-delete-delivery"}
+          onOpenChange={(open) => setActiveDialog(open ? "confirm-delete-delivery" : null)}
+          title="Delete Delivery Project"
+          itemName={projectMeta.title}
+          description={`This delivery contains ${totalAssetsCount} ${
+            totalAssetsCount === 1 ? "asset" : "assets"
+          }. Deleting this delivery project will move its assets to your workspace Trash (retained for 30 days) and permanently remove the delivery room.`}
+          isDeleting={isDeletingDelivery}
+          isPermanent={true}
+          confirmText="Delete Delivery"
+          onConfirm={executeDeleteDelivery}
         />
 
         {/* 9. Publish to Portfolio Dialog */}
@@ -873,12 +984,6 @@ export function DeliveryDetailClient({
           projectDescription={projectMeta.description}
           clientName={projectMeta.clientName}
           triggerToast={triggerToast}
-        />
-
-        {/* 10. Floating Upload Info Component */}
-        <FloatingUploadProgress
-          progress={uploadProgress}
-          onDismiss={() => setUploadProgress(null)}
         />
 
         {/* 11. Lightbox Video Player Modal */}
@@ -936,6 +1041,8 @@ export function DeliveryDetailClient({
           projectTitle={projectMeta.title}
           isDownloadAllowed={true}
           brandName={workspace.brandName}
+          deliveryId={project.id}
+          totalAssetsCount={totalAssetsCount}
           items={items.map((item) => {
             const activeVer = item.versions?.find((v) => v.isActiveVersion) || item.versions?.[0];
             return {
@@ -947,7 +1054,11 @@ export function DeliveryDetailClient({
               duration: item.duration,
               aspectRatio: item.aspectRatio,
               thumbnailUrl: item.src,
-              downloadUrl: item.downloadUrl || item.rawUrl || "",
+              downloadUrl:
+                item.downloadUrl ||
+                item.rawUrl ||
+                (item.type === "photo" ? item.src : "") ||
+                "",
               isApproved: item.status === "approved",
             };
           })}

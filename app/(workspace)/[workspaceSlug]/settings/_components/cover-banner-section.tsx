@@ -8,6 +8,7 @@ import {
   Eye,
   Camera,
   Upload,
+  Crop,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,8 +30,10 @@ interface CoverBannerSectionProps {
   logoUrl?: string | null;
   onSelectPreset: (url: string) => void;
   onCustomUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onEditCover?: () => void;
   onRemoveCover: () => void;
   onProfileUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onEditProfile?: () => void;
 }
 
 export function CoverBannerSection({
@@ -42,8 +45,10 @@ export function CoverBannerSection({
   logoUrl,
   onSelectPreset,
   onCustomUpload,
+  onEditCover,
   onRemoveCover,
   onProfileUpload,
+  onEditProfile,
 }: CoverBannerSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profileInputRef = useRef<HTMLInputElement>(null);
@@ -142,6 +147,25 @@ export function CoverBannerSection({
                       />
                       <TooltipContent>Click to change profile portrait</TooltipContent>
                     </Tooltip>
+                    {logoUrl && onEditProfile && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditProfile();
+                              }}
+                              className="absolute -bottom-1 -right-1 size-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg border border-black/40 hover:scale-110 transition-transform cursor-pointer z-20"
+                            >
+                              <Crop className="size-2.5" />
+                            </button>
+                          }
+                        />
+                        <TooltipContent>Edit &amp; crop profile photo</TooltipContent>
+                      </Tooltip>
+                    )}
                   </div>
                   <div className="drop-shadow-md">
                     <div className="font-heading font-extrabold text-base sm:text-lg text-white leading-tight">
@@ -153,8 +177,27 @@ export function CoverBannerSection({
                   </div>
                 </div>
 
-                {/* Reset or Change Button */}
+                {/* Edit/Crop, Change, or Reset Buttons */}
                 <div className="flex items-center gap-2">
+                  {coverUrl && onEditCover && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={onEditCover}
+                            className="rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border-white/20 text-white text-[11px] font-bold px-3.5 py-1.5 transition-all flex items-center gap-1.5 cursor-pointer shadow-lg h-7"
+                          >
+                            <Crop className="size-3 text-primary" />
+                            <span>Edit / Crop</span>
+                          </Button>
+                        }
+                      />
+                      <TooltipContent>Crop, pan, zoom, or adjust current cover banner</TooltipContent>
+                    </Tooltip>
+                  )}
                   <Tooltip>
                     <TooltipTrigger
                       render={

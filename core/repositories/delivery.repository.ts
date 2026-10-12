@@ -157,6 +157,9 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
     if (status === "approved") {
       payload.approved_at = new Date().toISOString();
       payload.approved_by_name = approvedByName || "Client";
+    } else {
+      payload.approved_at = null;
+      payload.approved_by_name = null;
     }
 
     const { data, error } = await (this.supabase as any)

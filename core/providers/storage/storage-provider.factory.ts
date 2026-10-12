@@ -136,6 +136,36 @@ class CompositeStorageProvider implements IStorageProvider {
     return info?.rawDownloadUrl || info?.hlsManifestUrl || providerUid;
   }
 
+  async getSecureDownloadUrl(
+    providerUid: string,
+    filename: string,
+    isPublic?: boolean,
+    expiresInSeconds?: number
+  ): Promise<string> {
+    if (this.isStreamAsset(providerUid)) {
+      if (typeof this.streamProvider.getSecureDownloadUrl === "function") {
+        return this.streamProvider.getSecureDownloadUrl(
+          providerUid,
+          filename,
+          isPublic,
+          expiresInSeconds
+        );
+      }
+      const cleanUid = providerUid.match(/([a-f0-9]{32})/i)?.[1] || providerUid;
+      return `/api/media/${cleanUid}?download=true&filename=${encodeURIComponent(filename)}`;
+    }
+
+    if (typeof this.r2Provider.getSecureDownloadUrl === "function") {
+      return this.r2Provider.getSecureDownloadUrl(
+        providerUid,
+        filename,
+        isPublic,
+        expiresInSeconds
+      );
+    }
+    return this.getSecurePlaybackUrl(providerUid, isPublic, expiresInSeconds);
+  }
+
   verifyWebhookSignature(rawBody: string, headers: Record<string, string>): boolean {
     if (typeof this.streamProvider.verifyWebhookSignature === "function") {
       return this.streamProvider.verifyWebhookSignature(rawBody, headers);

@@ -11,12 +11,20 @@ import {
   AlertCircle,
   Loader2,
   Sparkles,
+  Crop,
+  Trash2,
 } from "lucide-react";
 import {
   requestAssetUploadAction,
   confirmUploadCompletedAction,
 } from "@/app/actions/upload";
+import { updateAssetAction } from "@/app/actions/assets";
 import { PortfolioItem } from "../portfolio-client";
+import { createUploadProgressToast } from "@/lib/upload-toast";
+import {
+  ImageCropEditorDialog,
+  ImageCropResult,
+} from "@/components/ui/image-crop-editor-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +65,15 @@ export function UploadFilmModal({
   const [description, setDescription] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [thumbCropState, setThumbCropState] = useState<{
+    isOpen: boolean;
+    imageSrc: string | null;
+    fileName: string;
+  }>({
+    isOpen: false,
+    imageSrc: null,
+    fileName: "film-thumbnail.jpg",
+  });
 
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -82,9 +99,20 @@ export function UploadFilmModal({
   const handleThumbnailSelect = (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const file = files[0];
-    setThumbnailFile(file);
     const objectUrl = URL.createObjectURL(file);
-    setThumbnailPreview(objectUrl);
+    setThumbCropState({
+      isOpen: true,
+      imageSrc: objectUrl,
+      fileName: file.name,
+    });
+    if (thumbInputRef.current) {
+      thumbInputRef.current.value = "";
+    }
+  };
+
+  const handleApplyThumbnailCrop = (result: ImageCropResult) => {
+    setThumbnailFile(result.file);
+    setThumbnailPreview(result.dataUrl);
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -118,6 +146,8 @@ export function UploadFilmModal({
     setErrorMessage(null);
   };
 
+  const uploadToastRef = useRef<ReturnType<typeof createUploadProgressToast> | null>(null);
+
   const handleClose = () => {
     if (uploading && xhrRef.current) {
       xhrRef.current.abort();
@@ -135,11 +165,18 @@ export function UploadFilmModal({
     setProgress(0);
     setStatusText("Initializing direct upload...");
 
-    try {
-      const isImage = selectedFile.type.startsWith("image/");
-      const assetType = isImage ? "photo_gallery" : "video";
-      const itemTitle = title.trim() || selectedFile.name;
+    const isImage = selectedFile.type.startsWith("image/");
+    const assetType = isImage ? "photo_gallery" : "video";
+    const itemTitle = title.trim() || selectedFile.name;
 
+    const uploadToast = createUploadProgressToast(`portfolio-film-${Date.now()}`);
+    uploadToastRef.current = uploadToast;
+    uploadToast.start(
+      `Uploading "${itemTitle}"...`,
+      "Initializing direct upload..."
+    );
+
+    try {
       // 1. Request upload URL from server (standalone asset: no projectId)
       const initRes = await requestAssetUploadAction({
         workspaceId,
@@ -159,6 +196,12 @@ export function UploadFilmModal({
       const assetVersionId = initRes.assetVersion.id;
 
       setStatusText("Uploading asset...");
+      uploadToast.update({
+        title: `Uploading "${itemTitle}"`,
+        progress: 2,
+        loadedBytes: 0,
+        totalBytes: selectedFile.size,
+      });
 
       // 2. Direct upload to storage provider via XHR
       await new Promise<void>((resolve, reject) => {
@@ -170,6 +213,12 @@ export function UploadFilmModal({
             const pct = Math.round((event.loaded / event.total) * 90);
             setProgress(pct);
             setStatusText(`Uploading: ${pct}%`);
+            uploadToast.update({
+              title: `Uploading "${itemTitle}"`,
+              progress: Math.round((event.loaded / event.total) * 100),
+              loadedBytes: event.loaded,
+              totalBytes: event.total,
+            });
           }
         };
 
@@ -198,35 +247,13 @@ export function UploadFilmModal({
         }
       });
 
-      // 3. Optional thumbnail upload if selected
-      let customThumbUrl = "";
-      if (thumbnailFile) {
-        setStatusText("Uploading custom thumbnail...");
-        try {
-          const thumbInit = await requestAssetUploadAction({
-            workspaceId,
-            projectId: "",
-            title: `${itemTitle} Thumbnail`,
-            filename: thumbnailFile.name,
-            fileSizeBytes: thumbnailFile.size,
-            assetType: "photo_gallery",
-            category: "cover",
-          });
-          if (thumbInit.success && thumbInit.directUpload) {
-            await fetch(thumbInit.directUpload.uploadUrl, {
-              method: thumbInit.directUpload.uploadType === "presigned_put" ? "PUT" : "POST",
-              headers: thumbInit.directUpload.headers || undefined,
-              body: thumbnailFile,
-            });
-            customThumbUrl = thumbInit.directUpload.uploadUrl.split("?")[0];
-          }
-        } catch {
-          // Non-critical fallback
-        }
-      }
-
-      // 4. Confirm completion on server
+      // 3. Confirm completion on server
       setStatusText("Finalizing asset...");
+      uploadToast.update({
+        title: `Finalizing "${itemTitle}"...`,
+        progress: 96,
+        subtitle: "Saving to portfolio...",
+      });
       const confirmRes = await confirmUploadCompletedAction({
         assetVersionId,
         providerUid,
@@ -237,7 +264,25 @@ export function UploadFilmModal({
         throw new Error(confirmRes.error || "Failed to finalize asset.");
       }
 
+      // 4. Persist custom cropped thumbnail or description if provided
+      const customThumbUrl = thumbnailPreview || "";
+      if (customThumbUrl || description.trim()) {
+        await updateAssetAction(
+          initRes.asset.id,
+          {
+            ...(customThumbUrl ? { thumbnailUrl: customThumbUrl } : {}),
+            ...(description.trim() ? { description: description.trim() } : {}),
+          },
+          { workspaceSlug }
+        );
+      }
+
       setProgress(100);
+      uploadToast.success(
+        `"${itemTitle}" uploaded successfully!`,
+        `Added to your portfolio showcase.`
+      );
+      uploadToastRef.current = null;
 
       const newItem: PortfolioItem = {
         id: initRes.asset.id,
@@ -262,11 +307,17 @@ export function UploadFilmModal({
       };
 
       onAssetUploaded(newItem);
-      showFlash(`"${itemTitle}" uploaded successfully!`);
       handleClose();
     } catch (err: any) {
-      setErrorMessage(err.message || "An error occurred during upload.");
+      const msg = err.message || "An error occurred during upload.";
+      setErrorMessage(msg);
       setUploading(false);
+      if (msg === "Upload cancelled.") {
+        uploadToast.info("Upload cancelled", `"${itemTitle}" upload was aborted.`);
+      } else {
+        uploadToast.error("Upload failed", msg);
+      }
+      uploadToastRef.current = null;
     }
   };
 
@@ -438,9 +489,9 @@ export function UploadFilmModal({
               THUMBNAIL <span className="normal-case text-zinc-500">(optional)</span>
             </Label>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               {/* Preview Thumbnail Box */}
-              <div className="size-11 rounded-xl bg-[#0c0c0e] border border-white/10 flex items-center justify-center text-zinc-500 overflow-hidden shrink-0">
+              <div className="w-16 h-11 rounded-xl bg-[#0c0c0e] border border-white/10 flex items-center justify-center text-zinc-500 overflow-hidden shrink-0">
                 {thumbnailPreview ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -453,7 +504,7 @@ export function UploadFilmModal({
                 )}
               </div>
 
-              {/* Upload Thumbnail Button */}
+              {/* Upload / Edit / Remove Thumbnail Buttons */}
               <input
                 ref={thumbInputRef}
                 type="file"
@@ -467,11 +518,44 @@ export function UploadFilmModal({
                 variant="outline"
                 onClick={() => thumbInputRef.current?.click()}
                 disabled={uploading}
-                className="flex-1 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border-white/15 text-white text-xs font-semibold py-2.5 px-4 h-auto flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                className="flex-1 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border-white/15 text-white text-xs font-semibold py-2.5 px-3.5 h-auto flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
               >
                 <Upload className="size-3.5 text-zinc-300" />
-                <span>UPLOAD THUMBNAIL</span>
+                <span>{thumbnailPreview ? "CHANGE" : "UPLOAD THUMBNAIL"}</span>
               </Button>
+              {thumbnailPreview && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      setThumbCropState({
+                        isOpen: true,
+                        imageSrc: thumbnailPreview,
+                        fileName: thumbnailFile?.name || "film-thumbnail.jpg",
+                      })
+                    }
+                    disabled={uploading}
+                    className="rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border-white/15 text-white text-xs font-semibold py-2.5 px-3 h-auto flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Crop className="size-3.5 text-[#f5551d]" />
+                    <span>EDIT</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setThumbnailFile(null);
+                      setThumbnailPreview(null);
+                    }}
+                    disabled={uploading}
+                    className="rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/30 text-rose-300 text-xs font-semibold py-2.5 px-2.5 h-auto flex items-center justify-center transition-all cursor-pointer disabled:opacity-50"
+                    title="Remove custom thumbnail"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </>
+              )}
             </div>
 
             <p className="text-[11px] text-zinc-500 font-sans leading-tight pt-0.5">
@@ -522,6 +606,18 @@ export function UploadFilmModal({
           </div>
         </form>
       </div>
+
+      <ImageCropEditorDialog
+        isOpen={thumbCropState.isOpen}
+        onClose={() => setThumbCropState((prev) => ({ ...prev, isOpen: false }))}
+        imageSrc={thumbCropState.imageSrc}
+        title="EDIT & CROP FILM THUMBNAIL"
+        subtitle="Frame, zoom, rotate, or fine-tune the custom thumbnail for this portfolio film."
+        defaultAspectRatio="16:9"
+        aspectRatioOptions={["16:9", "9:16", "1:1", "4:3"]}
+        outputFileName={thumbCropState.fileName}
+        onApply={handleApplyThumbnailCrop}
+      />
     </div>
   );
 }

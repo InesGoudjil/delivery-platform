@@ -11,13 +11,21 @@ import {
   AlertCircle,
   Loader2,
   Sparkles,
+  Crop,
+  Trash2,
 } from "lucide-react";
 import { createWorkspaceProjectAction } from "@/app/actions/projects";
 import {
   requestAssetUploadAction,
   confirmUploadCompletedAction,
 } from "@/app/actions/upload";
+import { updateAssetAction } from "@/app/actions/assets";
 import { PortfolioItem, ProjectAsset } from "../portfolio-client";
+import { createUploadProgressToast } from "@/lib/upload-toast";
+import {
+  ImageCropEditorDialog,
+  ImageCropResult,
+} from "@/components/ui/image-crop-editor-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,6 +68,15 @@ export function UploadProjectModal({
   const [description, setDescription] = useState("");
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [coverCropState, setCoverCropState] = useState<{
+    isOpen: boolean;
+    imageSrc: string | null;
+    fileName: string;
+  }>({
+    isOpen: false,
+    imageSrc: null,
+    fileName: "project-cover.jpg",
+  });
 
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -85,9 +102,20 @@ export function UploadProjectModal({
   const handleCoverSelect = (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const file = files[0];
-    setCoverFile(file);
     const objectUrl = URL.createObjectURL(file);
-    setCoverPreview(objectUrl);
+    setCoverCropState({
+      isOpen: true,
+      imageSrc: objectUrl,
+      fileName: file.name,
+    });
+    if (coverInputRef.current) {
+      coverInputRef.current.value = "";
+    }
+  };
+
+  const handleApplyCoverCrop = (result: ImageCropResult) => {
+    setCoverFile(result.file);
+    setCoverPreview(result.dataUrl);
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -135,6 +163,14 @@ export function UploadProjectModal({
     setProgress(0);
     setStatusText("Creating project container...");
 
+    const uploadToast = createUploadProgressToast(`portfolio-project-${Date.now()}`);
+    uploadToast.start(
+      `Creating project "${projectName.trim()}"...`,
+      selectedFiles.length > 0
+        ? `Preparing ${selectedFiles.length} file(s) for upload...`
+        : "Initializing project container..."
+    );
+
     try {
       // 1. Create Project Container
       const projRes = await createWorkspaceProjectAction(
@@ -161,6 +197,14 @@ export function UploadProjectModal({
 
           setStatusText(`Uploading ${i + 1}/${selectedFiles.length}: ${file.name}`);
           setProgress(filePercentBase);
+          uploadToast.update({
+            title: `Uploading "${file.name}"`,
+            progress: filePercentBase,
+            loadedBytes: 0,
+            totalBytes: file.size,
+            fileIndex: i + 1,
+            totalFiles: selectedFiles.length,
+          });
 
           try {
             const initRes = await requestAssetUploadAction({
@@ -178,6 +222,23 @@ export function UploadProjectModal({
 
               await new Promise<void>((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
+                xhr.upload.onprogress = (event) => {
+                  if (event.lengthComputable) {
+                    const fileFraction = event.loaded / event.total;
+                    const overallPct = Math.round(
+                      ((i + fileFraction) / selectedFiles.length) * 95
+                    );
+                    setProgress(overallPct);
+                    uploadToast.update({
+                      title: `Uploading "${file.name}"`,
+                      progress: Math.round(fileFraction * 100),
+                      loadedBytes: event.loaded,
+                      totalBytes: event.total,
+                      fileIndex: i + 1,
+                      totalFiles: selectedFiles.length,
+                    });
+                  }
+                };
                 xhr.onload = () => {
                   if (xhr.status >= 200 && xhr.status < 300) resolve();
                   else reject(new Error("File upload failed"));
@@ -236,33 +297,28 @@ export function UploadProjectModal({
         }
       }
 
-      // 3. Upload custom cover if specified and no thumbnail yet
-      if (coverFile && !primaryThumbnailUrl) {
-        setStatusText("Uploading cover thumbnail...");
-        try {
-          const coverInit = await requestAssetUploadAction({
-            workspaceId,
-            projectId: createdProject.id,
-            title: `${projectName} Cover`,
-            filename: coverFile.name,
-            fileSizeBytes: coverFile.size,
-            assetType: "photo_gallery",
-            category: "cover",
-          });
-          if (coverInit.success && coverInit.directUpload) {
-            await fetch(coverInit.directUpload.uploadUrl, {
-              method: coverInit.directUpload.uploadType === "presigned_put" ? "PUT" : "POST",
-              headers: coverInit.directUpload.headers || undefined,
-              body: coverFile,
-            });
-            primaryThumbnailUrl = coverInit.directUpload.uploadUrl.split("?")[0];
-          }
-        } catch {
-          // Fallback handled
-        }
+      // 3. Persist custom cropped cover or primary thumbnail to project record in database
+      if (primaryThumbnailUrl) {
+        setStatusText("Saving project cover thumbnail...");
+        uploadToast.update({
+          title: `Saving cover for "${createdProject.title}"`,
+          progress: 98,
+          subtitle: "Persisting project cover thumbnail...",
+        });
+        await updateAssetAction(
+          createdProject.id,
+          { thumbnailUrl: primaryThumbnailUrl },
+          { isProject: true, workspaceSlug }
+        );
       }
 
       setProgress(100);
+      uploadToast.success(
+        `Project "${createdProject.title}" created!`,
+        selectedFiles.length > 0
+          ? `Uploaded ${uploadedAssets.length} of ${selectedFiles.length} file(s) to portfolio.`
+          : "Project container created."
+      );
 
       const newItem: PortfolioItem = {
         id: createdProject.id,
@@ -275,13 +331,13 @@ export function UploadProjectModal({
         projectAssets: uploadedAssets,
       };
 
-
       onProjectCreated(newItem);
-      showFlash(`Project "${createdProject.title}" created with ${selectedFiles.length} file(s)!`);
       handleClose();
     } catch (err: any) {
-      setErrorMessage(err.message || "An error occurred creating project.");
+      const msg = err.message || "An error occurred creating project.";
+      setErrorMessage(msg);
       setUploading(false);
+      uploadToast.error("Project creation failed", msg);
     }
   };
 
@@ -478,9 +534,9 @@ export function UploadProjectModal({
               COVER THUMBNAIL <span className="normal-case text-zinc-500">(optional)</span>
             </Label>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               {/* Preview Thumbnail Box */}
-              <div className="size-11 rounded-xl bg-[#0c0c0e] border border-white/10 flex items-center justify-center text-zinc-500 overflow-hidden shrink-0">
+              <div className="w-16 h-11 rounded-xl bg-[#0c0c0e] border border-white/10 flex items-center justify-center text-zinc-500 overflow-hidden shrink-0">
                 {coverPreview ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -493,7 +549,7 @@ export function UploadProjectModal({
                 )}
               </div>
 
-              {/* Upload Cover Button */}
+              {/* Upload / Edit / Remove Cover Buttons */}
               <input
                 ref={coverInputRef}
                 type="file"
@@ -507,11 +563,44 @@ export function UploadProjectModal({
                 variant="outline"
                 onClick={() => coverInputRef.current?.click()}
                 disabled={uploading}
-                className="flex-1 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border-white/15 text-white text-xs font-semibold py-2.5 px-4 h-auto flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                className="flex-1 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border-white/15 text-white text-xs font-semibold py-2.5 px-3.5 h-auto flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
               >
                 <Upload className="size-3.5 text-zinc-300" />
-                <span>UPLOAD COVER</span>
+                <span>{coverPreview ? "CHANGE" : "UPLOAD COVER"}</span>
               </Button>
+              {coverPreview && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      setCoverCropState({
+                        isOpen: true,
+                        imageSrc: coverPreview,
+                        fileName: coverFile?.name || "project-cover.jpg",
+                      })
+                    }
+                    disabled={uploading}
+                    className="rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border-white/15 text-white text-xs font-semibold py-2.5 px-3 h-auto flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Crop className="size-3.5 text-[#f5551d]" />
+                    <span>EDIT</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setCoverFile(null);
+                      setCoverPreview(null);
+                    }}
+                    disabled={uploading}
+                    className="rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/30 text-rose-300 text-xs font-semibold py-2.5 px-2.5 h-auto flex items-center justify-center transition-all cursor-pointer disabled:opacity-50"
+                    title="Remove custom cover"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </>
+              )}
             </div>
 
             <p className="text-[11px] text-zinc-500 font-sans leading-tight pt-0.5">
@@ -562,6 +651,18 @@ export function UploadProjectModal({
           </div>
         </form>
       </div>
+
+      <ImageCropEditorDialog
+        isOpen={coverCropState.isOpen}
+        onClose={() => setCoverCropState((prev) => ({ ...prev, isOpen: false }))}
+        imageSrc={coverCropState.imageSrc}
+        title="EDIT & CROP PROJECT COVER"
+        subtitle="Frame, zoom, rotate, or fine-tune the cover thumbnail for this portfolio project."
+        defaultAspectRatio="16:9"
+        aspectRatioOptions={["16:9", "9:16", "1:1", "4:3"]}
+        outputFileName={coverCropState.fileName}
+        onApply={handleApplyCoverCrop}
+      />
     </div>
   );
 }

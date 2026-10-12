@@ -62,22 +62,21 @@ export function AdminSidebar() {
         <div>
           <Link
             href="/admin"
-            className="flex items-center gap-2.5 group"
+            className="flex flex-col gap-1.5 group"
           >
-            <div className="size-8 rounded-xl bg-[#f5551d] text-black flex items-center justify-center font-black text-sm shadow-md shadow-[#f5551d]/20">
-              C
+            <div className="flex items-center gap-2">
+              <img
+                src="/images/logo.svg"
+                alt="CineSpace"
+                className="h-5 w-auto block object-contain select-none"
+              />
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-[#f5551d]/40 text-[#f5551d] bg-[#f5551d]/10 font-mono">
+                ADMIN
+              </Badge>
             </div>
-            <div>
-              <div className="font-heading font-black text-lg tracking-tight text-foreground flex items-center gap-1.5">
-                CineSpace
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-[#f5551d]/40 text-[#f5551d] bg-[#f5551d]/10 font-mono">
-                  ADMIN
-                </Badge>
-              </div>
-              <p className="text-[10px] text-muted-foreground font-mono">
-                Platform Control Center
-              </p>
-            </div>
+            <p className="text-[10px] text-muted-foreground font-mono">
+              Platform Control Center
+            </p>
           </Link>
         </div>
 

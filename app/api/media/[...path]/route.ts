@@ -51,17 +51,119 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path: pathSegments } = await params;
-  let key = pathSegments.join("/");
+  let key = pathSegments
+    .map((seg) => {
+      try {
+        return decodeURIComponent(seg);
+      } catch {
+        return seg;
+      }
+    })
+    .join("/");
 
   if (key === "placeholder.svg" || key === "fallback.svg") {
     return createFallbackResponse();
   }
 
-  // 1. If key is a 32-char hex Cloudflare Stream UID, route directly to Stream thumbnail or video
+  const downloadParam = req.nextUrl.searchParams.get("download");
+  const filenameParam = req.nextUrl.searchParams.get("filename");
+  const isDownload =
+    downloadParam === "true" ||
+    (Boolean(downloadParam) && downloadParam !== "false") ||
+    Boolean(filenameParam);
+  const rawFilename =
+    filenameParam ||
+    (downloadParam && downloadParam !== "true" && downloadParam !== "false"
+      ? downloadParam
+      : null) ||
+    key.split("/").pop() ||
+    "download";
+  const safeFilename = rawFilename.replace(/[/\\?%*:|"<>]/g, "_").trim() || "download";
+  const cleanAscii = safeFilename.replace(/["\r\n]/g, "");
+
+  // 1. If key is a 32-char hex Cloudflare Stream UID, route to Stream MP4 download or thumbnail
   if (/^[a-f0-9]{32}$/i.test(key)) {
     const streamDomain = (env.CLOUDFLARE_STREAM_SUBDOMAIN || "videodelivery.net")
       .replace(/^https?:\/\//, "")
       .replace(/\/+$/, "");
+
+    if (isDownload) {
+      let mp4Url = `https://${streamDomain}/${key}/downloads/default.mp4`;
+      const cfAccountId = env.CLOUDFLARE_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID;
+      const cfApiToken =
+        env.CLOUDFLARE_API_TOKEN ||
+        process.env.CLOUDFLARE_API_TOKEN ||
+        process.env.CLOUDFLARE_STREAM_TOKEN;
+
+      // Ensure MP4 download is enabled on Cloudflare Stream (disabled by default -> 404 Not Found)
+      if (cfAccountId && cfApiToken) {
+        const downloadsEndpoint = `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/stream/${key}/downloads`;
+        try {
+          let cfRes = await fetch(downloadsEndpoint, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${cfApiToken}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (!cfRes.ok) {
+            cfRes = await fetch(downloadsEndpoint, {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${cfApiToken}`,
+              },
+            });
+          }
+
+          if (cfRes.ok) {
+            let cfJson = await cfRes.json();
+            let defaultDl = cfJson?.result?.default;
+            if (defaultDl?.url) {
+              mp4Url = defaultDl.url;
+            }
+            let status: string | undefined = defaultDl?.status;
+
+            // If Cloudflare Stream is still generating the MP4 file, poll up to 15s until ready
+            const deadline = Date.now() + 15000;
+            while (Date.now() < deadline && status && status !== "ready" && status !== "error") {
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+              const pollRes = await fetch(downloadsEndpoint, {
+                method: "GET",
+                headers: {
+                  Authorization: `Bearer ${cfApiToken}`,
+                },
+              });
+              if (!pollRes.ok) break;
+              cfJson = await pollRes.json();
+              defaultDl = cfJson?.result?.default;
+              if (defaultDl?.url) {
+                mp4Url = defaultDl.url;
+              }
+              status = defaultDl?.status;
+            }
+          }
+        } catch (err) {
+          console.warn(`[Media Proxy] Failed to enable Cloudflare Stream MP4 download for ${key}:`, err);
+        }
+      }
+
+      // Cloudflare Stream automatically appends `.mp4` to `?filename=` and requires alphanumeric/underscore/hyphen characters
+      const streamBaseFilename =
+        cleanAscii
+          .replace(/\.[^.]+$/, "")
+          .replace(/[^a-zA-Z0-9_-]/g, "_")
+          .replace(/_+/g, "_")
+          .replace(/^_|_$/g, "")
+          .slice(0, 100) || "Deliverable";
+
+      const separator = mp4Url.includes("?") ? "&" : "?";
+      return NextResponse.redirect(
+        `${mp4Url}${separator}filename=${encodeURIComponent(streamBaseFilename)}`,
+        307
+      );
+    }
+
     return NextResponse.redirect(
       `https://${streamDomain}/${key}/thumbnails/thumbnail.jpg?time=1s&height=720`,
       307
@@ -93,13 +195,16 @@ export async function GET(
     !r2PublicDomain.includes("pub-xxxx") &&
     !r2PublicDomain.includes("r2.cloudflarestorage.com");
 
-  // 2. Public Asset Direct CDN Offload:
+  // 2. Public Asset Direct CDN Offload (only when NOT requesting an attachment download):
   // If the asset is public and a valid public domain is configured, issue an immediate 307 redirect
-  if (!isPrivate && hasRealR2PublicDomain) {
+  if (!isPrivate && !isDownload && hasRealR2PublicDomain) {
     return NextResponse.redirect(`${r2PublicDomain}/${key}`, 307);
   }
 
   if (!env.isCloudflareR2Configured) {
+    if (!isPrivate && hasRealR2PublicDomain) {
+      return NextResponse.redirect(`${r2PublicDomain}/${key}`, 307);
+    }
     return createFallbackResponse();
   }
 
@@ -115,6 +220,18 @@ export async function GET(
       requestChecksumCalculation: "WHEN_REQUIRED",
       responseChecksumValidation: "WHEN_REQUIRED",
     });
+
+    // 2b. Public Asset Download Disposition Presigner:
+    // When a public R2 asset is requested with ?download=true, sign a GetObjectCommand with ResponseContentDisposition
+    if (!isPrivate && isDownload) {
+      const command = new GetObjectCommand({
+        Bucket: targetBucket,
+        Key: key,
+        ResponseContentDisposition: `attachment; filename="${cleanAscii}"; filename*=UTF-8''${encodeURIComponent(cleanAscii)}`,
+      });
+      const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 });
+      return NextResponse.redirect(presignedUrl, 307);
+    }
 
     // 3. Private Asset Gated Dispatcher:
     // Enforce workspace membership OR delivery passcode authorization before generating a presigned GET URL.
@@ -171,17 +288,12 @@ export async function GET(
         return new NextResponse("Unauthorized access to private media", { status: 401 });
       }
 
-      const downloadParam = req.nextUrl.searchParams.get("download");
-      const filenameParam = req.nextUrl.searchParams.get("filename");
-      const isDownload = downloadParam === "true" || Boolean(filenameParam);
-      const safeFilename = (filenameParam || key.split("/").pop() || "download").replace(/[/\\?%*:|"<>]/g, "_");
-
       const command = new GetObjectCommand({
         Bucket: targetBucket,
         Key: key,
         ...(isDownload
           ? {
-              ResponseContentDisposition: `attachment; filename="${encodeURIComponent(safeFilename)}"`,
+              ResponseContentDisposition: `attachment; filename="${cleanAscii}"; filename*=UTF-8''${encodeURIComponent(cleanAscii)}`,
             }
           : {}),
       });
@@ -192,10 +304,6 @@ export async function GET(
 
     // 4. Fallback direct proxy (only reached in local development without public domain)
     const rangeHeader = req.headers.get("range");
-    const downloadParam = req.nextUrl.searchParams.get("download");
-    const filenameParam = req.nextUrl.searchParams.get("filename");
-    const isDownload = downloadParam === "true" || Boolean(filenameParam);
-    const safeFilename = (filenameParam || key.split("/").pop() || "download").replace(/[/\\?%*:|"<>]/g, "_");
 
     const command = new GetObjectCommand({
       Bucket: targetBucket,

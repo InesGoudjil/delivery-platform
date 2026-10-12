@@ -2,7 +2,7 @@
 
 import React, { useRef } from "react";
 import Link from "next/link";
-import { MessageCircle, Palette, Check, Camera, Trash2, Upload, Film, Briefcase, MapPin, User, Sparkles } from "lucide-react";
+import { MessageCircle, Palette, Check, Camera, Trash2, Upload, Film, Briefcase, MapPin, User, Sparkles, Crop } from "lucide-react";
 import { ACCENTS } from "./constants";
 import { getContrastForeground } from "@/lib/theme-utils";
 import { PortfolioStats } from "@/core/entities/portfolio";
@@ -25,6 +25,7 @@ interface StorefrontIdentitySectionProps {
   onAccentChange: (val: string) => void;
   logoUrl?: string | null;
   onProfileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onEditProfile?: () => void;
   onRemoveProfile: () => void;
   stats: PortfolioStats;
   onStatsChange: (val: PortfolioStats) => void;
@@ -44,6 +45,7 @@ export function StorefrontIdentitySection({
   onAccentChange,
   logoUrl,
   onProfileUpload,
+  onEditProfile,
   onRemoveProfile,
   stats,
   onStatsChange,
@@ -188,6 +190,28 @@ export function StorefrontIdentitySection({
                     : "JPG, PNG or WebP up to 10MB"}
                 </TooltipContent>
               </Tooltip>
+              {logoUrl && onEditProfile && (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={!canBranding}
+                        onClick={onEditProfile}
+                        className="rounded-full bg-muted hover:bg-muted/80 border-border text-foreground text-xs font-semibold px-3.5 h-8 gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
+                      >
+                        <Crop className="size-3 text-primary" />
+                        <span>Edit / Crop</span>
+                      </Button>
+                    }
+                  />
+                  <TooltipContent side="bottom">
+                    Crop, zoom, rotate, or fine-tune profile photo
+                  </TooltipContent>
+                </Tooltip>
+              )}
               {logoUrl && (
                 <Tooltip>
                   <TooltipTrigger
