@@ -66,94 +66,25 @@ export function HeroSection({ onOpenDemo, onStartTrial }: HeroSectionProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           >
-            <TiltCard tiltIntensity={5} glareIntensity={0.15}>
-              <div className="relative rounded-[32px] p-4 sm:p-8 bg-gradient-to-tr from-[#cf3808] via-[#e64713] to-[#88179f] shadow-2xl overflow-hidden border border-white/10 group">
-              {/* Outer glow container */}
-              <div className="absolute inset-0 bg-radial from-amber-500/20 via-transparent to-transparent opacity-60 pointer-events-none" />
-
-              {/* Main Mockup Screen Container */}
-              <div className="relative rounded-2xl bg-[#0f0f13] border border-white/15 p-4 shadow-2xl space-y-4 transform transition-transform duration-500 group-hover:scale-[1.01]">
-                {/* Header bar of mockup */}
-                <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
-                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
-                    <span className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
-                  </div>
-                  <span className="text-[11px] font-mono text-zinc-400">
-                    MERCEDES-AMG GT — CineSpace Review
-                  </span>
-                  <div className="flex gap-1.5">
-                    <span className="text-[10px] bg-[#f5551d] text-white px-2 py-0.5 rounded font-bold">LIVE</span>
-                  </div>
-                </div>
-
-                {/* Content area: Video preview & sidebar comments */}
-                <div className="grid grid-cols-12 gap-3">
-                  {/* Left sub-box: Comments drawer */}
-                  <div className="col-span-4 bg-[#16161b] rounded-xl p-2.5 space-y-2 border border-white/5 text-left">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-zinc-300 uppercase">FEEDBACK</span>
-                      <span className="text-[9px] text-[#f5551d] font-mono">00:24.12</span>
-                    </div>
-                    <div className="bg-[#202028] p-2 rounded-lg text-[10px] text-zinc-300">
-                      <span className="font-semibold text-white block">Client Note:</span>
-                      "Intro grading looks stunning! Can we trim frame 12?"
-                    </div>
-                    <div className="bg-[#202028] p-2 rounded-lg text-[10px] text-zinc-300">
-                      <span className="font-semibold text-[#86b98f] block">✓ Sign-off locked</span>
-                      "Final cut approved for export."
-                    </div>
-                  </div>
-
-                  {/* Right sub-box: Video player preview */}
-                  <div className="col-span-8 bg-black rounded-xl overflow-hidden border border-white/10 relative aspect-video flex flex-col justify-between p-3">
-                    <img
-                    src={IMG_HERO}
-                      // src="https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&w=800&q=80"
-                      alt="Mercedes AMG GT"
-                      className="absolute inset-0 w-full h-full object-cover opacity-80"
+            {/*<TiltCard tiltIntensity={5} glareIntensity={0.15} className="rounded-[32px]">*/}
+              <div className="relative rounded-[32px]   shadow-2xl overflow-hidden border border-white/10 group">
+                <div className="max-w-[920px] mx-auto w-full px-2 sm:px-0">
+                  <motion.div
+                    className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/15 bg-black/80"
+                    whileHover={{ scale: 1.01 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <iframe
+                      src="https://iframe.videodelivery.net/bcb96cb5bbb50ee8093256f33146f473?preload=true&poster=https%3A%2F%2Fvideodelivery.net%2Fbcb96cb5bbb50ee8093256f33146f473%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D1s%26height%3D720"
+                      className="w-full h-full border-none absolute inset-0"
+                      allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                      allowFullScreen
+                      title="CineSpace Preview Video"
                     />
-                    <div className="relative z-10 flex justify-between">
-                      <span className="bg-black/70 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-white font-mono">
-                        MERCEDES-AMG GT
-                      </span>
-                      <span className="bg-[#86b98f] text-black px-2 py-0.5 rounded text-[10px] font-bold">
-                        APPROVED
-                      </span>
-                    </div>
-                    <div className="relative z-10 flex justify-between items-end">
-                      <div className="flex gap-1">
-                        <span className="bg-black/60 px-1.5 py-0.5 rounded text-[9px] text-zinc-300">V1</span>
-                        <span className="bg-[#f5551d] text-white px-1.5 py-0.5 rounded text-[9px] font-bold">FINAL</span>
-                      </div>
-                      <span className="bg-black/60 px-1.5 py-0.5 rounded text-[9px] text-zinc-300">4K PRORES</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom sub-box: Project Files Grid */}
-                <div className="border-t border-white/10 pt-3 text-left">
-                  <span className="text-[11px] font-bold text-white tracking-wider uppercase block mb-2">
-                    PROJECT FILES
-                  </span>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[
-                      "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=300&q=80",
-                      "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&w=300&q=80",
-                      "https://images.unsplash.com/photo-1544829099-b9a0c07fad1a?auto=format&fit=crop&w=300&q=80",
-                      "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=300&q=80",
-                    ].map((url, i) => (
-                      <div key={i} className="aspect-video rounded-lg overflow-hidden border border-white/10 relative bg-zinc-900 group/img">
-                        <img src={url} alt="file" className="w-full h-full object-cover group-hover/img:scale-105 transition-transform" />
-                        <span className="absolute bottom-1 right-1 bg-black/70 text-[8px] text-white px-1 rounded font-mono">4K</span>
-                      </div>
-                    ))}
-                  </div>
+                  </motion.div>
                 </div>
               </div>
-            </div>
-          </TiltCard>
+          {/*</TiltCard>*/}
         </motion.div>
         </div>
 
@@ -167,3 +98,91 @@ export function HeroSection({ onOpenDemo, onStartTrial }: HeroSectionProps) {
     </section>
   );
 }
+
+
+// <div className="relative rounded-[32px] p-4 sm:p-8 bg-gradient-to-tr from-[#cf3808] via-[#e64713] to-[#88179f] shadow-2xl overflow-hidden border border-white/10 group">
+// {/* Outer glow container */}
+// <div className="absolute inset-0 bg-radial from-amber-500/20 via-transparent to-transparent opacity-60 pointer-events-none" />
+
+// {/* Main Mockup Screen Container */}
+// <div className="relative rounded-2xl bg-[#0f0f13] border border-white/15 p-4 shadow-2xl space-y-4 transform transition-transform duration-500 group-hover:scale-[1.01]">
+//   {/* Header bar of mockup */}
+//   <div className="flex items-center justify-between border-b border-white/10 pb-3">
+//     <div className="flex items-center gap-2">
+//       <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
+//       <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
+//       <span className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
+//     </div>
+//     <span className="text-[11px] font-mono text-zinc-400">
+//       MERCEDES-AMG GT — CineSpace Review
+//     </span>
+//     <div className="flex gap-1.5">
+//       <span className="text-[10px] bg-[#f5551d] text-white px-2 py-0.5 rounded font-bold">LIVE</span>
+//     </div>
+//   </div>
+
+//   {/* Content area: Video preview & sidebar comments */}
+//   <div className="grid grid-cols-12 gap-3">
+//     {/* Left sub-box: Comments drawer */}
+//     <div className="col-span-4 bg-[#16161b] rounded-xl p-2.5 space-y-2 border border-white/5 text-left">
+//       <div className="flex items-center justify-between">
+//         <span className="text-[10px] font-bold text-zinc-300 uppercase">FEEDBACK</span>
+//         <span className="text-[9px] text-[#f5551d] font-mono">00:24.12</span>
+//       </div>
+//       <div className="bg-[#202028] p-2 rounded-lg text-[10px] text-zinc-300">
+//         <span className="font-semibold text-white block">Client Note:</span>
+//         "Intro grading looks stunning! Can we trim frame 12?"
+//       </div>
+//       <div className="bg-[#202028] p-2 rounded-lg text-[10px] text-zinc-300">
+//         <span className="font-semibold text-[#86b98f] block">✓ Sign-off locked</span>
+//         "Final cut approved for export."
+//       </div>
+//     </div>
+
+//     {/* Right sub-box: Video player preview */}
+//     <div className="col-span-8 bg-black rounded-xl overflow-hidden border border-white/10 relative aspect-video flex flex-col justify-between p-3">
+//       <img
+//       src={IMG_HERO}
+//         // src="https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&w=800&q=80"
+//         alt="Mercedes AMG GT"
+//         className="absolute inset-0 w-full h-full object-cover opacity-80"
+//       />
+//       <div className="relative z-10 flex justify-between">
+//         <span className="bg-black/70 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-white font-mono">
+//           MERCEDES-AMG GT
+//         </span>
+//         <span className="bg-[#86b98f] text-black px-2 py-0.5 rounded text-[10px] font-bold">
+//           APPROVED
+//         </span>
+//       </div>
+//       <div className="relative z-10 flex justify-between items-end">
+//         <div className="flex gap-1">
+//           <span className="bg-black/60 px-1.5 py-0.5 rounded text-[9px] text-zinc-300">V1</span>
+//           <span className="bg-[#f5551d] text-white px-1.5 py-0.5 rounded text-[9px] font-bold">FINAL</span>
+//         </div>
+//         <span className="bg-black/60 px-1.5 py-0.5 rounded text-[9px] text-zinc-300">4K PRORES</span>
+//       </div>
+//     </div>
+//   </div>
+
+//   {/* Bottom sub-box: Project Files Grid */}
+//   <div className="border-t border-white/10 pt-3 text-left">
+//     <span className="text-[11px] font-bold text-white tracking-wider uppercase block mb-2">
+//       PROJECT FILES
+//     </span>
+//     <div className="grid grid-cols-4 gap-2">
+//       {[
+//         "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=300&q=80",
+//         "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&w=300&q=80",
+//         "https://images.unsplash.com/photo-1544829099-b9a0c07fad1a?auto=format&fit=crop&w=300&q=80",
+//         "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=300&q=80",
+//       ].map((url, i) => (
+//         <div key={i} className="aspect-video rounded-lg overflow-hidden border border-white/10 relative bg-zinc-900 group/img">
+//           <img src={url} alt="file" className="w-full h-full object-cover group-hover/img:scale-105 transition-transform" />
+//           <span className="absolute bottom-1 right-1 bg-black/70 text-[8px] text-white px-1 rounded font-mono">4K</span>
+//         </div>
+//       ))}
+//     </div>
+//   </div>
+// </div>
+// </div>

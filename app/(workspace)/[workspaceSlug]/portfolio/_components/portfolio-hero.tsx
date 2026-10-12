@@ -15,6 +15,7 @@ import { TypographyH1, TypographyLead } from "@/components/ui/typography";
 import { UploadFilmModal } from "./upload-film-modal";
 import { UploadProjectModal } from "./upload-project-modal";
 import { PortfolioItem } from "../portfolio-client";
+import { cn } from "@/lib/utils";
 
 interface PortfolioHeroProps {
   workspace: {
@@ -31,6 +32,8 @@ interface PortfolioHeroProps {
   };
   onProjectCreated?: (newItem: PortfolioItem) => void;
   showFlash: (msg: string) => void;
+  features?: any;
+  projectsCount?: number;
 }
 
 export function PortfolioHero({
@@ -38,9 +41,15 @@ export function PortfolioHero({
   portfolio,
   onProjectCreated,
   showFlash,
+  features,
+  projectsCount = 0,
 }: PortfolioHeroProps) {
   const [showFilmModal, setShowFilmModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
+
+  const portfolioLimit = features?.portfolio_videos ?? 4;
+  const isUnlimited = portfolioLimit === -1;
+  const isAtLimit = !isUnlimited && projectsCount >= portfolioLimit;
 
   const handleAssetUploaded = (newItem: PortfolioItem) => {
     if (onProjectCreated) {
@@ -50,22 +59,28 @@ export function PortfolioHero({
 
   return (
     <>
-      {/* Upload Film/Still Glass Modal (Screenshot 1) */}
+      {/* Upload Film/Still Glass Modal */}
       <UploadFilmModal
         workspaceId={workspace.id}
         isOpen={showFilmModal}
         onClose={() => setShowFilmModal(false)}
         onAssetUploaded={handleAssetUploaded}
         showFlash={showFlash}
+        isAtLimit={isAtLimit}
+        limit={portfolioLimit}
+        workspaceSlug={workspace.slug}
       />
 
-      {/* Upload Project Glass Modal (Screenshot 2) */}
+      {/* Upload Project Glass Modal */}
       <UploadProjectModal
         workspaceId={workspace.id}
         isOpen={showProjectModal}
         onClose={() => setShowProjectModal(false)}
         onProjectCreated={handleAssetUploaded}
         showFlash={showFlash}
+        isAtLimit={isAtLimit}
+        limit={portfolioLimit}
+        workspaceSlug={workspace.slug}
       />
 
       {/* Top Header */}
@@ -82,6 +97,20 @@ export function PortfolioHero({
             <Badge variant="orange" className="text-xs font-semibold tracking-wide">
               Your public page
             </Badge>
+
+            {!isUnlimited && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-xs font-mono font-semibold",
+                  isAtLimit
+                    ? "border-amber-500/40 text-amber-400 bg-amber-500/10"
+                    : "border-white/15 text-zinc-400"
+                )}
+              >
+                {projectsCount} / {portfolioLimit} films
+              </Badge>
+            )}
 
             <Tooltip>
               <TooltipTrigger

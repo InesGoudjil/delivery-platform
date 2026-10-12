@@ -92,5 +92,9 @@ export interface DeliveryDetailClientProps {
     activeVersion?: AssetVersionItem | null;
     feedback?: FeedbackItem[];
   }>;
+  initialTotalAssetsCount?: number;
+  initialApprovedCount?: number;
+  initialHasMore?: boolean;
   initialFeedback: FeedbackItem[];
+  features?: Record<string, any>;
 }

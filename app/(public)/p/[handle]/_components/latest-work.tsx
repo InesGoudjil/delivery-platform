@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Film, Image as ImageIcon, Layers, Play } from "lucide-react";
+import { Film, Image as ImageIcon, Layers, Play, Loader2, CheckCircle2 } from "lucide-react";
 import { PortfolioProject, PortfolioAsset } from "@/lib/portfolio-data";
 import { PortfolioAppearance } from "@/core/entities/portfolio";
 import { usePortfolioModal } from "./portfolio-context";
@@ -28,6 +28,29 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
   const [activeTab, setActiveTab] = useState<"projects" | "films" | "stills">(
     projects.length > 0 ? "projects" : films.length > 0 ? "films" : "stills"
   );
+
+  const PAGE_SIZE = 12;
+  const [visibleCounts, setVisibleCounts] = useState<Record<"projects" | "films" | "stills", number>>({
+    projects: PAGE_SIZE,
+    films: PAGE_SIZE,
+    stills: PAGE_SIZE,
+  });
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  const visibleProjects = projects.slice(0, visibleCounts.projects);
+  const visibleFilms = films.slice(0, visibleCounts.films);
+  const visibleStills = stills.slice(0, visibleCounts.stills);
+
+  const handleLoadMore = (tab: "projects" | "films" | "stills") => {
+    setIsLoadingMore(true);
+    setTimeout(() => {
+      setVisibleCounts((prev) => ({
+        ...prev,
+        [tab]: (prev[tab] || PAGE_SIZE) + PAGE_SIZE,
+      }));
+      setIsLoadingMore(false);
+    }, 200);
+  };
 
   const isMasonry =
     appearance?.aspectRatio === "grid" ||
@@ -107,50 +130,95 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
             <p className="text-zinc-400 font-sans text-sm">No featured projects published yet.</p>
           </div>
         ) : (
-          <div className={isMasonry ? `${columnsClass} animate-in fade-in duration-300` : `grid ${gridClasses} animate-in fade-in duration-300`}>
-            {projects.map((proj) => (
-              <div key={proj.id} className={isMasonry ? `break-inside-avoid ${itemSpacing} w-full` : "h-full"}>
-                <TiltCard tiltIntensity={4} glareIntensity={0.12} className={`w-full ${isMasonry ? "h-auto" : "h-full"}`}>
-                  <div
-                    onClick={() => setSelectedProject(proj)}
-                    className={`group relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300 w-full ${isMasonry ? "h-auto" : "h-full"}`}
-                  >
-                    <AspectRatio ratio={isMasonry ? 16 / 11 : numericRatio} className="w-full">
-                      <AppImage
-                        src={proj.coverImage}
-                        alt={proj.title}
-                        fallbackIcon="film"
-                        objectFit={thumbObjectFit}
-                        containerClassName="size-full"
-                        className="size-full transition-transform duration-500 group-hover:scale-105"
-                      />
-                    </AspectRatio>
+          <div className="space-y-8">
+            <div className={isMasonry ? `${columnsClass} animate-in fade-in duration-300` : `grid ${gridClasses} animate-in fade-in duration-300`}>
+              {visibleProjects.map((proj) => (
+                <div key={proj.id} className={isMasonry ? `break-inside-avoid ${itemSpacing} w-full` : "h-full"}>
+                  <TiltCard tiltIntensity={4} glareIntensity={0.12} className={`w-full ${isMasonry ? "h-auto" : "h-full"}`}>
+                    <div
+                      onClick={() => setSelectedProject(proj)}
+                      className={`group relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300 w-full ${isMasonry ? "h-auto" : "h-full"}`}
+                    >
+                      <AspectRatio ratio={isMasonry ? 16 / 11 : numericRatio} className="w-full">
+                        <AppImage
+                          src={proj.coverImage}
+                          alt={proj.title}
+                          fallbackIcon="film"
+                          objectFit={thumbObjectFit}
+                          containerClassName="size-full"
+                          className="size-full transition-transform duration-500 group-hover:scale-105"
+                        />
+                      </AspectRatio>
 
-                    {/* Gradient shadow */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent group-hover:via-black/20 transition-all duration-300 pointer-events-none" />
+                      {/* Gradient shadow */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent group-hover:via-black/20 transition-all duration-300 pointer-events-none" />
 
-                    {/* Top-right asset count badge */}
-                    <div className="absolute top-3 right-3 z-10">
-                      <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[11px] font-mono text-zinc-200">
-                        {proj.tc}
-                      </Badge>
+                      {/* Top-right asset count badge */}
+                      <div className="absolute top-3 right-3 z-10">
+                        <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[11px] font-mono text-zinc-200">
+                          {proj.tc}
+                        </Badge>
+                      </div>
+
+                      {/* Bottom title and client */}
+                      <div className="absolute bottom-4 left-4 right-4 z-10 space-y-0.5 pointer-events-none">
+                        <TypographyH3 className="font-heading font-bold text-base text-white group-hover:text-[#f5551d] transition-colors truncate">
+                          {proj.title}
+                        </TypographyH3>
+                        {showClient && (
+                          <TypographyMuted className="text-xs text-zinc-400 font-mono truncate">
+                            {proj.client}
+                          </TypographyMuted>
+                        )}
+                      </div>
                     </div>
+                  </TiltCard>
+                </div>
+              ))}
+            </div>
 
-                    {/* Bottom title and client */}
-                    <div className="absolute bottom-4 left-4 right-4 z-10 space-y-0.5 pointer-events-none">
-                      <TypographyH3 className="font-heading font-bold text-base text-white group-hover:text-[#f5551d] transition-colors truncate">
-                        {proj.title}
-                      </TypographyH3>
-                      {showClient && (
-                        <TypographyMuted className="text-xs text-zinc-400 font-mono truncate">
-                          {proj.client}
-                        </TypographyMuted>
+            {/* Load More & Stats for Projects */}
+            {projects.length > visibleProjects.length && (
+              <div className="flex flex-col items-center justify-center pt-4 pb-2 space-y-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  disabled={isLoadingMore}
+                  onClick={() => handleLoadMore("projects")}
+                  className="group relative rounded-full px-8 py-3 bg-[#141416]/80 hover:bg-[#1a1a1e] border-white/10 hover:border-[#f5551d]/50 text-white font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-xl cursor-pointer"
+                >
+                  {isLoadingMore ? (
+                    <div className="flex items-center gap-2.5">
+                      <Loader2 className="size-4 animate-spin text-[#f5551d]" />
+                      <span>Loading projects...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span>Load More Projects</span>
+                      {projects.length - visibleProjects.length > 0 && (
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-[#f5551d]/15 text-[#f5551d] border border-[#f5551d]/30"
+                        >
+                          +{projects.length - visibleProjects.length} more
+                        </Badge>
                       )}
                     </div>
-                  </div>
-                </TiltCard>
+                  )}
+                </Button>
+                <p className="text-[11px] font-mono text-zinc-400">
+                  Showing {visibleProjects.length} of {projects.length} projects
+                </p>
               </div>
-            ))}
+            )}
+
+            {projects.length <= visibleProjects.length && projects.length > PAGE_SIZE && (
+              <div className="text-center pt-2 pb-2 text-[11px] font-mono text-zinc-500 flex items-center justify-center gap-2">
+                <CheckCircle2 className="size-3.5 text-emerald-400" />
+                <span>All {projects.length} projects displayed</span>
+              </div>
+            )}
           </div>
         )
       )}
@@ -165,68 +233,113 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
             <p className="text-zinc-400 font-sans text-sm">No cinematic films published yet.</p>
           </div>
         ) : (
-          <div className={isMasonry ? `${columnsClass} animate-in fade-in duration-300` : `grid ${gridClasses} animate-in fade-in duration-300`}>
-            {films.map((film) => {
-              const filmRatio = isMasonry ? (film.ar || 16 / 9) : numericRatio;
-              return (
-                <div key={film.id} className={isMasonry ? `break-inside-avoid ${itemSpacing} w-full` : "h-full"}>
-                  <TiltCard tiltIntensity={4} glareIntensity={0.12} className={`w-full ${isMasonry ? "h-auto" : "h-full"}`}>
-                    <div
-                      onClick={() => setActiveFilm(film)}
-                      className={`group relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300 w-full ${isMasonry ? "h-auto" : "h-full"} flex flex-col justify-between`}
-                    >
-                      <div className="relative w-full overflow-hidden">
-                        <AspectRatio ratio={filmRatio} className="w-full">
-                          <AppImage
-                            src={film.image}
-                            alt={film.title}
-                            fallbackIcon="film"
-                            objectFit={thumbObjectFit}
-                            containerClassName="size-full"
-                            className="size-full transition-transform duration-500 group-hover:scale-105"
-                          />
-                        </AspectRatio>
-                        <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors pointer-events-none" />
+          <div className="space-y-8">
+            <div className={isMasonry ? `${columnsClass} animate-in fade-in duration-300` : `grid ${gridClasses} animate-in fade-in duration-300`}>
+              {visibleFilms.map((film) => {
+                const filmRatio = isMasonry ? (film.ar || 16 / 9) : numericRatio;
+                return (
+                  <div key={film.id} className={isMasonry ? `break-inside-avoid ${itemSpacing} w-full` : "h-full"}>
+                    <TiltCard tiltIntensity={4} glareIntensity={0.12} className={`w-full ${isMasonry ? "h-auto" : "h-full"}`}>
+                      <div
+                        onClick={() => setActiveFilm(film)}
+                        className={`group relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300 w-full ${isMasonry ? "h-auto" : "h-full"} flex flex-col justify-between`}
+                      >
+                        <div className="relative w-full overflow-hidden">
+                          <AspectRatio ratio={filmRatio} className="w-full">
+                            <AppImage
+                              src={film.image}
+                              alt={film.title}
+                              fallbackIcon="film"
+                              objectFit={thumbObjectFit}
+                              containerClassName="size-full"
+                              className="size-full transition-transform duration-500 group-hover:scale-105"
+                            />
+                          </AspectRatio>
+                          <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors pointer-events-none" />
 
-                        {/* Top-right duration */}
-                        <div className="absolute top-3 right-3 z-10">
-                          <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[11px] font-mono text-white">
-                            {film.tc}
-                          </Badge>
-                        </div>
+                          {/* Top-right duration */}
+                          <div className="absolute top-3 right-3 z-10">
+                            <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[11px] font-mono text-white">
+                              {film.tc}
+                            </Badge>
+                          </div>
 
-                        {/* Top-left resolution */}
-                        <div className="absolute top-3 left-3 z-10">
-                          <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[10px] font-mono font-bold text-white uppercase gap-1.5">
-                            <Film className="size-3 text-[#f5551d]" />
-                            <span>{film.resolution || "4K 60fps"}</span>
-                          </Badge>
-                        </div>
+                          {/* Top-left resolution */}
+                          <div className="absolute top-3 left-3 z-10">
+                            <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[10px] font-mono font-bold text-white uppercase gap-1.5">
+                              <Film className="size-3 text-[#f5551d]" />
+                              <span>{film.resolution || "4K 60fps"}</span>
+                            </Badge>
+                          </div>
 
-                        {/* Center play icon */}
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <div className="size-12 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white group-hover:scale-110 group-hover:bg-[#f5551d] group-hover:text-black transition-all duration-300 shadow-xl">
-                            <Play className="size-5 fill-current ml-0.5" />
+                          {/* Center play icon */}
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="size-12 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white group-hover:scale-110 group-hover:bg-[#f5551d] group-hover:text-black transition-all duration-300 shadow-xl">
+                              <Play className="size-5 fill-current ml-0.5" />
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Card bottom info */}
-                      <div className="p-4 bg-[#121214] border-t border-white/5 space-y-1">
-                        <TypographyH3 className="font-heading font-bold text-base text-white group-hover:text-[#f5551d] transition-colors truncate">
-                          {film.title}
-                        </TypographyH3>
-                        {showClient && (
-                          <p className="text-xs text-zinc-400 font-sans line-clamp-1">
-                            {film.desc}
-                          </p>
-                        )}
+                        {/* Card bottom info */}
+                        <div className="p-4 bg-[#121214] border-t border-white/5 space-y-1">
+                          <TypographyH3 className="font-heading font-bold text-base text-white group-hover:text-[#f5551d] transition-colors truncate">
+                            {film.title}
+                          </TypographyH3>
+                          {showClient && (
+                            <p className="text-xs text-zinc-400 font-sans line-clamp-1">
+                              {film.desc}
+                            </p>
+                          )}
+                        </div>
                       </div>
+                    </TiltCard>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Load More & Stats for Films */}
+            {films.length > visibleFilms.length && (
+              <div className="flex flex-col items-center justify-center pt-4 pb-2 space-y-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  disabled={isLoadingMore}
+                  onClick={() => handleLoadMore("films")}
+                  className="group relative rounded-full px-8 py-3 bg-[#141416]/80 hover:bg-[#1a1a1e] border-white/10 hover:border-[#f5551d]/50 text-white font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-xl cursor-pointer"
+                >
+                  {isLoadingMore ? (
+                    <div className="flex items-center gap-2.5">
+                      <Loader2 className="size-4 animate-spin text-[#f5551d]" />
+                      <span>Loading films...</span>
                     </div>
-                  </TiltCard>
-                </div>
-              );
-            })}
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span>Load More Films</span>
+                      {films.length - visibleFilms.length > 0 && (
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-[#f5551d]/15 text-[#f5551d] border border-[#f5551d]/30"
+                        >
+                          +{films.length - visibleFilms.length} more
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </Button>
+                <p className="text-[11px] font-mono text-zinc-400">
+                  Showing {visibleFilms.length} of {films.length} films
+                </p>
+              </div>
+            )}
+
+            {films.length <= visibleFilms.length && films.length > PAGE_SIZE && (
+              <div className="text-center pt-2 pb-2 text-[11px] font-mono text-zinc-500 flex items-center justify-center gap-2">
+                <CheckCircle2 className="size-3.5 text-emerald-400" />
+                <span>All {films.length} films displayed</span>
+              </div>
+            )}
           </div>
         )
       )}
@@ -243,56 +356,23 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
             <p className="text-zinc-400 font-sans text-sm">No photo stills published yet.</p>
           </div>
         ) : (
-          <div className={isMasonry ? `${columnsClass} animate-in fade-in duration-300` : `grid ${gridClasses} animate-in fade-in duration-300`}>
-            {stills.map((still) => (
-              <div
-                key={still.id}
-                onClick={() => setActiveStill(still)}
-                className={isMasonry ? `break-inside-avoid ${itemSpacing} w-full group relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300` : "h-full"}
-              >
-                {isMasonry ? (
-                  <>
-                    {/* Still image in Masonry */}
-                    <img
-                      src={still.image}
-                      alt={still.title}
-                      loading="lazy"
-                      className={`w-full h-auto ${thumbObjectFit === "contain" ? "object-contain bg-black" : "object-cover"} transition-transform duration-500 group-hover:scale-105 block`}
-                    />
-
-                    {/* Top-left STILL badge */}
-                    <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/15 text-[10px] font-mono font-bold text-white uppercase tracking-wider">
-                      <ImageIcon className="size-3 text-zinc-300" />
-                      <span>STILL</span>
-                    </div>
-
-                    {/* Hover overlay with title */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                      <div className="space-y-0.5">
-                        <p className="text-sm font-bold text-white font-heading">
-                          {still.title}
-                        </p>
-                        {showClient && (
-                          <p className="text-xs text-zinc-400 font-mono capitalize">
-                            {still.cat}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <TiltCard tiltIntensity={4} glareIntensity={0.12} className="w-full h-full">
-                    <div className="group relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300 w-full h-full">
-                      <AspectRatio ratio={numericRatio} className="w-full">
-                        <AppImage
-                          src={still.image}
-                          alt={still.title}
-                          fallbackIcon="image"
-                          objectFit={thumbObjectFit}
-                          containerClassName="size-full"
-                          className="size-full transition-transform duration-500 group-hover:scale-105"
-                        />
-                      </AspectRatio>
+          <div className="space-y-8">
+            <div className={isMasonry ? `${columnsClass} animate-in fade-in duration-300` : `grid ${gridClasses} animate-in fade-in duration-300`}>
+              {visibleStills.map((still) => (
+                <div
+                  key={still.id}
+                  onClick={() => setActiveStill(still)}
+                  className={isMasonry ? `break-inside-avoid ${itemSpacing} w-full group relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300` : "h-full"}
+                >
+                  {isMasonry ? (
+                    <>
+                      {/* Still image in Masonry */}
+                      <img
+                        src={still.image}
+                        alt={still.title}
+                        loading="lazy"
+                        className={`w-full h-auto ${thumbObjectFit === "contain" ? "object-contain bg-black" : "object-cover"} transition-transform duration-500 group-hover:scale-105 block`}
+                      />
 
                       {/* Top-left STILL badge */}
                       <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/15 text-[10px] font-mono font-bold text-white uppercase tracking-wider">
@@ -313,11 +393,89 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                           )}
                         </div>
                       </div>
+                    </>
+                  ) : (
+                    <TiltCard tiltIntensity={4} glareIntensity={0.12} className="w-full h-full">
+                      <div className="group relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300 w-full h-full">
+                        <AspectRatio ratio={numericRatio} className="w-full">
+                          <AppImage
+                            src={still.image}
+                            alt={still.title}
+                            fallbackIcon="image"
+                            objectFit={thumbObjectFit}
+                            containerClassName="size-full"
+                            className="size-full transition-transform duration-500 group-hover:scale-105"
+                          />
+                        </AspectRatio>
+
+                        {/* Top-left STILL badge */}
+                        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/15 text-[10px] font-mono font-bold text-white uppercase tracking-wider">
+                          <ImageIcon className="size-3 text-zinc-300" />
+                          <span>STILL</span>
+                        </div>
+
+                        {/* Hover overlay with title */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                          <div className="space-y-0.5">
+                            <p className="text-sm font-bold text-white font-heading">
+                              {still.title}
+                            </p>
+                            {showClient && (
+                              <p className="text-xs text-zinc-400 font-mono capitalize">
+                                {still.cat}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </TiltCard>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Load More & Stats for Stills */}
+            {stills.length > visibleStills.length && (
+              <div className="flex flex-col items-center justify-center pt-4 pb-2 space-y-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  disabled={isLoadingMore}
+                  onClick={() => handleLoadMore("stills")}
+                  className="group relative rounded-full px-8 py-3 bg-[#141416]/80 hover:bg-[#1a1a1e] border-white/10 hover:border-[#f5551d]/50 text-white font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-xl cursor-pointer"
+                >
+                  {isLoadingMore ? (
+                    <div className="flex items-center gap-2.5">
+                      <Loader2 className="size-4 animate-spin text-[#f5551d]" />
+                      <span>Loading stills...</span>
                     </div>
-                  </TiltCard>
-                )}
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span>Load More Stills</span>
+                      {stills.length - visibleStills.length > 0 && (
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-[#f5551d]/15 text-[#f5551d] border border-[#f5551d]/30"
+                        >
+                          +{stills.length - visibleStills.length} more
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </Button>
+                <p className="text-[11px] font-mono text-zinc-400">
+                  Showing {visibleStills.length} of {stills.length} stills
+                </p>
               </div>
-            ))}
+            )}
+
+            {stills.length <= visibleStills.length && stills.length > PAGE_SIZE && (
+              <div className="text-center pt-2 pb-2 text-[11px] font-mono text-zinc-500 flex items-center justify-center gap-2">
+                <CheckCircle2 className="size-3.5 text-emerald-400" />
+                <span>All {stills.length} stills displayed</span>
+              </div>
+            )}
           </div>
         )
       )}

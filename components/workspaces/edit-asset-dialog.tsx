@@ -1,10 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { X, UploadCloud, Loader2, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
+import { X, UploadCloud, Loader2, Image as ImageIcon, Link as LinkIcon, Crop } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { requestAssetUploadAction } from "@/app/actions/upload";
+import { createUploadProgressToast } from "@/lib/upload-toast";
+import {
+  ImageCropEditorDialog,
+  ImageCropResult,
+  CropAspectRatioPreset,
+} from "@/components/ui/image-crop-editor-dialog";
 
 export interface EditableAssetItem {
   id: string;
@@ -53,6 +59,15 @@ export function EditAssetDialog({
   const [isUrlMode, setIsUrlMode] = useState(false);
   const [isUploadingThumb, setIsUploadingThumb] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [cropState, setCropState] = useState<{
+    isOpen: boolean;
+    imageSrc: string | null;
+    fileName: string;
+  }>({
+    isOpen: false,
+    imageSrc: null,
+    fileName: "asset-thumbnail.jpg",
+  });
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -68,41 +83,65 @@ export function EditAssetDialog({
     }
   }, [item, isOpen]);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    e.target.value = "";
 
-    // Show temporary local preview immediately
-    const tempUrl = URL.createObjectURL(file);
-    setThumbnailUrl(tempUrl);
+    const objectUrl = URL.createObjectURL(file);
+    setCropState({
+      isOpen: true,
+      imageSrc: objectUrl,
+      fileName: file.name,
+    });
+  };
 
-    if (workspaceId) {
+  const handleEditCurrentThumbnail = () => {
+    if (!thumbnailUrl) return;
+    setCropState({
+      isOpen: true,
+      imageSrc: thumbnailUrl,
+      fileName: `${(title || item?.title || "asset").replace(/\s+/g, "-").toLowerCase()}-thumb.jpg`,
+    });
+  };
+
+  const handleApplyThumbnailCrop = async (result: ImageCropResult) => {
+    const { file, dataUrl, aspectRatio: chosenRatio } = result;
+    const nextRatio = ASPECT_RATIOS.includes(chosenRatio) ? chosenRatio : aspectRatio;
+    setAspectRatio(nextRatio);
+    setThumbnailUrl(dataUrl);
+
+    if (item && (title.trim() || item.title)) {
       setIsUploadingThumb(true);
       setLocalError(null);
+      const uploadToast = createUploadProgressToast(`edit-thumb-${Date.now()}`);
+      uploadToast.start(
+        `Saving cropped thumbnail "${file.name}"...`,
+        "Persisting thumbnail cover to database..."
+      );
       try {
-        const initRes = await requestAssetUploadAction({
-          workspaceId,
-          projectId: "",
-          title: `${title.trim() || item?.title || "Asset"} Thumbnail`,
-          filename: file.name,
-          fileSizeBytes: file.size,
-          assetType: "photo_gallery",
-          category: "cover",
+        uploadToast.update({
+          title: `Saving cropped thumbnail "${file.name}"`,
+          progress: 70,
+          loadedBytes: Math.round(file.size * 0.7),
+          totalBytes: file.size,
         });
-
-        if (initRes.success && initRes.directUpload) {
-          await fetch(initRes.directUpload.uploadUrl, {
-            method: initRes.directUpload.uploadType === "presigned_put" ? "PUT" : "POST",
-            headers: initRes.directUpload.headers || undefined,
-            body: file,
-          });
-          const uploadedUrl = initRes.directUpload.uploadUrl.split("?")[0];
-          setThumbnailUrl(uploadedUrl);
-        } else {
-          setLocalError(initRes.error || "Failed to initialize image upload.");
-        }
+        await onSave({
+          id: item.id,
+          title: title.trim() || item.title,
+          description: description.trim(),
+          category: category.trim(),
+          thumbnailUrl: dataUrl,
+          aspectRatio: nextRatio,
+        });
+        uploadToast.success(
+          "Thumbnail cropped & saved!",
+          `"${title.trim() || item.title}" cover has been updated.`
+        );
       } catch (err: any) {
-        setLocalError(err.message || "Failed to upload image.");
+        const errMsg = err?.message || "Failed to persist cropped thumbnail.";
+        setLocalError(errMsg);
+        uploadToast.error("Thumbnail save failed", errMsg);
       } finally {
         setIsUploadingThumb(false);
       }
@@ -240,7 +279,7 @@ export function EditAssetDialog({
                     className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-muted-foreground focus:outline-none focus:border-white/40 transition-colors"
                   />
                 ) : (
-                  <div>
+                  <div className="space-y-1.5">
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -248,26 +287,40 @@ export function EditAssetDialog({
                       onChange={handleFileChange}
                       className="hidden"
                     />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploadingThumb}
-                      className="rounded-full border-white/20 bg-black/40 hover:bg-white/10 text-white font-bold text-xs px-4 py-2 cursor-pointer"
-                    >
-                      {isUploadingThumb ? (
-                        <>
-                          <Loader2 className="size-3.5 mr-1.5 animate-spin" /> Uploading...
-                        </>
-                      ) : (
-                        <>
-                          <UploadCloud className="size-3.5 mr-1.5" /> Choose New Image
-                        </>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploadingThumb}
+                        className="rounded-full border-white/20 bg-black/40 hover:bg-white/10 text-white font-bold text-xs px-3.5 py-2 cursor-pointer"
+                      >
+                        {isUploadingThumb ? (
+                          <>
+                            <Loader2 className="size-3.5 mr-1.5 animate-spin" /> Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <UploadCloud className="size-3.5 mr-1.5" /> Choose New Image
+                          </>
+                        )}
+                      </Button>
+                      {thumbnailUrl && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleEditCurrentThumbnail}
+                          disabled={isUploadingThumb}
+                          className="rounded-full border-white/20 bg-black/40 hover:bg-white/10 text-white font-bold text-xs px-3.5 py-2 cursor-pointer"
+                        >
+                          <Crop className="size-3.5 mr-1.5 text-primary" /> Edit / Crop
+                        </Button>
                       )}
-                    </Button>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      PNG, JPG, WebP supported. Max 10MB.
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      PNG, JPG, WebP supported. Crop &amp; adjust before saving.
                     </p>
                   </div>
                 )}
@@ -355,6 +408,18 @@ export function EditAssetDialog({
           </div>
         </form>
       </DialogContent>
+
+      <ImageCropEditorDialog
+        isOpen={cropState.isOpen}
+        onClose={() => setCropState((prev) => ({ ...prev, isOpen: false }))}
+        imageSrc={cropState.imageSrc}
+        title="EDIT & CROP ASSET THUMBNAIL"
+        subtitle="Frame, zoom, rotate, or adjust tone for this asset's thumbnail cover."
+        defaultAspectRatio={(ASPECT_RATIOS.includes(aspectRatio) ? aspectRatio : "16:9") as CropAspectRatioPreset}
+        aspectRatioOptions={["16:9", "9:16", "1:1", "4:3"]}
+        outputFileName={cropState.fileName}
+        onApply={handleApplyThumbnailCrop}
+      />
     </Dialog>
   );
 }

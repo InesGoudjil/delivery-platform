@@ -97,16 +97,23 @@ export class AssetUploadService {
       }
     }
 
-    // 3. Validate Storage Quota against Active Plan
-    const subscription = await this.subscriptionRepo.findByWorkspaceId(
-      resolvedWorkspaceId
-    );
-    let storageLimitGB = 50; // Default fallback 50 GB
+    // 3. Validate Storage Quota against Active Plan & Workspace Features
+    let storageLimitGB = 2; // Default baseline for Starter plan
 
-    if (subscription) {
-      const plan = await this.planRepo.findById(subscription.planId);
-      if (plan && plan.features && plan.features.storage_gb) {
-        storageLimitGB = plan.features.storage_gb;
+    if (this.featuresRepo) {
+      const featuresRecord = await this.featuresRepo.findByWorkspaceId(resolvedWorkspaceId);
+      if (featuresRecord?.features?.storage_gb) {
+        storageLimitGB = Number(featuresRecord.features.storage_gb);
+      }
+    }
+
+    if (storageLimitGB === 2) {
+      const subscription = await this.subscriptionRepo.findByWorkspaceId(resolvedWorkspaceId);
+      if (subscription) {
+        const plan = await this.planRepo.findById(subscription.planId);
+        if (plan && plan.features && plan.features.storage_gb) {
+          storageLimitGB = Number(plan.features.storage_gb);
+        }
       }
     }
 

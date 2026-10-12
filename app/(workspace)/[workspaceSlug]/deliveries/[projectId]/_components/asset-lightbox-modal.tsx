@@ -25,6 +25,7 @@ import { formatTimecode } from "@/lib/timecode";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 import { getDownloadFilename, triggerDirectDownload } from "@/lib/download";
 import { addFeedbackAction } from "@/app/actions/feedback";
+import { toast } from "sonner";
 import type { GalleryItem, FeedbackItem } from "./types";
 
 interface AssetLightboxModalProps {
@@ -144,7 +145,10 @@ export function AssetLightboxModal({
         authorName: authorName || "Filmmaker",
         commentText: newCommentText,
         timestampSeconds: roundedTime,
-      }).catch((err) => console.error("Error saving feedback note:", err));
+      }).catch((err) => {
+        console.error("Error saving feedback note:", err);
+        toast.error("Failed to save feedback note");
+      });
     }
   };
 
@@ -189,9 +193,14 @@ export function AssetLightboxModal({
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const dlUrl = currentVersion?.downloadUrl || currentVersion?.rawFileUrl || activeItem.rawUrl;
+                      const dlUrl =
+                        currentVersion?.downloadUrl ||
+                        currentVersion?.rawFileUrl ||
+                        activeItem.downloadUrl ||
+                        activeItem.rawUrl ||
+                        (isStill ? activeItem.src : "");
                       if (!dlUrl) {
-                        triggerToast("No master file available for download.");
+                        toast.error("No master file available for download.");
                         return;
                       }
                       const filename = getDownloadFilename(

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { UserNavMenu, type UserNavMenuProps } from "@/components/landing/UserNavMenu";
 import { ModeToggle } from "@/components/mode-toggle";
 import { LanguageToggle } from "@/components/language-toggle";
+import { BrandLogo } from "@/components/ui/brand-logo";
 import { useTranslation } from "@/i18n";
 
 interface HeaderSectionProps {
@@ -50,14 +51,11 @@ export function HeaderSection({
       <div className="mx-auto max-w-7xl px-4 sm:px-8">
         <nav className="flex items-center justify-between">
           {/* Logo */}
-          <Link
+          <BrandLogo
             href="/"
+            size="lg"
             onClick={handleLogoClick}
-            className="flex items-center gap-1 text-2xl font-black tracking-tight text-white transition-opacity hover:opacity-90 font-display"
-          >
-            <span>Cine</span>
-            <span className="text-[#f5551d]">Space</span>
-          </Link>
+          />
 
           {/* Navigation Links */}
           <div className="hidden items-center gap-8 text-sm font-medium text-[#aeaeb4] md:flex">

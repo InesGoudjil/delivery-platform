@@ -93,36 +93,132 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
   }
 
   /**
+   * Ensures MP4 downloads are enabled on Cloudflare Stream for a given video UID.
+   * By default, Cloudflare Stream disables `/downloads/default.mp4` (returning 404 Not Found)
+   * until `POST /accounts/{account_id}/stream/{identifier}/downloads` is called.
+   */
+  async ensureMp4DownloadEnabled(
+    providerUid: string,
+    waitUntilReadyMs: number = 0
+  ): Promise<string | null> {
+    const cleanUid = providerUid.match(/([a-f0-9]{32})/i)?.[1] || providerUid.trim();
+    if (!/^[a-f0-9]{32}$/i.test(cleanUid)) return null;
+
+    const downloadsEndpoint = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/stream/${cleanUid}/downloads`;
+    const fallbackUrl = `https://${this.deliveryDomain}/${cleanUid}/downloads/default.mp4`;
+
+    try {
+      // 1. Trigger POST to enable or retrieve existing default MP4 download
+      let response = await fetch(downloadsEndpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      // If POST returns 4xx because download is already enabled or being generated, fall back to GET
+      if (!response.ok) {
+        response = await fetch(downloadsEndpoint, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${this.apiToken}`,
+          },
+        });
+      }
+
+      if (!response.ok) {
+        return fallbackUrl;
+      }
+
+      let json = await response.json();
+      let defaultDownload = json?.result?.default;
+      let downloadUrl: string = defaultDownload?.url || fallbackUrl;
+      let status: string | undefined = defaultDownload?.status;
+
+      if (status === "ready" || waitUntilReadyMs <= 0) {
+        return downloadUrl;
+      }
+
+      // 2. Optionally poll until the MP4 rendition finishes generating (typically 1–4 seconds)
+      const deadline = Date.now() + waitUntilReadyMs;
+      while (Date.now() < deadline && status !== "ready" && status !== "error") {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const pollRes = await fetch(downloadsEndpoint, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${this.apiToken}`,
+          },
+        });
+        if (!pollRes.ok) break;
+        json = await pollRes.json();
+        defaultDownload = json?.result?.default;
+        if (defaultDownload?.url) {
+          downloadUrl = defaultDownload.url;
+        }
+        status = defaultDownload?.status;
+      }
+
+      return downloadUrl;
+    } catch (err: any) {
+      console.warn(
+        `[CloudflareStream] Failed to enable MP4 download for ${cleanUid}:`,
+        err?.message || err
+      );
+      return fallbackUrl;
+    }
+  }
+
+  /**
+   * Generates a download URL for a Cloudflare Stream video and warms up MP4 generation in the background.
+   */
+  async getSecureDownloadUrl(
+    providerUid: string,
+    filename: string
+  ): Promise<string> {
+    const cleanUid = providerUid.match(/([a-f0-9]{32})/i)?.[1] || providerUid.trim();
+    // Warm up MP4 generation on Cloudflare Stream asynchronously when presigning
+    void this.ensureMp4DownloadEnabled(cleanUid, 0);
+    return `/api/media/${cleanUid}?download=true&filename=${encodeURIComponent(filename)}`;
+  }
+
+  /**
    * Builds standardized Cloudflare Stream HLS, DASH, and thumbnail URLs for a video UID
    */
   async getPlaybackInfo(providerUid: string): Promise<PlaybackInfo | null> {
+    const cleanUid = providerUid.match(/([a-f0-9]{32})/i)?.[1] || providerUid.trim();
     let status: StorageAssetStatus = {
-      providerUid,
+      providerUid: cleanUid,
       status: "processing",
     };
     try {
-      status = await this.getAssetStatus(providerUid);
+      status = await this.getAssetStatus(cleanUid);
     } catch (err: any) {
-      console.warn(`[CloudflareStream] Failed to get asset status for ${providerUid}:`, err?.message || err);
+      console.warn(`[CloudflareStream] Failed to get asset status for ${cleanUid}:`, err?.message || err);
+    }
+
+    if (status.status === "ready") {
+      void this.ensureMp4DownloadEnabled(cleanUid, 0);
     }
 
     const iframeEmbedUrl = this.deliveryDomain.includes("videodelivery.net")
-      ? `https://iframe.videodelivery.net/${providerUid}`
-      : `https://${this.deliveryDomain}/${providerUid}/iframe`;
+      ? `https://iframe.videodelivery.net/${cleanUid}`
+      : `https://${this.deliveryDomain}/${cleanUid}/iframe`;
 
-    const hlsManifestUrl = `https://${this.deliveryDomain}/${providerUid}/manifest/video.m3u8`;
-    const thumbnailUrl = `https://${this.deliveryDomain}/${providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`;
+    const hlsManifestUrl = `https://${this.deliveryDomain}/${cleanUid}/manifest/video.m3u8`;
+    const thumbnailUrl = `https://${this.deliveryDomain}/${cleanUid}/thumbnails/thumbnail.jpg?time=1s&height=720`;
+    const mp4DownloadUrl = `https://${this.deliveryDomain}/${cleanUid}/downloads/default.mp4`;
 
     return {
-      providerUid,
+      providerUid: cleanUid,
       hlsManifestUrl,
-      dashManifestUrl: `https://${this.deliveryDomain}/${providerUid}/manifest/video.mpd`,
+      dashManifestUrl: `https://${this.deliveryDomain}/${cleanUid}/manifest/video.mpd`,
       thumbnailUrl,
-      animatedThumbnailUrl: `https://${this.deliveryDomain}/${providerUid}/thumbnails/thumbnail.gif?time=1s&duration=3s`,
+      animatedThumbnailUrl: `https://${this.deliveryDomain}/${cleanUid}/thumbnails/thumbnail.gif?time=1s&duration=3s`,
       iframeEmbedUrl,
       durationSeconds: status.durationSeconds,
       status: status.status || "processing",
-      rawDownloadUrl: hlsManifestUrl,
+      rawDownloadUrl: mp4DownloadUrl,
     } as any;
   }
 
@@ -130,7 +226,8 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
    * Polls Cloudflare for video processing/transcoding status
    */
   async getAssetStatus(providerUid: string): Promise<StorageAssetStatus> {
-    const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/stream/${providerUid}`;
+    const cleanUid = providerUid.match(/([a-f0-9]{32})/i)?.[1] || providerUid.trim();
+    const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/stream/${cleanUid}`;
 
     try {
       const response = await fetch(url, {
@@ -142,15 +239,15 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
 
       if (!response.ok) {
         if (response.status === 404) {
-          return { providerUid, status: "pending" };
+          return { providerUid: cleanUid, status: "pending" };
         }
         const errorText = await response.text();
         return {
-          providerUid,
+          providerUid: cleanUid,
           status: "error",
           errorMessage: `Cloudflare Stream error (${response.status}): ${errorText}`,
-          hlsManifestUrl: `https://${this.deliveryDomain}/${providerUid}/manifest/video.m3u8`,
-          thumbnailUrl: `https://${this.deliveryDomain}/${providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`,
+          hlsManifestUrl: `https://${this.deliveryDomain}/${cleanUid}/manifest/video.m3u8`,
+          thumbnailUrl: `https://${this.deliveryDomain}/${cleanUid}/thumbnails/thumbnail.jpg?time=1s&height=720`,
         };
       }
 
@@ -159,36 +256,41 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
 
       if (!result) {
         return {
-          providerUid,
+          providerUid: cleanUid,
           status: "pending",
-          hlsManifestUrl: `https://${this.deliveryDomain}/${providerUid}/manifest/video.m3u8`,
-          thumbnailUrl: `https://${this.deliveryDomain}/${providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`,
+          hlsManifestUrl: `https://${this.deliveryDomain}/${cleanUid}/manifest/video.m3u8`,
+          thumbnailUrl: `https://${this.deliveryDomain}/${cleanUid}/thumbnails/thumbnail.jpg?time=1s&height=720`,
         };
       }
 
       const state = result.status?.state; // 'ready', 'inprogress', 'queued', 'error'
       let status: StorageAssetStatus["status"] = "pending";
 
-      if (state === "ready") status = "ready";
-      else if (state === "inprogress" || state === "queued") status = "processing";
-      else if (state === "error") status = "error";
+      if (state === "ready") {
+        status = "ready";
+        void this.ensureMp4DownloadEnabled(cleanUid, 0);
+      } else if (state === "inprogress" || state === "queued") {
+        status = "processing";
+      } else if (state === "error") {
+        status = "error";
+      }
 
       return {
-        providerUid,
+        providerUid: cleanUid,
         status,
         durationSeconds: result.duration ? Number(result.duration) : undefined,
         fileSizeBytes: result.size ? Number(result.size) : undefined,
-        hlsManifestUrl: `https://${this.deliveryDomain}/${providerUid}/manifest/video.m3u8`,
-        thumbnailUrl: `https://${this.deliveryDomain}/${providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`,
+        hlsManifestUrl: `https://${this.deliveryDomain}/${cleanUid}/manifest/video.m3u8`,
+        thumbnailUrl: `https://${this.deliveryDomain}/${cleanUid}/thumbnails/thumbnail.jpg?time=1s&height=720`,
         errorMessage: result.status?.errorReasonText,
       };
     } catch (err: any) {
-      console.warn(`[CloudflareStream] Network error querying status for ${providerUid}:`, err?.message || err);
+      console.warn(`[CloudflareStream] Network error querying status for ${cleanUid}:`, err?.message || err);
       return {
-        providerUid,
+        providerUid: cleanUid,
         status: "processing",
-        hlsManifestUrl: `https://${this.deliveryDomain}/${providerUid}/manifest/video.m3u8`,
-        thumbnailUrl: `https://${this.deliveryDomain}/${providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`,
+        hlsManifestUrl: `https://${this.deliveryDomain}/${cleanUid}/manifest/video.m3u8`,
+        thumbnailUrl: `https://${this.deliveryDomain}/${cleanUid}/thumbnails/thumbnail.jpg?time=1s&height=720`,
       };
     }
   }

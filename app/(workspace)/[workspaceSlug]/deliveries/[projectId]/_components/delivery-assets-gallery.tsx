@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Video, ImageIcon, Play, Trash2, Pencil, Download } from "lucide-react";
+import { toast } from "sonner";
+import { Check, Video, ImageIcon, Play, Trash2, Pencil, Download, Loader2, CheckCircle2 } from "lucide-react";
 import { getDownloadFilename, triggerDirectDownload } from "@/lib/download";
 import {
   Card,
@@ -23,7 +24,12 @@ interface DeliveryAssetsGalleryProps {
   items: GalleryItem[];
   appearance: AppearanceSettings;
   showAssetAddedBadge: boolean;
+  totalCount?: number;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: (filterTab: "ALL" | "VIDEOS" | "PHOTOS") => Promise<void> | void;
   onSelectItem: (item: GalleryItem) => void;
+  onToggleApproval?: (itemId: string, currentStatus: string) => void;
   onDeleteAsset?: (item: GalleryItem) => Promise<void> | void;
   onEditAsset?: (item: GalleryItem) => void;
   onOpenTrash?: () => void;
@@ -76,7 +82,12 @@ export function DeliveryAssetsGallery({
   items,
   appearance,
   showAssetAddedBadge,
+  totalCount,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore,
   onSelectItem,
+  onToggleApproval,
   onDeleteAsset,
   onEditAsset,
   onOpenTrash,
@@ -215,6 +226,36 @@ export function DeliveryAssetsGallery({
               </div>
 
               <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+                {onToggleApproval && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleApproval(item.id, item.status);
+                          }}
+                          className={`size-7 rounded-lg backdrop-blur-md transition-all cursor-pointer shadow-md ${
+                            item.status === "approved"
+                              ? "bg-emerald-500/80 border-emerald-400/50 text-black hover:bg-amber-500/80 hover:border-amber-400/50 hover:text-black opacity-100"
+                              : "bg-black/60 border-white/20 text-zinc-300 hover:text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 opacity-0 group-hover:opacity-100 max-sm:opacity-100"
+                          }`}
+                        >
+                          <Check className="size-3.5 stroke-[2.5]" />
+                        </Button>
+                      }
+                    />
+                    <TooltipContent>
+                      {item.status === "approved"
+                        ? "Approved — click to unapprove"
+                        : "Approve asset"}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
                 <Tooltip>
                   <TooltipTrigger
                     render={
@@ -224,16 +265,24 @@ export function DeliveryAssetsGallery({
                         size="icon-xs"
                         onClick={(e) => {
                           e.stopPropagation();
-                          const dlUrl = item.downloadUrl || item.rawUrl;
-                          if (dlUrl) {
-                            const filename = getDownloadFilename(
-                              item.title,
-                              item.versionNumber,
-                              dlUrl,
-                              item.type
-                            );
-                            triggerDirectDownload(dlUrl, filename);
+                          const dlUrl =
+                            item.downloadUrl ||
+                            item.rawUrl ||
+                            (item.type === "photo" ? item.src : "");
+                          if (!dlUrl) {
+                            toast.error("No master file available for download.");
+                            return;
                           }
+                          const filename = getDownloadFilename(
+                            item.title,
+                            item.versionNumber,
+                            dlUrl,
+                            item.type
+                          );
+                          triggerDirectDownload(dlUrl, filename);
+                          toast.success(`Downloading ${item.title}`, {
+                            description: `Saving as ${filename}`,
+                          });
                         }}
                         className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-white hover:bg-white/20 hover:border-white/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
                       >
@@ -289,9 +338,9 @@ export function DeliveryAssetsGallery({
               </div>
 
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-2xl scale-90 group-hover:scale-100 transition-transform">
+                {/*<div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-2xl scale-90 group-hover:scale-100 transition-transform">
                   <Play className="size-5 fill-current ml-0.5" />
-                </div>
+                </div>*/}
               </div>
 
               <Badge
@@ -349,30 +398,61 @@ export function DeliveryAssetsGallery({
                     <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground w-full">
                       <span>Aspect: {item.aspectRatio}</span>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <Badge
-                          variant={item.status === "approved" ? "sage" : "orange"}
-                          className="text-[10px] px-1.5 py-0 font-medium"
-                        >
-                          {item.status === "approved" ? "✓ Approved" : "In Review"}
-                        </Badge>
+                        {onToggleApproval ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onToggleApproval(item.id, item.status);
+                            }}
+                            title={
+                              item.status === "approved"
+                                ? "Click to unapprove asset"
+                                : "Click to approve asset"
+                            }
+                            className="cursor-pointer focus:outline-none"
+                          >
+                            <Badge
+                              variant={item.status === "approved" ? "sage" : "orange"}
+                              className="text-[10px] px-1.5 py-0 font-medium hover:opacity-80 transition-opacity"
+                            >
+                              {item.status === "approved" ? "✓ Approved" : "In Review"}
+                            </Badge>
+                          </button>
+                        ) : (
+                          <Badge
+                            variant={item.status === "approved" ? "sage" : "orange"}
+                            className="text-[10px] px-1.5 py-0 font-medium"
+                          >
+                            {item.status === "approved" ? "✓ Approved" : "In Review"}
+                          </Badge>
+                        )}
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const dlUrl = item.downloadUrl || item.rawUrl;
-                            if (dlUrl) {
-                              const filename = getDownloadFilename(
-                                item.title,
-                                item.versionNumber,
-                                dlUrl,
-                                item.type
-                              );
-                              triggerDirectDownload(dlUrl, filename);
+                            const dlUrl =
+                              item.downloadUrl ||
+                              item.rawUrl ||
+                              (item.type === "photo" ? item.src : "");
+                            if (!dlUrl) {
+                              toast.error("No master file available for download.");
+                              return;
                             }
+                            const filename = getDownloadFilename(
+                              item.title,
+                              item.versionNumber,
+                              dlUrl,
+                              item.type
+                            );
+                            triggerDirectDownload(dlUrl, filename);
+                            toast.success(`Downloading ${item.title}`, {
+                              description: `Saving as ${filename}`,
+                            });
                           }}
-                          className="size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted p-0 transition-colors"
+                          className="size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted p-0 transition-colors cursor-pointer"
                           title={`Download ${item.title}`}
                         >
                           <Download className="size-3" />
@@ -386,6 +466,58 @@ export function DeliveryAssetsGallery({
           );
         })}
       </div>
+
+      {/* Empty Filter State */}
+      {filteredItems.length === 0 && (
+        <div className="py-16 text-center text-muted-foreground text-xs italic bg-card/20 rounded-2xl border border-dashed border-border/40">
+          No {filterTab.toLowerCase()} in this delivery yet.
+        </div>
+      )}
+
+      {/* Pagination / Load More Footer */}
+      {hasMore && (
+        <div className="flex flex-col items-center justify-center pt-8 pb-4 space-y-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            disabled={isLoadingMore}
+            onClick={() => onLoadMore?.(filterTab)}
+            className="group relative rounded-full px-8 py-3 bg-card/60 hover:bg-card border-border hover:border-primary/50 text-foreground font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-lg cursor-pointer"
+          >
+            {isLoadingMore ? (
+              <div className="flex items-center gap-2.5">
+                <Loader2 className="size-4 animate-spin text-primary" />
+                <span>Loading assets...</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span>Load More Assets</span>
+                {totalCount !== undefined && totalCount > items.length && (
+                  <Badge
+                    variant="secondary"
+                    className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-primary/10 text-primary border border-primary/20"
+                  >
+                    +{totalCount - items.length} more
+                  </Badge>
+                )}
+              </div>
+            )}
+          </Button>
+          {totalCount !== undefined && totalCount > 0 && (
+            <p className="text-[11px] font-mono text-muted-foreground">
+              Showing {filteredItems.length} of {totalCount} total assets
+            </p>
+          )}
+        </div>
+      )}
+
+      {!hasMore && items.length > 12 && (
+        <div className="text-center pt-6 pb-2 text-[11px] font-mono text-muted-foreground/60 flex items-center justify-center gap-2">
+          <CheckCircle2 className="size-3.5 text-sage-400" />
+          <span>All deliverables loaded ({totalCount || items.length} total)</span>
+        </div>
+      )}
 
       <DeleteConfirmDialog
         isOpen={Boolean(itemToDelete)}

@@ -50,10 +50,11 @@ export default async function WorkspaceLayout({
     redirect("/");
   }
 
-  const [profile, plan, userWorkspaces] = await Promise.all([
+  const [profile, plan, userWorkspaces, features] = await Promise.all([
     services.profile.getProfile(user.id),
     services.subscription.getCurrentPlan(workspace.id),
     services.workspace.getUserWorkspaces(user.id),
+    services.subscription.getFeatures(workspace.id),
   ]);
 
   return (
@@ -77,6 +78,7 @@ export default async function WorkspaceLayout({
               user={user}
               profile={profile}
               plan={plan}
+              features={features}
             />
           </div>
 

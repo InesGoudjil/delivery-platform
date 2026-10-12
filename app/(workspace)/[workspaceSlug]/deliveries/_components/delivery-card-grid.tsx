@@ -11,6 +11,9 @@ import {
   ArrowRight,
   Copy,
   ExternalLink,
+  Trash2,
+  Loader2,
+  Layers,
 } from "lucide-react";
 import {
   Card,
@@ -23,6 +26,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { DeliveryProjectItem } from "../deliveries-client";
 
 interface DeliveryCardGridProps {
@@ -30,6 +34,8 @@ interface DeliveryCardGridProps {
   deliveries?: DeliveryProjectItem[];
   workspaceSlug: string;
   canSendWhatsApp?: boolean;
+  deletingId?: string | null;
+  onDeleteDelivery?: (item: DeliveryProjectItem) => void;
 }
 
 export function DeliveryCardGrid({
@@ -37,6 +43,8 @@ export function DeliveryCardGrid({
   deliveries,
   workspaceSlug,
   canSendWhatsApp = true,
+  deletingId = null,
+  onDeleteDelivery,
 }: DeliveryCardGridProps) {
   const displayDeliveries = deliveries || items || [];
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -46,6 +54,7 @@ export function DeliveryCardGrid({
     const url = `${origin}/deliver/${token}`;
     navigator.clipboard.writeText(url);
     setCopiedId(id);
+    toast.success("Review link copied to clipboard");
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -79,6 +88,8 @@ export function DeliveryCardGrid({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {displayDeliveries.map((item) => {
         const isCopied = copiedId === item.id;
+        const isDeleting = deletingId === item.id;
+        const assetsCount = item.assetsCount ?? 0;
         const shareUrl = `/deliver/${item.shareToken}`;
 
         return (
@@ -112,6 +123,12 @@ export function DeliveryCardGrid({
 
                 {/* Specs / Badges */}
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono pt-1">
+                  <Badge variant="outline" className="flex items-center gap-1 bg-muted/50 text-foreground px-2.5 py-1 rounded-md border-border font-normal">
+                    <Layers className="size-3 text-[#f5551d]" />
+                    {assetsCount === 0
+                      ? "Empty (0 assets)"
+                      : `${assetsCount} ${assetsCount === 1 ? "asset" : "assets"}`}
+                  </Badge>
                   <Badge variant="outline" className="flex items-center gap-1 bg-muted/50 text-foreground px-2.5 py-1 rounded-md border-border font-normal">
                     <Clock className="size-3 text-[#f5551d]" /> {item.duration}
                   </Badge>
@@ -204,6 +221,28 @@ export function DeliveryCardGrid({
                     <ExternalLink className="size-4" />
                   </Link>
                 </Button>
+
+                {onDeleteDelivery && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    disabled={isDeleting}
+                    onClick={() => onDeleteDelivery(item)}
+                    className="rounded-xl border-border bg-muted/40 hover:bg-destructive/15 hover:border-destructive/40 text-muted-foreground hover:text-destructive size-8 transition-colors cursor-pointer"
+                    title={
+                      assetsCount > 0
+                        ? `Delete delivery (${assetsCount} ${assetsCount === 1 ? "asset" : "assets"})`
+                        : "Delete empty delivery"
+                    }
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="size-3.5" />
+                    )}
+                  </Button>
+                )}
               </div>
             </CardFooter>
           </Card>

@@ -266,4 +266,47 @@ export class CloudflareR2StorageProvider implements IStorageProvider {
     });
     await this.s3Client.send(command);
   }
+
+  async getObjectStream(providerUid: string): Promise<{
+    stream: NodeJS.ReadableStream;
+    contentType?: string;
+    contentLength?: number;
+  }> {
+    let key = providerUid.split("?")[0].trim();
+    if (key.startsWith("api/media/")) {
+      key = key.replace(/^api\/media\//, "");
+    }
+    const bucket = this.getTargetBucket(key);
+    const command = new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    });
+    const res = await this.s3Client.send(command);
+    return {
+      stream: res.Body as any,
+      contentType: res.ContentType,
+      contentLength: res.ContentLength,
+    };
+  }
+
+  async putObjectStream(
+    providerUid: string,
+    body: NodeJS.ReadableStream | Buffer | Uint8Array,
+    contentType?: string,
+    contentLength?: number
+  ): Promise<void> {
+    let key = providerUid.split("?")[0].trim();
+    if (key.startsWith("api/media/")) {
+      key = key.replace(/^api\/media\//, "");
+    }
+    const bucket = this.getTargetBucket(key);
+    const command = new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: body as any,
+      ContentType: contentType || getMimeType(key),
+      ContentLength: contentLength,
+    });
+    await this.s3Client.send(command);
+  }
 }

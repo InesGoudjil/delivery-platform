@@ -6,6 +6,8 @@ import {
   IAssetVersionRepository,
   CreateAssetDTO,
   CreateAssetVersionDTO,
+  ListDeliveryAssetsOptions,
+  PaginatedAssetsResult,
 } from "./i-asset-repository";
 
 export class SupabaseAssetRepository implements IAssetRepository {
@@ -69,16 +71,88 @@ export class SupabaseAssetRepository implements IAssetRepository {
     return (data || []).map(this.mapRowToEntity);
   }
 
-  async listByDeliveryId(deliveryId: string): Promise<Asset[]> {
-    const { data, error } = await (this.supabase as any)
+  async listByDeliveryId(deliveryId: string, options?: ListDeliveryAssetsOptions): Promise<Asset[]> {
+    let query = (this.supabase as any)
       .from("assets")
       .select("*")
       .eq("delivery_id", deliveryId)
-      .eq("is_archived", false)
-      .order("sort_order", { ascending: true });
+      .eq("is_archived", false);
+
+    if (options?.type) {
+      query = query.eq("type", options.type);
+    }
+
+    if (options?.isApproved !== undefined) {
+      query = query.eq("is_approved", options.isApproved);
+    }
+
+    query = query.order("sort_order", { ascending: true });
+
+    if (options?.limit !== undefined && options?.offset !== undefined) {
+      query = query.range(options.offset, options.offset + options.limit - 1);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw new Error(`Error listing assets for delivery: ${error.message}`);
     return (data || []).map(this.mapRowToEntity);
+  }
+
+  async listByDeliveryIdPaginated(
+    deliveryId: string,
+    options?: ListDeliveryAssetsOptions
+  ): Promise<PaginatedAssetsResult> {
+    let query = (this.supabase as any)
+      .from("assets")
+      .select("*", { count: "exact" })
+      .eq("delivery_id", deliveryId)
+      .eq("is_archived", false);
+
+    if (options?.type) {
+      query = query.eq("type", options.type);
+    }
+
+    if (options?.isApproved !== undefined) {
+      query = query.eq("is_approved", options.isApproved);
+    }
+
+    query = query.order("sort_order", { ascending: true });
+
+    if (options?.limit !== undefined && options?.offset !== undefined) {
+      query = query.range(options.offset, options.offset + options.limit - 1);
+    }
+
+    const { data, error, count } = await query;
+
+    if (error) throw new Error(`Error listing paginated assets for delivery: ${error.message}`);
+    return {
+      assets: (data || []).map(this.mapRowToEntity),
+      totalCount: count ?? (data?.length || 0),
+    };
+  }
+
+  async countByDeliveryId(
+    deliveryId: string,
+    options?: { type?: string; isApproved?: boolean }
+  ): Promise<number> {
+    let query = (this.supabase as any)
+      .from("assets")
+      .select("*", { count: "exact", head: true })
+      .eq("delivery_id", deliveryId)
+      .eq("is_archived", false);
+
+    if (options?.type) {
+      query = query.eq("type", options.type);
+    }
+
+    if (options?.isApproved !== undefined) {
+      query = query.eq("is_approved", options.isApproved);
+    }
+
+    const { count, error } = await query;
+
+    if (error) throw new Error(`Error counting assets for delivery: ${error.message}`);
+    return count ?? 0;
   }
 
   async listArchivedByWorkspaceId(workspaceId: string): Promise<Asset[]> {
@@ -215,6 +289,8 @@ export class SupabaseAssetVersionRepository implements IAssetVersionRepository {
       durationSeconds: row.duration_seconds ? Number(row.duration_seconds) : null,
       transcodingStatus: row.transcoding_status as TranscodingStatus,
       isActiveVersion: Boolean(row.is_active_version),
+      siloArchiveKey: row.silo_archive_key || null,
+      siloStorageClass: row.silo_storage_class || null,
       createdAt: row.created_at,
     };
   }
@@ -285,6 +361,8 @@ export class SupabaseAssetVersionRepository implements IAssetVersionRepository {
     if (data.transcodingStatus !== undefined) payload.transcoding_status = data.transcodingStatus;
     if (data.isActiveVersion !== undefined) payload.is_active_version = data.isActiveVersion;
     if (data.label !== undefined) payload.label = data.label;
+    if (data.siloArchiveKey !== undefined) payload.silo_archive_key = data.siloArchiveKey;
+    if (data.siloStorageClass !== undefined) payload.silo_storage_class = data.siloStorageClass;
 
     const { data: updated, error } = await (this.supabase as any)
       .from("asset_versions")

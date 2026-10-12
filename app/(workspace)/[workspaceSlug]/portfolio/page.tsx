@@ -29,10 +29,11 @@ export default async function PortfolioPage({
   );
 
 
-  // 2. Query showcase projects and standalone assets
-  const [dbProjects, standaloneAssets] = await Promise.all([
+  // 2. Query showcase projects, standalone assets, and plan features
+  const [dbProjects, standaloneAssets, features] = await Promise.all([
     services.project.listPortfolioProjects(portfolio.id),
     services.asset.listUnassignedAssets(workspace.id),
+    services.subscription.getFeatures(workspace.id),
   ]);
 
 
@@ -150,6 +151,7 @@ export default async function PortfolioPage({
       portfolio={portfolio}
       initialProjects={allPortfolioItems}
       initialFeaturedIds={initialFeaturedIds}
+      features={features}
     />
   );
 }

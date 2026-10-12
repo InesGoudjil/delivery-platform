@@ -8,6 +8,7 @@ import {
   renderCutApprovedEmail,
   renderNewFeedbackEmail,
   renderMemberInvitationEmail,
+  renderSiloRestoreCompletedEmail,
 } from "@/core/providers/email";
 
 export interface DispatchWhatsAppParams {
@@ -318,6 +319,70 @@ export class NotificationService {
     };
   }
 
+  /**
+   * Notifies workspace creator/team that AWS S3 Glacier thawing has completed for a project.
+   */
+  async notifySiloRestoreCompleted(params: {
+    deliveryId: string;
+    recipientEmails: string | string[];
+    origin?: string;
+    thawedDays?: number;
+  }): Promise<{
+    success: boolean;
+    logs: NotificationLog[];
+  }> {
+    const delivery = await this.deliveryRepo.findById(params.deliveryId);
+    if (!delivery) throw new Error("Delivery not found");
+
+    const workspace = await this.workspaceRepo.findById(delivery.workspaceId);
+    const brandName = workspace?.brandName || "Studio";
+
+    const baseUrl = params.origin || "https://cut.app";
+    const manageUrl = `${baseUrl}/${workspace?.slug || "workspace"}/deliveries/${delivery.id}`;
+
+    const { subject, html } = renderSiloRestoreCompletedEmail({
+      projectTitle: delivery.title,
+      manageUrl,
+      brandName,
+      thawedDays: params.thawedDays || 7,
+    });
+
+    const recipients = Array.isArray(params.recipientEmails)
+      ? params.recipientEmails
+      : [params.recipientEmails];
+
+    if (recipients.length === 0) {
+      return { success: true, logs: [] };
+    }
+
+    const logs: NotificationLog[] = [];
+    for (const email of recipients) {
+      const sendRes = await this.emailProvider.sendEmail({
+        to: email,
+        subject,
+        html,
+      });
+
+      const log = await this.notificationRepo.create({
+        workspaceId: delivery.workspaceId,
+        projectId: delivery.id,
+        clientId: delivery.clientId,
+        channel: "email",
+        recipientEmail: email,
+        subject,
+        status: sendRes.success ? "sent" : "failed",
+        providerMessageId: sendRes.messageId,
+        errorMessage: sendRes.error,
+      });
+
+      logs.push(log);
+    }
+
+    return {
+      success: logs.some((l) => l.status === "sent"),
+      logs,
+    };
+  }
 
   async listWorkspaceLogs(workspaceId: string): Promise<NotificationLog[]> {
     return this.notificationRepo.listByWorkspaceId(workspaceId);

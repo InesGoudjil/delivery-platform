@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { createHash } from "crypto";
 import { getServerServices } from "@/core/server";
 import { presignDeliveryAssets } from "@/lib/media-server";
+import { resolveThumbnailUrl, resolveMediaUrl } from "@/lib/media";
 import type { DeliveryAppearanceSettings } from "@/core/entities/delivery";
 
 export async function verifyDeliveryPasscodeAction(
@@ -61,6 +62,7 @@ export async function verifyDeliveryPasscodeAction(
         id: v.id,
         versionNumber: v.versionNumber,
         rawFileUrl: v.rawFileUrl,
+        downloadUrl: v.rawFileUrl,
         hlsManifestUrl: v.hlsManifestUrl || null,
         thumbnailUrl: v.thumbnailUrl || null,
         fileSizeBytes: v.fileSizeBytes || null,
@@ -256,6 +258,7 @@ export async function toggleAssetApprovalAction(
       revalidatePath(`/deliver/${delivery.shareToken}`);
     }
     revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
     return { success: true, asset, delivery };
   } catch (err: any) {
     return { error: err.message || "Failed to toggle asset approval." };
@@ -265,16 +268,61 @@ export async function toggleAssetApprovalAction(
 export async function approveAllAssetsAction(deliveryId: string, approvedByName?: string) {
   try {
     const services = await getServerServices();
-    await services.delivery.approveAllAssets(deliveryId, approvedByName);
+
+    let origin = "https://cut.app";
+    try {
+      const { headers } = await import("next/headers");
+      const headerList = await headers();
+      const host = headerList.get("host");
+      const proto = headerList.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
+      if (host) origin = `${proto}://${host}`;
+    } catch {
+      // fallback to default
+    }
+
+    let notifyEmails: string[] = [];
+    try {
+      const existing = await services.delivery.getDeliveryById(deliveryId);
+      if (existing) {
+        const members = await services.member.listMembers(existing.workspaceId);
+        notifyEmails = members
+          .filter((m) => (m.role === "owner" || m.role === "admin") && Boolean(m.email))
+          .map((m) => m.email as string);
+      }
+    } catch {
+      // fallback
+    }
+
+    await services.delivery.approveAllAssets(deliveryId, approvedByName, {
+      origin,
+      notifyEmails,
+    });
     const delivery = await services.delivery.getDeliveryById(deliveryId);
 
     if (delivery?.shareToken) {
       revalidatePath(`/deliver/${delivery.shareToken}`);
     }
     revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
     return { success: true, delivery };
   } catch (err: any) {
     return { error: err.message || "Failed to approve all assets." };
+  }
+}
+
+export async function unapproveAllAssetsAction(deliveryId: string) {
+  try {
+    const services = await getServerServices();
+    const delivery = await services.delivery.unapproveAllAssets(deliveryId);
+
+    if (delivery?.shareToken) {
+      revalidatePath(`/deliver/${delivery.shareToken}`);
+    }
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
+    return { success: true, delivery };
+  } catch (err: any) {
+    return { error: err.message || "Failed to unapprove assets." };
   }
 }
 
@@ -355,14 +403,28 @@ export async function updateDeliveryAppearanceAction(
     const existing = await services.delivery.getDeliveryById(deliveryId);
     if (!existing) return { error: "Delivery not found." };
 
+    const canWatermark = await services.subscription.isWatermarkAllowed(existing.workspaceId);
+    if (appearance.watermarkMedia === true && !canWatermark) {
+      return {
+        error: "Video watermarking is available on Pro and Studio plans. Please upgrade your subscription.",
+      };
+    }
+
     const mergedAppearance: DeliveryAppearanceSettings = {
       cardSize: (existing.appearance as any)?.cardSize || "M",
       aspectRatioSetting: (existing.appearance as any)?.aspectRatioSetting || "masonry",
       thumbnailScale: (existing.appearance as any)?.thumbnailScale || "Fill",
       showCardInfo: (existing.appearance as any)?.showCardInfo ?? true,
-      watermarkMedia: (existing.appearance as any)?.watermarkMedia ?? true,
+      watermarkMedia: canWatermark
+        ? ((existing.appearance as any)?.watermarkMedia ?? true)
+        : false,
+      coverThumbnailUrl: (existing.appearance as any)?.coverThumbnailUrl ?? null,
       ...appearance,
     };
+
+    if (!canWatermark) {
+      mergedAppearance.watermarkMedia = false;
+    }
 
     const updated = await services.delivery.updateDelivery(deliveryId, {
       appearance: mergedAppearance,
@@ -383,13 +445,21 @@ export async function updateDeliveryAppearanceAction(
 export async function archiveDeliveryAction(deliveryId: string) {
   try {
     const services = await getServerServices();
-    const updated = await services.delivery.updateStatus(deliveryId, "archived");
+    const user = await services.auth.getCurrentUser();
+
+    // Move master cut assets into AWS S3 Glacier Deep Archive and free active workspace quota
+    await services.silo.archiveDelivery(deliveryId, {
+      userId: user?.id,
+    });
+
+    const updated = await services.delivery.getDeliveryById(deliveryId);
 
     revalidatePath("/[workspaceSlug]/deliveries", "page");
     revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/[workspaceSlug]/storage", "page");
     return { success: true, delivery: updated, project: updated };
   } catch (err: any) {
-    return { error: err.message || "Failed to archive delivery." };
+    return { error: err.message || "Failed to archive delivery to The Silo." };
   }
 }
 
@@ -406,6 +476,27 @@ export async function updateDeliverySecurityAction(
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
     if (!user) return { error: "User is not authenticated." };
+
+    const delivery = await services.delivery.getDeliveryById(deliveryId);
+    if (!delivery) return { error: "Delivery not found." };
+
+    if (data.passphrase && data.passphrase.trim().length > 0) {
+      const canPasswordProtect = await services.subscription.isPasswordProtectionAllowed(delivery.workspaceId);
+      if (!canPasswordProtect) {
+        return {
+          error: "Passcode protection is available on Pro and Studio plans. Please upgrade your subscription.",
+        };
+      }
+    }
+
+    if (data.notifyOnDownload === true) {
+      const canNotify = await services.subscription.isDownloadNotificationAllowed(delivery.workspaceId);
+      if (!canNotify) {
+        return {
+          error: "Download notifications are available on Pro and Studio plans. Please upgrade your subscription.",
+        };
+      }
+    }
 
     let passcodeHash: string | null | undefined = undefined;
     if (data.passphrase !== undefined) {
@@ -525,5 +616,382 @@ export async function updateAssetAction(
   const { updateAssetAction: upd } = await import("./assets");
   return upd(itemId, data, options);
 }
+
+export async function loadMoreDeliveryAssetsAction(params: {
+  deliveryId?: string;
+  shareToken?: string;
+  page: number;
+  pageSize?: number;
+  filter?: "ALL" | "VIDEOS" | "PHOTOS";
+}) {
+  try {
+    const services = await getServerServices();
+    let delivery = null;
+
+    if (params.deliveryId) {
+      delivery = await services.delivery.getDeliveryById(params.deliveryId);
+    } else if (params.shareToken) {
+      delivery = await services.delivery.getDeliveryByShareToken(params.shareToken);
+    }
+
+    if (!delivery) {
+      return { success: false, error: "Delivery not found or link has expired." };
+    }
+
+    // Verify access
+    const user = await services.auth.getCurrentUser();
+    let isAuthorized = false;
+
+    if (user) {
+      const isMember = await services.member
+        .isMember(delivery.workspaceId, user.id)
+        .catch(() => false);
+      if (isMember) {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      if (!delivery.passcodeHash) {
+        isAuthorized = true;
+      } else {
+        const cookieStore = await cookies();
+        const accessCookie = cookieStore.get(`delivery_access_${delivery.shareToken}`)?.value;
+        if (accessCookie === "verified") {
+          isAuthorized = true;
+        }
+      }
+    }
+
+    if (!isAuthorized) {
+      return { success: false, error: "Unauthorized access to delivery assets." };
+    }
+
+    const filterType =
+      params.filter === "VIDEOS"
+        ? ("video" as const)
+        : params.filter === "PHOTOS"
+        ? ("photo" as const)
+        : ("all" as const);
+
+    const pageSize = params.pageSize || 12;
+    const pageData = await services.delivery.getDeliveryAssetsPage(delivery.id, {
+      page: params.page,
+      limit: pageSize,
+      type: filterType,
+    });
+
+    const mappedAssets = pageData.assets.map((a) => {
+      const mappedVersions = a.versions.map((v) => ({
+        id: v.id,
+        versionNumber: v.versionNumber,
+        rawFileUrl: v.rawFileUrl,
+        downloadUrl: v.rawFileUrl,
+        hlsManifestUrl: v.hlsManifestUrl,
+        thumbnailUrl:
+          v.thumbnailUrl ||
+          (a.type === "photo_gallery" || (a.type as string) === "photo" || (a.type as string) === "still"
+            ? v.rawFileUrl
+            : null) ||
+          "/images/hero.jpg",
+        durationSeconds: v.durationSeconds,
+        fileSizeBytes: v.fileSizeBytes,
+        transcodingStatus: v.transcodingStatus,
+        isActiveVersion: v.isActiveVersion,
+        createdAt: v.createdAt,
+      }));
+
+      const activeVersion =
+        mappedVersions.find((v) => v.isActiveVersion) || mappedVersions[0] || null;
+
+      const mappedFeedback = (a.feedback || []).map((f) => ({
+        id: f.id,
+        assetVersionId: f.assetVersionId,
+        authorName: f.authorName,
+        commentText: f.commentText,
+        timestampSeconds: f.timestampSeconds ? Number(f.timestampSeconds) : null,
+        createdAt: f.createdAt,
+        isResolved: f.isResolved,
+      }));
+
+      return {
+        id: a.id,
+        title: a.title,
+        type: a.type,
+        aspectRatio: a.aspectRatio,
+        isApproved: a.isApproved,
+        versions: mappedVersions,
+        activeVersion,
+        feedback: mappedFeedback,
+      };
+    });
+
+    // Presign only the requested batch
+    const presigned = await presignDeliveryAssets(mappedAssets, services.storage, 7200);
+
+    const items = presigned.map((a) => {
+      const activeVer = a.activeVersion || a.versions[0];
+      const isPhoto =
+        (a.type as string) === "still" ||
+        (a.type as string) === "photo" ||
+        a.type === "photo_gallery";
+      let durationStr = "STILL";
+      if (!isPhoto) {
+        if (activeVer?.durationSeconds) {
+          const mins = Math.floor(activeVer.durationSeconds / 60);
+          const secs = Math.round(activeVer.durationSeconds % 60);
+          durationStr = `${mins.toString().padStart(2, "0")}:${secs
+            .toString()
+            .padStart(2, "0")}`;
+        } else {
+          durationStr = "00:45";
+        }
+      }
+
+      return {
+        id: a.id,
+        versionId: activeVer?.id,
+        versionNumber: activeVer?.versionNumber || 1,
+        totalVersions: a.versions?.length || 1,
+        versions: a.versions || [],
+        title: a.title,
+        type: isPhoto ? ("photo" as const) : ("video" as const),
+        aspectRatio: a.aspectRatio || "16:9",
+        duration: durationStr,
+        src:
+          resolveThumbnailUrl(activeVer?.thumbnailUrl, activeVer?.rawFileUrl, isPhoto) || "",
+        status: a.isApproved ? ("approved" as const) : ("review" as const),
+        rawUrl: resolveMediaUrl(activeVer?.rawFileUrl),
+        downloadUrl: resolveMediaUrl(activeVer?.downloadUrl || activeVer?.rawFileUrl),
+        fileSizeBytes: activeVer?.fileSizeBytes || 0,
+        hlsUrl: resolveMediaUrl(activeVer?.hlsManifestUrl),
+        videoUrl:
+          resolveMediaUrl(activeVer?.hlsManifestUrl) ||
+          resolveMediaUrl(activeVer?.rawFileUrl) ||
+          (isPhoto ? undefined : "https://files.vidstack.io/sprite-fight/hls/stream.m3u8"),
+        feedback: a.feedback || [],
+      };
+    });
+
+    return {
+      success: true,
+      items,
+      hasMore: pageData.hasMore,
+      totalCount: pageData.totalCount,
+      approvedCount: pageData.approvedCount,
+    };
+  } catch (err: any) {
+    console.error("[loadMoreDeliveryAssetsAction] Error:", err);
+    return {
+      success: false,
+      error: err?.message || "Failed to load more assets",
+    };
+  }
+}
+
+export async function getDeliveryDownloadManifestAction(params: {
+  deliveryId?: string;
+  shareToken?: string;
+}) {
+  try {
+    const services = await getServerServices();
+    let delivery = null;
+
+    if (params.deliveryId) {
+      delivery = await services.delivery.getDeliveryById(params.deliveryId);
+    } else if (params.shareToken) {
+      delivery = await services.delivery.getDeliveryByShareToken(params.shareToken);
+    }
+
+    if (!delivery) {
+      return { success: false, error: "Delivery not found." };
+    }
+
+    const user = await services.auth.getCurrentUser();
+    let isAuthorized = false;
+
+    if (user) {
+      const isMember = await services.member
+        .isMember(delivery.workspaceId, user.id)
+        .catch(() => false);
+      if (isMember) {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      if (!delivery.passcodeHash) {
+        isAuthorized = true;
+      } else {
+        const cookieStore = await cookies();
+        const accessCookie = cookieStore.get(`delivery_access_${delivery.shareToken}`)?.value;
+        if (accessCookie === "verified") {
+          isAuthorized = true;
+        }
+      }
+    }
+
+    if (!isAuthorized) {
+      return { success: false, error: "Unauthorized access to delivery package." };
+    }
+
+    // Fetch all assets in the delivery (up to 500 deliverables)
+    const fullDetails = await services.delivery.getDeliveryWithFullDetails(delivery.id, {
+      page: 1,
+      limit: 500,
+    });
+
+    const rawAssets = fullDetails?.assets || [];
+    const mappedAssets = rawAssets.map((a) => {
+      const mappedVersions = (a.versions || []).map((v) => ({
+        id: v.id,
+        versionNumber: v.versionNumber,
+        rawFileUrl: v.rawFileUrl,
+        downloadUrl: v.rawFileUrl,
+        hlsManifestUrl: v.hlsManifestUrl,
+        thumbnailUrl:
+          v.thumbnailUrl ||
+          (a.type === "photo_gallery" || (a.type as string) === "photo" || (a.type as string) === "still"
+            ? v.rawFileUrl
+            : null) ||
+          "/images/hero.jpg",
+        durationSeconds: v.durationSeconds,
+        fileSizeBytes: v.fileSizeBytes,
+        isActiveVersion: v.isActiveVersion,
+      }));
+
+      const activeVersion =
+        mappedVersions.find((v) => v.isActiveVersion) || mappedVersions[0] || null;
+
+      return {
+        id: a.id,
+        title: a.title,
+        type: a.type,
+        aspectRatio: a.aspectRatio || "16:9",
+        isApproved: a.isApproved,
+        versions: mappedVersions,
+        activeVersion,
+      };
+    });
+
+    const presigned = await presignDeliveryAssets(mappedAssets, services.storage, 7200);
+
+    const downloadItems = presigned.map((a) => {
+      const activeVer = a.activeVersion || a.versions[0];
+      const isPhoto =
+        (a.type as string) === "still" ||
+        (a.type as string) === "photo" ||
+        a.type === "photo_gallery";
+      let durationStr: string | null = null;
+      if (!isPhoto && activeVer?.durationSeconds) {
+        const mins = Math.floor(activeVer.durationSeconds / 60);
+        const secs = Math.round(activeVer.durationSeconds % 60);
+        durationStr = `${mins.toString().padStart(2, "0")}:${secs
+          .toString()
+          .padStart(2, "0")}`;
+      }
+
+      return {
+        id: a.id,
+        title: a.title,
+        type: isPhoto ? "photo" : "video",
+        versionNumber: activeVer?.versionNumber || 1,
+        fileSizeBytes: activeVer?.fileSizeBytes || 0,
+        duration: durationStr,
+        aspectRatio: a.aspectRatio || "16:9",
+        thumbnailUrl:
+          resolveThumbnailUrl(activeVer?.thumbnailUrl, activeVer?.rawFileUrl, isPhoto) || "",
+        downloadUrl: resolveMediaUrl(activeVer?.downloadUrl || activeVer?.rawFileUrl),
+        isApproved: Boolean(a.isApproved),
+      };
+    });
+
+    return {
+      success: true,
+      items: downloadItems,
+      totalCount: downloadItems.length,
+    };
+  } catch (err: any) {
+    console.error("[getDeliveryDownloadManifestAction] Error:", err);
+    return {
+      success: false,
+      error: err?.message || "Failed to load complete delivery package",
+    };
+  }
+}
+
+export async function recordClientDownloadAction(params: {
+  deliveryId: string;
+  assetTitle?: string;
+  downloadedCount?: number;
+}) {
+  try {
+    const core = await import("@/core/server").then((m) => m.getServerCore());
+    const delivery = await core.services.delivery.getDeliveryById(params.deliveryId);
+    if (!delivery || !delivery.notifyOnDownload) {
+      return { success: true, notified: false };
+    }
+
+    const workspace = await core.services.workspace.getWorkspaceById(delivery.workspaceId);
+    const members = await core.services.member.listMembers(delivery.workspaceId);
+    const notifyEmails = members
+      .filter((m) => (m.role === "owner" || m.role === "admin") && Boolean(m.email))
+      .map((m) => m.email as string);
+
+    if (notifyEmails.length === 0) {
+      return { success: true, notified: false };
+    }
+
+    const brandName = workspace?.brandName || "Studio";
+    const itemDesc =
+      params.downloadedCount && params.downloadedCount > 1
+        ? `${params.downloadedCount} master deliverables`
+        : params.assetTitle
+        ? `"${params.assetTitle}"`
+        : "master deliverables";
+
+    const subject = `📥 Client downloaded ${itemDesc} — ${delivery.title}`;
+    const html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#0e0e11; color:#f6f3ec; padding:32px; border-radius:16px; max-width:560px; margin:0 auto;">
+        <p style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#f5551d; font-weight:700; margin:0 0 8px;">${brandName} · Download Alert</p>
+        <h2 style="font-size:20px; margin:0 0 12px; color:#ffffff;">Deliverables Downloaded</h2>
+        <p style="font-size:14px; line-height:1.6; color:#aeaeb4; margin:0 0 20px;">
+          Your client just initiated a download of <strong style="color:#ffffff;">${itemDesc}</strong> from the delivery room <strong style="color:#ffffff;">${delivery.title}</strong>.
+        </p>
+        <p style="font-size:11px; color:#71717a; margin:24px 0 0;">Sent automatically because "Notify on Download" is enabled for this delivery.</p>
+      </div>
+    `;
+
+    const { ResendEmailProvider } = await import("@/core/providers/email");
+    const emailProvider = new ResendEmailProvider();
+
+    for (const email of notifyEmails) {
+      const sendRes = await emailProvider.sendEmail({
+        to: email,
+        subject,
+        html,
+      });
+      await core.repositories.notification
+        .create({
+          workspaceId: delivery.workspaceId,
+          projectId: delivery.id,
+          clientId: delivery.clientId,
+          channel: "email",
+          recipientEmail: email,
+          subject,
+          status: sendRes.success ? "sent" : "failed",
+          providerMessageId: sendRes.messageId,
+          errorMessage: sendRes.error,
+        })
+        .catch(() => null);
+    }
+
+    return { success: true, notified: true };
+  } catch (err: any) {
+    console.warn("[recordClientDownloadAction] Warning:", err?.message || err);
+    return { success: false };
+  }
+}
+
 
 

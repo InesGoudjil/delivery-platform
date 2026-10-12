@@ -25,11 +25,25 @@ export interface CreateAssetVersionDTO {
   isActiveVersion?: boolean;
 }
 
+export interface ListDeliveryAssetsOptions {
+  limit?: number;
+  offset?: number;
+  type?: string;
+  isApproved?: boolean;
+}
+
+export interface PaginatedAssetsResult {
+  assets: Asset[];
+  totalCount: number;
+}
+
 export interface IAssetRepository {
   findById(id: string): Promise<Asset | null>;
   listByWorkspaceId(workspaceId: string, includeArchived?: boolean): Promise<Asset[]>;
   listUnassignedByWorkspaceId(workspaceId: string): Promise<Asset[]>;
-  listByDeliveryId(deliveryId: string): Promise<Asset[]>;
+  listByDeliveryId(deliveryId: string, options?: ListDeliveryAssetsOptions): Promise<Asset[]>;
+  listByDeliveryIdPaginated(deliveryId: string, options?: ListDeliveryAssetsOptions): Promise<PaginatedAssetsResult>;
+  countByDeliveryId(deliveryId: string, options?: { type?: string; isApproved?: boolean }): Promise<number>;
   listArchivedByWorkspaceId(workspaceId: string): Promise<Asset[]>;
   listByIds(ids: string[]): Promise<Asset[]>;
   create(dto: CreateAssetDTO): Promise<Asset>;

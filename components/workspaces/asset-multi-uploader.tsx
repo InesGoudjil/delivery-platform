@@ -14,6 +14,7 @@ import {
   Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createUploadProgressToast } from "@/lib/upload-toast";
 import {
   VideoUploader,
   directUploadMediaFile,
@@ -78,6 +79,7 @@ export function AssetMultiUploader({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeXhrRef = useRef<XMLHttpRequest | null>(null);
   const abortControllerRef = useRef<boolean>(false);
+  const batchToastRef = useRef<ReturnType<typeof createUploadProgressToast> | null>(null);
 
   // Clean up object URLs on unmount
   useEffect(() => {
@@ -191,6 +193,23 @@ export function AssetMultiUploader({
     setGlobalError(null);
 
     const completedResults: Array<{ asset: any; version?: any }> = [];
+    let failedCount = 0;
+    let lastErrorMessage = "";
+
+    const batchToast = createUploadProgressToast();
+    batchToastRef.current = batchToast;
+    batchToast.start({
+      title:
+        queuedItems.length > 1
+          ? `Uploading ${queuedItems.length} deliverables...`
+          : `Uploading "${queuedItems[0].title || queuedItems[0].file.name}"`,
+      fileName: queuedItems[0].file.name,
+      fileSize: formatBytes(queuedItems[0].file.size),
+      fileIndex: 1,
+      totalFiles: queuedItems.length,
+      percentage: 0,
+      statusText: "Initiating upload...",
+    });
 
     for (let i = 0; i < queuedItems.length; i++) {
       if (abortControllerRef.current) break;
@@ -206,13 +225,26 @@ export function AssetMultiUploader({
         )
       );
 
-      // Notify floating progress
+      // Notify floating progress & Sonner toast
       onProgressChange?.({
         fileName: item.file.name,
         fileSize: formatBytes(item.file.size),
         fileIndex: i + 1,
         totalFiles: queuedItems.length,
         percentage: 0,
+      });
+
+      batchToast.update({
+        title:
+          queuedItems.length > 1
+            ? `Uploading (${i + 1}/${queuedItems.length}): ${item.title || item.file.name}`
+            : `Uploading "${item.title || item.file.name}"`,
+        fileName: item.file.name,
+        fileSize: formatBytes(item.file.size),
+        fileIndex: i + 1,
+        totalFiles: queuedItems.length,
+        percentage: 0,
+        statusText: "Initiating upload...",
       });
 
       try {
@@ -242,6 +274,20 @@ export function AssetMultiUploader({
               fileIndex: i + 1,
               totalFiles: queuedItems.length,
               percentage: percent,
+            });
+
+            batchToast.update({
+              title:
+                queuedItems.length > 1
+                  ? `Uploading (${i + 1}/${queuedItems.length}): ${item.title || item.file.name}`
+                  : `Uploading "${item.title || item.file.name}"`,
+              fileName: item.file.name,
+              loadedBytes: loaded,
+              totalBytes: total,
+              fileIndex: i + 1,
+              totalFiles: queuedItems.length,
+              percentage: percent,
+              statusText: percent < 100 ? "Uploading directly to edge..." : "Finalizing asset...",
             });
           },
           onStatusChange: (statusText) => {
@@ -273,6 +319,8 @@ export function AssetMultiUploader({
         completedResults.push(result);
         onUploadComplete?.(result.asset, result.assetVersion);
       } catch (err: any) {
+        failedCount++;
+        lastErrorMessage = err.message || "Failed to upload asset.";
         setQueue((prev) =>
           prev.map((q) =>
             q.id === item.id
@@ -280,7 +328,7 @@ export function AssetMultiUploader({
                   ...q,
                   status: "error",
                   statusText: "Upload failed",
-                  errorMessage: err.message || "Failed to upload asset.",
+                  errorMessage: lastErrorMessage,
                 }
               : q
           )
@@ -293,15 +341,35 @@ export function AssetMultiUploader({
     setIsProcessing(false);
     onProgressChange?.(null);
 
-    if (completedResults.length > 0) {
+    if (abortControllerRef.current) {
+      batchToast.info("Batch upload cancelled");
+    } else if (completedResults.length > 0 && failedCount === 0) {
+      batchToast.success(
+        completedResults.length === 1
+          ? `"${completedResults[0].asset?.title || queuedItems[0].title}" uploaded!`
+          : `All ${completedResults.length} assets uploaded & ready!`
+      );
       onBatchComplete?.(completedResults);
+    } else if (completedResults.length > 0 && failedCount > 0) {
+      batchToast.error(
+        `Uploaded ${completedResults.length} of ${queuedItems.length} files (${failedCount} failed)`,
+        lastErrorMessage
+      );
+      onBatchComplete?.(completedResults);
+    } else if (failedCount > 0) {
+      batchToast.error("Upload failed", lastErrorMessage);
     }
+
+    batchToastRef.current = null;
   };
 
   const cancelActiveUpload = () => {
     abortControllerRef.current = true;
     if (activeXhrRef.current) {
       activeXhrRef.current.abort();
+    } else if (batchToastRef.current) {
+      batchToastRef.current.info("Batch upload cancelled");
+      batchToastRef.current = null;
     }
     setIsProcessing(false);
     onProgressChange?.(null);

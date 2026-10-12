@@ -70,6 +70,7 @@ export interface PortfolioClientProps {
   };
   initialProjects: PortfolioItem[];
   initialFeaturedIds: string[];
+  features?: any;
 }
 
 export function PortfolioClient({
@@ -77,6 +78,7 @@ export function PortfolioClient({
   portfolio,
   initialProjects,
   initialFeaturedIds,
+  features,
 }: PortfolioClientProps) {
   const router = useRouter();
   const [projects, setProjects] = useState<PortfolioItem[]>(initialProjects);
@@ -347,6 +349,8 @@ export function PortfolioClient({
         portfolio={portfolio}
         onProjectCreated={handleProjectCreated}
         showFlash={showFlash}
+        features={features}
+        projectsCount={projects.length}
       />
 
       {/* 2. Appearance Controls Card matching Screenshot 3 */}

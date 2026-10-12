@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Download,
   Check,
@@ -11,7 +11,8 @@ import {
   Loader2,
   HardDriveDownload,
   Sparkles,
-  ExternalLink,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -27,10 +28,12 @@ import { AppImage } from "@/components/ui/app-image";
 import {
   formatBytes,
   getDownloadFilename,
+  buildAttachmentDownloadUrl,
   triggerDirectDownload,
   triggerSequentialDownloads,
   type SequentialDownloadItem,
 } from "@/lib/download";
+import { getDeliveryDownloadManifestAction } from "@/app/actions/deliveries";
 import {
   Tooltip,
   TooltipTrigger,
@@ -55,9 +58,15 @@ export interface DownloadPackageModalProps {
   onOpenChange: (open: boolean) => void;
   projectTitle: string;
   items: DownloadItem[];
-  isDownloadAllowed?: boolean; // false in client review room if creator locked it
+  isDownloadAllowed?: boolean; // false in client review room if creator locked it and cut is not yet approved
   brandName?: string;
+  deliveryId?: string;
+  shareToken?: string;
+  totalAssetsCount?: number;
+  onClientDownload?: (info: { assetTitle?: string; downloadedCount?: number }) => void;
 }
+
+type FilterTab = "ALL" | "APPROVED" | "VIDEOS" | "PHOTOS";
 
 export function DownloadPackageModal({
   isOpen,
@@ -66,7 +75,15 @@ export function DownloadPackageModal({
   items,
   isDownloadAllowed = true,
   brandName,
+  deliveryId,
+  shareToken,
+  totalAssetsCount,
+  onClientDownload,
 }: DownloadPackageModalProps) {
+  const [fullItems, setFullItems] = useState<DownloadItem[] | null>(null);
+  const [isLoadingManifest, setIsLoadingManifest] = useState(false);
+  const [filterTab, setFilterTab] = useState<FilterTab>("ALL");
+  const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
   const [isQueueRunning, setIsQueueRunning] = useState(false);
   const [queueProgress, setQueueProgress] = useState<{
     current: number;
@@ -77,16 +94,137 @@ export function DownloadPackageModal({
   const [copiedItemIds, setCopiedItemIds] = useState<Record<string, boolean>>({});
   const [hasCopiedLinks, setHasCopiedLinks] = useState(false);
 
-  // Filter items with valid download URLs
-  const validItems = items.filter((item) => Boolean(item.downloadUrl));
+  // Fetch full unpaginated manifest if the delivery has more assets than currently loaded
+  useEffect(() => {
+    if (!isOpen) return;
+    const expectedTotal = totalAssetsCount ?? items.length;
+    if (expectedTotal > items.length && (deliveryId || shareToken) && !fullItems) {
+      let cancelled = false;
+      setIsLoadingManifest(true);
+      getDeliveryDownloadManifestAction({ deliveryId, shareToken })
+        .then((res) => {
+          if (!cancelled && res.success && res.items && res.items.length > 0) {
+            setFullItems(res.items);
+          }
+        })
+        .catch(() => null)
+        .finally(() => {
+          if (!cancelled) setIsLoadingManifest(false);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [isOpen, totalAssetsCount, items.length, deliveryId, shareToken, fullItems]);
+
+  const activeItems = fullItems && fullItems.length >= items.length ? fullItems : items;
+
+  // Filter items with valid download URLs (or fallback to thumbnailUrl for still photos)
+  const validItems = useMemo(
+    () =>
+      activeItems
+        .map((item) => ({
+          ...item,
+          downloadUrl: item.downloadUrl || item.thumbnailUrl || "",
+        }))
+        .filter((item) => Boolean(item.downloadUrl)),
+    [activeItems]
+  );
+
+  // Auto-select all valid items when modal opens or items update
+  useEffect(() => {
+    if (!isOpen) return;
+    setSelectedIds((prev) => {
+      const next: Record<string, boolean> = {};
+      for (const item of validItems) {
+        const canDownloadItem = isDownloadAllowed || Boolean(item.isApproved);
+        next[item.id] = prev[item.id] !== undefined ? prev[item.id] : canDownloadItem;
+      }
+      return next;
+    });
+  }, [isOpen, validItems, isDownloadAllowed]);
+
+  const filteredItems = useMemo(() => {
+    return validItems.filter((item) => {
+      const isPhoto =
+        item.type === "photo" ||
+        item.type === "photo_gallery" ||
+        item.type === "still";
+      if (filterTab === "APPROVED") return Boolean(item.isApproved);
+      if (filterTab === "VIDEOS") return !isPhoto;
+      if (filterTab === "PHOTOS") return isPhoto;
+      return true;
+    });
+  }, [validItems, filterTab]);
+
+  const downloadableFilteredItems = useMemo(
+    () =>
+      filteredItems.filter(
+        (item) => isDownloadAllowed || Boolean(item.isApproved)
+      ),
+    [filteredItems, isDownloadAllowed]
+  );
+
+  const selectedDownloadableItems = useMemo(
+    () =>
+      downloadableFilteredItems.filter((item) => Boolean(selectedIds[item.id])),
+    [downloadableFilteredItems, selectedIds]
+  );
+
   const totalSizeBytes = validItems.reduce(
     (acc, curr) => acc + (Number(curr.fileSizeBytes) || 0),
     0
   );
 
+  const selectedSizeBytes = selectedDownloadableItems.reduce(
+    (acc, curr) => acc + (Number(curr.fileSizeBytes) || 0),
+    0
+  );
+
+  const allFilteredSelected =
+    downloadableFilteredItems.length > 0 &&
+    downloadableFilteredItems.every((item) => Boolean(selectedIds[item.id]));
+
+  const handleToggleSelectAll = () => {
+    const nextValue = !allFilteredSelected;
+    setSelectedIds((prev) => {
+      const next = { ...prev };
+      for (const item of downloadableFilteredItems) {
+        next[item.id] = nextValue;
+      }
+      return next;
+    });
+  };
+
+  const handleToggleItemSelection = (id: string, canDownloadItem: boolean) => {
+    if (!canDownloadItem) return;
+    setSelectedIds((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const resolveAbsoluteDownloadUrl = (item: DownloadItem): string => {
+    const filename = getDownloadFilename(
+      item.title,
+      item.versionNumber,
+      item.downloadUrl,
+      item.type
+    );
+    const attachmentUrl = buildAttachmentDownloadUrl(item.downloadUrl, filename);
+    if (
+      typeof window !== "undefined" &&
+      attachmentUrl.startsWith("/")
+    ) {
+      return `${window.location.origin}${attachmentUrl}`;
+    }
+    return attachmentUrl;
+  };
+
   const handleDownloadSingle = (item: DownloadItem) => {
-    if (!isDownloadAllowed) {
-      toast.error("Downloads are currently locked by the creator pending sign-off.");
+    const canDownloadItem = isDownloadAllowed || Boolean(item.isApproved);
+    if (!canDownloadItem) {
+      toast.error("This cut is locked pending approval.");
       return;
     }
     const filename = getDownloadFilename(
@@ -97,17 +235,22 @@ export function DownloadPackageModal({
     );
     triggerDirectDownload(item.downloadUrl, filename);
     setDownloadedIds((prev) => ({ ...prev, [item.id]: true }));
-    toast.success(`Started download for ${item.title}`);
+    toast.success(`Downloading ${item.title}`, {
+      description: `Saving as ${filename}`,
+    });
+    onClientDownload?.({ assetTitle: item.title, downloadedCount: 1 });
     setTimeout(() => {
       setDownloadedIds((prev) => ({ ...prev, [item.id]: false }));
     }, 4000);
   };
 
   const handleCopySingleLink = (item: DownloadItem) => {
-    if (!item.downloadUrl) return;
-    navigator.clipboard.writeText(item.downloadUrl);
+    const canDownloadItem = isDownloadAllowed || Boolean(item.isApproved);
+    if (!canDownloadItem || !item.downloadUrl) return;
+    const directUrl = resolveAbsoluteDownloadUrl(item);
+    navigator.clipboard.writeText(directUrl);
     setCopiedItemIds((prev) => ({ ...prev, [item.id]: true }));
-    toast.success(`Copied direct URL for ${item.title}`, {
+    toast.success(`Copied direct download URL for ${item.title}`, {
       description: "Paste directly into Free Download Manager (FDM) or IDM.",
     });
     setTimeout(() => {
@@ -115,20 +258,29 @@ export function DownloadPackageModal({
     }, 2500);
   };
 
-  const handleDownloadAllSequential = async () => {
-    if (!isDownloadAllowed) {
-      toast.error("Downloads are currently locked by the creator pending sign-off.");
-      return;
-    }
-    if (validItems.length === 0) {
-      toast.error("No downloadable master files found.");
+  const handleDownloadSelectedSequential = async () => {
+    const targetList =
+      selectedDownloadableItems.length > 0
+        ? selectedDownloadableItems
+        : downloadableFilteredItems;
+
+    if (targetList.length === 0) {
+      if (!isDownloadAllowed) {
+        toast.error("Downloads are locked until cuts are approved.");
+      } else {
+        toast.error("Please select at least one deliverable to download.");
+      }
       return;
     }
 
     setIsQueueRunning(true);
-    setQueueProgress({ current: 1, total: validItems.length, title: validItems[0].title });
+    setQueueProgress({
+      current: 1,
+      total: targetList.length,
+      title: targetList[0].title,
+    });
 
-    const queueItems: SequentialDownloadItem[] = validItems.map((item) => ({
+    const queueItems: SequentialDownloadItem[] = targetList.map((item) => ({
       url: item.downloadUrl,
       filename: getDownloadFilename(
         item.title,
@@ -139,23 +291,53 @@ export function DownloadPackageModal({
       title: item.title,
     }));
 
+    const toastId = toast.loading(
+      `Dispatching 1 of ${queueItems.length}: ${queueItems[0].title}...`,
+      {
+        description: "Streaming master files directly to your browser Downloads...",
+      }
+    );
+
     try {
       await triggerSequentialDownloads(
         queueItems,
         (current, total, currentItem) => {
           setQueueProgress({ current, total, title: currentItem.title });
+          toast.loading(
+            `Dispatching ${current} of ${total}: ${currentItem.title}...`,
+            {
+              id: toastId,
+              description: `${Math.round((current / total) * 100)}% queued to browser download manager`,
+            }
+          );
         },
-        900 // 900ms spacing to prevent browser popup throttling
+        850
       );
+      setDownloadedIds((prev) => {
+        const next = { ...prev };
+        for (const item of targetList) {
+          next[item.id] = true;
+        }
+        return next;
+      });
       toast.success(
-        `All ${validItems.length} deliverables queued for download in your browser!`,
+        `${queueItems.length} ${
+          queueItems.length === 1 ? "deliverable" : "deliverables"
+        } queued for download!`,
         {
-          description: "Files stream directly from Cloudflare R2 straight to your disk.",
+          id: toastId,
+          description: "Files stream directly from Cloudflare R2 to your disk.",
         }
       );
+      onClientDownload?.({
+        downloadedCount: queueItems.length,
+        assetTitle: queueItems.length === 1 ? queueItems[0].title : undefined,
+      });
     } catch (err) {
       console.error("Queue download error:", err);
-      toast.error("An error occurred while dispatching the download queue.");
+      toast.error("An error occurred while dispatching the download queue.", {
+        id: toastId,
+      });
     } finally {
       setIsQueueRunning(false);
       setQueueProgress(null);
@@ -163,19 +345,28 @@ export function DownloadPackageModal({
   };
 
   const handleCopyLinks = () => {
-    // Provide clean direct URLs one per line, optimal for Free Download Manager / IDM batch paste
-    const text = validItems.map((i) => i.downloadUrl).join("\n");
+    const targetList =
+      selectedDownloadableItems.length > 0
+        ? selectedDownloadableItems
+        : downloadableFilteredItems;
+    if (targetList.length === 0) return;
+
+    const text = targetList.map((i) => resolveAbsoluteDownloadUrl(i)).join("\n");
     navigator.clipboard.writeText(text);
     setHasCopiedLinks(true);
-    toast.success(`Copied ${validItems.length} direct URLs to clipboard!`, {
-      description: "Paste into Free Download Manager (Ctrl+V) or IDM for multi-file accelerated batch download.",
+    toast.success(`Copied ${targetList.length} direct URLs to clipboard!`, {
+      description:
+        "Paste into Free Download Manager (Ctrl+V) or IDM for multi-file batch download.",
     });
     setTimeout(() => setHasCopiedLinks(false), 2500);
   };
 
+  const hasAnyDownloadable =
+    isDownloadAllowed || validItems.some((i) => Boolean(i.isApproved));
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-[#111115] border border-white/15 text-[#f6f3ec] rounded-3xl p-5 sm:p-7 w-[94vw] max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl space-y-6">
+      <DialogContent className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-[#111115] border border-white/15 text-[#f6f3ec] rounded-3xl p-5 sm:p-7 w-[94vw] max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl space-y-5">
         <DialogHeader className="space-y-2 border-b border-white/10 pb-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -195,7 +386,8 @@ export function DownloadPackageModal({
             {/* Total Size & Count Badges */}
             <div className="hidden sm:flex flex-col items-end gap-1 text-right">
               <Badge variant="orange" className="font-mono text-xs font-bold py-0.5">
-                {validItems.length} {validItems.length === 1 ? "Deliverable" : "Deliverables"}
+                {validItems.length}{" "}
+                {validItems.length === 1 ? "Deliverable" : "Deliverables"}
               </Badge>
               {totalSizeBytes > 0 && (
                 <span className="text-[11px] font-mono text-[#aeaeb4]">
@@ -211,17 +403,22 @@ export function DownloadPackageModal({
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-start gap-3 text-amber-300">
             <Lock className="size-5 shrink-0 mt-0.5 text-amber-400" />
             <div className="space-y-1 text-xs">
-              <p className="font-bold">Downloads Currently Restricted</p>
+              <p className="font-bold">
+                {hasAnyDownloadable
+                  ? "Unapproved Drafts Locked — Approved Cuts Unlocked"
+                  : "Downloads Currently Restricted"}
+              </p>
               <p className="text-amber-200/80 leading-relaxed">
-                The creator has locked master cut downloads pending final sign-off and approval.
-                Once approved, all high-resolution files will be unlocked for download here.
+                {hasAnyDownloadable
+                  ? "Approved assets are unlocked for immediate download below. Approve the remaining cuts to unlock the full package."
+                  : "The creator has locked master cut downloads pending final sign-off and approval. Once approved, all high-resolution files unlock automatically."}
               </p>
             </div>
           </div>
         )}
 
         {/* Direct Download Queue Controller */}
-        {isDownloadAllowed && (
+        {hasAnyDownloadable && (
           <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
@@ -232,7 +429,11 @@ export function DownloadPackageModal({
                   </h4>
                 </div>
                 <p className="text-[11px] text-[#aeaeb4] mt-0.5">
-                  Multi-file queue transfers directly from Cloudflare R2 to your disk with zero browser RAM limit.
+                  {selectedDownloadableItems.length > 0 && selectedSizeBytes > 0
+                    ? `${selectedDownloadableItems.length} selected (${formatBytes(
+                        selectedSizeBytes
+                      )}) · Streams directly from Cloudflare R2 to disk.`
+                    : "Multi-file queue transfers directly from Cloudflare R2 to your disk with zero browser RAM limit."}
                 </p>
               </div>
 
@@ -241,9 +442,10 @@ export function DownloadPackageModal({
                   type="button"
                   variant="outline"
                   size="sm"
+                  disabled={selectedDownloadableItems.length === 0}
                   onClick={handleCopyLinks}
-                  className="rounded-full border-white/20 text-[#aeaeb4] hover:text-white hover:bg-white/10 text-xs font-mono h-8 px-3"
-                  title="Copy all direct URLs to clipboard"
+                  className="rounded-full border-white/20 text-[#aeaeb4] hover:text-white hover:bg-white/10 text-xs font-mono h-8 px-3 cursor-pointer"
+                  title="Copy direct download URLs for selected items"
                 >
                   {hasCopiedLinks ? (
                     <>
@@ -260,8 +462,10 @@ export function DownloadPackageModal({
 
                 <Button
                   type="button"
-                  onClick={handleDownloadAllSequential}
-                  disabled={isQueueRunning || validItems.length === 0}
+                  onClick={handleDownloadSelectedSequential}
+                  disabled={
+                    isQueueRunning || selectedDownloadableItems.length === 0
+                  }
                   className="rounded-full bg-gradient-to-r from-[#d9481d] to-[#802010] hover:from-[#f5551d] hover:to-[#992e10] text-white font-bold text-xs px-4 py-2 shadow-lg shadow-[#d9481d]/20 border border-[#f5551d]/40 transition-all cursor-pointer h-8 gap-1.5 disabled:opacity-50"
                 >
                   {isQueueRunning ? (
@@ -272,7 +476,11 @@ export function DownloadPackageModal({
                   ) : (
                     <>
                       <Download className="size-3.5" />
-                      <span>Download All ({validItems.length})</span>
+                      <span>
+                        {selectedDownloadableItems.length === validItems.length
+                          ? `Download All (${selectedDownloadableItems.length})`
+                          : `Download Selected (${selectedDownloadableItems.length})`}
+                      </span>
                     </>
                   )}
                 </Button>
@@ -287,13 +495,20 @@ export function DownloadPackageModal({
                     Dispatching {queueProgress.current} of {queueProgress.total}:{" "}
                     <strong className="text-white">{queueProgress.title}</strong>
                   </span>
-                  <span>{Math.round((queueProgress.current / queueProgress.total) * 100)}%</span>
+                  <span>
+                    {Math.round(
+                      (queueProgress.current / queueProgress.total) * 100
+                    )}
+                    %
+                  </span>
                 </div>
                 <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
                   <div
                     className="bg-[#f5551d] h-full transition-all duration-300 rounded-full"
                     style={{
-                      width: `${(queueProgress.current / queueProgress.total) * 100}%`,
+                      width: `${
+                        (queueProgress.current / queueProgress.total) * 100
+                      }%`,
                     }}
                   />
                 </div>
@@ -302,33 +517,99 @@ export function DownloadPackageModal({
           </div>
         )}
 
-        {/* Deliverables List */}
+        {/* Filter Pills + Select All Header */}
         <div className="space-y-2.5">
-          <div className="flex items-center justify-between text-xs font-mono text-[#aeaeb4] px-1">
-            <span>AVAILABLE MASTER FILES ({validItems.length})</span>
-            <span className="sm:hidden">{formatBytes(totalSizeBytes)}</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+            <div className="flex items-center gap-1 bg-white/5 p-1 rounded-full border border-white/10">
+              {(["ALL", "APPROVED", "VIDEOS", "PHOTOS"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setFilterTab(tab)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                    filterTab === tab
+                      ? "bg-[#f5551d] text-white shadow-sm"
+                      : "text-[#aeaeb4] hover:text-white"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-3">
+              {isLoadingManifest && (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#f5551d]">
+                  <Loader2 className="size-3 animate-spin" />
+                  Syncing all deliverables...
+                </span>
+              )}
+              {downloadableFilteredItems.length > 1 && (
+                <button
+                  type="button"
+                  onClick={handleToggleSelectAll}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#aeaeb4] hover:text-white transition-colors cursor-pointer"
+                >
+                  {allFilteredSelected ? (
+                    <CheckSquare className="size-3.5 text-[#f5551d]" />
+                  ) : (
+                    <Square className="size-3.5" />
+                  )}
+                  <span>{allFilteredSelected ? "Deselect All" : "Select All"}</span>
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="space-y-2 max-h-[42vh] overflow-y-auto pr-1">
-            {validItems.length === 0 ? (
+          <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
+            {filteredItems.length === 0 ? (
               <div className="p-8 text-center text-xs text-[#aeaeb4] bg-white/5 rounded-2xl border border-white/10">
-                No deliverable files available for download yet.
+                No deliverables match this filter.
               </div>
             ) : (
-              validItems.map((item) => {
+              filteredItems.map((item) => {
                 const isPhoto =
                   item.type === "photo" ||
                   item.type === "photo_gallery" ||
                   item.type === "still";
                 const isDownloaded = downloadedIds[item.id];
+                const canDownloadItem =
+                  isDownloadAllowed || Boolean(item.isApproved);
+                const isSelected =
+                  canDownloadItem && Boolean(selectedIds[item.id]);
 
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between gap-3 p-3 sm:p-3.5 rounded-2xl bg-white/5 hover:bg-white/[0.08] border border-white/10 transition-colors"
+                    onClick={() =>
+                      handleToggleItemSelection(item.id, canDownloadItem)
+                    }
+                    className={`flex items-center justify-between gap-3 p-3 sm:p-3.5 rounded-2xl border transition-colors ${
+                      canDownloadItem ? "cursor-pointer" : "opacity-60"
+                    } ${
+                      isSelected
+                        ? "bg-white/[0.08] border-[#f5551d]/40"
+                        : "bg-white/5 hover:bg-white/[0.07] border-white/10"
+                    }`}
                   >
-                    {/* Media Thumbnail + Metadata */}
+                    {/* Checkbox + Media Thumbnail + Metadata */}
                     <div className="flex items-center gap-3 min-w-0">
+                      <button
+                        type="button"
+                        disabled={!canDownloadItem}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleItemSelection(item.id, canDownloadItem);
+                        }}
+                        className="text-[#aeaeb4] hover:text-white disabled:opacity-30 shrink-0 cursor-pointer"
+                      >
+                        {isSelected ? (
+                          <CheckSquare className="size-4 text-[#f5551d]" />
+                        ) : (
+                          <Square className="size-4" />
+                        )}
+                      </button>
+
                       <div className="size-12 sm:size-14 rounded-xl bg-black/40 overflow-hidden relative shrink-0 border border-white/10">
                         {item.thumbnailUrl ? (
                           <AppImage
@@ -367,7 +648,7 @@ export function DownloadPackageModal({
                               variant="outline"
                               className="text-[9px] font-mono border-emerald-500/30 text-emerald-400 bg-emerald-500/10 py-0 h-4 hidden sm:inline-flex"
                             >
-                              Approved
+                              ✓ Approved
                             </Badge>
                           )}
                         </div>
@@ -375,15 +656,18 @@ export function DownloadPackageModal({
                         <div className="flex items-center gap-2 text-[10px] sm:text-[11px] font-mono text-[#aeaeb4] truncate">
                           <span>{item.aspectRatio || "16:9"}</span>
                           {item.duration && <span>· {item.duration}</span>}
-                          {item.fileSizeBytes && item.fileSizeBytes > 0 && (
+                          {item.fileSizeBytes && item.fileSizeBytes > 0 ? (
                             <span>· {formatBytes(item.fileSizeBytes)}</span>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
 
                     {/* Single Download & Copy Actions */}
-                    <div className="shrink-0 flex items-center gap-1.5">
+                    <div
+                      className="shrink-0 flex items-center gap-1.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Tooltip>
                         <TooltipTrigger
                           render={
@@ -391,7 +675,7 @@ export function DownloadPackageModal({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              disabled={!isDownloadAllowed}
+                              disabled={!canDownloadItem}
                               onClick={() => handleCopySingleLink(item)}
                               className="size-8 rounded-xl text-[#aeaeb4] hover:text-white hover:bg-white/10 transition-colors p-0 cursor-pointer disabled:opacity-40"
                             >
@@ -404,14 +688,16 @@ export function DownloadPackageModal({
                           }
                         />
                         <TooltipContent>
-                          {copiedItemIds[item.id] ? "Link copied!" : "Copy direct URL (for FDM / IDM)"}
+                          {copiedItemIds[item.id]
+                            ? "Link copied!"
+                            : "Copy direct URL (for FDM / IDM)"}
                         </TooltipContent>
                       </Tooltip>
 
                       <Button
                         type="button"
                         size="sm"
-                        disabled={!isDownloadAllowed}
+                        disabled={!canDownloadItem}
                         onClick={() => handleDownloadSingle(item)}
                         className={`h-8 rounded-xl font-mono text-xs font-bold px-3 transition-all cursor-pointer flex items-center gap-1.5 ${
                           isDownloaded
@@ -423,6 +709,11 @@ export function DownloadPackageModal({
                           <>
                             <Check className="size-3.5 text-emerald-400" />
                             <span className="hidden sm:inline">Downloaded</span>
+                          </>
+                        ) : !canDownloadItem ? (
+                          <>
+                            <Lock className="size-3.5" />
+                            <span>Locked</span>
                           </>
                         ) : (
                           <>
@@ -441,10 +732,13 @@ export function DownloadPackageModal({
 
         {/* Footnote / FDM & IDM compatibility info */}
         <div className="flex flex-col sm:flex-row items-center justify-between text-[11px] text-[#71717a] font-mono pt-1 border-t border-white/5 gap-1">
-          <span>💡 Direct stream from Cloudflare R2 — zero browser memory limit</span>
-          <span>Compatible with Free Download Manager, IDM & browser shelf</span>
+          <span>
+            💡 Direct stream from Cloudflare R2 — zero browser memory limit
+          </span>
+          <span>Compatible with Free Download Manager, IDM &amp; browser shelf</span>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+

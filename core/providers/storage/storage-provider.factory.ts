@@ -136,11 +136,64 @@ class CompositeStorageProvider implements IStorageProvider {
     return info?.rawDownloadUrl || info?.hlsManifestUrl || providerUid;
   }
 
+  async getSecureDownloadUrl(
+    providerUid: string,
+    filename: string,
+    isPublic?: boolean,
+    expiresInSeconds?: number
+  ): Promise<string> {
+    if (this.isStreamAsset(providerUid)) {
+      if (typeof this.streamProvider.getSecureDownloadUrl === "function") {
+        return this.streamProvider.getSecureDownloadUrl(
+          providerUid,
+          filename,
+          isPublic,
+          expiresInSeconds
+        );
+      }
+      const cleanUid = providerUid.match(/([a-f0-9]{32})/i)?.[1] || providerUid;
+      return `/api/media/${cleanUid}?download=true&filename=${encodeURIComponent(filename)}`;
+    }
+
+    if (typeof this.r2Provider.getSecureDownloadUrl === "function") {
+      return this.r2Provider.getSecureDownloadUrl(
+        providerUid,
+        filename,
+        isPublic,
+        expiresInSeconds
+      );
+    }
+    return this.getSecurePlaybackUrl(providerUid, isPublic, expiresInSeconds);
+  }
+
   verifyWebhookSignature(rawBody: string, headers: Record<string, string>): boolean {
     if (typeof this.streamProvider.verifyWebhookSignature === "function") {
       return this.streamProvider.verifyWebhookSignature(rawBody, headers);
     }
     return true;
+  }
+
+  async getObjectStream(providerUid: string): Promise<{
+    stream: NodeJS.ReadableStream;
+    contentType?: string;
+    contentLength?: number;
+  }> {
+    if (typeof this.r2Provider.getObjectStream === "function") {
+      return this.r2Provider.getObjectStream(providerUid);
+    }
+    throw new Error("getObjectStream not implemented on current storage provider");
+  }
+
+  async putObjectStream(
+    providerUid: string,
+    body: NodeJS.ReadableStream | Buffer | Uint8Array,
+    contentType?: string,
+    contentLength?: number
+  ): Promise<void> {
+    if (typeof this.r2Provider.putObjectStream === "function") {
+      return this.r2Provider.putObjectStream(providerUid, body, contentType, contentLength);
+    }
+    throw new Error("putObjectStream not implemented on current storage provider");
   }
 }
 
