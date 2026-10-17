@@ -54,15 +54,24 @@ export class DeliveryService {
     return this.deliveryRepo.findById(id);
   }
 
-  async getDeliveryByShareToken(shareToken: string): Promise<Delivery | null> {
+  async getDeliveryByShareToken(
+    shareToken: string,
+    options?: { allowExpired?: boolean }
+  ): Promise<Delivery | null> {
     const delivery = await this.deliveryRepo.findByShareToken(shareToken);
     if (!delivery) return null;
 
-    if (delivery.expiresAt && new Date(delivery.expiresAt) < new Date()) {
+    if (!options?.allowExpired && delivery.expiresAt && new Date(delivery.expiresAt) < new Date()) {
       throw new Error("This delivery link has expired.");
     }
 
     return delivery;
+  }
+
+  async regenerateShareToken(deliveryId: string): Promise<Delivery> {
+    const { randomBytes } = await import("crypto");
+    const newShareToken = randomBytes(16).toString("hex");
+    return this.deliveryRepo.update(deliveryId, { shareToken: newShareToken });
   }
 
   async listWorkspaceDeliveries(workspaceId: string): Promise<Delivery[]> {

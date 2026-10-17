@@ -50,6 +50,8 @@ export default async function SubscriptionPage({
     services.subscription.getFeatures(workspace.id),
   ]);
 
+  console.log("sub data",currentPlan,subscription,availablePlans,realInvoices,workspaceFeatures)
+
   const currentPlanName = currentPlan?.name || "Starter";
   const currentPlanSlug = currentPlan?.slug || "starter";
   const subStatus = subscription?.status || "active";

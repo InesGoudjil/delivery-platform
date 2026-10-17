@@ -86,7 +86,7 @@ export function UserNavMenu({ user, workspace }: UserNavMenuProps) {
                 alt={fullName}
               />
             )}
-            <AvatarFallback className="bg-gradient-to-br from-[#f5551d] to-[#ff8a45] text-black font-bold text-xs">
+            <AvatarFallback className="bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-xs">
               {initials}
             </AvatarFallback>
             <AvatarBadge className="bg-[#86b98f] ring-2 ring-[#0a0a0b]" />
@@ -126,7 +126,7 @@ export function UserNavMenu({ user, workspace }: UserNavMenuProps) {
           {workspace && (
             <div className="mt-1.5 pt-1.5 border-t border-white/10 flex items-center justify-between text-[11px]">
               <span className="text-[#5e5e64]">Workspace:</span>
-              <span className="font-semibold text-[#f5551d] font-mono">
+              <span className="font-semibold text-primary font-mono">
                 {workspace.brandName}
               </span>
             </div>
@@ -142,7 +142,7 @@ export function UserNavMenu({ user, workspace }: UserNavMenuProps) {
               href={workspaceDashboardUrl}
               className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#f6f3ec] hover:bg-white/10 hover:text-white cursor-pointer transition-colors"
             >
-              <LayoutDashboard className="size-4 text-[#f5551d]" />
+              <LayoutDashboard className="size-4 text-primary" />
               <span>Workspace Dashboard</span>
             </Link>
           </DropdownMenuItem>
@@ -162,7 +162,7 @@ export function UserNavMenu({ user, workspace }: UserNavMenuProps) {
               href={portfolioUrl}
               className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#f6f3ec] hover:bg-white/10 hover:text-white cursor-pointer transition-colors"
             >
-              <Globe className="size-4 text-[#ff8a45]" />
+              <Globe className="size-4 text-primary" />
               <span>Public Video Portfolio</span>
             </Link>
           </DropdownMenuItem>

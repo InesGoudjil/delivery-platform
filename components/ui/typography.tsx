@@ -23,11 +23,11 @@ const typographyVariants = cva("transition-colors", {
       default: "text-[#f6f3ec]",
       muted: "text-[#9a9a9f]",
       faint: "text-[#5e5e64]",
-      orange: "text-[#f5551d]",
+      orange: "text-primary",
       sage: "text-[#86b98f]",
       white: "text-white",
       gradient:
-        "text-transparent bg-clip-text bg-gradient-to-r from-[#f5551d] via-[#ff8a45] to-[#f6f3ec]",
+        "text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary/80 to-[#f6f3ec]",
     },
   },
   defaultVariants: {

@@ -16,12 +16,12 @@
   --ink: #f6f3ec;
   --dim: #edebe6;
   --faint: #aeaeb4;
-  --orange: #f5551d;
-  --orange2: #ff8a45;
+  --orange: var(--primary, #f5551d);
+  --orange2: var(--orange2, #ff8a45);
   --sage: #86b98f;
   --grey: #6b7580;
-  --acc-rgb: 245, 85, 29;
-  --acc2-rgb: 255, 138, 69;
+  --acc-rgb: var(--acc-rgb, 245, 85, 29);
+  --acc2-rgb: var(--acc2-rgb, 255, 138, 69);
   --acc-hue: 14;
   --acc-dk-rgb: 200, 60, 20;
 }
@@ -5875,8 +5875,8 @@ button.on .ar-mix {
   --ink: #f6f3ec;
   --dim: #edebe6;
   --faint: #aeaeb4;
-  --orange: #f5551d;
-  --orange2: #ff8a45;
+  --orange: var(--primary, #f5551d);
+  --orange2: var(--orange2, #ff8a45);
   --bg3: #1c1c20;
   --line: rgba(255, 255, 255, 0.09);
   --line2: rgba(255, 255, 255, 0.16);

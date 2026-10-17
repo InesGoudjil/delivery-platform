@@ -29,12 +29,28 @@ export const FAQS = [
 
 export function FaqSection() {
   return (
-    <section id="faq" className="py-16 max-w-4xl mx-auto">
-      <div className="w-full text-left space-y-4">
+    <section id="faq" className="scroll-mt-24 py-16 sm:py-20 lg:py-24 max-w-4xl mx-auto text-center">
+      {/* Section Header */}
+      <div className="space-y-3 max-w-2xl mx-auto">
+        <div className="flex justify-center">
+          <span className="text-xs font-semibold uppercase tracking-widest text-primary font-mono">
+            COMMON QUESTIONS
+          </span>
+        </div>
+        <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight font-display uppercase">
+          FREQUENTLY ASKED
+        </h2>
+        <p className="text-sm sm:text-base text-[#aeaeb4] max-w-xl mx-auto leading-relaxed">
+          Everything you need to know about CineSpace screening rooms, delivery, and storage.
+        </p>
+      </div>
+
+      {/* Small spacing from header block to accordion */}
+      <div className="mt-10 sm:mt-12 text-left">
         <Accordion className="w-full">
           {FAQS.map((faq, idx) => (
             <AccordionItem key={idx} value={`faq-${idx}`}>
-              <AccordionTrigger className="text-lg sm:text-xl font-bold text-white hover:text-[#f5551d] transition-colors py-6 font-display">
+              <AccordionTrigger className="text-lg sm:text-xl font-bold text-white hover:text-primary transition-colors py-6 font-display">
                 {faq.q}
               </AccordionTrigger>
               <AccordionContent className="text-sm sm:text-base text-[#aeaeb4] leading-relaxed pb-6">

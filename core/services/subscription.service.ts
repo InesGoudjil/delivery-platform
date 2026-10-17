@@ -1,7 +1,7 @@
 import { Subscription, SubscriptionStatus } from '@/core/entities/subscription';
 import { Plan, PlanSlug, SEED_PLANS } from '@/core/entities/plan';
 import { Invoice, InvoiceStatus } from '@/core/entities/invoice';
-import { WorkspaceFeatureConfig } from '@/core/entities/workspace';
+import { WorkspaceFeatureConfig, WorkspaceFeatures } from '@/core/entities/workspace';
 import { ISubscriptionRepository } from '@/core/repositories/subscription.repository';
 import { IPlanRepository } from '@/core/repositories/plan.repository';
 import { IWorkspaceFeaturesRepository } from '@/core/repositories/workspace.repository';
@@ -225,6 +225,13 @@ export class SubscriptionService {
 
     await this.featuresRepo.upsertFeatures(workspaceId, plan.features);
     return sub;
+  }
+
+  async updateWorkspaceFeatures(
+    workspaceId: string,
+    features: WorkspaceFeatureConfig
+  ): Promise<WorkspaceFeatures> {
+    return this.featuresRepo.upsertFeatures(workspaceId, features);
   }
 
   async canCreateProject(workspaceId: string): Promise<{

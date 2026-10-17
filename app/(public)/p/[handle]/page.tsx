@@ -20,6 +20,7 @@ import { PortfolioFooter } from "./_components/portfolio-footer";
 import { PortfolioModals } from "./_components/portfolio-modals";
 import { AmbientBackground } from "@/components/ui/ambient-background";
 import { AccentThemeProvider } from "@/components/theme/accent-theme-provider";
+import { notFound } from "next/navigation";
 
 interface PageProps {
   params: Promise<{ handle: string }>;
@@ -48,7 +49,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const description =
       portfolio?.bio || "Commercial films & luxury visual portfolio across the Gulf.";
     const coverUrl =
-      resolveMediaUrl(portfolio?.coverAssetUrl) || "/images/hero.jpg";
+      resolveMediaUrl(
+        portfolio?.appearance?.heroCover?.thumbnailUrl ||
+        portfolio?.appearance?.heroCover?.mediaUrl ||
+        portfolio?.coverAssetUrl
+      ) || "/images/hero.jpg";
 
     return {
       title: `${title} | CineSpace`,
@@ -90,7 +95,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
       const allWorkspaces = await services.workspace.listAllWorkspaces();
       workspace =
         allWorkspaces.find((w) => w.slug === handle) ||
-        allWorkspaces[0] ||
+        notFound()||
         null;
     }
 
@@ -362,7 +367,27 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     workspace?.brandName ||
     (handle.toLowerCase() === "pedro" ? "Pedro Concreato" : handle.charAt(0).toUpperCase() + handle.slice(1));
 
+  // Distinct Brand Logo (Workspace level)
+  const brandLogo = workspace?.logoUrl ? resolveMediaUrl(workspace.logoUrl) : null;
+
+  // Distinct Filmmaker Avatar (Owner user_profile level)
+  let ownerAvatarUrl: string | null = null;
+  if (workspace?.ownerId) {
+    try {
+      const ownerProfile = await services.profile.getProfile(workspace.ownerId);
+      if (ownerProfile?.avatarUrl) {
+        ownerAvatarUrl = resolveMediaUrl(ownerProfile.avatarUrl);
+      }
+    } catch (e) {
+      console.warn("Could not load owner profile avatar:", e);
+    }
+  }
+
+  const filmmakerAvatar = ownerAvatarUrl || brandLogo || "/images/about-img.png";
+  const heroCover = portfolio?.appearance?.heroCover || null;
+
   const coverSelected =
+    (heroCover?.mediaUrl ? resolveMediaUrl(heroCover.mediaUrl) : null) ||
     resolveMediaUrl(portfolio?.coverAssetUrl) ||
     featuredItems[0]?.thumbnailUrl ||
     (finalProjects.length > 0 ? finalProjects[0].coverImage : "") ||
@@ -373,13 +398,15 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     name: brandName,
     handle: workspace?.slug || handle,
     title: portfolio?.title || `${brandName} Portfolio`,
-    avatar: resolveMediaUrl(workspace?.logoUrl) || "/images/about-img.png",
+    avatar: filmmakerAvatar,
+    logoUrl: brandLogo,
+    heroCover: heroCover,
     bio:
       portfolio?.bio ||
       `${brandName} is a filmmaker and creative director based between Dubai and Sharjah. Over six years he's shot brand films, weddings, and launch content across the Gulf — story first, craft you don't notice. He shoots, directs, and grades his own work, and cares as much about how a film is delivered as how it's made.`,
     tagline: "Commercial Films & Luxury Visuals across the Gulf",
     heroImage: coverSelected,
-    featuredProjectId: featuredItems[0]?.id || finalProjects[0]?.id || finalAssets[0]?.id || undefined,
+    featuredProjectId: heroCover?.assetId || featuredItems[0]?.id || finalProjects[0]?.id || finalAssets[0]?.id || undefined,
     stats: {
       filmsDelivered: portfolio?.stats?.projects || `${finalAssets.filter((a) => a.kind === "film").length || "80+"}`,
       experienceYears: portfolio?.stats?.years || "6 YRS",
@@ -413,7 +440,34 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     return 0;
   });
 
-  const primaryFeatured = featuredItems.length > 0 ? featuredItems[0] : null;
+  // If heroCover is set, synthesize a primaryFeatured item from it
+  let primaryFeatured: PublicFeaturedItem | null = null;
+  if (heroCover && heroCover.mediaUrl) {
+    const matchedAsset = finalAssets.find((a) => String(a.id) === String(heroCover.assetId));
+    primaryFeatured = {
+      id: String(heroCover.assetId || "hero_cover"),
+      title: heroCover.title || (matchedAsset?.title) || brandName,
+      category: heroCover.category || (heroCover.type === "video" ? "Featured Film" : "Featured Still"),
+      type: heroCover.type === "still" ? "still" : "film",
+      thumbnailUrl: resolveMediaUrl(heroCover.thumbnailUrl || heroCover.mediaUrl),
+      videoUrl: heroCover.type === "video" ? resolveMediaUrl(heroCover.mediaUrl) : undefined,
+      aspectRatio: heroCover.aspectRatio,
+      asset: matchedAsset || {
+        id: heroCover.assetId || "hero_cover",
+        kind: heroCover.type === "still" ? "still" : "film",
+        cat: heroCover.category || "Featured Cut",
+        title: heroCover.title || brandName,
+        desc: "",
+        ar: heroCover.aspectRatio === "21:9" ? 21 / 9 : 16 / 9,
+        tc: "",
+        image: resolveMediaUrl(heroCover.thumbnailUrl || heroCover.mediaUrl),
+        videoUrl: heroCover.type === "video" ? resolveMediaUrl(heroCover.mediaUrl) : undefined,
+      },
+    };
+  } else if (featuredItems.length > 0) {
+    primaryFeatured = featuredItems[0];
+  }
+
   const featuredProject =
     (primaryFeatured?.type === "project" && primaryFeatured.project) ||
     projectsToDisplay.find((p) => p.id === profile.featuredProjectId) ||
@@ -441,7 +495,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
             <PortfolioHeader profile={profile} />
 
             {/* MAIN BODY */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-20 space-y-16 sm:space-y-24">
+            <main className="w-full px-4 sm:px-6 lg:px-8 pt-6 pb-20 space-y-16 sm:space-y-24">
               {/* 🌟 2. HERO / FEATURED HIGHLIGHT (Server Component) */}
               <PortfolioHero
                 profile={profile}

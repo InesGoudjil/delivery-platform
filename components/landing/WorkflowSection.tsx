@@ -2,6 +2,8 @@
 
 import React from "react";
 import { Upload, Share2, CheckCircle2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ScrollReveal } from "@/components/ui/motion";
 
 
 const SHOT_UPLOAD = "/images/posts/shot-upload.webp";
@@ -45,26 +47,32 @@ const STEPS = [
 
 export function WorkflowSection() {
   return (
-    <section id="workflow" className="py-20 text-center space-y-12">
+    <ScrollReveal className="text-center">
       {/* Section Header */}
-      <div className="space-y-3">
-        <h2 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight font-display">
+      <div className="space-y-3 max-w-3xl mx-auto">
+        <div className="flex justify-center">
+          <Badge variant="orange" className="text-xs font-mono uppercase tracking-widest font-semibold px-3.5 py-1">
+            Three simple steps
+          </Badge>
+        </div>
+        <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight font-display uppercase">
           HOW IT WORKS
         </h2>
-        <p className="text-base sm:text-lg text-[#aeaeb4] font-medium">
+        <p className="text-sm sm:text-base text-[#aeaeb4] max-w-2xl mx-auto leading-relaxed">
           From footage to sign-off in three steps.
         </p>
       </div>
 
-      {/* 3 Step Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+      {/* Small spacing from header block to content */}
+      <div className="mt-10 sm:mt-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
         {STEPS.map((item) => (
           <div
             key={item.step}
             className=" card group rounded-[28px] border border-white/10 bg-[#121217] p-5 shadow-2xl transition-all duration-300 hover:border-white/20 flex flex-col justify-between"
           >
             {/* Top Mockup Box with Orange Warm Backglow */}
-            <div className="relative aspect-[16/10] rounded-2xl overflow-hidden bg-gradient-to-tr from-[#ce3909] via-[#e64713] to-[#88179f] p-3 flex items-center justify-center border border-white/10">
+            <div className="relative aspect-[16/10] rounded-2xl overflow-hidden bg-gradient-to-tr from-primary/80 via-primary to-primary/40 p-3 flex items-center justify-center border border-white/10">
               <div className="absolute inset-0 bg-black/20" />
               <div className="relative z-10 w-full h-full rounded-xl bg-[#0f0f13] border border-white/15 overflow-hidden flex flex-col justify-between p-3">
                 <img
@@ -73,7 +81,7 @@ export function WorkflowSection() {
                   className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform"
                 />
                 {/* <div className="relative z-10 flex justify-between items-start">
-                  <span className="bg-[#f5551d] text-white text-[10px] font-extrabold px-2 py-0.5 rounded shadow font-mono">
+                  <span className="bg-primary text-primary-foreground text-[10px] font-extrabold px-2 py-0.5 rounded shadow font-mono">
                     {item.badgeText}
                   </span>
                 </div> */}
@@ -87,7 +95,7 @@ export function WorkflowSection() {
 
             {/* Bottom Content */}
             <div className="pt-6 pb-2 space-y-2">
-              <span className="text-sm font-extrabold text-[#f5551d] font-mono block">
+              <span className="text-sm font-extrabold text-primary font-mono block">
                 {item.step}
               </span>
               <h3 className="text-xl font-bold text-white font-display">
@@ -99,7 +107,8 @@ export function WorkflowSection() {
             </div>
           </div>
         ))}
+        </div>
       </div>
-    </section>
+    </ScrollReveal>
   );
 }

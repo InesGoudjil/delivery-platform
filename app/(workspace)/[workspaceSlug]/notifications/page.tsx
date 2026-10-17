@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 interface WhatsAppLog {
   id: string;
@@ -60,7 +61,7 @@ export default function NotificationsPage() {
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Header */}
       <div className="pb-6 border-b border-border">
-        <div className="text-xs font-mono text-[#f5551d] uppercase tracking-wider mb-1">
+        <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1">
           Account
         </div>
         <h1 className="text-3xl font-bold font-heading text-foreground">
@@ -83,21 +84,14 @@ export default function NotificationsPage() {
               Receive an immediate WhatsApp message and email when a client approves a cut.
             </div>
           </div>
-          <button
-            onClick={() => {
-              setNotifyApproval(!notifyApproval);
-              toast.success(!notifyApproval ? "Approval alerts enabled" : "Approval alerts disabled");
+          <Switch
+            checked={notifyApproval}
+            onCheckedChange={(checked) => {
+              setNotifyApproval(checked);
+              toast.success(checked ? "Approval alerts enabled" : "Approval alerts disabled");
             }}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              notifyApproval ? "bg-[#f5551d]" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                notifyApproval ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+            aria-label="Toggle Client Cut Approvals"
+          />
         </div>
 
         {/* New Comments */}
@@ -110,21 +104,14 @@ export default function NotificationsPage() {
               Notify when a client pauses and leaves timestamped review notes on a scene.
             </div>
           </div>
-          <button
-            onClick={() => {
-              setNotifyComments(!notifyComments);
-              toast.success(!notifyComments ? "Comment notifications enabled" : "Comment notifications disabled");
+          <Switch
+            checked={notifyComments}
+            onCheckedChange={(checked) => {
+              setNotifyComments(checked);
+              toast.success(checked ? "Comment notifications enabled" : "Comment notifications disabled");
             }}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              notifyComments ? "bg-[#f5551d]" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                notifyComments ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+            aria-label="Toggle New Timecoded Notes & Comments"
+          />
         </div>
 
         {/* Master File Downloads */}
@@ -137,21 +124,14 @@ export default function NotificationsPage() {
               Get notified when a client initiates a full 4K ProRes master file download.
             </div>
           </div>
-          <button
-            onClick={() => {
-              setNotifyDownloads(!notifyDownloads);
-              toast.success(!notifyDownloads ? "Download alerts enabled" : "Download alerts disabled");
+          <Switch
+            checked={notifyDownloads}
+            onCheckedChange={(checked) => {
+              setNotifyDownloads(checked);
+              toast.success(checked ? "Download alerts enabled" : "Download alerts disabled");
             }}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              notifyDownloads ? "bg-[#f5551d]" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                notifyDownloads ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+            aria-label="Toggle Master File Download Alerts"
+          />
         </div>
 
         {/* Weekly Digest */}
@@ -164,21 +144,14 @@ export default function NotificationsPage() {
               A consolidated email digest of client views, stream minutes, and approvals every Monday morning.
             </div>
           </div>
-          <button
-            onClick={() => {
-              setWeeklyDigest(!weeklyDigest);
-              toast.success(!weeklyDigest ? "Weekly digest enabled" : "Weekly digest disabled");
+          <Switch
+            checked={weeklyDigest}
+            onCheckedChange={(checked) => {
+              setWeeklyDigest(checked);
+              toast.success(checked ? "Weekly digest enabled" : "Weekly digest disabled");
             }}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              weeklyDigest ? "bg-[#f5551d]" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                weeklyDigest ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+            aria-label="Toggle Weekly Studio Activity Summary"
+          />
         </div>
       </div>
 

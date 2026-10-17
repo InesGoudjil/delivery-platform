@@ -7,6 +7,21 @@ import { getServerServices } from "@/core/server";
 import { presignDeliveryAssets } from "@/lib/media-server";
 import { resolveThumbnailUrl, resolveMediaUrl } from "@/lib/media";
 import type { DeliveryAppearanceSettings } from "@/core/entities/delivery";
+import {
+  verifyDeliveryPasscodeSchema,
+  createDeliverySchema,
+  updateDeliveryDetailsSchema,
+  deliveryAppearanceSchema,
+  updateDeliverySecuritySchema,
+  sendDeliveryEmailSchema,
+  loadMoreDeliveryAssetsSchema,
+  getDeliveryDownloadManifestSchema,
+  recordClientDownloadSchema,
+  safeValidate,
+  type UpdateDeliveryDetailsInput,
+  type DeliveryAppearanceInput,
+  type UpdateDeliverySecurityInput,
+} from "@/lib/validations";
 
 export async function verifyDeliveryPasscodeAction(
   shareToken: string,
@@ -14,15 +29,30 @@ export async function verifyDeliveryPasscodeAction(
   isCreatorBypass: boolean = false
 ) {
   try {
+    const validated = safeValidate(verifyDeliveryPasscodeSchema, {
+      shareToken,
+      passcode,
+      isCreatorBypass,
+    });
+    if (!validated.success) {
+      return { success: false, error: validated.error };
+    }
+
+    const {
+      shareToken: cleanShareToken,
+      passcode: cleanPasscode,
+      isCreatorBypass: bypass,
+    } = validated.data;
+
     const services = await getServerServices();
-    const delivery = await services.delivery.getDeliveryByShareToken(shareToken);
+    const delivery = await services.delivery.getDeliveryByShareToken(cleanShareToken, { allowExpired: bypass });
     if (!delivery) {
       return { success: false, error: "Delivery not found or link has expired." };
     }
 
     let isAuthorized = !delivery.passcodeHash;
 
-    if (!isAuthorized && isCreatorBypass) {
+    if (!isAuthorized && bypass) {
       const user = await services.auth.getCurrentUser();
       if (user) {
         const isMember = await services.member.isMember(delivery.workspaceId, user.id).catch(() => false);
@@ -33,7 +63,6 @@ export async function verifyDeliveryPasscodeAction(
     }
 
     if (!isAuthorized) {
-      const cleanPasscode = passcode.trim();
       if (!cleanPasscode) {
         return { success: false, error: "Please enter the client passcode." };
       }
@@ -84,6 +113,13 @@ export async function verifyDeliveryPasscodeAction(
         timestampSeconds: f.timestampSeconds ? Number(f.timestampSeconds) : null,
         isResolved: f.isResolved,
         createdAt: f.createdAt,
+        replies: (f.replies || []).map((r) => ({
+          id: r.id,
+          feedbackId: r.feedbackId,
+          authorName: r.authorName,
+          commentText: r.commentText,
+          createdAt: r.createdAt,
+        })),
       }));
 
       return {
@@ -158,26 +194,41 @@ export async function createDeliveryAction(
   clientNameOrId?: string
 ) {
   try {
+    const validated = safeValidate(createDeliverySchema, {
+      workspaceId,
+      title,
+      description,
+      clientNameOrId,
+    });
+    if (!validated.success) return { error: validated.error };
+
+    const {
+      workspaceId: cleanWorkspaceId,
+      title: cleanTitle,
+      description: cleanDescription,
+      clientNameOrId: cleanClientNameOrId,
+    } = validated.data;
+
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
     if (!user) return { error: "User is not authenticated." };
 
     let clientId: string | undefined = undefined;
-    if (clientNameOrId && clientNameOrId.trim()) {
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientNameOrId);
+    if (cleanClientNameOrId) {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanClientNameOrId);
       if (isUuid) {
-        clientId = clientNameOrId;
+        clientId = cleanClientNameOrId;
       } else {
-        const existingClients = await services.client.listClients(workspaceId);
+        const existingClients = await services.client.listClients(cleanWorkspaceId);
         const existingClient = existingClients.find(
-          (c) => c.name.toLowerCase() === clientNameOrId.trim().toLowerCase()
+          (c) => c.name.toLowerCase() === cleanClientNameOrId.toLowerCase()
         );
         if (existingClient) {
           clientId = existingClient.id;
         } else {
           const newClient = await services.client.createClient({
-            workspaceId,
-            name: clientNameOrId.trim(),
+            workspaceId: cleanWorkspaceId,
+            name: cleanClientNameOrId,
           });
           clientId = newClient.id;
         }
@@ -185,13 +236,13 @@ export async function createDeliveryAction(
     }
 
     const delivery = await services.delivery.createDelivery({
-      workspaceId,
-      title: title || "Untitled Delivery",
-      description: description || undefined,
+      workspaceId: cleanWorkspaceId,
+      title: cleanTitle,
+      description: cleanDescription,
       clientId,
     });
 
-    const workspace = await services.workspace.getWorkspaceById(workspaceId);
+    const workspace = await services.workspace.getWorkspaceById(cleanWorkspaceId);
     if (workspace?.slug) {
       revalidatePath(`/${workspace.slug}/deliveries`);
     }
@@ -346,19 +397,24 @@ export async function publishDeliveryToPortfolioAction(
 
 export async function updateDeliveryDetailsAction(
   deliveryId: string,
-  data: { title?: string; description?: string; clientName?: string; status?: any; location?: string; deliveryDate?: string }
+  data: UpdateDeliveryDetailsInput
 ) {
   try {
+    if (!deliveryId?.trim()) return { error: "Delivery ID is required." };
+
+    const validated = safeValidate(updateDeliveryDetailsSchema, data);
+    if (!validated.success) return { error: validated.error };
+
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
     if (!user) return { error: "User is not authenticated." };
 
     let clientId: string | undefined = undefined;
-    if (data.clientName) {
+    if (validated.data.clientName) {
       const workspace = await services.workspace.getOrCreateWorkspace(user.id);
       const existingClients = await services.client.listClients(workspace.id);
       const existingClient = existingClients.find(
-        (c) => c.name.toLowerCase() === data.clientName?.toLowerCase()
+        (c) => c.name.toLowerCase() === validated.data.clientName?.toLowerCase()
       );
 
       if (existingClient) {
@@ -366,19 +422,19 @@ export async function updateDeliveryDetailsAction(
       } else {
         const newClient = await services.client.createClient({
           workspaceId: workspace.id,
-          name: data.clientName,
+          name: validated.data.clientName,
         });
         clientId = newClient.id;
       }
     }
 
-    const updated = await services.delivery.updateDelivery(deliveryId, {
-      ...(data.title !== undefined ? { title: data.title } : {}),
-      ...(data.description !== undefined ? { description: data.description } : {}),
+    const updated = await services.delivery.updateDelivery(deliveryId.trim(), {
+      ...(validated.data.title !== undefined ? { title: validated.data.title } : {}),
+      ...(validated.data.description !== undefined ? { description: validated.data.description } : {}),
       ...(clientId !== undefined ? { clientId } : {}),
-      ...(data.status !== undefined ? { status: data.status } : {}),
-      ...(data.location !== undefined ? { location: data.location } : {}),
-      ...(data.deliveryDate !== undefined ? { deliveryDate: data.deliveryDate } : {}),
+      ...(validated.data.status !== undefined ? { status: validated.data.status } : {}),
+      ...(validated.data.location !== undefined ? { location: validated.data.location } : {}),
+      ...(validated.data.deliveryDate !== undefined ? { deliveryDate: validated.data.deliveryDate } : {}),
     });
 
     revalidatePath(`/deliver/${updated.shareToken}`);
@@ -396,15 +452,20 @@ export async function updateDeliveryAppearanceAction(
   workspaceSlug?: string
 ) {
   try {
+    if (!deliveryId?.trim()) return { error: "Delivery ID is required." };
+
+    const validated = safeValidate(deliveryAppearanceSchema, appearance);
+    if (!validated.success) return { error: validated.error };
+
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
     if (!user) return { error: "User is not authenticated." };
 
-    const existing = await services.delivery.getDeliveryById(deliveryId);
+    const existing = await services.delivery.getDeliveryById(deliveryId.trim());
     if (!existing) return { error: "Delivery not found." };
 
     const canWatermark = await services.subscription.isWatermarkAllowed(existing.workspaceId);
-    if (appearance.watermarkMedia === true && !canWatermark) {
+    if (validated.data.watermarkMedia === true && !canWatermark) {
       return {
         error: "Video watermarking is available on Pro and Studio plans. Please upgrade your subscription.",
       };
@@ -419,19 +480,19 @@ export async function updateDeliveryAppearanceAction(
         ? ((existing.appearance as any)?.watermarkMedia ?? true)
         : false,
       coverThumbnailUrl: (existing.appearance as any)?.coverThumbnailUrl ?? null,
-      ...appearance,
+      ...validated.data,
     };
 
     if (!canWatermark) {
       mergedAppearance.watermarkMedia = false;
     }
 
-    const updated = await services.delivery.updateDelivery(deliveryId, {
+    const updated = await services.delivery.updateDelivery(deliveryId.trim(), {
       appearance: mergedAppearance,
     });
 
     if (workspaceSlug) {
-      revalidatePath(`/${workspaceSlug}/deliveries/${deliveryId}`);
+      revalidatePath(`/${workspaceSlug}/deliveries/${deliveryId.trim()}`);
     }
     revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
     revalidatePath(`/deliver/${updated.shareToken}`);
@@ -465,22 +526,22 @@ export async function archiveDeliveryAction(deliveryId: string) {
 
 export async function updateDeliverySecurityAction(
   deliveryId: string,
-  data: {
-    passphrase?: string | null;
-    isDownloadAllowed?: boolean;
-    notifyOnDownload?: boolean;
-    expiresAt?: string | null;
-  }
+  data: UpdateDeliverySecurityInput
 ) {
   try {
+    if (!deliveryId?.trim()) return { error: "Delivery ID is required." };
+
+    const validated = safeValidate(updateDeliverySecuritySchema, data);
+    if (!validated.success) return { error: validated.error };
+
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
     if (!user) return { error: "User is not authenticated." };
 
-    const delivery = await services.delivery.getDeliveryById(deliveryId);
+    const delivery = await services.delivery.getDeliveryById(deliveryId.trim());
     if (!delivery) return { error: "Delivery not found." };
 
-    if (data.passphrase && data.passphrase.trim().length > 0) {
+    if (validated.data.passphrase && validated.data.passphrase.trim().length > 0) {
       const canPasswordProtect = await services.subscription.isPasswordProtectionAllowed(delivery.workspaceId);
       if (!canPasswordProtect) {
         return {
@@ -489,7 +550,7 @@ export async function updateDeliverySecurityAction(
       }
     }
 
-    if (data.notifyOnDownload === true) {
+    if (validated.data.notifyOnDownload === true) {
       const canNotify = await services.subscription.isDownloadNotificationAllowed(delivery.workspaceId);
       if (!canNotify) {
         return {
@@ -499,20 +560,20 @@ export async function updateDeliverySecurityAction(
     }
 
     let passcodeHash: string | null | undefined = undefined;
-    if (data.passphrase !== undefined) {
-      if (data.passphrase && data.passphrase.trim().length > 0) {
-        const clean = data.passphrase.trim();
+    if (validated.data.passphrase !== undefined) {
+      if (validated.data.passphrase && validated.data.passphrase.trim().length > 0) {
+        const clean = validated.data.passphrase.trim();
         passcodeHash = createHash("sha256").update(clean).digest("hex");
       } else {
         passcodeHash = null;
       }
     }
 
-    const updated = await services.delivery.updateDelivery(deliveryId, {
+    const updated = await services.delivery.updateDelivery(deliveryId.trim(), {
       ...(passcodeHash !== undefined ? { passcodeHash } : {}),
-      ...(data.isDownloadAllowed !== undefined ? { isDownloadAllowed: data.isDownloadAllowed } : {}),
-      ...(data.notifyOnDownload !== undefined ? { notifyOnDownload: data.notifyOnDownload } : {}),
-      ...(data.expiresAt !== undefined ? { expiresAt: data.expiresAt } : {}),
+      ...(validated.data.isDownloadAllowed !== undefined ? { isDownloadAllowed: validated.data.isDownloadAllowed } : {}),
+      ...(validated.data.notifyOnDownload !== undefined ? { notifyOnDownload: validated.data.notifyOnDownload } : {}),
+      ...(validated.data.expiresAt !== undefined ? { expiresAt: validated.data.expiresAt } : {}),
     });
 
     revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
@@ -522,9 +583,46 @@ export async function updateDeliverySecurityAction(
       success: true,
       delivery: updated,
       passcodeProtected: Boolean(updated.passcodeHash),
+      expiresAt: updated.expiresAt,
     };
   } catch (err: any) {
     return { error: err.message || "Failed to update delivery security." };
+  }
+}
+
+export async function regenerateDeliveryShareTokenAction(deliveryId: string) {
+  try {
+    if (!deliveryId?.trim()) return { success: false, error: "Delivery ID is required." };
+
+    const services = await getServerServices();
+    const user = await services.auth.getCurrentUser();
+    if (!user) return { success: false, error: "User is not authenticated." };
+
+    const delivery = await services.delivery.getDeliveryById(deliveryId.trim());
+    if (!delivery) return { success: false, error: "Delivery not found." };
+
+    const isMember = await services.member.isMember(delivery.workspaceId, user.id).catch(() => false);
+    if (!isMember) return { success: false, error: "Unauthorized." };
+
+    const oldToken = delivery.shareToken;
+    const updated = await services.delivery.regenerateShareToken(deliveryId.trim());
+
+    const workspace = await services.workspace.getWorkspaceById(delivery.workspaceId);
+    if (workspace?.slug) {
+      revalidatePath(`/${workspace.slug}/deliveries/${deliveryId.trim()}`);
+      revalidatePath(`/${workspace.slug}/deliveries`);
+    }
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath(`/deliver/${oldToken}`);
+    revalidatePath(`/deliver/${updated.shareToken}`);
+
+    return {
+      success: true,
+      shareToken: updated.shareToken,
+      delivery: updated,
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to regenerate share token." };
   }
 }
 
@@ -534,6 +632,15 @@ export async function sendDeliveryEmailAction(
   customMessage?: string
 ) {
   try {
+    const validated = safeValidate(sendDeliveryEmailSchema, {
+      deliveryId,
+      recipientEmail,
+      customMessage,
+    });
+    if (!validated.success) {
+      return { success: false, error: validated.error };
+    }
+
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
     if (!user) return { success: false, error: "User is not authenticated." };
@@ -550,9 +657,9 @@ export async function sendDeliveryEmailAction(
     }
 
     const res = await services.delivery.sendDeliveryEmail({
-      deliveryId,
-      recipientEmail: recipientEmail.trim().toLowerCase(),
-      customMessage,
+      deliveryId: validated.data.deliveryId,
+      recipientEmail: validated.data.recipientEmail.toLowerCase(),
+      customMessage: validated.data.customMessage,
       origin,
     });
 
@@ -617,6 +724,15 @@ export async function updateAssetAction(
   return upd(itemId, data, options);
 }
 
+export async function setActiveVersionAction(
+  assetId: string,
+  versionId: string,
+  options?: { deliveryId?: string; workspaceSlug?: string }
+) {
+  const { setActiveVersionAction: setAct } = await import("./assets");
+  return setAct(assetId, versionId, options);
+}
+
 export async function loadMoreDeliveryAssetsAction(params: {
   deliveryId?: string;
   shareToken?: string;
@@ -625,13 +741,20 @@ export async function loadMoreDeliveryAssetsAction(params: {
   filter?: "ALL" | "VIDEOS" | "PHOTOS";
 }) {
   try {
+    const validated = safeValidate(loadMoreDeliveryAssetsSchema, params);
+    if (!validated.success) {
+      return { success: false, error: validated.error, items: [], hasMore: false, totalCount: 0 };
+    }
+
+    const { deliveryId, shareToken, page, pageSize, filter } = validated.data;
+
     const services = await getServerServices();
     let delivery = null;
 
-    if (params.deliveryId) {
-      delivery = await services.delivery.getDeliveryById(params.deliveryId);
-    } else if (params.shareToken) {
-      delivery = await services.delivery.getDeliveryByShareToken(params.shareToken);
+    if (deliveryId) {
+      delivery = await services.delivery.getDeliveryById(deliveryId);
+    } else if (shareToken) {
+      delivery = await services.delivery.getDeliveryByShareToken(shareToken);
     }
 
     if (!delivery) {
@@ -668,16 +791,16 @@ export async function loadMoreDeliveryAssetsAction(params: {
     }
 
     const filterType =
-      params.filter === "VIDEOS"
+      filter === "VIDEOS"
         ? ("video" as const)
-        : params.filter === "PHOTOS"
+        : filter === "PHOTOS"
         ? ("photo" as const)
         : ("all" as const);
 
-    const pageSize = params.pageSize || 12;
+    const limit = pageSize || 12;
     const pageData = await services.delivery.getDeliveryAssetsPage(delivery.id, {
-      page: params.page,
-      limit: pageSize,
+      page,
+      limit,
       type: filterType,
     });
 
@@ -712,6 +835,13 @@ export async function loadMoreDeliveryAssetsAction(params: {
         timestampSeconds: f.timestampSeconds ? Number(f.timestampSeconds) : null,
         createdAt: f.createdAt,
         isResolved: f.isResolved,
+        replies: (f.replies || []).map((r) => ({
+          id: r.id,
+          feedbackId: r.feedbackId,
+          authorName: r.authorName,
+          commentText: r.commentText,
+          createdAt: r.createdAt,
+        })),
       }));
 
       return {
@@ -794,13 +924,20 @@ export async function getDeliveryDownloadManifestAction(params: {
   shareToken?: string;
 }) {
   try {
+    const validated = safeValidate(getDeliveryDownloadManifestSchema, params);
+    if (!validated.success) {
+      return { success: false, error: validated.error };
+    }
+
+    const { deliveryId, shareToken } = validated.data;
+
     const services = await getServerServices();
     let delivery = null;
 
-    if (params.deliveryId) {
-      delivery = await services.delivery.getDeliveryById(params.deliveryId);
-    } else if (params.shareToken) {
-      delivery = await services.delivery.getDeliveryByShareToken(params.shareToken);
+    if (deliveryId) {
+      delivery = await services.delivery.getDeliveryById(deliveryId);
+    } else if (shareToken) {
+      delivery = await services.delivery.getDeliveryByShareToken(shareToken);
     }
 
     if (!delivery) {
@@ -926,8 +1063,13 @@ export async function recordClientDownloadAction(params: {
   downloadedCount?: number;
 }) {
   try {
+    const validated = safeValidate(recordClientDownloadSchema, params);
+    if (!validated.success) {
+      return { success: false, error: validated.error };
+    }
+
     const core = await import("@/core/server").then((m) => m.getServerCore());
-    const delivery = await core.services.delivery.getDeliveryById(params.deliveryId);
+    const delivery = await core.services.delivery.getDeliveryById(validated.data.deliveryId);
     if (!delivery || !delivery.notifyOnDownload) {
       return { success: true, notified: false };
     }
@@ -943,6 +1085,7 @@ export async function recordClientDownloadAction(params: {
     }
 
     const brandName = workspace?.brandName || "Studio";
+    const accentColor = workspace?.accentColor || "#f5551d";
     const itemDesc =
       params.downloadedCount && params.downloadedCount > 1
         ? `${params.downloadedCount} master deliverables`
@@ -953,7 +1096,7 @@ export async function recordClientDownloadAction(params: {
     const subject = `📥 Client downloaded ${itemDesc} — ${delivery.title}`;
     const html = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#0e0e11; color:#f6f3ec; padding:32px; border-radius:16px; max-width:560px; margin:0 auto;">
-        <p style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#f5551d; font-weight:700; margin:0 0 8px;">${brandName} · Download Alert</p>
+        <p style="font-size:11px; letter-spacing:2px; text-transform:uppercase; color:${accentColor}; font-weight:700; margin:0 0 8px;">${brandName} · Download Alert</p>
         <h2 style="font-size:20px; margin:0 0 12px; color:#ffffff;">Deliverables Downloaded</h2>
         <p style="font-size:14px; line-height:1.6; color:#aeaeb4; margin:0 0 20px;">
           Your client just initiated a download of <strong style="color:#ffffff;">${itemDesc}</strong> from the delivery room <strong style="color:#ffffff;">${delivery.title}</strong>.

@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { HeaderSection } from "@/components/landing/HeaderSection";
 import { FooterSection } from "@/components/landing/FooterSection";
 import { getAllPosts } from "@/lib/blog-data";
@@ -29,7 +30,7 @@ export default async function BlogPage() {
   const posts = getAllPosts();
 
   return (
-    <div className="min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased selection:bg-[#f5551d] selection:text-white flex flex-col justify-between relative">
+    <div className="min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased selection:bg-primary selection:text-primary-foreground flex flex-col justify-between relative">
       <AmbientBackground variant="full" />
 
       <div className="relative z-10">
@@ -55,7 +56,7 @@ export default async function BlogPage() {
               >
                 <Link
                   href={`/blog/${post.slug}`}
-                  className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-white/10 bg-[#121217] transition-all duration-300 group-hover:border-white/25 group-hover:shadow-2xl group-hover:shadow-[#f5551d]/10"
+                  className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-white/10 bg-[#121217] transition-all duration-300 group-hover:border-white/25 group-hover:shadow-2xl group-hover:shadow-primary/10"
                 >
                   <Image
                     src={post.coverImage}
@@ -67,7 +68,7 @@ export default async function BlogPage() {
 
                 <div className="space-y-3 pt-1">
                   <Link href={`/blog/${post.slug}`}>
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white group-hover:text-[#ff7948] transition-colors leading-snug">
+                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white group-hover:text-primary transition-colors leading-snug">
                       {post.title}
                     </h2>
                   </Link>
@@ -79,13 +80,15 @@ export default async function BlogPage() {
                   </div>
 
                   <div className="pt-1">
-                    <Link
-                      href={`/blog/${post.slug}`}
-                      className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#f5551d] to-[#df430f] px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-[#f5551d]/25 transition-all hover:scale-[1.03] hover:shadow-[#f5551d]/40"
+                    <Button
+                      asChild
+                      className="inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-5 py-2.5 h-auto text-xs font-bold uppercase tracking-wider shadow-lg shadow-primary/25 transition-all hover:scale-[1.03] hover:bg-primary/90 hover:shadow-primary/40"
                     >
-                      <span>READ BLOG</span>
-                      <ArrowRight className="size-3.5" />
-                    </Link>
+                      <Link href={`/blog/${post.slug}`}>
+                        <span>READ BLOG</span>
+                        <ArrowRight className="size-3.5" />
+                      </Link>
+                    </Button>
                   </div>
                 </div>
               </article>

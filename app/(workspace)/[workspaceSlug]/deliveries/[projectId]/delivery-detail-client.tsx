@@ -42,6 +42,7 @@ import { DownloadPackageModal } from "@/components/workspaces/download-package-m
 import type {
   AssetVersionItem,
   FeedbackItem,
+  FeedbackReplyItem,
   GalleryItem,
   AppearanceSettings,
   UploadProgressState,
@@ -88,6 +89,12 @@ type GalleryOptimisticAction =
       type: "add-feedback";
       itemId: string;
       feedback: FeedbackItem;
+    }
+  | {
+      type: "add-feedback-reply";
+      itemId: string;
+      feedbackId: string;
+      reply: FeedbackReplyItem;
     };
 
 export function DeliveryDetailClient({
@@ -283,6 +290,22 @@ export function DeliveryDetailClient({
                 }
               : item
           );
+        case "add-feedback-reply":
+          return prev.map((item) =>
+            item.id === action.itemId
+              ? {
+                  ...item,
+                  feedback: (item.feedback || []).map((fb) =>
+                    fb.id === action.feedbackId
+                      ? {
+                          ...fb,
+                          replies: [...(fb.replies || []), action.reply],
+                        }
+                      : fb
+                  ),
+                }
+              : item
+          );
         default:
           return prev;
       }
@@ -368,7 +391,8 @@ export function DeliveryDetailClient({
   }, [items, activeAssetId]);
 
   const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>(initialFeedback);
-  const shareUrl = `/deliver/${project.shareToken}`;
+  const [currentShareToken, setCurrentShareToken] = useState(project.shareToken);
+  const shareUrl = `/deliver/${currentShareToken}`;
 
   const triggerToast = (msg: string) => {
     toast.success(msg);
@@ -927,10 +951,14 @@ export function DeliveryDetailClient({
           isOpen={activeDialog === "share"}
           onOpenChange={(open) => setActiveDialog(open ? "share" : null)}
           projectId={project.id}
-          shareToken={project.shareToken}
+          shareToken={currentShareToken}
           projectTitle={projectMeta.title}
           initialPasscodeProtected={project.passcodeProtected ?? false}
           initialDownloadAllowed={project.isDownloadAllowed ?? false}
+          initialExpiresAt={project.expiresAt ?? null}
+          onShareTokenRegenerated={(newToken) => {
+            setCurrentShareToken(newToken);
+          }}
           triggerToast={triggerToast}
           features={features}
           workspaceSlug={workspace.slug}
@@ -1003,6 +1031,25 @@ export function DeliveryDetailClient({
               });
             }
           }}
+          onAddReply={(feedbackId, reply) => {
+            setFeedbackList((prev) =>
+              prev.map((fb) =>
+                fb.id === feedbackId
+                  ? { ...fb, replies: [...(fb.replies || []), reply] }
+                  : fb
+              )
+            );
+            if (activeItem) {
+              startTransition(() => {
+                setOptimisticItems({
+                  type: "add-feedback-reply",
+                  itemId: activeItem.id,
+                  feedbackId,
+                  reply,
+                });
+              });
+            }
+          }}
           onToggleApproval={handleToggleAssetApproval}
           onDeleteAsset={handleDeleteAsset}
           onEditAsset={handleOpenEditAsset}
@@ -1010,6 +1057,10 @@ export function DeliveryDetailClient({
           triggerToast={triggerToast}
           watermarkMedia={appearance.watermarkMedia}
           watermarkText={workspace.brandName || "STUDIO PREVIEW"}
+          workspaceId={workspace.id}
+          projectId={project.id}
+          workspaceSlug={workspace.slug}
+          onAssetUploaded={handleAssetUploaded}
         />
 
         {/* 12. Edit Asset Dialog */}

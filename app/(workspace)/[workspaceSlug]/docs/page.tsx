@@ -28,8 +28,8 @@ export default async function DocsPage({
       title: "Master File Ingest & Transcoding",
       desc: "Upload original high-bitrate ProRes 422, ProRes 4444, or H.264/HEVC masters. CineSpace securely stores your untouched raw master for client handover and generates ultra-low latency adaptive bitrate streaming proxies.",
       icon: Upload,
-      color: "text-[#f5551d]",
-      bg: "bg-[#f5551d]/10",
+      color: "text-primary",
+      bg: "bg-primary/10",
     },
     {
       step: "02",
@@ -87,7 +87,7 @@ export default async function DocsPage({
     <div className="max-w-4xl mx-auto space-y-10">
       {/* Header */}
       <div className="pb-6 border-b border-border">
-        <div className="text-xs font-mono text-[#f5551d] uppercase tracking-wider mb-1">
+        <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1">
           Studio Guide &amp; Architecture
         </div>
         <h1 className="text-3xl font-bold font-heading text-foreground">
@@ -102,7 +102,7 @@ export default async function DocsPage({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Film className="size-5 text-[#f5551d]" />
+            <Film className="size-5 text-primary" />
             <h2 className="text-xl font-bold font-heading text-foreground">
               The CineSpace Delivery Pipeline
             </h2>
@@ -175,7 +175,7 @@ export default async function DocsPage({
             >
               <div className="space-y-1.5">
                 <div className="size-8 rounded-xl bg-muted text-foreground flex items-center justify-center mb-2">
-                  <Lock className="size-4 text-[#f5551d]" />
+                  <Lock className="size-4 text-primary" />
                 </div>
                 <h3 className="text-sm font-bold font-heading text-card-foreground">
                   {sec.title}
@@ -201,7 +201,7 @@ export default async function DocsPage({
         </div>
         <Button
           asChild
-          className="bg-[#f5551d] hover:bg-[#f5551d]/90 text-white font-semibold text-xs rounded-xl px-4 py-2 shrink-0"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs rounded-xl px-4 py-2 shrink-0"
         >
           <Link href={`/${workspaceSlug}/help`}>
             View Help &amp; Keyboard Shortcuts

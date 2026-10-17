@@ -63,7 +63,7 @@ function renderUploadProgressDescription({
 
       <div className="w-full h-1.5 bg-muted/80 rounded-full overflow-hidden border border-border/30">
         <div
-          className="h-full bg-gradient-to-r from-[#f5551d] to-[#ff8a45] transition-all duration-200 rounded-full"
+          className="h-full bg-primary transition-all duration-200 rounded-full"
           style={{ width: `${clampedPct}%` }}
         />
       </div>

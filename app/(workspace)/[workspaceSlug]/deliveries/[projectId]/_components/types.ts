@@ -12,6 +12,14 @@ export interface AssetVersionItem {
   createdAt: string;
 }
 
+export interface FeedbackReplyItem {
+  id: string;
+  feedbackId: string;
+  authorName: string;
+  commentText: string;
+  createdAt: string;
+}
+
 export interface FeedbackItem {
   id: string;
   assetVersionId?: string;
@@ -20,6 +28,7 @@ export interface FeedbackItem {
   timestampSeconds?: number | null;
   createdAt: string;
   isResolved?: boolean;
+  replies?: FeedbackReplyItem[];
 }
 
 export interface GalleryItem {
@@ -78,6 +87,7 @@ export interface DeliveryDetailClientProps {
     isDownloadAllowed: boolean;
     passcodeProtected: boolean;
     clientName: string;
+    expiresAt?: string | null;
     appearance?: AppearanceSettings | null;
     createdAt: string;
     updatedAt: string;

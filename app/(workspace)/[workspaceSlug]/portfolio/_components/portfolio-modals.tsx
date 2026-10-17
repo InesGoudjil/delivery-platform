@@ -18,6 +18,7 @@ import {
   Trash2,
   Pencil,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { AppImage } from "@/components/ui/app-image";
 import { CutReviewPlayer } from "@/components/video/cut-review-player";
 import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
@@ -88,14 +89,17 @@ export function StillLightboxModal({
       >
         <div className="flex items-center gap-3">
           {onBack && (
-            <button
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
               onClick={onBack}
-              className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer h-auto"
               title="Return to project"
             >
               <ArrowLeft className="size-3.5" />
               <span className="hidden sm:inline">Back to Project</span>
-            </button>
+            </Button>
           )}
 
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/10 border border-white/15 text-[10px] font-mono font-bold text-white uppercase tracking-wider">
@@ -116,25 +120,29 @@ export function StillLightboxModal({
         {/* Action Controls */}
         <div className="flex items-center gap-2">
           {onEdit && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => onEdit(item)}
-              className="size-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              className="size-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer p-0"
               title="Edit still"
             >
               <Pencil className="size-4" />
-            </button>
+            </Button>
           )}
 
           {onDelete && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => setShowDeleteConfirm(true)}
-              className="size-9 rounded-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 hover:text-red-300 flex items-center justify-center transition-colors cursor-pointer"
+              className="size-9 rounded-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 hover:text-red-300 flex items-center justify-center transition-colors cursor-pointer p-0"
               title="Delete still"
             >
               <Trash2 className="size-4" />
-            </button>
+            </Button>
           )}
 
           {currentSrc && (
@@ -149,13 +157,16 @@ export function StillLightboxModal({
             </a>
           )}
 
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
-            className="size-9 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            className="size-9 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer p-0"
             title="Close image view"
           >
             <X className="size-5" />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -167,7 +178,7 @@ export function StillLightboxModal({
         <div className="relative max-h-[82vh] max-w-full flex items-center justify-center rounded-2xl overflow-hidden shadow-2xl border border-white/15 bg-black/60 min-w-[280px] min-h-[200px]">
           {isLoading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 z-10">
-              <Loader2 className="size-8 animate-spin text-[#f5551d]" />
+              <Loader2 className="size-8 animate-spin text-primary" />
               <span className="text-[11px] font-mono text-zinc-400">Loading high-resolution still...</span>
             </div>
           )}
@@ -297,17 +308,20 @@ export function FilmPlayerModal({
         <div className="flex items-center justify-between border-b border-white/10 pb-4">
           <div className="flex items-center gap-3">
             {onBack && (
-              <button
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
                 onClick={onBack}
-                className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold h-auto px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer border-0"
                 title="Return to project"
               >
                 <ArrowLeft className="size-3.5" />
                 <span className="hidden sm:inline">Back to Project</span>
-              </button>
+              </Button>
             )}
 
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#f5551d]/20 border border-[#f5551d]/40 text-[10px] font-mono font-bold text-[#f5551d] uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/20 border border-primary/40 text-[10px] font-mono font-bold text-primary uppercase tracking-wider">
               <Film className="size-3" />
               <span>FILM</span>
             </span>
@@ -324,34 +338,41 @@ export function FilmPlayerModal({
 
           <div className="flex items-center gap-2">
             {onEdit && (
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="icon"
                 onClick={() => onEdit(item)}
-                className="size-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                className="size-9 rounded-full bg-white/10 hover:bg-white/20 border-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
                 title="Edit film"
               >
                 <Pencil className="size-4" />
-              </button>
+              </Button>
             )}
 
             {onDelete && (
-              <button
+              <Button
                 type="button"
+                variant="destructive"
+                size="icon"
                 onClick={() => setShowDeleteConfirm(true)}
                 className="size-9 rounded-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 hover:text-red-300 flex items-center justify-center transition-colors cursor-pointer"
                 title="Delete film"
               >
                 <Trash2 className="size-4" />
-              </button>
+              </Button>
             )}
 
-            <button
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
               onClick={onClose}
               className="size-9 rounded-full bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
               title="Close video player"
             >
               <X className="size-5" />
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -485,18 +506,21 @@ export function ProjectExplorerModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           onClick={onClose}
           className="absolute top-5 right-5 sm:top-7 sm:right-7 size-9 rounded-full bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer z-20"
           title="Close project explorer"
         >
           <X className="size-5" />
-        </button>
+        </Button>
 
         {/* Project Header */}
         <div className="space-y-3 pr-12">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#f5551d]/15 border border-[#f5551d]/30 text-[10px] font-mono font-bold text-[#f5551d] uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/15 border border-primary/30 text-[10px] font-mono font-bold text-primary uppercase tracking-wider">
               <FolderKanban className="size-3" />
               <span>PROJECT CONTAINER</span>
             </span>
@@ -506,15 +530,17 @@ export function ProjectExplorerModal({
             </span>
 
             {onEditProject && (
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => onEditProject(project)}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-semibold text-white transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-semibold text-white transition-colors cursor-pointer h-auto"
                 title="Edit project details"
               >
                 <Pencil className="size-3.5" />
                 <span>Edit Project</span>
-              </button>
+              </Button>
             )}
           </div>
 
@@ -539,17 +565,20 @@ export function ProjectExplorerModal({
                 { key: "stills", label: `Stills (${stillCount})` },
               ] as const
             ).map((tab) => (
-              <button
+              <Button
                 key={tab.key}
+                type="button"
+                variant={activeFilter === tab.key ? "default" : "ghost"}
+                size="sm"
                 onClick={() => setActiveFilter(tab.key)}
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer h-auto ${
                   activeFilter === tab.key
-                    ? "bg-[#f5551d] text-white shadow-sm"
-                    : "text-zinc-400 hover:text-white"
+                    ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                    : "text-zinc-400 hover:text-white hover:bg-transparent"
                 }`}
               >
                 {tab.label}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -561,7 +590,7 @@ export function ProjectExplorerModal({
         {/* Project Assets Grid */}
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3 text-zinc-400 text-xs">
-            <Loader2 className="size-6 animate-spin text-[#f5551d]" />
+            <Loader2 className="size-6 animate-spin text-primary" />
             <span>Loading project assets...</span>
           </div>
         ) : filteredAssets.length > 0 ? (
@@ -591,7 +620,7 @@ export function ProjectExplorerModal({
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md border border-white/15 text-[9px] font-mono font-bold text-white uppercase tracking-wider">
                       {isVideo ? (
                         <>
-                          <Film className="size-2.5 text-[#f5551d]" />
+                          <Film className="size-2.5 text-primary" />
                           <span>FILM</span>
                         </>
                       ) : (
@@ -607,37 +636,41 @@ export function ProjectExplorerModal({
                   {(onEditAsset || onDeleteAsset) && (
                     <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1.5">
                       {onEditAsset && (
-                        <button
+                        <Button
                           type="button"
+                          variant="outline"
+                          size="icon"
                           onClick={(e) => {
                             e.stopPropagation();
                             onEditAsset(asset);
                           }}
-                          className="size-7 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-zinc-400 hover:text-white hover:bg-white/20 hover:border-white/30 flex items-center justify-center transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
+                          className="size-7 rounded-lg bg-black/70 backdrop-blur-md border-white/15 text-zinc-400 hover:text-white hover:bg-white/20 hover:border-white/30 flex items-center justify-center transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md p-0"
                           title="Edit asset"
                         >
                           <Pencil className="size-3.5" />
-                        </button>
+                        </Button>
                       )}
                       {onDeleteAsset && (
-                        <button
+                        <Button
                           type="button"
+                          variant="outline"
+                          size="icon"
                           onClick={(e) => {
                             e.stopPropagation();
                             setAssetToDelete(asset);
                           }}
-                          className="size-7 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-zinc-400 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/30 flex items-center justify-center transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
+                          className="size-7 rounded-lg bg-black/70 backdrop-blur-md border-white/15 text-zinc-400 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/30 flex items-center justify-center transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md p-0"
                           title="Delete asset"
                         >
                           <Trash2 className="size-3.5" />
-                        </button>
+                        </Button>
                       )}
                     </div>
                   )}
 
                   {/* Center Action Overlay Icon */}
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                    <div className="size-11 rounded-full bg-[#f5551d] text-black flex items-center justify-center shadow-2xl scale-90 group-hover:scale-100 transition-transform">
+                    <div className="size-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-2xl scale-90 group-hover:scale-100 transition-transform">
                       {isVideo ? (
                         <Play className="size-5 fill-current ml-0.5" />
                       ) : (
@@ -648,7 +681,7 @@ export function ProjectExplorerModal({
 
                   {/* Bottom Title Bar */}
                   <div className="p-3 bg-[#0c0c0e] border-t border-white/5 space-y-0.5">
-                    <h4 className="text-xs font-bold text-white truncate font-heading group-hover:text-[#f5551d] transition-colors">
+                    <h4 className="text-xs font-bold text-white truncate font-heading group-hover:text-primary transition-colors">
                       {asset.title}
                     </h4>
                     <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400">

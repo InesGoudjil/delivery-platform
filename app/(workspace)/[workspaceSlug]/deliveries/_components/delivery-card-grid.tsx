@@ -64,7 +64,7 @@ export function DeliveryCardGrid({
       case "draft":
         return (
           <Badge variant="orange" className="font-mono text-[11px] flex items-center gap-1.5">
-            <span className="size-1.5 rounded-full bg-[#f5551d] animate-pulse" />
+            <span className="size-1.5 rounded-full bg-primary animate-pulse" />
             In Review
           </Badge>
         );
@@ -85,7 +85,7 @@ export function DeliveryCardGrid({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {displayDeliveries.map((item) => {
         const isCopied = copiedId === item.id;
         const isDeleting = deletingId === item.id;
@@ -101,11 +101,11 @@ export function DeliveryCardGrid({
               {/* Status + Version Header using CardHeader and CardAction */}
               <CardHeader className="flex-row items-center justify-between gap-2 pb-2">
                 {getStatusBadge(item.status)}
-                <CardAction>
+                {/*<CardAction>
                   <Badge variant="outline" className="text-[11px] font-mono text-foreground bg-muted px-2.5 py-0.5 rounded-full border-border">
                     {item.version}
                   </Badge>
-                </CardAction>
+                </CardAction>*/}
               </CardHeader>
 
               {/* Title, Client & Specs inside CardContent */}
@@ -124,14 +124,14 @@ export function DeliveryCardGrid({
                 {/* Specs / Badges */}
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono pt-1">
                   <Badge variant="outline" className="flex items-center gap-1 bg-muted/50 text-foreground px-2.5 py-1 rounded-md border-border font-normal">
-                    <Layers className="size-3 text-[#f5551d]" />
+                    <Layers className="size-3 text-primary" />
                     {assetsCount === 0
                       ? "Empty (0 assets)"
                       : `${assetsCount} ${assetsCount === 1 ? "asset" : "assets"}`}
                   </Badge>
-                  <Badge variant="outline" className="flex items-center gap-1 bg-muted/50 text-foreground px-2.5 py-1 rounded-md border-border font-normal">
-                    <Clock className="size-3 text-[#f5551d]" /> {item.duration}
-                  </Badge>
+                  {/*<Badge variant="outline" className="flex items-center gap-1 bg-muted/50 text-foreground px-2.5 py-1 rounded-md border-border font-normal">
+                    <Clock className="size-3 text-primary" /> {item.duration}
+                  </Badge>*/}
                   {item.passcodeProtected && (
                     <Badge variant="outline" className="flex items-center gap-1 bg-blue-500/15 text-blue-500 border-blue-500/30 px-2.5 py-1 rounded-md font-normal">
                       <Lock className="size-3" /> Password Gate
@@ -169,7 +169,7 @@ export function DeliveryCardGrid({
               </Button>
 
               <div className="flex items-center gap-2">
-                <Button
+                {/*<Button
                   type="button"
                   variant="outline"
                   size="sm"
@@ -187,7 +187,7 @@ export function DeliveryCardGrid({
                       <span>Copy Link</span>
                     </>
                   )}
-                </Button>
+                </Button>*/}
 
                 {canSendWhatsApp && (
                   <Button

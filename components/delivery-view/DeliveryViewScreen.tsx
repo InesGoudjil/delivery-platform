@@ -14,6 +14,7 @@ import {
   Film,
 } from "lucide-react";
 import { motion, AnimatePresence } from "@/components/ui/motion";
+import { Button } from "@/components/ui/button";
 import "./delivery-view.css";
 
 const IMG_BG =
@@ -343,10 +344,15 @@ export function DeliveryViewScreen() {
           <div className="cmeta">
             {c.meta}
             {c.time != null && (
-              <button className="tc-chip" onClick={() => setPlayT(c.time)}>
+              <Button
+                variant="ghost"
+                size="xs"
+                className="tc-chip h-auto"
+                onClick={() => setPlayT(c.time)}
+              >
                 <Clock size={11} />
                 {fmtT(c.time)}
-              </button>
+              </Button>
             )}
           </div>
           <div className="ctext">{c.text}</div>
@@ -371,13 +377,19 @@ export function DeliveryViewScreen() {
                     e.key === "Enter" && addReply(aid, idx, replyWho)
                   }
                 />
-                <button onClick={() => addReply(aid, idx, replyWho)}>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => addReply(aid, idx, replyWho)}
+                >
                   <Send size={14} />
-                </button>
+                </Button>
               </div>
             ) : (
-              <button
-                className="reply-btn"
+              <Button
+                variant="ghost"
+                size="xs"
+                className="reply-btn h-auto"
                 onClick={() => {
                   setReplyKey(key);
                   setReplyDraft("");
@@ -385,7 +397,7 @@ export function DeliveryViewScreen() {
               >
                 <MessageCircle size={12} />
                 Reply
-              </button>
+              </Button>
             ))}
         </div>
       </div>
@@ -450,14 +462,14 @@ export function DeliveryViewScreen() {
                 <b>{assets.length}</b>
               </div>
             </div>
-            <button
-              className="btn sm"
+            <Button
+              className="btn sm h-auto"
               style={{ marginTop: 22 }}
               onClick={() => flash("Preparing download…")}
             >
               <Download size={15} />
               Download all
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -478,27 +490,28 @@ export function DeliveryViewScreen() {
             </span>
           </div>
           <div className="dbar-r">
-            <button
-              className="btn ghost sm"
+            <Button
+              variant="ghost"
+              className="btn ghost sm h-auto"
               onClick={() => flash("Opening WhatsApp…")}
             >
               <MessageCircle size={15} />
               Message Pedro
-            </button>
+            </Button>
             {approvedCount === assets.length ? (
-              <button
-                className="btn sm seal-btn"
+              <Button
+                className="btn sm seal-btn h-auto"
                 onClick={unapproveAll}
                 title="Tap to undo"
               >
                 <Check size={14} />
                 Project approved · undo
-              </button>
+              </Button>
             ) : (
-              <button className="btn sm" onClick={approveAll}>
+              <Button className="btn sm h-auto" onClick={approveAll}>
                 <Check size={15} />
                 Approve all
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -518,13 +531,14 @@ export function DeliveryViewScreen() {
               ["video", "Videos"],
               ["photo", "Photos"],
             ].map(([k, l]) => (
-              <button
+              <Button
                 key={k}
-                className={assetTab === k ? "on" : ""}
+                variant="ghost"
+                className={`h-auto ${assetTab === k ? "on" : ""}`}
                 onClick={() => setAssetTab(k)}
               >
                 {l}
-              </button>
+              </Button>
             ))}
           </div>
           <div
@@ -619,13 +633,15 @@ export function DeliveryViewScreen() {
                         </div>
                         <h3 className="disp">{a.name}</h3>
                       </div>
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         className="btn ghost sm"
                         style={{ padding: 8 }}
                         onClick={() => setOpenAsset(null)}
                       >
                         <X size={16} />
-                      </button>
+                      </Button>
                     </div>
                     <div className="astage" style={{ background: a.g }}>
                       <Wm />
@@ -681,27 +697,29 @@ export function DeliveryViewScreen() {
                     {a.versions.length > 1 && (
                       <div className="vstrip">
                         {a.versions.map((v) => (
-                          <button
+                          <Button
                             key={v}
-                            className={`vchip ${assetVer === v ? "on" : ""}`}
+                            variant="ghost"
+                            size="xs"
+                            className={`vchip h-auto ${assetVer === v ? "on" : ""}`}
                             onClick={() => setAssetVer(v)}
                           >
                             {v}
-                          </button>
+                          </Button>
                         ))}
                       </div>
                     )}
                     <div className="dactions">
-                      <button
-                        className="btn"
+                      <Button
+                        className="btn h-auto"
                         onClick={() => flash("Download started")}
                       >
                         <Download size={15} />
                         Download
-                      </button>
+                      </Button>
                       {a.approved ? (
-                        <button
-                          className="btn seal-btn"
+                        <Button
+                          className="btn seal-btn h-auto"
                           onClick={() => {
                             toggleApprove(a.id);
                             flash("Approval removed");
@@ -710,15 +728,16 @@ export function DeliveryViewScreen() {
                         >
                           <Check size={14} />
                           Approved · tap to undo
-                        </button>
+                        </Button>
                       ) : (
-                        <button
-                          className="btn ghost"
+                        <Button
+                          variant="ghost"
+                          className="btn ghost h-auto"
                           onClick={() => approveAsset(a.id)}
                         >
                           <Check size={15} />
                           Approve this asset
-                        </button>
+                        </Button>
                       )}
                     </div>
                     <div className="cmts">
@@ -738,15 +757,17 @@ export function DeliveryViewScreen() {
                         />
                       ))}
                       {a.type === "video" && (
-                        <button
-                          className={"tc-toggle" + (attachTime ? " on" : "")}
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          className={"tc-toggle h-auto" + (attachTime ? " on" : "")}
                           onClick={() => setAttachTime(!attachTime)}
                         >
                           <Clock size={13} />
                           {attachTime
                             ? `Pinned to ${fmtT(playT)}`
                             : "Add timecode"}
-                        </button>
+                        </Button>
                       )}
                       <div className="cinput">
                         <input
@@ -761,9 +782,13 @@ export function DeliveryViewScreen() {
                             e.key === "Enter" && addAssetComment(a.id)
                           }
                         />
-                        <button onClick={() => addAssetComment(a.id)}>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => addAssetComment(a.id)}
+                        >
                           <Send size={16} />
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </motion.div>

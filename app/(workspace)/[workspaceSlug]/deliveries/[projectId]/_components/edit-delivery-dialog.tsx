@@ -3,14 +3,7 @@
 import React, { useState, useRef } from "react";
 import { UploadCloud, Plus, Check, Trash2, Pencil, Crop, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { UniversalDialog } from "@/components/ui/universal-dialog";
 import { Badge } from "@/components/ui/badge";
 import {
   ImageCropEditorDialog,
@@ -95,20 +88,34 @@ export function EditDeliveryDialog({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent
-          showCloseButton={true}
-          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-card/95 backdrop-blur-xl border border-border text-card-foreground rounded-3xl p-6 sm:p-7 w-full max-w-md shadow-2xl space-y-6"
-        >
-          {/* Header */}
-          <DialogHeader className="pr-8">
-            <DialogTitle className="text-lg font-black font-heading tracking-wide uppercase text-foreground">
-              EDIT DELIVERY
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-              Update the cover, manage assets, or delete this delivery.
-            </DialogDescription>
-          </DialogHeader>
+      <UniversalDialog
+        open={isOpen}
+        onOpenChange={onOpenChange}
+        size="md"
+        title="EDIT DELIVERY"
+        description="Update the cover, manage assets, or delete this delivery."
+        bodyClassName="space-y-6"
+        footer={
+          <div className="w-full space-y-2">
+            <Button
+              type="button"
+              onClick={onSaveChanges}
+              className="w-full rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs py-3.5 h-auto shadow-lg shadow-primary/20 cursor-pointer"
+            >
+              <Check className="size-4 mr-1.5" /> SAVE CHANGES
+            </Button>
+
+            <Button
+              type="button"
+              onClick={onDeleteDelivery}
+              variant="outline"
+              className="w-full rounded-full border-destructive/30 text-destructive bg-destructive/10 hover:bg-destructive/20 font-bold text-xs py-3 h-auto cursor-pointer"
+            >
+              <Trash2 className="size-3.5 mr-1.5" /> Delete delivery
+            </Button>
+          </div>
+        }
+      >
 
           {/* COVER THUMBNAIL */}
           <div className="space-y-3">
@@ -116,10 +123,12 @@ export function EditDeliveryDialog({
               <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
                 COVER THUMBNAIL
               </span>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="xs"
                 onClick={() => setIsUrlInputMode((v) => !v)}
-                className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors cursor-pointer"
+                className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors cursor-pointer h-auto p-0 hover:bg-transparent"
               >
                 {isUrlInputMode ? (
                   <>
@@ -130,7 +139,7 @@ export function EditDeliveryDialog({
                     <LinkIcon className="size-3" /> Enter URL
                   </>
                 )}
-              </button>
+              </Button>
             </div>
 
             <div className="flex items-center gap-3">
@@ -265,27 +274,7 @@ export function EditDeliveryDialog({
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <DialogFooter className="flex-col gap-2.5 pt-2 sm:flex-col sm:justify-start -mx-6 -mb-6 p-6">
-            <Button
-              type="button"
-              onClick={onSaveChanges}
-              className="w-full rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs py-3.5 h-auto shadow-lg shadow-primary/20 cursor-pointer"
-            >
-              <Check className="size-4 mr-1.5" /> SAVE CHANGES
-            </Button>
-
-            <Button
-              type="button"
-              onClick={onDeleteDelivery}
-              variant="outline"
-              className="w-full rounded-full border-destructive/30 text-destructive bg-destructive/10 hover:bg-destructive/20 font-bold text-xs py-3 h-auto cursor-pointer"
-            >
-              <Trash2 className="size-3.5 mr-1.5" /> Delete delivery
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </UniversalDialog>
 
       <ImageCropEditorDialog
         isOpen={cropState.isOpen}

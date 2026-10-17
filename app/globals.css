@@ -5,8 +5,10 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --font-display: var(--font-satoshi), sans-serif;
   --font-heading: var(--font-satoshi), var(--font-sans);
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   --font-satoshi: var(--font-satoshi), sans-serif;
   --font-manrope: var(--font-manrope), sans-serif;
 
@@ -180,8 +182,14 @@ h3,
 h4,
 h5,
 h6,
-.font-heading {
+.font-heading,
+.font-display {
   font-family: var(--font-satoshi), var(--font-manrope), sans-serif;
+}
+
+.disp {
+  font-family: var(--font-satoshi), sans-serif;
+  text-transform: uppercase;
 }
 
 .font-body {
@@ -347,28 +355,28 @@ h6,
     border-radius: 9999px;
     padding: 0.625rem 1.25rem;
     font-size: 0.875rem;
-    color: #ffffff;
-    background: linear-gradient(135deg, #f5551d 0%, #d44310 100%);
-    border: 1px solid rgba(255, 138, 69, 0.4);
+    color: var(--primary-foreground, #ffffff);
+    background: linear-gradient(135deg, var(--primary) 0%, rgba(var(--acc-dk-rgb, 200, 60, 20), 1) 100%);
+    border: 1px solid rgba(var(--acc2-rgb, 255, 138, 69), 0.4);
     box-shadow:
       inset 0 1px 1px rgba(255, 255, 255, 0.4),
-      0 10px 25px -10px rgba(245, 85, 29, 0.6);
+      0 10px 25px -10px rgba(var(--acc-rgb, 245, 85, 29), 0.6);
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .glass-btn:hover {
     transform: translateY(-1px);
-    background: linear-gradient(135deg, #ff6b35 0%, #f5551d 100%);
+    background: linear-gradient(135deg, var(--orange2, #ff6b35) 0%, var(--primary) 100%);
     box-shadow:
       inset 0 1px 1px rgba(255, 255, 255, 0.6),
-      0 14px 32px -10px rgba(245, 85, 29, 0.7);
+      0 14px 32px -10px rgba(var(--acc-rgb, 245, 85, 29), 0.7);
   }
 
   .glass-btn:active {
     transform: translateY(0.5px);
     box-shadow:
       inset 0 2px 4px rgba(0, 0, 0, 0.3),
-      0 4px 12px -4px rgba(245, 85, 29, 0.4);
+      0 4px 12px -4px rgba(var(--acc-rgb, 245, 85, 29), 0.4);
   }
 
   .glass-btn-ghost {
@@ -409,8 +417,8 @@ h6,
 
   .glass-input:focus {
     outline: none;
-    border-color: #f5551d;
-    box-shadow: 0 0 0 2px rgba(245, 85, 29, 0.25);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(var(--acc-rgb, 245, 85, 29), 0.25);
   }
 
   .glass-badge {
@@ -422,15 +430,15 @@ h6,
     font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.025em;
-    background: rgba(245, 85, 29, 0.12);
-    color: #ff8a45;
-    border: 1px solid rgba(245, 85, 29, 0.3);
+    background: rgba(var(--acc-rgb, 245, 85, 29), 0.12);
+    color: var(--orange2, #ff8a45);
+    border: 1px solid rgba(var(--acc-rgb, 245, 85, 29), 0.3);
     -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
   }
 
   .glow-orange {
-    box-shadow: 0 0 30px -5px rgba(245, 85, 29, 0.35);
+    box-shadow: 0 0 30px -5px rgba(var(--acc-rgb, 245, 85, 29), 0.35);
   }
 
   .glow-subtle {
@@ -477,3 +485,165 @@ h6,
     animation: none !important;
   }
 }
+
+/* ==========================================================================
+   CineSpace Brand Loader (Mask-based Liquid Orange Sweep + Ambient Glow)
+   ========================================================================== */
+
+.cs-loader-amb {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 50% 38%, rgba(245, 85, 29, 0.22), transparent 60%),
+    radial-gradient(90% 70% at 50% 120%, rgba(255, 138, 69, 0.14), transparent 65%);
+  animation: csAmbPulse 4.5s ease-in-out infinite;
+}
+
+@keyframes csAmbPulse {
+  0%, 100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.cs-loader {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: csRise 0.9s cubic-bezier(0.16, 0.8, 0.24, 1) both;
+}
+
+@keyframes csRise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.cs-loader-mark {
+  position: relative;
+  aspect-ratio: 854 / 180;
+}
+
+.cs-loader-mark-layer {
+  position: absolute;
+  inset: 0;
+  -webkit-mask-image: var(--cs-loader-logo, url("/images/logo.svg"));
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-image: var(--cs-loader-logo, url("/images/logo.svg"));
+  mask-position: center;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+}
+
+.cs-loader-mark-base {
+  background: rgba(245, 85, 29, 0.16);
+}
+
+.cs-loader-mark-fill {
+  background: linear-gradient(180deg, var(--orange2, #ff8a45), var(--orange, #f5551d));
+  filter: drop-shadow(0 0 14px rgba(245, 85, 29, 0));
+  animation: csBreathe 2.6s ease-in-out infinite;
+}
+
+@keyframes csBreathe {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px rgba(245, 85, 29, 0.25));
+  }
+  50% {
+    filter: drop-shadow(0 0 26px rgba(245, 85, 29, 0.55));
+  }
+}
+
+.cs-loader-mark-shine {
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    transparent 38%,
+    rgba(255, 255, 255, 0.95) 50%,
+    transparent 62%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  mix-blend-mode: screen;
+  animation: csSweep 2.1s cubic-bezier(0.5, 0, 0.2, 1) infinite;
+}
+
+@keyframes csSweep {
+  0% {
+    background-position: 160% 0;
+  }
+  55%, 100% {
+    background-position: -60% 0;
+  }
+}
+
+.cs-loader-bar {
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  position: relative;
+}
+
+.cs-loader-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, var(--orange2, #ff8a45), var(--orange, #f5551d));
+  box-shadow: 0 0 12px rgba(245, 85, 29, 0.6);
+  animation: csSlide 1.5s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes csSlide {
+  0% {
+    left: -45%;
+  }
+  100% {
+    left: 105%;
+  }
+}
+
+.cs-loader-cap {
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 600;
+}
+
+.cs-loader-cap b {
+  color: var(--orange, #f5551d);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-loader,
+  .cs-loader-amb,
+  .cs-loader-mark-fill,
+  .cs-loader-mark-shine,
+  .cs-loader-bar::before {
+    animation: none !important;
+  }
+  .cs-loader-mark-fill {
+    filter: drop-shadow(0 0 16px rgba(245, 85, 29, 0.4)) !important;
+  }
+  .cs-loader-bar::before {
+    left: 0 !important;
+    width: 100% !important;
+  }
+}
+

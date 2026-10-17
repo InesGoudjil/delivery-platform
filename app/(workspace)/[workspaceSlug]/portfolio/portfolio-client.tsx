@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PortfolioAppearance, PortfolioExperience, SocialLinks } from "@/core/entities/portfolio";
 import {
@@ -13,7 +13,6 @@ import { EditAssetDialog, type EditableAssetItem } from "@/components/workspaces
 import { TrashBinDialog } from "@/components/workspaces/trash-bin-dialog";
 import { PortfolioHero } from "./_components/portfolio-hero";
 import { AppearanceToolbar } from "./_components/appearance-toolbar";
-import { FeaturedReel } from "./_components/featured-reel";
 import { ShowcaseGrid } from "./_components/showcase-grid";
 import {
   StillLightboxModal,
@@ -85,6 +84,14 @@ export function PortfolioClient({
   const [featuredIds, setFeaturedIds] = useState<string[]>(initialFeaturedIds);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setProjects(initialProjects);
+  }, [initialProjects]);
+
+  useEffect(() => {
+    setFeaturedIds(initialFeaturedIds);
+  }, [initialFeaturedIds]);
 
   const handleToggleFeature = (item: PortfolioItem) => {
     const isCurrentlyFeatured = featuredIds.includes(item.id);
@@ -208,6 +215,15 @@ export function PortfolioClient({
             return p;
           })
         );
+        setSelectedProject((prev) => {
+          if (!prev || !prev.projectAssets) return prev;
+          const updatedAssets = prev.projectAssets.filter((a) => a.id !== asset.id);
+          return {
+            ...prev,
+            assetCount: updatedAssets.length,
+            projectAssets: updatedAssets,
+          };
+        });
         showFlash(`Moved "${asset.title}" to Trash`);
       } else {
         toast.error(res.error || "Failed to move asset to trash");
@@ -342,7 +358,7 @@ export function PortfolioClient({
 
   return (
     <TooltipProvider delay={150}>
-      <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-200">
+      <div className="w-full space-y-6 animate-in fade-in duration-200">
         {/* 1. Header & Modals matching Screenshot 3 */}
       <PortfolioHero
         workspace={workspace}
@@ -361,18 +377,7 @@ export function PortfolioClient({
         showFlash={showFlash}
       />
 
-      {/* 3. Featured Work Reel matching Screenshot 3 */}
-      <FeaturedReel
-        portfolioId={portfolio.id}
-        initialProjects={projects}
-        initialFeaturedIds={initialFeaturedIds}
-        featuredIds={featuredIds}
-        onToggleFeature={handleToggleFeature}
-        showFlash={showFlash}
-        onSelectItem={handleSelectItem}
-      />
-
-      {/* 4. Showcase Work Grid matching Screenshot 4 */}
+      {/* 3. Showcase Work Grid matching Screenshot 4 */}
       <ShowcaseGrid
         portfolioId={portfolio.id}
         workspaceSlug={workspace.slug}

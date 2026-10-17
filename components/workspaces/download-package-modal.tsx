@@ -15,13 +15,7 @@ import {
   Square,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { UniversalDialog } from "@/components/ui/universal-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AppImage } from "@/components/ui/app-image";
@@ -365,38 +359,36 @@ export function DownloadPackageModal({
     isDownloadAllowed || validItems.some((i) => Boolean(i.isApproved));
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-[#111115] border border-white/15 text-[#f6f3ec] rounded-3xl p-5 sm:p-7 w-[94vw] max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl space-y-5">
-        <DialogHeader className="space-y-2 border-b border-white/10 pb-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="size-11 rounded-2xl bg-[#f5551d]/15 text-[#f5551d] flex items-center justify-center shrink-0 border border-[#f5551d]/30 shadow-inner">
-                <HardDriveDownload className="size-5" />
-              </div>
-              <div>
-                <DialogTitle className="text-xl font-bold font-display text-white">
-                  Master Deliverables Package
-                </DialogTitle>
-                <DialogDescription className="text-xs text-[#aeaeb4] font-mono truncate max-w-sm sm:max-w-md">
-                  {projectTitle} {brandName ? `· ${brandName}` : ""}
-                </DialogDescription>
-              </div>
-            </div>
-
-            {/* Total Size & Count Badges */}
-            <div className="hidden sm:flex flex-col items-end gap-1 text-right">
-              <Badge variant="orange" className="font-mono text-xs font-bold py-0.5">
-                {validItems.length}{" "}
-                {validItems.length === 1 ? "Deliverable" : "Deliverables"}
-              </Badge>
-              {totalSizeBytes > 0 && (
-                <span className="text-[11px] font-mono text-[#aeaeb4]">
-                  {formatBytes(totalSizeBytes)} total
-                </span>
-              )}
-            </div>
-          </div>
-        </DialogHeader>
+    <UniversalDialog
+      open={isOpen}
+      onOpenChange={onOpenChange}
+      size="2xl"
+      icon={<HardDriveDownload className="size-5 text-primary" />}
+      title="Master Deliverables Package"
+      description={`${projectTitle} ${brandName ? `· ${brandName}` : ""}`}
+      headerExtra={
+        <div className="hidden sm:flex flex-col items-end gap-1 text-right">
+          <Badge variant="orange" className="font-mono text-xs font-bold py-0.5">
+            {validItems.length}{" "}
+            {validItems.length === 1 ? "Deliverable" : "Deliverables"}
+          </Badge>
+          {totalSizeBytes > 0 && (
+            <span className="text-[11px] font-mono text-[#aeaeb4]">
+              {formatBytes(totalSizeBytes)} total
+            </span>
+          )}
+        </div>
+      }
+      bodyClassName="space-y-5"
+      footer={
+        <div className="w-full flex flex-col sm:flex-row items-center justify-between text-[11px] text-[#71717a] font-mono gap-1">
+          <span>
+            💡 Direct stream from Cloudflare R2 — zero browser memory limit
+          </span>
+          <span>Compatible with Free Download Manager, IDM &amp; browser shelf</span>
+        </div>
+      }
+    >
 
         {/* Locked Notice */}
         {!isDownloadAllowed && (
@@ -423,7 +415,7 @@ export function DownloadPackageModal({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <Sparkles className="size-4 text-[#f5551d]" />
+                  <Sparkles className="size-4 text-primary" />
                   <h4 className="text-sm font-bold text-white font-display">
                     Direct Cloud Storage Download
                   </h4>
@@ -466,7 +458,7 @@ export function DownloadPackageModal({
                   disabled={
                     isQueueRunning || selectedDownloadableItems.length === 0
                   }
-                  className="rounded-full bg-gradient-to-r from-[#d9481d] to-[#802010] hover:from-[#f5551d] hover:to-[#992e10] text-white font-bold text-xs px-4 py-2 shadow-lg shadow-[#d9481d]/20 border border-[#f5551d]/40 transition-all cursor-pointer h-8 gap-1.5 disabled:opacity-50"
+                  className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs px-4 py-2 shadow-lg shadow-primary/20 border-0 transition-all cursor-pointer h-8 gap-1.5 disabled:opacity-50"
                 >
                   {isQueueRunning ? (
                     <>
@@ -504,7 +496,7 @@ export function DownloadPackageModal({
                 </div>
                 <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
                   <div
-                    className="bg-[#f5551d] h-full transition-all duration-300 rounded-full"
+                    className="bg-primary h-full transition-all duration-300 rounded-full"
                     style={{
                       width: `${
                         (queueProgress.current / queueProgress.total) * 100
@@ -522,41 +514,45 @@ export function DownloadPackageModal({
           <div className="flex flex-wrap items-center justify-between gap-2 px-1">
             <div className="flex items-center gap-1 bg-white/5 p-1 rounded-full border border-white/10">
               {(["ALL", "APPROVED", "VIDEOS", "PHOTOS"] as const).map((tab) => (
-                <button
+                <Button
                   key={tab}
                   type="button"
+                  variant={filterTab === tab ? "default" : "ghost"}
+                  size="sm"
                   onClick={() => setFilterTab(tab)}
-                  className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                  className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer h-auto ${
                     filterTab === tab
-                      ? "bg-[#f5551d] text-white shadow-sm"
-                      : "text-[#aeaeb4] hover:text-white"
+                      ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                      : "text-[#aeaeb4] hover:text-white hover:bg-transparent"
                   }`}
                 >
                   {tab}
-                </button>
+                </Button>
               ))}
             </div>
 
             <div className="flex items-center gap-3">
               {isLoadingManifest && (
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#f5551d]">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-primary">
                   <Loader2 className="size-3 animate-spin" />
                   Syncing all deliverables...
                 </span>
               )}
               {downloadableFilteredItems.length > 1 && (
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={handleToggleSelectAll}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#aeaeb4] hover:text-white transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#aeaeb4] hover:text-white transition-colors cursor-pointer h-auto p-0 hover:bg-transparent"
                 >
                   {allFilteredSelected ? (
-                    <CheckSquare className="size-3.5 text-[#f5551d]" />
+                    <CheckSquare className="size-3.5 text-primary" />
                   ) : (
                     <Square className="size-3.5" />
                   )}
                   <span>{allFilteredSelected ? "Deselect All" : "Select All"}</span>
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -588,27 +584,29 @@ export function DownloadPackageModal({
                       canDownloadItem ? "cursor-pointer" : "opacity-60"
                     } ${
                       isSelected
-                        ? "bg-white/[0.08] border-[#f5551d]/40"
+                        ? "bg-white/[0.08] border-primary/40"
                         : "bg-white/5 hover:bg-white/[0.07] border-white/10"
                     }`}
                   >
                     {/* Checkbox + Media Thumbnail + Metadata */}
                     <div className="flex items-center gap-3 min-w-0">
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon-xs"
                         disabled={!canDownloadItem}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleToggleItemSelection(item.id, canDownloadItem);
                         }}
-                        className="text-[#aeaeb4] hover:text-white disabled:opacity-30 shrink-0 cursor-pointer"
+                        className="text-[#aeaeb4] hover:text-white disabled:opacity-30 shrink-0 cursor-pointer p-0 h-auto hover:bg-transparent"
                       >
                         {isSelected ? (
-                          <CheckSquare className="size-4 text-[#f5551d]" />
+                          <CheckSquare className="size-4 text-primary" />
                         ) : (
                           <Square className="size-4" />
                         )}
-                      </button>
+                      </Button>
 
                       <div className="size-12 sm:size-14 rounded-xl bg-black/40 overflow-hidden relative shrink-0 border border-white/10">
                         {item.thumbnailUrl ? (
@@ -730,15 +728,7 @@ export function DownloadPackageModal({
           </div>
         </div>
 
-        {/* Footnote / FDM & IDM compatibility info */}
-        <div className="flex flex-col sm:flex-row items-center justify-between text-[11px] text-[#71717a] font-mono pt-1 border-t border-white/5 gap-1">
-          <span>
-            💡 Direct stream from Cloudflare R2 — zero browser memory limit
-          </span>
-          <span>Compatible with Free Download Manager, IDM &amp; browser shelf</span>
-        </div>
-      </DialogContent>
-    </Dialog>
+    </UniversalDialog>
   );
 }
 

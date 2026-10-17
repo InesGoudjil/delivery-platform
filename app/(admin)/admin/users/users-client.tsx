@@ -183,7 +183,7 @@ export function UsersClient({ users }: UsersClientProps) {
       {/* ======================= TOP HEADER ======================= */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
         <div>
-          <div className="text-xs font-mono text-[#f5551d] uppercase tracking-wider mb-1">
+          <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1">
             Platform Users &amp; Roles
           </div>
           <h1 className="text-3xl font-black font-heading text-foreground tracking-tight">
@@ -197,7 +197,7 @@ export function UsersClient({ users }: UsersClientProps) {
         <div className="flex items-center gap-3">
           <Button
             onClick={() => setInviteModalOpen(true)}
-            className="rounded-full bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] shadow-lg shadow-[#f5551d]/20 cursor-pointer"
+            className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 shadow-lg shadow-primary/20 cursor-pointer"
           >
             <UserPlus className="size-3.5 mr-1.5" /> Provision Creator
           </Button>
@@ -231,14 +231,14 @@ export function UsersClient({ users }: UsersClientProps) {
               <CardDescription className="text-xs font-mono uppercase">
                 Platform Super Admins
               </CardDescription>
-              <Shield className="size-4 text-[#f5551d]" />
+              <Shield className="size-4 text-primary" />
             </div>
             <CardTitle className="text-2xl font-black font-heading text-foreground">
               {totalAdmins}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-[#f5551d] font-mono font-medium">
+            <p className="text-xs text-primary font-mono font-medium">
               Full control over subscriptions &amp; quotas
             </p>
           </CardContent>
@@ -292,17 +292,20 @@ export function UsersClient({ users }: UsersClientProps) {
 
               <div className="flex items-center gap-1 bg-muted p-1 rounded-xl border border-border">
                 {(["all", "admin", "user"] as const).map((r) => (
-                  <button
+                  <Button
                     key={r}
+                    type="button"
+                    variant={roleFilter === r ? "default" : "ghost"}
+                    size="xs"
                     onClick={() => setRoleFilter(r)}
-                    className={`px-3 py-1 rounded-lg text-[11px] font-semibold capitalize transition-colors cursor-pointer ${
+                    className={`h-7 px-3 rounded-lg text-[11px] font-semibold capitalize transition-colors cursor-pointer ${
                       roleFilter === r
-                        ? "bg-card text-foreground shadow-xs font-bold"
+                        ? "bg-card text-foreground shadow-xs font-bold hover:bg-card"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {r === "all" ? "All Users" : r === "admin" ? "Admins" : "Creators"}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -377,7 +380,7 @@ export function UsersClient({ users }: UsersClientProps) {
                         variant="outline"
                         className={`text-[10px] font-mono capitalize ${
                           u.platformRole === "admin"
-                            ? "bg-[#f5551d]/15 text-[#f5551d] border-[#f5551d]/30 font-bold"
+                            ? "bg-primary/15 text-primary border-primary/30 font-bold"
                             : "bg-muted text-muted-foreground border-border"
                         }`}
                       >
@@ -410,7 +413,7 @@ export function UsersClient({ users }: UsersClientProps) {
                             onClick={() => handleOpenRoleModal(u)}
                             className="cursor-pointer text-xs gap-2"
                           >
-                            <Shield className="size-3.5 text-[#f5551d]" /> Change Platform Role
+                            <Shield className="size-3.5 text-primary" /> Change Platform Role
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleOpenInspect(u)}
@@ -447,7 +450,7 @@ export function UsersClient({ users }: UsersClientProps) {
         <DialogContent className="sm:max-w-md bg-card border-border">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              <Shield className="size-5 text-[#f5551d]" />
+              <Shield className="size-5 text-primary" />
               Update Platform Role
             </DialogTitle>
             <DialogDescription>
@@ -465,35 +468,37 @@ export function UsersClient({ users }: UsersClientProps) {
                 Select Platform Role
               </label>
               <div className="grid grid-cols-2 gap-3">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => setNewRole("user")}
-                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  className={`h-auto p-3 rounded-xl border text-left flex flex-col items-start transition-all cursor-pointer whitespace-normal ${
                     newRole === "user"
                       ? "border-primary bg-primary/10 text-foreground"
                       : "border-border bg-muted/40 text-muted-foreground hover:bg-muted"
                   }`}
                 >
                   <p className="font-bold text-xs">Standard Creator</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                  <p className="text-[10px] text-muted-foreground mt-0.5 font-normal">
                     Owns studio workspaces &amp; projects.
                   </p>
-                </button>
+                </Button>
 
-                <button
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => setNewRole("admin")}
-                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  className={`h-auto p-3 rounded-xl border text-left flex flex-col items-start transition-all cursor-pointer whitespace-normal ${
                     newRole === "admin"
-                      ? "border-[#f5551d] bg-[#f5551d]/10 text-foreground"
+                      ? "border-primary bg-primary/10 text-foreground"
                       : "border-border bg-muted/40 text-muted-foreground hover:bg-muted"
                   }`}
                 >
-                  <p className="font-bold text-xs text-[#f5551d]">Super Admin</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                  <p className="font-bold text-xs text-primary">Super Admin</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 font-normal">
                     Full access to /admin console &amp; billing.
                   </p>
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -501,7 +506,7 @@ export function UsersClient({ users }: UsersClientProps) {
               <Button
                 type="submit"
                 disabled={isPending || roleSuccess}
-                className="rounded-full bg-primary text-black font-bold text-xs hover:bg-primary/90"
+                className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90"
               >
                 {roleSuccess ? (
                   <>

@@ -234,7 +234,7 @@ export function ShowcaseGrid({
                 onClick={() => setActiveTab(tab)}
                 className={`px-5 py-1.5 h-auto rounded-full text-xs font-bold capitalize transition-all cursor-pointer ${
                   activeTab === tab
-                    ? "bg-[#f5551d] text-white hover:bg-[#f5551d]/90 shadow-sm"
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                     : "text-zinc-400 hover:text-white hover:bg-transparent"
                 }`}
               >
@@ -344,7 +344,7 @@ export function ShowcaseGrid({
                           }}
                           className={`size-8 rounded-full p-0 flex items-center justify-center transition-all cursor-pointer ${
                             isFeatured
-                              ? "bg-[#f5551d] text-white hover:bg-[#ff8a45] shadow-md shadow-[#f5551d]/30 opacity-100"
+                              ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/30 opacity-100"
                               : "bg-black/50 backdrop-blur-md text-zinc-400 hover:text-white border border-white/10 opacity-0 group-hover:opacity-100"
                           }`}
                         >
@@ -405,13 +405,13 @@ export function ShowcaseGrid({
                 {/* Center Action Button for Video Cuts / Projects or Zoom for Stills */}
                 {isVideo ? (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="size-11 rounded-full bg-black/50 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:bg-[#f5551d] group-hover:text-black transition-all">
+                    <div className="size-11 rounded-full bg-black/50 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
                       <Play className="size-4.5 ml-0.5 fill-current" />
                     </div>
                   </div>
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="size-11 rounded-full bg-black/50 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-xl scale-90 group-hover:scale-110 group-hover:bg-[#f5551d] group-hover:text-black transition-all">
+                    <div className="size-11 rounded-full bg-black/50 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-xl scale-90 group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
                       <Maximize2 className="size-4.5 stroke-[2.5]" />
                     </div>
                   </div>
@@ -449,11 +449,11 @@ export function ShowcaseGrid({
               size="lg"
               disabled={isLoadingMore}
               onClick={handleLoadMore}
-              className="group relative rounded-full px-8 py-3 bg-[#0c0c0e]/80 hover:bg-[#141416] border-white/10 hover:border-[#f5551d]/50 text-white font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-xl cursor-pointer"
+              className="group relative rounded-full px-8 py-3 bg-[#0c0c0e]/80 hover:bg-[#141416] border-white/10 hover:border-primary/50 text-white font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-xl cursor-pointer"
             >
               {isLoadingMore ? (
                 <div className="flex items-center gap-2.5">
-                  <Loader2 className="size-4 animate-spin text-[#f5551d]" />
+                  <Loader2 className="size-4 animate-spin text-primary" />
                   <span>Loading {activeTab}...</span>
                 </div>
               ) : (
@@ -462,7 +462,7 @@ export function ShowcaseGrid({
                   {remainingCount > 0 && (
                     <Badge
                       variant="secondary"
-                      className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-[#f5551d]/15 text-[#f5551d] border border-[#f5551d]/30"
+                      className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
                     >
                       +{remainingCount} more
                     </Badge>

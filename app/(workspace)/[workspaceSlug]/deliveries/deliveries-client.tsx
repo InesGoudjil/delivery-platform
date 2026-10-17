@@ -95,7 +95,7 @@ export function DeliveriesClient({
   const activeDeliveriesCount = items.filter((d) => d.status !== "archived").length;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-200">
+    <div className="w-full space-y-8 animate-in fade-in duration-200">
       {/* 1. Header & New Delivery Room Modal */}
       <DeliveriesHeader
         workspace={workspace}

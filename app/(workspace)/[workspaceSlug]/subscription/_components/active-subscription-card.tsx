@@ -1,24 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import {
   CreditCard,
   Loader2,
   ShieldCheck,
   Zap,
   HardDrive,
-  CheckCircle2,
-  XCircle,
   Share2,
   Film,
   Users,
-  MessageSquare,
+  Sparkles,
+  ArrowDownCircle,
+  Check,
   Lock,
-  Palette,
-  Shield,
-  Bell,
-  Headphones,
-  EyeOff,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +34,7 @@ interface ActiveSubscriptionCardProps {
   hasBillingHistory?: boolean;
   onOpenPortal: () => Promise<void>;
   isLoadingPortal: boolean;
+  onScrollToPlans?: () => void;
 }
 
 export function ActiveSubscriptionCard({
@@ -53,25 +49,36 @@ export function ActiveSubscriptionCard({
   hasBillingHistory = false,
   onOpenPortal,
   isLoadingPortal,
+  onScrollToPlans,
 }: ActiveSubscriptionCardProps) {
-  const isTrial = subStatus === "trialing";
+  const isStarter = currentPlanSlug === "starter";
   const isActive = subStatus === "active";
 
   const storageGb = features?.storage_gb ?? 0;
   const clientLinks = features?.client_links ?? 1;
   const portfolioVideos = features?.portfolio_videos ?? 0;
   const teamSeats = features?.team_seats ?? 1;
+
   const whatsappDelivery = Boolean(features?.whatsapp_delivery);
   const branding = Boolean(features?.branding);
   const watermark = Boolean(features?.watermark);
   const passwordProtected = Boolean(features?.password_protected);
-  const downloadNotifications = Boolean(features?.download_notifications);
   const whiteLabel = Boolean(features?.white_label);
   const prioritySupport = Boolean(features?.priority_support);
 
   const usedGb = (storageUsedBytes / (1024 * 1024 * 1024)).toFixed(1);
   const totalGb = storageGb > 0 ? storageGb : 2;
+  const remainingGb = Math.max(0, totalGb - Number(usedGb)).toFixed(1);
   const storagePercentage = Math.min(100, Math.round(((storageUsedBytes / (1024 * 1024 * 1024)) / totalGb) * 100));
+
+  const featurePills = [
+    { label: "WhatsApp Delivery", enabled: whatsappDelivery },
+    { label: "Custom Studio Branding", enabled: branding },
+    { label: "Burn-in Watermark", enabled: watermark },
+    { label: "PIN & Password Protection", enabled: passwordProtected },
+    { label: "White-Label Client View", enabled: whiteLabel, highlight: "Studio" },
+    { label: "Priority VIP Support", enabled: prioritySupport, highlight: "Pro+" },
+  ];
 
   return (
     <Card className="border-2 border-primary/40 bg-gradient-to-br from-card via-card to-primary/5 shadow-xl overflow-hidden">
@@ -80,27 +87,33 @@ export function ActiveSubscriptionCard({
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2.5">
               <Badge
-                variant={isActive ? "default" : "secondary"}
-                className="uppercase font-mono text-xs font-bold tracking-wider"
+                variant={isStarter ? "secondary" : isActive ? "default" : "outline"}
+                className="uppercase font-mono text-xs font-bold tracking-wider px-2.5 py-0.5"
               >
-                {subStatus} PLAN
+                {isStarter ? "FREE TIER" : `${subStatus} PLAN`}
               </Badge>
-              {periodEnd && (
+              {periodEnd ? (
                 <span className="text-xs text-muted-foreground font-mono">
                   Renews on {new Date(periodEnd).toLocaleDateString()}
                 </span>
-              )}
+              ) : isStarter ? (
+                <span className="text-xs text-muted-foreground font-mono">
+                  No renewal fees • Free forever
+                </span>
+              ) : null}
             </div>
             <CardTitle className="text-2xl font-bold font-heading capitalize text-foreground">
-              {currentPlanName} Tier
+              {currentPlanName} Plan
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground max-w-xl">
-              Currently active subscription for your workspace with assigned storage and feature inclusions.
+              {isStarter
+                ? "Your workspace is currently running on the complimentary Starter quota. Upgrade to unlock expanded cloud storage and client delivery features."
+                : "Active production subscription for your workspace with assigned cloud storage and client delivery features."}
             </CardDescription>
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto">
-            <div className="p-3 rounded-2xl bg-background border border-border text-foreground">
+            <div className="p-3 rounded-2xl bg-background/80 border border-border text-foreground shadow-inner">
               <Zap className="size-6 text-primary" />
             </div>
           </div>
@@ -110,167 +123,129 @@ export function ActiveSubscriptionCard({
       <CardContent className="flex flex-col gap-6">
         <Separator />
 
-        {/* Storage Usage Progress */}
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <div className="flex flex-col gap-2.5 p-4 rounded-xl bg-background/70 border border-border cursor-help hover:border-primary/40 transition-colors">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <HardDrive className="size-4 text-primary" />
-                    <span className="font-semibold text-foreground">Storage Allocation</span>
+        {/* 2-Column Split: Storage Allocation & Quick Quota KPIs */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+          {/* Left Column: Storage Usage Progress */}
+          <div className="lg:col-span-7 flex flex-col justify-between p-4 rounded-xl bg-background/70 border border-border">
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                    <HardDrive className="size-4" />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-muted-foreground text-[11px]">
-                      <strong className="text-foreground">{usedGb} GB</strong> of {totalGb} GB
-                    </span>
-                    <Badge
-                      variant={storagePercentage > 90 ? "destructive" : storagePercentage > 75 ? "orange" : "sage"}
-                      className="text-[10px] font-mono px-1.5 py-0 font-semibold"
-                    >
-                      {storagePercentage}%
-                    </Badge>
-                  </div>
+                  <span className="font-semibold text-foreground">Workspace Cloud Storage</span>
                 </div>
-                <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden p-0.5 border border-border/50">
-                  <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      storagePercentage > 90
-                        ? "bg-destructive shadow-destructive/50"
-                        : storagePercentage > 75
-                        ? "bg-[#f5551d]"
-                        : "bg-gradient-to-r from-primary to-[#ff8a45]"
-                    }`}
-                    style={{ width: `${Math.max(2, storagePercentage)}%` }}
-                  />
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-muted-foreground text-xs">
+                    <strong className="text-foreground">{usedGb} GB</strong> of {totalGb} GB
+                  </span>
+                  <Badge
+                    variant={storagePercentage > 90 ? "destructive" : storagePercentage > 75 ? "orange" : "sage"}
+                    className="text-[10px] font-mono px-2 py-0.5 font-bold"
+                  >
+                    {storagePercentage}%
+                  </Badge>
                 </div>
               </div>
-            }
-          />
-          <TooltipContent>
-            {usedGb} GB used out of {totalGb} GB quota ({Math.max(0, totalGb - Number(usedGb)).toFixed(1)} GB remaining)
-          </TooltipContent>
-        </Tooltip>
 
-        {/* Feature inclusions checklist */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
-          {/* Storage */}
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-background/60 border border-border">
-            <HardDrive className="size-4 text-primary shrink-0" />
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-foreground">{storageGb} GB</span>
-              <span className="text-[10px] text-muted-foreground">Storage Allocation</span>
+              {/* Progress bar */}
+              <div className="w-full bg-muted rounded-full h-3 overflow-hidden p-0.5 border border-border/50">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    storagePercentage > 90
+                      ? "bg-destructive shadow-sm shadow-destructive/50"
+                      : storagePercentage > 75
+                      ? "bg-primary"
+                      : "bg-gradient-to-r from-primary to-primary/80"
+                  }`}
+                  style={{ width: `${Math.max(2, storagePercentage)}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-3 border-t border-border/40 mt-3 font-mono">
+              <span>{remainingGb} GB remaining</span>
+              <span>Need more space? Upgrade to Pro for 500 GB</span>
             </div>
           </div>
 
-          {/* Client Delivery Links */}
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-background/60 border border-border">
-            <Share2 className="size-4 text-primary shrink-0" />
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-foreground">
-                {clientLinks === -1 ? "Unlimited" : `${clientLinks} Active`}
-              </span>
-              <span className="text-[10px] text-muted-foreground">Client Delivery Links</span>
+          {/* Right Column: Key Resource Limits (KPI Strip) */}
+          <div className="lg:col-span-5 grid grid-cols-3 gap-3">
+            {/* Delivery Links */}
+            <div className="flex flex-col justify-between p-3 rounded-xl bg-background/60 border border-border">
+              <div className="p-1.5 w-fit rounded-lg bg-primary/10 text-primary">
+                <Share2 className="size-4" />
+              </div>
+              <div className="flex flex-col mt-2">
+                <span className="text-sm font-bold text-foreground">
+                  {clientLinks === -1 ? "Unlimited" : clientLinks}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-medium leading-tight">
+                  Active Links
+                </span>
+              </div>
+            </div>
+
+            {/* Portfolio Videos */}
+            <div className="flex flex-col justify-between p-3 rounded-xl bg-background/60 border border-border">
+              <div className="p-1.5 w-fit rounded-lg bg-primary/10 text-primary">
+                <Film className="size-4" />
+              </div>
+              <div className="flex flex-col mt-2">
+                <span className="text-sm font-bold text-foreground">
+                  {portfolioVideos === -1 ? "Unlimited" : portfolioVideos}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-medium leading-tight">
+                  Portfolio Films
+                </span>
+              </div>
+            </div>
+
+            {/* Workspace Seats */}
+            <div className="flex flex-col justify-between p-3 rounded-xl bg-background/60 border border-border">
+              <div className="p-1.5 w-fit rounded-lg bg-primary/10 text-primary">
+                <Users className="size-4" />
+              </div>
+              <div className="flex flex-col mt-2">
+                <span className="text-sm font-bold text-foreground">
+                  {teamSeats === 1 ? "1 (Solo)" : `${teamSeats}`}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-medium leading-tight">
+                  Team Seats
+                </span>
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Portfolio Videos */}
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-background/60 border border-border">
-            <Film className="size-4 text-primary shrink-0" />
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-foreground">
-                {portfolioVideos === -1 ? "Unlimited" : `${portfolioVideos} Films`}
-              </span>
-              <span className="text-[10px] text-muted-foreground">Portfolio Showcase</span>
-            </div>
-          </div>
-
-          {/* Team Seats */}
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-background/60 border border-border">
-            <Users className="size-4 text-primary shrink-0" />
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-foreground">
-                {teamSeats === 1 ? "1 Member (Solo)" : `${teamSeats} Seats`}
-              </span>
-              <span className="text-[10px] text-muted-foreground">Workspace Seats</span>
-            </div>
-          </div>
-
-          {/* WhatsApp Delivery */}
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-background/60 border border-border">
-            <MessageSquare className={`size-4 shrink-0 ${whatsappDelivery ? "text-emerald-500" : "text-muted-foreground/40"}`} />
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-foreground">
-                {whatsappDelivery ? "Instant Alerts" : "Not Included"}
-              </span>
-              <span className="text-[10px] text-muted-foreground">WhatsApp Delivery</span>
-            </div>
-          </div>
-
-          {/* Custom Branding */}
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-background/60 border border-border">
-            <Palette className={`size-4 shrink-0 ${branding ? "text-emerald-500" : "text-muted-foreground/40"}`} />
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-foreground">
-                {branding ? "Colors & Logo" : "Default"}
-              </span>
-              <span className="text-[10px] text-muted-foreground">Custom Theme</span>
-            </div>
-          </div>
-
-          {/* Watermark */}
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-background/60 border border-border">
-            <Shield className={`size-4 shrink-0 ${watermark ? "text-emerald-500" : "text-muted-foreground/40"}`} />
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-foreground">
-                {watermark ? "Burn-in Security" : "Disabled"}
-              </span>
-              <span className="text-[10px] text-muted-foreground">Watermark Protection</span>
-            </div>
-          </div>
-
-          {/* Passcode Security */}
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-background/60 border border-border">
-            <Lock className={`size-4 shrink-0 ${passwordProtected ? "text-emerald-500" : "text-muted-foreground/40"}`} />
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-foreground">
-                {passwordProtected ? "PIN & Password" : "Open Links"}
-              </span>
-              <span className="text-[10px] text-muted-foreground">Delivery Security</span>
-            </div>
-          </div>
-
-          {/* Download Notifications */}
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-background/60 border border-border">
-            <Bell className={`size-4 shrink-0 ${downloadNotifications ? "text-emerald-500" : "text-muted-foreground/40"}`} />
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-foreground">
-                {downloadNotifications ? "Real-time" : "Standard"}
-              </span>
-              <span className="text-[10px] text-muted-foreground">Download Notifications</span>
-            </div>
-          </div>
-
-          {/* White-Label Branding */}
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-background/60 border border-border">
-            <EyeOff className={`size-4 shrink-0 ${whiteLabel ? "text-emerald-500" : "text-muted-foreground/40"}`} />
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-foreground">
-                {whiteLabel ? "White-Label" : "Standard"}
-              </span>
-              <span className="text-[10px] text-muted-foreground">Client View Branding</span>
-            </div>
-          </div>
-
-          {/* Priority Support */}
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-background/60 border border-border">
-            <Headphones className={`size-4 shrink-0 ${prioritySupport ? "text-emerald-500" : "text-muted-foreground/40"}`} />
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-foreground">
-                {prioritySupport ? "VIP Support" : "Standard"}
-              </span>
-              <span className="text-[10px] text-muted-foreground">Customer Support</span>
-            </div>
+        {/* Feature Inclusions Status Badges */}
+        <div className="flex flex-col gap-2.5">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Current Tier Feature Inclusions
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {featurePills.map((pill) => (
+              <div
+                key={pill.label}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                  pill.enabled
+                    ? "bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/25"
+                    : "bg-muted/40 text-muted-foreground/60 border-border/40"
+                }`}
+              >
+                {pill.enabled ? (
+                  <Check className="size-3.5 shrink-0 text-emerald-500" />
+                ) : (
+                  <Lock className="size-3 shrink-0 text-muted-foreground/50" />
+                )}
+                <span>{pill.label}</span>
+                {!pill.enabled && pill.highlight && (
+                  <span className="text-[10px] font-mono font-semibold px-1 py-0.2 rounded bg-muted text-muted-foreground">
+                    {pill.highlight}
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </CardContent>
@@ -282,30 +257,36 @@ export function ActiveSubscriptionCard({
         </div>
 
         {canManageBilling ? (
-          <Button
-            onClick={onOpenPortal}
-            disabled={isLoadingPortal || !hasBillingHistory}
-            variant={hasBillingHistory ? "default" : "outline"}
-            className="rounded-full shadow-md text-xs font-bold shrink-0 cursor-pointer"
-            title={!hasBillingHistory ? "Subscribe to a paid plan first to manage billing profile" : undefined}
-          >
-            {isLoadingPortal ? (
-              <>
-                <Loader2 data-icon="inline-start" className="animate-spin" />
-                Opening Stripe Portal...
-              </>
-            ) : hasBillingHistory ? (
-              <>
-                <CreditCard data-icon="inline-start" />
-                Manage Billing &amp; Payment Methods
-              </>
-            ) : (
-              <>
-                <CreditCard data-icon="inline-start" className="opacity-50" />
-                No Stripe Billing Profile Yet
-              </>
-            )}
-          </Button>
+          hasBillingHistory ? (
+            <Button
+              onClick={onOpenPortal}
+              disabled={isLoadingPortal}
+              variant="default"
+              className="rounded-full shadow-md text-xs font-bold shrink-0 cursor-pointer"
+            >
+              {isLoadingPortal ? (
+                <>
+                  <Loader2 data-icon="inline-start" className="animate-spin size-3.5" />
+                  Opening Stripe Portal...
+                </>
+              ) : (
+                <>
+                  <CreditCard data-icon="inline-start" className="size-3.5" />
+                  Manage Billing &amp; Payment Methods
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button
+              onClick={onScrollToPlans}
+              variant="default"
+              className="rounded-full shadow-md text-xs font-bold shrink-0 cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1.5"
+            >
+              <Sparkles className="size-3.5" />
+              <span>Upgrade Workspace Plan</span>
+              <ArrowDownCircle className="size-3.5" />
+            </Button>
+          )
         ) : (
           <Badge variant="secondary" className="text-xs font-normal text-muted-foreground py-1 px-3">
             Only workspace owners can modify billing

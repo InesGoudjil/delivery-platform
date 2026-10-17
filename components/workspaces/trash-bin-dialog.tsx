@@ -13,10 +13,7 @@ import {
   Archive,
   RefreshCw,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
+import { UniversalDialog } from "@/components/ui/universal-dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -168,51 +165,55 @@ export function TrashBinDialog({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent
-          showCloseButton={true}
-          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-[#141418]/95 backdrop-blur-xl border border-white/15 text-white rounded-3xl p-6 sm:p-7 w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl space-y-0"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between pb-5 border-b border-white/10 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="size-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-                <Trash2 className="size-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-bold font-heading text-white">
-                    Workspace Trash
-                  </h2>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-white/10 text-zinc-300">
-                    {assets.length} {assets.length === 1 ? "item" : "items"}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  Items in trash are automatically purged after 30 days.
-                </p>
-              </div>
-            </div>
-
-            {assets.length > 0 && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowEmptyConfirm(true)}
-                className="rounded-full border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-xs font-semibold px-3 py-1.5 flex items-center gap-1.5 cursor-pointer transition-colors"
-              >
-                <Trash2 className="size-3.5" />
-                <span>Empty Trash</span>
-              </Button>
-            )}
+      <UniversalDialog
+        open={isOpen}
+        onOpenChange={onOpenChange}
+        size="2xl"
+        variant="warning"
+        icon={<Trash2 className="size-5" />}
+        title="Workspace Trash"
+        badge={
+          <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-white/10 text-zinc-300">
+            {assets.length} {assets.length === 1 ? "item" : "items"}
+          </span>
+        }
+        description="Items in trash are automatically purged after 30 days."
+        headerExtra={
+          assets.length > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEmptyConfirm(true)}
+              className="rounded-full border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-xs font-semibold px-3 py-1.5 flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <Trash2 className="size-3.5" />
+              <span>Empty Trash</span>
+            </Button>
+          ) : null
+        }
+        footer={
+          <div className="w-full flex items-center justify-between text-[11px] text-zinc-400">
+            <span className="flex items-center gap-1.5">
+              <AlertTriangle className="size-3.5 text-amber-400 shrink-0" />
+              Restoring an asset returns it directly to its delivery room or portfolio.
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="rounded-full border-white/15 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white text-xs px-4 py-1.5 cursor-pointer"
+            >
+              Close
+            </Button>
           </div>
-
-          {/* Body / List */}
-          <div className="flex-1 overflow-y-auto py-4 space-y-3 min-h-[220px]">
+        }
+      >
+        <div className="space-y-3 min-h-[220px]">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center h-48 gap-3 text-zinc-400">
-                <Loader2 className="size-6 animate-spin text-[#f5551d]" />
+                <Loader2 className="size-6 animate-spin text-primary" />
                 <span className="text-xs font-mono">Loading trashed items...</span>
               </div>
             ) : assets.length === 0 ? (
@@ -306,7 +307,7 @@ export function TrashBinDialog({
                         {isRestoring ? (
                           <Loader2 className="size-3.5 animate-spin" />
                         ) : (
-                          <RotateCcw className="size-3.5 text-[#f5551d]" />
+                          <RotateCcw className="size-3.5 text-primary" />
                         )}
                         <span className="hidden sm:inline">Restore</span>
                       </Button>
@@ -327,26 +328,8 @@ export function TrashBinDialog({
                 );
               })
             )}
-          </div>
-
-          {/* Footer note */}
-          <div className="pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-zinc-400 shrink-0">
-            <span className="flex items-center gap-1.5">
-              <AlertTriangle className="size-3.5 text-amber-400 shrink-0" />
-              Restoring an asset returns it directly to its delivery room or portfolio.
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-              className="rounded-full border-white/15 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white text-xs px-4 py-1.5 cursor-pointer"
-            >
-              Close
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </UniversalDialog>
 
       {/* Single Item Permanent Delete Confirm Dialog */}
       <DeleteConfirmDialog

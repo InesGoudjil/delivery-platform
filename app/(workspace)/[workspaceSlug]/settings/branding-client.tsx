@@ -4,8 +4,9 @@ import React, { useState, useTransition } from "react";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { updateBrandingAction } from "@/app/actions/portfolio";
-import { PortfolioExperience, PortfolioStats } from "@/core/entities/portfolio";
-import { COVER_PRESETS } from "./_components/constants";
+import { PortfolioAppearance, PortfolioExperience, PortfolioHeroCover, PortfolioStats } from "@/core/entities/portfolio";
+import { UserProfile } from "@/core/entities/user-profile";
+import { SelectableCoverAsset } from "@/lib/portfolio-data";
 import { BrandingHeader } from "./_components/branding-header";
 import { CoverBannerSection } from "./_components/cover-banner-section";
 import { StorefrontIdentitySection } from "./_components/storefront-identity-section";
@@ -36,11 +37,20 @@ interface BrandingClientProps {
     whatsappNumber?: string | null;
     experience?: PortfolioExperience[];
     stats?: PortfolioStats;
+    appearance?: PortfolioAppearance;
   };
   features?: any;
+  userProfile?: UserProfile | null;
+  availableAssets: SelectableCoverAsset[];
 }
 
-export function BrandingClient({ workspace, portfolio, features }: BrandingClientProps) {
+export function BrandingClient({
+  workspace,
+  portfolio,
+  features,
+  userProfile,
+  availableAssets,
+}: BrandingClientProps) {
   const [isPending, startTransition] = useTransition();
   const { setAccent: setLiveAccent } = useAccentTheme();
 
@@ -60,8 +70,28 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
   };
   const [whatsapp, setWhatsapp] = useState(portfolio.whatsappNumber || "+971501234567");
 
-  // Profile image / avatar
+  // 1. Studio Brand Logo (workspace level)
   const [logoUrl, setLogoUrl] = useState<string | null>(workspace.logoUrl || null);
+
+  // 2. Filmmaker / User Profile Photo (user_profile level)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    userProfile?.avatarUrl || null
+  );
+
+  // 3. Hero Cover Asset Configuration
+  const initialHeroCover: PortfolioHeroCover = portfolio.appearance?.heroCover || {
+    assetId: availableAssets[0]?.id || null,
+    type: availableAssets[0]?.type || "video",
+    mediaUrl: portfolio.coverAssetUrl || availableAssets[0]?.url || "",
+    thumbnailUrl: portfolio.coverAssetUrl || availableAssets[0]?.thumbnailUrl || "",
+    title: portfolio.title || workspace.brandName,
+    category: availableAssets[0]?.category || "Featured Film",
+    aspectRatio: "21:9",
+    overlayOpacity: 50,
+    videoBehavior: "ambient_loop",
+  };
+
+  const [heroCover, setHeroCover] = useState<PortfolioHeroCover>(initialHeroCover);
 
   // Showcase Stats
   const [stats, setStats] = useState<PortfolioStats>(
@@ -83,23 +113,15 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
       "Directing high-impact commercial campaigns, brand documentaries, and luxury wedding films across Dubai, Abu Dhabi, and the Gulf region. Full end-to-end 4K/8K production."
   );
 
-  // Cover image: either preset URL or custom uploaded data URL / image URL
-  const [coverUrl, setCoverUrl] = useState<string>(
-    portfolio.coverAssetUrl || COVER_PRESETS[0].url
-  );
-  const [isCustomCover, setIsCustomCover] = useState(
-    portfolio.coverAssetUrl ? !COVER_PRESETS.some((p) => p.url === portfolio.coverAssetUrl) : false
-  );
-
   // Interactive Image Crop / Edit Dialog State
   const [cropEditor, setCropEditor] = useState<{
     isOpen: boolean;
-    mode: "cover" | "profile";
+    mode: "logo" | "avatar" | "cover";
     imageSrc: string | null;
     fileName: string;
   }>({
     isOpen: false,
-    mode: "cover",
+    mode: "avatar",
     imageSrc: null,
     fileName: "image.jpg",
   });
@@ -108,51 +130,11 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
     toast.success(msg);
   };
 
-  const handleSelectPreset = (url: string) => {
-    setCoverUrl(url);
-    setIsCustomCover(false);
-    startTransition(async () => {
-      const res = await updateBrandingAction(workspace.id, portfolio.id, {
-        coverAssetUrl: url,
-        slug: workspace.slug,
-      });
-      if (res.success) {
-        toast.success("Cover preset saved to your portfolio!");
-      } else {
-        toast.error(res.error || "Failed to save cover preset.");
-      }
-    });
-  };
-
-  const handleCustomUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    const file = files[0];
-    e.target.value = "";
-
-    const objectUrl = URL.createObjectURL(file);
-    setCropEditor({
-      isOpen: true,
-      mode: "cover",
-      imageSrc: objectUrl,
-      fileName: file.name,
-    });
-  };
-
-  const handleEditCurrentCover = () => {
-    if (!coverUrl) return;
-    setCropEditor({
-      isOpen: true,
-      mode: "cover",
-      imageSrc: coverUrl,
-      fileName: "cover-banner.jpg",
-    });
-  };
-
-  const handleProfileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // --- BRAND LOGO HANDLERS ---
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!canBranding) {
       toast.error(
-        "Custom studio profile/logo is reserved for Pro, Studio, and Enterprise plans. Upgrade to unlock."
+        "Custom studio logo is reserved for Pro, Studio, and Enterprise plans. Upgrade to unlock."
       );
       return;
     }
@@ -164,88 +146,29 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
     const objectUrl = URL.createObjectURL(file);
     setCropEditor({
       isOpen: true,
-      mode: "profile",
+      mode: "logo",
       imageSrc: objectUrl,
       fileName: file.name,
     });
   };
 
-  const handleEditCurrentProfile = () => {
+  const handleEditLogo = () => {
     if (!canBranding) {
       toast.error(
-        "Custom studio profile/logo is reserved for Pro, Studio, and Enterprise plans. Upgrade to unlock."
+        "Custom studio logo is reserved for Pro, Studio, and Enterprise plans. Upgrade to unlock."
       );
       return;
     }
     if (!logoUrl) return;
     setCropEditor({
       isOpen: true,
-      mode: "profile",
+      mode: "logo",
       imageSrc: logoUrl,
-      fileName: "profile-avatar.jpg",
+      fileName: "brand-logo.png",
     });
   };
 
-  const handleApplyCropResult = async (result: ImageCropResult) => {
-    if (cropEditor.mode === "cover") {
-      const uploadToast = createUploadProgressToast(`branding-cover-${Date.now()}`);
-      uploadToast.start(
-        `Saving cover "${cropEditor.fileName}"...`,
-        "Persisting cropped banner to portfolio..."
-      );
-      setCoverUrl(result.dataUrl);
-      setIsCustomCover(true);
-      uploadToast.update({
-        title: `Saving cover "${cropEditor.fileName}"`,
-        progress: 65,
-        loadedBytes: Math.round(result.file.size * 0.65),
-        totalBytes: result.file.size,
-      });
-
-      const res = await updateBrandingAction(workspace.id, portfolio.id, {
-        coverAssetUrl: result.dataUrl,
-        slug: workspace.slug,
-      });
-
-      if (res.success) {
-        uploadToast.success(
-          "Cover banner cropped & saved!",
-          "Your public portfolio cover has been updated."
-        );
-      } else {
-        uploadToast.error(res.error || "Failed to save cropped cover banner.");
-      }
-    } else {
-      const uploadToast = createUploadProgressToast(`branding-profile-${Date.now()}`);
-      uploadToast.start(
-        `Saving profile photo "${cropEditor.fileName}"...`,
-        "Persisting cropped avatar to workspace..."
-      );
-      setLogoUrl(result.dataUrl);
-      uploadToast.update({
-        title: `Saving profile photo "${cropEditor.fileName}"`,
-        progress: 65,
-        loadedBytes: Math.round(result.file.size * 0.65),
-        totalBytes: result.file.size,
-      });
-
-      const res = await updateBrandingAction(workspace.id, portfolio.id, {
-        logoUrl: canBranding ? result.dataUrl : undefined,
-        slug: workspace.slug,
-      });
-
-      if (res.success) {
-        uploadToast.success(
-          "Profile photo cropped & saved!",
-          "Your studio avatar has been updated across the platform."
-        );
-      } else {
-        uploadToast.error(res.error || "Failed to save cropped profile photo.");
-      }
-    }
-  };
-
-  const handleRemoveProfile = () => {
+  const handleRemoveLogo = () => {
     setLogoUrl(null);
     startTransition(async () => {
       const res = await updateBrandingAction(workspace.id, portfolio.id, {
@@ -253,30 +176,134 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
         slug: workspace.slug,
       });
       if (res.success) {
-        toast.success("Profile photo removed and saved.");
+        toast.success("Studio logo removed.");
       } else {
-        toast.error(res.error || "Failed to remove profile photo.");
+        toast.error(res.error || "Failed to remove logo.");
       }
     });
   };
 
-  const handleRemoveCover = () => {
-    const defaultCover = COVER_PRESETS[0].url;
-    setCoverUrl(defaultCover);
-    setIsCustomCover(false);
+  // --- PROFILE AVATAR HANDLERS ---
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    e.target.value = "";
+
+    const objectUrl = URL.createObjectURL(file);
+    setCropEditor({
+      isOpen: true,
+      mode: "avatar",
+      imageSrc: objectUrl,
+      fileName: file.name,
+    });
+  };
+
+  const handleEditAvatar = () => {
+    if (!avatarUrl) return;
+    setCropEditor({
+      isOpen: true,
+      mode: "avatar",
+      imageSrc: avatarUrl,
+      fileName: "profile-avatar.jpg",
+    });
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarUrl(null);
     startTransition(async () => {
       const res = await updateBrandingAction(workspace.id, portfolio.id, {
-        coverAssetUrl: defaultCover,
+        avatarUrl: null,
         slug: workspace.slug,
       });
       if (res.success) {
-        toast.success("Reset to default cinematic cover and saved.");
+        toast.success("Profile photo removed.");
       } else {
-        toast.error(res.error || "Failed to reset cover.");
+        toast.error(res.error || "Failed to remove photo.");
       }
     });
   };
 
+  // --- DIRECT COVER UPLOAD HANDLER ---
+  const handleCustomCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    e.target.value = "";
+
+    const objectUrl = URL.createObjectURL(file);
+    const isVid = file.type.startsWith("video/");
+
+    if (isVid) {
+      // Videos don't need image cropper
+      const updatedCover: PortfolioHeroCover = {
+        ...heroCover,
+        assetId: null,
+        type: "video",
+        mediaUrl: objectUrl,
+        thumbnailUrl: objectUrl,
+        title: file.name.replace(/\.[^/.]+$/, ""),
+        category: "Featured Film",
+      };
+      setHeroCover(updatedCover);
+      toast.success("Video preview loaded as cover!");
+    } else {
+      setCropEditor({
+        isOpen: true,
+        mode: "cover",
+        imageSrc: objectUrl,
+        fileName: file.name,
+      });
+    }
+  };
+
+  // --- CROP CONFIRMATION HANDLER ---
+  const handleApplyCropResult = async (result: ImageCropResult) => {
+    if (cropEditor.mode === "logo") {
+      const uploadToast = createUploadProgressToast(`branding-logo-${Date.now()}`);
+      uploadToast.start("Saving brand logo...", "Persisting logo to workspace...");
+      setLogoUrl(result.dataUrl);
+
+      const res = await updateBrandingAction(workspace.id, portfolio.id, {
+        logoUrl: canBranding ? result.dataUrl : undefined,
+        slug: workspace.slug,
+      });
+
+      if (res.success) {
+        uploadToast.success("Brand logo saved!", "Updated across header and client rooms.");
+      } else {
+        uploadToast.error(res.error || "Failed to save logo.");
+      }
+    } else if (cropEditor.mode === "avatar") {
+      const uploadToast = createUploadProgressToast(`branding-avatar-${Date.now()}`);
+      uploadToast.start("Saving profile photo...", "Persisting portrait to director bio...");
+      setAvatarUrl(result.dataUrl);
+
+      const res = await updateBrandingAction(workspace.id, portfolio.id, {
+        avatarUrl: result.dataUrl,
+        slug: workspace.slug,
+      });
+
+      if (res.success) {
+        uploadToast.success("Profile photo saved!", "Updated in your portfolio About section.");
+      } else {
+        uploadToast.error(res.error || "Failed to save photo.");
+      }
+    } else {
+      // Cover crop
+      const updated: PortfolioHeroCover = {
+        ...heroCover,
+        assetId: null,
+        type: "still",
+        mediaUrl: result.dataUrl,
+        thumbnailUrl: result.dataUrl,
+      };
+      setHeroCover(updated);
+      toast.success("Cover banner updated!");
+    }
+  };
+
+  // --- SAVE ALL BRANDING HANDLER ---
   const handleSaveAll = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     startTransition(async () => {
@@ -284,8 +311,10 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
         brandName,
         accentColor: canBranding ? accent : undefined,
         logoUrl: canBranding ? logoUrl : undefined,
+        avatarUrl,
         bio,
-        coverAssetUrl: coverUrl,
+        heroCover,
+        coverAssetUrl: heroCover.thumbnailUrl || heroCover.mediaUrl,
         whatsappNumber: whatsapp,
         experience: experiences,
         stats,
@@ -293,7 +322,7 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
       });
 
       if (res.success) {
-        toast.success("Brand, profile photo, cover, credentials & bio updated successfully!");
+        toast.success("Brand logo, profile photo, cover hero, credentials & bio saved!");
       } else {
         toast.error(res.error || "Failed to update branding settings.");
       }
@@ -302,7 +331,7 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
 
   return (
     <TooltipProvider delay={150}>
-      <div className="max-w-5xl mx-auto space-y-10 animate-in fade-in duration-200 pb-16">
+      <div className="w-full space-y-10 animate-in fade-in duration-200 pb-16">
         {/* Page Header */}
         <BrandingHeader
           workspaceSlug={workspace.slug}
@@ -310,23 +339,19 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
           onSave={handleSaveAll}
         />
 
-        {/* 1. Cover Image & Banner Selection */}
+        {/* 1. Asset-Driven Cover Banner & Showcase Hero */}
         <CoverBannerSection
-          coverUrl={coverUrl}
-          isCustomCover={isCustomCover}
+          heroCover={heroCover}
+          onHeroCoverChange={setHeroCover}
+          availableAssets={availableAssets}
           brandName={brandName}
           handle={handle}
           accent={accent}
           logoUrl={logoUrl}
-          onSelectPreset={handleSelectPreset}
-          onCustomUpload={handleCustomUpload}
-          onEditCover={handleEditCurrentCover}
-          onRemoveCover={handleRemoveCover}
-          onProfileUpload={handleProfileUpload}
-          onEditProfile={handleEditCurrentProfile}
+          onCustomUpload={handleCustomCoverUpload}
         />
 
-        {/* 2. Brand & Storefront Identity */}
+        {/* 2. Brand & Storefront Identity (with distinct Logo & Profile Avatar) */}
         <StorefrontIdentitySection
           brandName={brandName}
           onBrandNameChange={setBrandName}
@@ -337,9 +362,13 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
           accent={accent}
           onAccentChange={handleAccentChange}
           logoUrl={logoUrl}
-          onProfileUpload={handleProfileUpload}
-          onEditProfile={handleEditCurrentProfile}
-          onRemoveProfile={handleRemoveProfile}
+          onLogoUpload={handleLogoUpload}
+          onEditLogo={handleEditLogo}
+          onRemoveLogo={handleRemoveLogo}
+          avatarUrl={avatarUrl}
+          onAvatarUpload={handleAvatarUpload}
+          onEditAvatar={handleEditAvatar}
+          onRemoveAvatar={handleRemoveAvatar}
           stats={stats}
           onStatsChange={setStats}
           canBranding={canBranding}
@@ -374,7 +403,7 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
               }
             />
             <TooltipContent side="top">
-              Publishes your logo, cover, bio, and credentials live
+              Publishes your logo, profile photo, hero cover, bio, and credentials live
             </TooltipContent>
           </Tooltip>
         </div>
@@ -385,19 +414,31 @@ export function BrandingClient({ workspace, portfolio, features }: BrandingClien
           onClose={() => setCropEditor((prev) => ({ ...prev, isOpen: false }))}
           imageSrc={cropEditor.imageSrc}
           title={
-            cropEditor.mode === "cover"
-              ? "EDIT & CROP COVER BANNER"
-              : "EDIT & CROP PROFILE PHOTO"
+            cropEditor.mode === "logo"
+              ? "EDIT BRAND LOGO"
+              : cropEditor.mode === "avatar"
+              ? "EDIT PROFILE PHOTO"
+              : "EDIT & CROP COVER BANNER"
           }
           subtitle={
-            cropEditor.mode === "cover"
-              ? "Position, zoom, rotate, or color-grade your storefront hero banner."
-              : "Frame your studio portrait or logo inside the 1:1 avatar safe zone."
+            cropEditor.mode === "logo"
+              ? "Frame your studio insignia or brand mark."
+              : cropEditor.mode === "avatar"
+              ? "Frame your director portrait inside the circular safe zone."
+              : "Adjust cover banner framing and aspect ratio."
           }
-          defaultAspectRatio={cropEditor.mode === "cover" ? "3:1" : "1:1"}
-          aspectRatioOptions={cropEditor.mode === "cover" ? ["3:1", "16:9"] : ["1:1"]}
-          lockAspectRatio={cropEditor.mode === "profile"}
-          circularGuide={cropEditor.mode === "profile"}
+          defaultAspectRatio={
+            cropEditor.mode === "avatar" ? "1:1" : cropEditor.mode === "logo" ? "1:1" : "16:9"
+          }
+          aspectRatioOptions={
+            cropEditor.mode === "avatar"
+              ? ["1:1"]
+              : cropEditor.mode === "logo"
+              ? ["1:1", "16:9"]
+              : ["16:9", "3:1"]
+          }
+          lockAspectRatio={cropEditor.mode === "avatar"}
+          circularGuide={cropEditor.mode === "avatar"}
           outputFileName={cropEditor.fileName}
           onApply={handleApplyCropResult}
         />

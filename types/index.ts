@@ -34,8 +34,10 @@ export type ProjectAssetRow = Tables<"project_assets">;
 export type AssetRow = Tables<"assets">;
 export type AssetVersionRow = Tables<"asset_versions">;
 export type FeedbackRow = Tables<"feedback">;
+export type FeedbackReplyRow = Tables<"feedback_replies">;
 export type NotificationLogRow = Tables<"notification_logs">;
 
 // Compatibility alias for UI components
 import type { Feedback } from "../core/entities/feedback";
 export type Comment = Feedback;
+

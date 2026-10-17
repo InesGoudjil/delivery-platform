@@ -235,7 +235,7 @@ export default async function DeliveryDetailPage({
   const workspaceFeatures = await services.subscription.getFeatures(workspace.id);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-16 animate-in fade-in duration-200 text-foreground selection:bg-[#f5551d] selection:text-black">
+    <div className="w-full space-y-8 pb-16 animate-in fade-in duration-200 text-foreground selection:bg-primary selection:text-primary-foreground">
       <DeliveryNavHeader
         workspaceSlug={workspace.slug}
         shareToken={project.shareToken}

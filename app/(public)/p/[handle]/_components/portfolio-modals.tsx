@@ -15,9 +15,13 @@ import {
   Share2,
   Send,
   Check,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { PortfolioAsset, PortfolioProject } from "@/lib/portfolio-data";
 import { usePortfolioModal } from "./portfolio-context";
+import { Button } from "@/components/ui/button";
+import { submitPortfolioInquiryAction } from "@/app/actions/inquiries";
 
 export function PortfolioModals() {
   const {
@@ -38,6 +42,40 @@ export function PortfolioModals() {
 
   // Contact form submission state
   const [contactSubmitted, setContactSubmitted] = useState(false);
+  const [clientName, setClientName] = useState("");
+  const [clientContact, setClientContact] = useState("");
+  const [projectDetails, setProjectDetails] = useState("");
+  const [isSubmittingContact, setIsSubmittingContact] = useState(false);
+
+  const handleSubmitInquiry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clientName.trim() || !clientContact.trim() || !projectDetails.trim()) {
+      toast.error("Please fill in all inquiry fields.");
+      return;
+    }
+
+    try {
+      setIsSubmittingContact(true);
+      const res = await submitPortfolioInquiryAction({
+        handle: profile.handle,
+        name: clientName,
+        emailOrPhone: clientContact,
+        details: projectDetails,
+      });
+
+      if (!res.success) {
+        toast.error(res.error || "Failed to submit inquiry.");
+        return;
+      }
+
+      setContactSubmitted(true);
+      toast.success("Inquiry sent successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit inquiry.");
+    } finally {
+      setIsSubmittingContact(false);
+    }
+  };
 
   // Video player state
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -129,24 +167,28 @@ export function PortfolioModals() {
             </div>
 
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => {
                   if (typeof window !== "undefined") {
                     navigator.clipboard.writeText(window.location.href);
                   }
                 }}
-                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"
                 title="Share link"
               >
                 <Share2 className="size-4" />
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => setActiveStill(null)}
-                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"
                 title="Close (Esc)"
               >
                 <X className="size-4" />
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -155,13 +197,15 @@ export function PortfolioModals() {
             className="relative w-full max-w-5xl flex-1 flex items-center justify-center my-4 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={handlePrevStill}
-              className="absolute left-2 sm:left-4 z-20 p-3 rounded-full bg-black/50 hover:bg-[#f5551d] text-white hover:text-black transition-all cursor-pointer backdrop-blur-md"
+              className="absolute left-2 sm:left-4 z-20 size-11 rounded-full bg-black/50 hover:bg-primary text-white hover:text-primary-foreground transition-all cursor-pointer backdrop-blur-md"
               title="Previous (Left Arrow)"
             >
               <ArrowLeft className="size-5" />
-            </button>
+            </Button>
 
             <img
               src={activeStill.image}
@@ -169,13 +213,15 @@ export function PortfolioModals() {
               className="max-h-[75vh] w-auto max-w-full object-contain rounded-xl shadow-2xl"
             />
 
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={handleNextStill}
-              className="absolute right-2 sm:right-4 z-20 p-3 rounded-full bg-black/50 hover:bg-[#f5551d] text-white hover:text-black transition-all cursor-pointer backdrop-blur-md"
+              className="absolute right-2 sm:right-4 z-20 size-11 rounded-full bg-black/50 hover:bg-primary text-white hover:text-primary-foreground transition-all cursor-pointer backdrop-blur-md"
               title="Next (Right Arrow)"
             >
               <ArrowRight className="size-5" />
-            </button>
+            </Button>
           </div>
 
           {/* Bottom Bar Details */}
@@ -184,16 +230,18 @@ export function PortfolioModals() {
             onClick={(e) => e.stopPropagation()}
           >
             <span>{activeStill.desc}</span>
-            <button
+            <Button
+              variant="link"
+              size="xs"
               onClick={() =>
                 handleWhatsAppChat(
                   `Hi ${profile.name}, I love your still "${activeStill.title}". I would like to inquire about a shoot.`
                 )
               }
-              className="text-[#f5551d] hover:underline font-bold cursor-pointer"
+              className="h-auto p-0 text-primary hover:underline font-bold cursor-pointer"
             >
               Inquire About Shoot →
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -211,7 +259,7 @@ export function PortfolioModals() {
             {/* Header */}
             <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10 bg-[#121214]">
               <div className="flex items-center gap-3">
-                <div className="size-9 rounded-full bg-[#f5551d]/10 border border-[#f5551d]/30 flex items-center justify-center text-[#f5551d]">
+                <div className="size-9 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
                   <Film className="size-4" />
                 </div>
                 <div>
@@ -224,12 +272,14 @@ export function PortfolioModals() {
                 </div>
               </div>
 
-              <button
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => setActiveFilm(null)}
-                className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+                className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"
               >
                 <X className="size-4" />
-              </button>
+              </Button>
             </div>
 
             {/* Video Stage */}
@@ -271,7 +321,9 @@ export function PortfolioModals() {
 
               {/* Custom Video Controls Bar */}
               <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 flex items-center gap-4 text-white z-20">
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
                   onClick={() => {
                     if (videoRef.current) {
                       if (isPlaying) videoRef.current.pause();
@@ -279,14 +331,14 @@ export function PortfolioModals() {
                       setIsPlaying(!isPlaying);
                     }
                   }}
-                  className="p-1 text-white hover:text-[#f5551d] transition-colors cursor-pointer"
+                  className="size-8 p-1 text-white hover:text-primary hover:bg-white/10 cursor-pointer"
                 >
                   {isPlaying ? (
                     <Pause className="size-5" />
                   ) : (
                     <Play className="size-5 fill-current" />
                   )}
-                </button>
+                </Button>
 
                 {/* Progress bar */}
                 <input
@@ -299,28 +351,30 @@ export function PortfolioModals() {
                     setCurrentTime(newTime);
                     if (videoRef.current) videoRef.current.currentTime = newTime;
                   }}
-                  className="flex-1 accent-[#f5551d] h-1.5 rounded-full cursor-pointer bg-white/20"
+                  className="flex-1 accent-primary h-1.5 rounded-full cursor-pointer bg-white/20"
                 />
 
                 <span className="text-xs font-mono text-zinc-300 shrink-0">
                   {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
 
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
                   onClick={() => {
                     if (videoRef.current) {
                       videoRef.current.muted = !isMuted;
                       setIsMuted(!isMuted);
                     }
                   }}
-                  className="p-1 text-white hover:text-[#f5551d] transition-colors cursor-pointer"
+                  className="size-8 p-1 text-white hover:text-primary hover:bg-white/10 cursor-pointer"
                 >
                   {isMuted ? (
                     <VolumeX className="size-5" />
                   ) : (
                     <Volume2 className="size-5" />
                   )}
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -330,17 +384,17 @@ export function PortfolioModals() {
                 {activeFilm.desc}
               </p>
 
-              <button
+              <Button
                 onClick={() =>
                   handleWhatsAppChat(
                     `Hi ${profile.name}! I watched "${activeFilm.title}" on your portfolio and would like to inquire about a similar production.`
                   )
                 }
-                className="px-5 py-2.5 rounded-full bg-[#c85332] hover:bg-[#d95d3a] text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer"
+                className="px-5 py-2.5 h-auto rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer shadow-lg shadow-primary/25"
               >
                 <MessageCircle className="size-4" />
                 <span>Inquire About Similar Film</span>
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -357,12 +411,14 @@ export function PortfolioModals() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Top Close Button */}
-            <button
+            <Button
+              variant="ghost"
+              size="icon-xs"
               onClick={() => setSelectedProject(null)}
-              className="absolute top-4 right-4 z-30 size-9 rounded-full bg-black/60 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer border border-white/10"
+              className="absolute top-4 right-4 z-30 size-9 rounded-full bg-black/60 hover:bg-white/20 text-white cursor-pointer border border-white/10"
             >
               <X className="size-5" />
-            </button>
+            </Button>
 
             {/* Project Hero Header */}
             <div className="relative w-full h-64 sm:h-80 shrink-0 overflow-hidden">
@@ -374,7 +430,7 @@ export function PortfolioModals() {
 
               <div className="absolute bottom-6 left-6 right-6 z-10 space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 rounded-full bg-[#f5551d] text-black text-[11px] font-bold uppercase tracking-wider">
+                  <span className="px-3 py-1 rounded-full bg-primary text-primary-foreground text-[11px] font-bold uppercase tracking-wider">
                     {selectedProject.client}
                   </span>
                   <span className="px-3 py-1 rounded-full bg-black/60 border border-white/15 text-zinc-300 text-[11px] font-mono">
@@ -431,7 +487,7 @@ export function PortfolioModals() {
 
                       {asset.kind === "film" && (
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="size-8 rounded-full bg-black/60 border border-white/20 flex items-center justify-center text-white group-hover:bg-[#f5551d] group-hover:text-black transition-colors">
+                          <div className="size-8 rounded-full bg-black/60 border border-white/20 flex items-center justify-center text-white group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                             <Play className="size-3.5 fill-current ml-0.5" />
                           </div>
                         </div>
@@ -453,17 +509,17 @@ export function PortfolioModals() {
               <span className="text-xs text-zinc-400 font-mono">
                 Location: {selectedProject.location}
               </span>
-              <button
+              <Button
                 onClick={() =>
                   handleWhatsAppChat(
                     `Hi ${profile.name}! I was looking at the "${selectedProject.title}" project on your portfolio and would like to discuss a project inquiry.`
                   )
                 }
-                className="px-5 py-2 rounded-full bg-[#c85332] hover:bg-[#d95d3a] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer"
+                className="px-5 py-2 h-auto rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-primary/25"
               >
                 <MessageCircle className="size-3.5" />
                 <span>Inquire About Project</span>
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -488,12 +544,14 @@ export function PortfolioModals() {
                   Direct project inquiry with {profile.name}
                 </p>
               </div>
-              <button
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => setIsContactOpen(false)}
-                className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+                className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"
               >
                 <X className="size-4" />
-              </button>
+              </Button>
             </div>
 
             {contactSubmitted ? (
@@ -508,13 +566,13 @@ export function PortfolioModals() {
                   Thank you! We will review your production requirements and get back to you shortly.
                 </p>
                 <div className="pt-4">
-                  <button
+                  <Button
                     onClick={() => handleWhatsAppChat()}
-                    className="px-6 py-2.5 rounded-full bg-[#f5551d] text-black text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 mx-auto cursor-pointer"
+                    className="px-6 py-2.5 h-auto rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 mx-auto cursor-pointer shadow-lg shadow-primary/25"
                   >
                     <MessageCircle className="size-4" />
                     <span>Open WhatsApp Chat Directly</span>
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -548,10 +606,7 @@ export function PortfolioModals() {
 
                 {/* Form */}
                 <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    setContactSubmitted(true);
-                  }}
+                  onSubmit={handleSubmitInquiry}
                   className="space-y-3"
                 >
                   <div>
@@ -561,8 +616,10 @@ export function PortfolioModals() {
                     <input
                       type="text"
                       required
+                      value={clientName}
+                      onChange={(e) => setClientName(e.target.value)}
                       placeholder="e.g. Prestige Motors / Sarah Smith"
-                      className="w-full px-3.5 py-2 rounded-xl bg-black/50 border border-white/10 text-white text-xs focus:outline-none focus:border-[#f5551d]"
+                      className="w-full px-3.5 py-2 rounded-xl bg-black/50 border border-white/10 text-white text-xs focus:outline-none focus:border-primary"
                     />
                   </div>
 
@@ -573,8 +630,10 @@ export function PortfolioModals() {
                     <input
                       type="text"
                       required
+                      value={clientContact}
+                      onChange={(e) => setClientContact(e.target.value)}
                       placeholder="email@company.com or phone"
-                      className="w-full px-3.5 py-2 rounded-xl bg-black/50 border border-white/10 text-white text-xs focus:outline-none focus:border-[#f5551d]"
+                      className="w-full px-3.5 py-2 rounded-xl bg-black/50 border border-white/10 text-white text-xs focus:outline-none focus:border-primary"
                     />
                   </div>
 
@@ -585,18 +644,25 @@ export function PortfolioModals() {
                     <textarea
                       rows={3}
                       required
+                      value={projectDetails}
+                      onChange={(e) => setProjectDetails(e.target.value)}
                       placeholder="Tell us about the project scope, dates, and deliverable format..."
-                      className="w-full px-3.5 py-2 rounded-xl bg-black/50 border border-white/10 text-white text-xs focus:outline-none focus:border-[#f5551d] resize-none"
+                      className="w-full px-3.5 py-2 rounded-xl bg-black/50 border border-white/10 text-white text-xs focus:outline-none focus:border-primary resize-none"
                     />
                   </div>
 
-                  <button
+                  <Button
                     type="submit"
-                    className="w-full py-2.5 rounded-xl bg-[#c85332] hover:bg-[#d95d3a] text-white text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2"
+                    disabled={isSubmittingContact}
+                    className="w-full py-2.5 h-auto rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-primary/25 disabled:opacity-50"
                   >
-                    <Send className="size-3.5" />
-                    Send Project Inquiry
-                  </button>
+                    {isSubmittingContact ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Send className="size-3.5" />
+                    )}
+                    {isSubmittingContact ? "Sending Inquiry..." : "Send Project Inquiry"}
+                  </Button>
                 </form>
               </div>
             )}

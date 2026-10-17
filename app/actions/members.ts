@@ -3,6 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { getServerServices } from "@/core/server";
 import { WorkspaceRole } from "@/core/entities/workspace-member";
+import {
+  inviteWorkspaceMemberSchema,
+  updateWorkspaceMemberRoleSchema,
+  removeWorkspaceMemberSchema,
+  revokeWorkspaceInvitationSchema,
+  acceptWorkspaceInvitationSchema,
+  safeValidate,
+} from "@/lib/validations";
 
 export interface MemberActionResult<T = any> {
   success: boolean;
@@ -20,13 +28,22 @@ export async function inviteWorkspaceMemberAction(
   role: "admin" | "editor" | "viewer" = "editor"
 ): Promise<MemberActionResult> {
   try {
+    const validated = safeValidate(inviteWorkspaceMemberSchema, {
+      workspaceSlug,
+      email,
+      role,
+    });
+    if (!validated.success) {
+      return { success: false, error: validated.error };
+    }
+
     const services = await getServerServices();
     const currentUser = await services.auth.getCurrentUser();
     if (!currentUser) {
       return { success: false, error: "Unauthorized: Please log in." };
     }
 
-    const workspace = await services.workspace.getWorkspaceBySlug(workspaceSlug);
+    const workspace = await services.workspace.getWorkspaceBySlug(validated.data.workspaceSlug);
     if (!workspace) {
       return { success: false, error: "Workspace not found." };
     }
@@ -42,12 +59,12 @@ export async function inviteWorkspaceMemberAction(
     const invitation = await services.member.inviteMember(
       workspace.id,
       currentUser.id,
-      email,
-      role
+      validated.data.email,
+      validated.data.role
     );
 
-    revalidatePath(`/${workspaceSlug}/members`);
-    revalidatePath(`/${workspaceSlug}`);
+    revalidatePath(`/${validated.data.workspaceSlug}/members`);
+    revalidatePath(`/${validated.data.workspaceSlug}`);
 
     return { success: true, data: invitation };
   } catch (err: any) {
@@ -65,13 +82,22 @@ export async function updateWorkspaceMemberRoleAction(
   role: WorkspaceRole
 ): Promise<MemberActionResult> {
   try {
+    const validated = safeValidate(updateWorkspaceMemberRoleSchema, {
+      workspaceSlug,
+      memberUserId,
+      role,
+    });
+    if (!validated.success) {
+      return { success: false, error: validated.error };
+    }
+
     const services = await getServerServices();
     const currentUser = await services.auth.getCurrentUser();
     if (!currentUser) {
       return { success: false, error: "Unauthorized: Please log in." };
     }
 
-    const workspace = await services.workspace.getWorkspaceBySlug(workspaceSlug);
+    const workspace = await services.workspace.getWorkspaceBySlug(validated.data.workspaceSlug);
     if (!workspace) {
       return { success: false, error: "Workspace not found." };
     }
@@ -84,13 +110,17 @@ export async function updateWorkspaceMemberRoleAction(
       return { success: false, error: "Permission denied: Only workspace owners and admins can manage roles." };
     }
 
-    if (workspace.ownerId === memberUserId) {
+    if (workspace.ownerId === validated.data.memberUserId) {
       return { success: false, error: "The workspace owner's role cannot be modified." };
     }
 
-    const updated = await services.member.updateMemberRole(workspace.id, memberUserId, role);
+    const updated = await services.member.updateMemberRole(
+      workspace.id,
+      validated.data.memberUserId,
+      validated.data.role
+    );
 
-    revalidatePath(`/${workspaceSlug}/members`);
+    revalidatePath(`/${validated.data.workspaceSlug}/members`);
     return { success: true, data: updated };
   } catch (err: any) {
     return { success: false, error: err.message || "Failed to update member role." };
@@ -106,13 +136,21 @@ export async function removeWorkspaceMemberAction(
   memberUserId: string
 ): Promise<MemberActionResult> {
   try {
+    const validated = safeValidate(removeWorkspaceMemberSchema, {
+      workspaceSlug,
+      memberUserId,
+    });
+    if (!validated.success) {
+      return { success: false, error: validated.error };
+    }
+
     const services = await getServerServices();
     const currentUser = await services.auth.getCurrentUser();
     if (!currentUser) {
       return { success: false, error: "Unauthorized: Please log in." };
     }
 
-    const workspace = await services.workspace.getWorkspaceBySlug(workspaceSlug);
+    const workspace = await services.workspace.getWorkspaceBySlug(validated.data.workspaceSlug);
     if (!workspace) {
       return { success: false, error: "Workspace not found." };
     }
@@ -121,18 +159,18 @@ export async function removeWorkspaceMemberAction(
     const callerMember = await services.member.getMember(workspace.id, currentUser.id);
     const isOwner = workspace.ownerId === currentUser.id;
     const canRemove = isOwner || callerMember?.role === "owner" || callerMember?.role === "admin";
-    if (!canRemove && currentUser.id !== memberUserId) {
+    if (!canRemove && currentUser.id !== validated.data.memberUserId) {
       return { success: false, error: "Permission denied: You do not have access to remove collaborators." };
     }
 
-    if (workspace.ownerId === memberUserId) {
+    if (workspace.ownerId === validated.data.memberUserId) {
       return { success: false, error: "Cannot remove the workspace owner." };
     }
 
-    await services.member.removeMember(workspace.id, memberUserId);
+    await services.member.removeMember(workspace.id, validated.data.memberUserId);
 
-    revalidatePath(`/${workspaceSlug}/members`);
-    revalidatePath(`/${workspaceSlug}`);
+    revalidatePath(`/${validated.data.workspaceSlug}/members`);
+    revalidatePath(`/${validated.data.workspaceSlug}`);
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message || "Failed to remove member." };
@@ -147,13 +185,21 @@ export async function revokeWorkspaceInvitationAction(
   invitationId: string
 ): Promise<MemberActionResult> {
   try {
+    const validated = safeValidate(revokeWorkspaceInvitationSchema, {
+      workspaceSlug,
+      invitationId,
+    });
+    if (!validated.success) {
+      return { success: false, error: validated.error };
+    }
+
     const services = await getServerServices();
     const currentUser = await services.auth.getCurrentUser();
     if (!currentUser) {
       return { success: false, error: "Unauthorized: Please log in." };
     }
 
-    const workspace = await services.workspace.getWorkspaceBySlug(workspaceSlug);
+    const workspace = await services.workspace.getWorkspaceBySlug(validated.data.workspaceSlug);
     if (!workspace) {
       return { success: false, error: "Workspace not found." };
     }
@@ -165,9 +211,9 @@ export async function revokeWorkspaceInvitationAction(
       return { success: false, error: "Permission denied: Only workspace owners and admins can revoke invitations." };
     }
 
-    await services.member.revokeInvitation(invitationId, workspace.id);
+    await services.member.revokeInvitation(validated.data.invitationId, workspace.id);
 
-    revalidatePath(`/${workspaceSlug}/members`);
+    revalidatePath(`/${validated.data.workspaceSlug}/members`);
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message || "Failed to revoke invitation." };
@@ -181,13 +227,18 @@ export async function acceptWorkspaceInvitationAction(
   token: string
 ): Promise<MemberActionResult<{ workspaceSlug: string }>> {
   try {
+    const validated = safeValidate(acceptWorkspaceInvitationSchema, { token });
+    if (!validated.success) {
+      return { success: false, error: validated.error };
+    }
+
     const services = await getServerServices();
     const currentUser = await services.auth.getCurrentUser();
     if (!currentUser) {
       return { success: false, error: "Please sign in or create an account to accept this invitation." };
     }
 
-    const member = await services.member.acceptInvitation(token, currentUser.id);
+    const member = await services.member.acceptInvitation(validated.data.token, currentUser.id);
     const workspace = await services.workspace.getWorkspaceById(member.workspaceId);
     if (!workspace) {
       return { success: false, error: "Workspace not found." };

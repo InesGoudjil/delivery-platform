@@ -87,7 +87,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
             >
               <Avatar size="sm" className="size-8 ring-1 ring-white/10 shrink-0">
                 {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
-                <AvatarFallback className="bg-gradient-to-br from-[#f5551d] to-[#ff8a45] text-black font-bold text-xs">
+                <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">
                   {initials}
                 </AvatarFallback>
                 <AvatarBadge className="bg-[#86b98f] ring-2 ring-[#0c0c0e]" />
@@ -117,7 +117,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
               <div className="flex items-center gap-3">
                 <Avatar size="sm" className="size-9 ring-1 ring-white/20 shrink-0">
                   {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
-                  <AvatarFallback className="bg-gradient-to-br from-[#f5551d] to-[#ff8a45] text-black font-bold text-xs">
+                  <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
@@ -129,7 +129,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                     {user.email}
                   </span>
                   <div className="mt-1">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#f5551d]/15 text-[#f5551d] border border-[#f5551d]/30">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-primary/15 text-primary border border-primary/30">
                       {planPill}
                     </span>
                   </div>
@@ -146,7 +146,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                   href={`/${workspaceSlug}/settings`}
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#f6f3ec] hover:bg-white/10 hover:text-white cursor-pointer transition-colors"
                 >
-                  <Pencil className="size-4 text-[#f5551d]" />
+                  <Pencil className="size-4 text-primary" />
                   <span>Profile &amp; Bio</span>
                 </Link>
               </DropdownMenuItem>
@@ -259,7 +259,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                   className="flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium text-[#9a9a9f] hover:bg-white/10 hover:text-white cursor-pointer transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
-                    <ExternalLink className="size-4 text-[#f5551d]" />
+                    <ExternalLink className="size-4 text-primary" />
                     <span>View Public Portfolio</span>
                   </div>
                   <span className="text-[10px] font-mono text-[#71717a]">Live</span>

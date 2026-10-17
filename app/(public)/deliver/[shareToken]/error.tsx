@@ -22,7 +22,7 @@ export default function DeliverRoomError({
           <Lock className="size-7" />
         </div>
         <div className="space-y-1">
-          <span className="text-[11px] font-mono text-[#f5551d] uppercase tracking-widest font-semibold block">
+          <span className="text-[11px] font-mono text-primary uppercase tracking-widest font-semibold block">
             CLIENT REVIEW ROOM
           </span>
           <h3 className="text-xl font-bold font-heading text-[#f6f3ec]">
@@ -34,7 +34,7 @@ export default function DeliverRoomError({
         </div>
         <Button
           onClick={() => reset()}
-          className="rounded-xl bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] cursor-pointer h-10 px-6"
+          className="rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 cursor-pointer h-10 px-6 shadow-md shadow-primary/25"
         >
           <RefreshCw className="size-3.5 mr-2" /> Try Accessing Again
         </Button>

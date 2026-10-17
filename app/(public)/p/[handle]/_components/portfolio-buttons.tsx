@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Share2, Check, MessageCircle } from "lucide-react";
 import { usePortfolioModal } from "./portfolio-context";
+import { Button } from "@/components/ui/button";
 
 interface ContactButtonProps {
   label?: string;
@@ -12,20 +13,20 @@ interface ContactButtonProps {
 
 export function ContactButton({
   label = "Get In Touch",
-  className = "px-6 py-2.5 rounded-full bg-[#c85332] hover:bg-[#d95d3a] active:scale-95 text-white text-xs font-extrabold tracking-wider uppercase transition-all shadow-lg hover:shadow-[#c85332]/25 cursor-pointer",
+  className = "px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground text-xs font-extrabold tracking-wider uppercase transition-all shadow-lg hover:shadow-primary/25 cursor-pointer h-auto",
   icon = false,
 }: ContactButtonProps) {
   const { setIsContactOpen } = usePortfolioModal();
 
   return (
-    <button
+    <Button
       type="button"
       onClick={() => setIsContactOpen(true)}
       className={className}
     >
       {icon && <MessageCircle className="size-4 mr-2 inline-block" />}
       <span>{label}</span>
-    </button>
+    </Button>
   );
 }
 
@@ -34,7 +35,7 @@ interface ShareButtonProps {
 }
 
 export function ShareButton({
-  className = "hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-zinc-300 hover:text-white transition-all cursor-pointer",
+  className = "hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-zinc-300 hover:text-white transition-all cursor-pointer h-auto",
 }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
 
@@ -47,8 +48,9 @@ export function ShareButton({
   };
 
   return (
-    <button
+    <Button
       type="button"
+      variant="outline"
       onClick={handleShare}
       className={className}
       title="Share portfolio link"
@@ -64,7 +66,7 @@ export function ShareButton({
           <span>Share</span>
         </>
       )}
-    </button>
+    </Button>
   );
 }
 

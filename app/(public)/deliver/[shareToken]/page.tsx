@@ -5,6 +5,7 @@ import { createHash } from "crypto";
 import { getServerServices } from "@/core/server";
 import { presignDeliveryAssets } from "@/lib/media-server";
 import { DeliveryRoomClient, DeliveryAssetItem } from "./delivery-room-client";
+import { DeliveryExpiredScreen } from "./_components/delivery-expired-screen";
 
 interface PageProps {
   params: Promise<{ shareToken: string }>;
@@ -15,7 +16,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { shareToken } = await params;
   try {
     const services = await getServerServices();
-    const delivery = await services.delivery.getDeliveryByShareToken(shareToken);
+    const delivery = await services.delivery.getDeliveryByShareToken(shareToken, { allowExpired: true });
     if (!delivery) {
       return {
         title: "Review Room | CineSpace",
@@ -101,6 +102,13 @@ export default async function ClientDeliveryPage(props: PageProps) {
       timestampSeconds: f.timestampSeconds ? Number(f.timestampSeconds) : null,
       isResolved: f.isResolved,
       createdAt: f.createdAt,
+      replies: (f.replies || []).map((r) => ({
+        id: r.id,
+        feedbackId: r.feedbackId,
+        authorName: r.authorName,
+        commentText: r.commentText,
+        createdAt: r.createdAt,
+      })),
     }));
 
     return {
@@ -125,6 +133,25 @@ export default async function ClientDeliveryPage(props: PageProps) {
   const isWorkspaceMember = user
     ? await services.member.isMember(fullDetails.workspaceId, user.id).catch(() => false)
     : false;
+
+  // Check if link has expired
+  const isExpired = fullDetails.expiresAt ? new Date(fullDetails.expiresAt) < new Date() : false;
+
+  if (isExpired && !isWorkspaceMember) {
+    return (
+      <DeliveryExpiredScreen
+        title={fullDetails.title}
+        expiresAt={fullDetails.expiresAt}
+        workspace={{
+          brandName,
+          slug: workspaceSlug,
+          logoUrl,
+          accentColor,
+        }}
+        portfolioUrl={portfolio ? `/p/${portfolio.slug || workspaceSlug}` : undefined}
+      />
+    );
+  }
 
   // Also support auto-unlock via deep link query param (?passphrase=... or ?code=...)
   const resolvedSearchParams = props.searchParams ? await props.searchParams : undefined;

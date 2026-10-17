@@ -592,7 +592,6 @@ export interface Database {
           comment_text: string;
           timestamp_seconds: number | null;
           is_resolved: boolean;
-          parent_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -604,7 +603,6 @@ export interface Database {
           comment_text: string;
           timestamp_seconds?: number | null;
           is_resolved?: boolean;
-          parent_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -616,7 +614,35 @@ export interface Database {
           comment_text?: string;
           timestamp_seconds?: number | null;
           is_resolved?: boolean;
-          parent_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      feedback_replies: {
+        Row: {
+          id: string;
+          feedback_id: string;
+          author_user_id: string | null;
+          author_name: string;
+          comment_text: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          feedback_id: string;
+          author_user_id?: string | null;
+          author_name: string;
+          comment_text: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          feedback_id?: string;
+          author_user_id?: string | null;
+          author_name?: string;
+          comment_text?: string;
           created_at?: string;
           updated_at?: string;
         };

@@ -85,7 +85,7 @@ export function WaitlistClient({ metrics, entries: initialEntries }: WaitlistCli
             onClick={handleInviteCohort}
             disabled={isPending || metrics.pending === 0}
             size="sm"
-            className="bg-[#f5551d] hover:bg-[#e04a16] text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             {isPending ? (
               <>
@@ -134,7 +134,7 @@ export function WaitlistClient({ metrics, entries: initialEntries }: WaitlistCli
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-extrabold text-[#f5551d]">{metrics.pending}</div>
+            <div className="text-3xl font-extrabold text-primary">{metrics.pending}</div>
           </CardContent>
         </Card>
 
@@ -213,7 +213,7 @@ export function WaitlistClient({ metrics, entries: initialEntries }: WaitlistCli
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge className="bg-[#f5551d]/10 text-[#f5551d] border-[#f5551d]/20">
+                        <Badge className="bg-primary/10 text-primary border-primary/20">
                           +{entry.priorityScore} pts
                         </Badge>
                       </td>

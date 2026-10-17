@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import { CheckCircle2, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ActiveSubscriptionCard } from "./active-subscription-card";
 import { PlanComparisonGrid, PlanItem } from "./plan-comparison-grid";
 import { InvoicesHistoryCard } from "./invoices-history-card";
+import { SubscriptionFaq } from "./subscription-faq";
 import { Invoice } from "@/core/entities/invoice";
 import { WorkspaceFeatureConfig } from "@/core/entities/workspace";
 import { trackInitiateCheckout } from "@/lib/meta/pixel";
@@ -69,6 +71,13 @@ export function SubscriptionClient({
     setTimeout(() => setToast(null), 4000);
   };
 
+  const handleScrollToPlans = () => {
+    const el = document.getElementById("available-plans");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   const handleCheckout = async (plan: PlanItem) => {
     if (!canManageBilling) {
       showToast("Only workspace owners or administrators can change subscriptions.", "error");
@@ -82,9 +91,6 @@ export function SubscriptionClient({
 
     try {
       setLoadingPlanId(plan.id);
-      // Fire InitiateCheckout before redirecting to Stripe. The
-      // matching server-side Purchase event fires from the webhook
-      // after checkout.session.completed.
       trackInitiateCheckout({
         planId: plan.id,
         planName: plan.name,
@@ -155,7 +161,7 @@ export function SubscriptionClient({
 
   return (
     <TooltipProvider delay={150}>
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-10">
         {/* Toast Notification */}
         {toast && (
           <div
@@ -163,8 +169,8 @@ export function SubscriptionClient({
               toast.type === "error"
                 ? "bg-destructive text-destructive-foreground"
                 : toast.type === "success"
-                  ? "bg-emerald-600 text-white"
-                  : "bg-primary text-primary-foreground"
+                ? "bg-emerald-600 text-white"
+                : "bg-primary text-primary-foreground"
             }`}
           >
             {toast.type === "success" ? (
@@ -185,12 +191,14 @@ export function SubscriptionClient({
                 <strong>Success!</strong> Your subscription has been successfully synchronized and upgraded.
               </span>
             </div>
-            <button
+            <Button
+              variant="link"
+              size="sm"
               onClick={() => setBillingBanner(null)}
-              className="text-xs font-mono font-semibold underline hover:opacity-80 cursor-pointer"
+              className="text-xs font-mono font-semibold underline hover:opacity-80 cursor-pointer h-auto p-0 text-emerald-600 dark:text-emerald-400"
             >
               Dismiss
-            </button>
+            </Button>
           </div>
         )}
 
@@ -207,6 +215,7 @@ export function SubscriptionClient({
           hasBillingHistory={hasBillingHistory}
           onOpenPortal={handleOpenPortal}
           isLoadingPortal={isLoadingPortal}
+          onScrollToPlans={handleScrollToPlans}
         />
 
         {/* 2. Compare & Upgrade Plans Grid */}
@@ -220,6 +229,9 @@ export function SubscriptionClient({
 
         {/* 3. Invoices History Card */}
         <InvoicesHistoryCard invoices={invoices} />
+
+        {/* 4. Trust Reassurance & Frequently Asked Questions */}
+        {/*<SubscriptionFaq />*/}
       </div>
     </TooltipProvider>
   );

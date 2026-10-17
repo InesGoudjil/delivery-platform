@@ -93,7 +93,7 @@ export function WorkspaceSwitcher({
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground hover:bg-sidebar-accent/50 transition-colors rounded-xl"
             >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#f5551d] to-[#ff8a45] text-black font-bold text-xs shadow-md shadow-[#f5551d]/20 shrink-0">
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xs shadow-md shadow-primary/20 shrink-0">
                 {initials}
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">

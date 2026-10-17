@@ -14,6 +14,7 @@ import {
   Crop,
   Trash2,
 } from "lucide-react";
+import { UniversalDialog } from "@/components/ui/universal-dialog";
 import {
   requestAssetUploadAction,
   confirmUploadCompletedAction,
@@ -83,8 +84,7 @@ export function UploadFilmModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const thumbInputRef = useRef<HTMLInputElement>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
-
-  if (!isOpen) return null;
+  const uploadToastRef = useRef<ReturnType<typeof createUploadProgressToast> | null>(null);
 
   const handleFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -145,8 +145,6 @@ export function UploadFilmModal({
     setStatusText("");
     setErrorMessage(null);
   };
-
-  const uploadToastRef = useRef<ReturnType<typeof createUploadProgressToast> | null>(null);
 
   const handleClose = () => {
     if (uploading && xhrRef.current) {
@@ -284,26 +282,24 @@ export function UploadFilmModal({
       );
       uploadToastRef.current = null;
 
+      const resolvedMediaUrl = isImage
+        ? (customThumbUrl || confirmRes.assetVersion?.rawFileUrl || "")
+        : (confirmRes.assetVersion?.rawFileUrl || confirmRes.assetVersion?.hlsManifestUrl || "");
+
+      const resolvedThumbUrl =
+        customThumbUrl ||
+        confirmRes.assetVersion?.thumbnailUrl ||
+        (isImage ? confirmRes.assetVersion?.rawFileUrl : "") ||
+        "";
+
       const newItem: PortfolioItem = {
         id: initRes.asset.id,
         title: itemTitle,
         category: isImage ? "Photo Still" : "Standalone Film",
         type: isImage ? "still" : "film",
         assetCount: 1,
-        thumbnailUrl:
-          (isImage && thumbnailPreview) ||
-          customThumbUrl ||
-          thumbnailPreview ||
-          confirmRes.assetVersion?.thumbnailUrl ||
-          confirmRes.assetVersion?.rawFileUrl ||
-          "",
-        mediaUrl:
-          (isImage && thumbnailPreview) ||
-          thumbnailPreview ||
-          customThumbUrl ||
-          confirmRes.assetVersion?.rawFileUrl ||
-          confirmRes.assetVersion?.hlsManifestUrl ||
-          "",
+        thumbnailUrl: resolvedThumbUrl,
+        mediaUrl: resolvedMediaUrl,
       };
 
       onAssetUploaded(newItem);
@@ -322,32 +318,16 @@ export function UploadFilmModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div
-        className="w-full max-w-lg bg-[#161618]/95 border border-white/15 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-5 relative max-h-[92vh] overflow-y-auto"
-        style={{
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12)",
-        }}
+    <>
+      <UniversalDialog
+        open={isOpen}
+        onOpenChange={(open) => !uploading && !open && handleClose()}
+        size="lg"
+        title="UPLOAD FILM OR STILL"
+        description="Add a title and a short description. It'll show on your public Work page under Films or Stills."
+        showCloseButton={!uploading}
+        bodyClassName="space-y-5"
       >
-        {/* Close Button */}
-        <button
-          onClick={handleClose}
-          disabled={uploading}
-          className="absolute top-5 right-5 size-8 rounded-full bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50"
-        >
-          <X className="size-4" />
-        </button>
-
-        {/* Modal Header */}
-        <div className="space-y-1.5 pr-8">
-          <h2 className="text-base sm:text-lg font-black tracking-wider text-white uppercase font-heading">
-            UPLOAD FILM OR STILL
-          </h2>
-          <p className="text-xs text-zinc-400 leading-relaxed font-sans">
-            Add a title and a short description. It&apos;ll show on your public Work page under Films or Stills.
-          </p>
-        </div>
-
         {/* Plan Limit Warning */}
         {isAtLimit && (
           <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center justify-between gap-3 animate-in fade-in">
@@ -398,7 +378,7 @@ export function UploadFilmModal({
                 {selectedFile.type.startsWith("image/") ? (
                   <ImageIcon className="size-4" />
                 ) : (
-                  <Film className="size-4 text-[#f5551d]" />
+                  <Film className="size-4 text-primary" />
                 )}
               </AttachmentMedia>
               <AttachmentContent>
@@ -433,11 +413,11 @@ export function UploadFilmModal({
               onClick={() => fileInputRef.current?.click()}
               className={`border border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-2 ${
                 dragActive
-                  ? "border-[#f5551d] bg-[#f5551d]/10 scale-[1.01]"
+                  ? "border-primary bg-primary/10 scale-[1.01]"
                   : "border-white/15 bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.04]"
               }`}
             >
-              <div className="size-10 rounded-full flex items-center justify-center text-[#f5551d]">
+              <div className="size-10 rounded-full flex items-center justify-center text-primary">
                 <Upload className="size-5" />
               </div>
 
@@ -463,7 +443,7 @@ export function UploadFilmModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={uploading}
-              className="bg-[#0c0c0e]/80 border-white/10 text-xs text-white placeholder:text-zinc-600 focus-visible:border-[#f5551d]"
+              className="bg-[#0c0c0e]/80 border-white/10 text-xs text-white placeholder:text-zinc-600 focus-visible:border-primary"
               required
             />
           </div>
@@ -479,7 +459,7 @@ export function UploadFilmModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               disabled={uploading}
-              className="w-full bg-[#0c0c0e]/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#f5551d] resize-none transition-all"
+              className="w-full bg-[#0c0c0e]/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary resize-none transition-all"
             />
           </div>
 
@@ -538,7 +518,7 @@ export function UploadFilmModal({
                     disabled={uploading}
                     className="rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border-white/15 text-white text-xs font-semibold py-2.5 px-3 h-auto flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                   >
-                    <Crop className="size-3.5 text-[#f5551d]" />
+                    <Crop className="size-3.5 text-primary" />
                     <span>EDIT</span>
                   </Button>
                   <Button
@@ -568,14 +548,14 @@ export function UploadFilmModal({
             <div className="space-y-1.5 pt-1 animate-in fade-in">
               <div className="flex items-center justify-between text-[11px] font-mono">
                 <span className="text-zinc-400 flex items-center gap-1.5">
-                  <Loader2 className="size-3 animate-spin text-[#f5551d]" />
+                  <Loader2 className="size-3 animate-spin text-primary" />
                   {statusText}
                 </span>
-                <span className="font-bold text-[#f5551d]">{progress}%</span>
+                <span className="font-bold text-primary">{progress}%</span>
               </div>
               <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-[#d25828] to-[#f5551d] rounded-full transition-all duration-150"
+                  className="h-full bg-primary rounded-full transition-all duration-150"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -587,7 +567,7 @@ export function UploadFilmModal({
             <Button
               type="submit"
               disabled={!selectedFile || uploading || isAtLimit}
-              className="w-full rounded-xl py-3 px-4 h-auto bg-gradient-to-r from-[#b8481e] via-[#db5722] to-[#8d3615] hover:brightness-110 active:brightness-95 text-white text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-orange-950/40 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border border-white/10"
+              className="w-full rounded-xl py-3 px-4 h-auto bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-primary/25 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-0"
             >
               {uploading ? (
                 <>
@@ -605,7 +585,7 @@ export function UploadFilmModal({
             </Button>
           </div>
         </form>
-      </div>
+      </UniversalDialog>
 
       <ImageCropEditorDialog
         isOpen={thumbCropState.isOpen}
@@ -618,6 +598,6 @@ export function UploadFilmModal({
         outputFileName={thumbCropState.fileName}
         onApply={handleApplyThumbnailCrop}
       />
-    </div>
+    </>
   );
 }

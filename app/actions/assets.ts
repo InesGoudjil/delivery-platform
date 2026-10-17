@@ -3,6 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { getServerServices } from "@/core/server";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
+import {
+  deleteAssetOptionsSchema,
+  updateAssetDataSchema,
+  updateAssetOptionsSchema,
+  safeValidate,
+} from "@/lib/validations";
 
 export interface DeleteAssetOptions {
   deliveryId?: string;
@@ -32,6 +38,17 @@ export async function deleteAssetAction(
   options?: DeleteAssetOptions
 ) {
   try {
+    if (!assetId?.trim()) {
+      return { success: false, error: "Asset ID is required." };
+    }
+
+    const validatedOptions = options ? safeValidate(deleteAssetOptionsSchema, options) : null;
+    if (validatedOptions && !validatedOptions.success) {
+      return { success: false, error: validatedOptions.error };
+    }
+
+    const cleanOptions = validatedOptions?.data;
+
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
 
@@ -39,7 +56,7 @@ export async function deleteAssetAction(
       return { success: false, error: "Unauthorized. Please log in." };
     }
 
-    const asset = await services.asset.getAssetById(assetId);
+    const asset = await services.asset.getAssetById(assetId.trim());
     if (!asset) {
       return { success: false, error: "Asset not found." };
     }
@@ -604,6 +621,23 @@ export async function updateAssetAction(
   options?: UpdateAssetOptions
 ) {
   try {
+    if (!itemId?.trim()) {
+      return { success: false, error: "Item ID is required." };
+    }
+
+    const validatedData = safeValidate(updateAssetDataSchema, data);
+    if (!validatedData.success) {
+      return { success: false, error: validatedData.error };
+    }
+
+    const validatedOptions = options ? safeValidate(updateAssetOptionsSchema, options) : null;
+    if (validatedOptions && !validatedOptions.success) {
+      return { success: false, error: validatedOptions.error };
+    }
+
+    const cleanData = validatedData.data;
+    const cleanOptions = validatedOptions?.data;
+
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
 
@@ -611,8 +645,8 @@ export async function updateAssetAction(
       return { success: false, error: "Unauthorized. Please log in." };
     }
 
-    if (options?.isProject) {
-      const project = await services.project.getProjectById(itemId);
+    if (cleanOptions?.isProject) {
+      const project = await services.project.getProjectById(itemId.trim());
       if (!project) {
         return { success: false, error: "Project not found." };
       }
@@ -744,6 +778,75 @@ export async function updateAssetAction(
     return {
       success: false,
       error: error.message || "Failed to update asset.",
+    };
+  }
+}
+
+/**
+ * Sets a specific asset version as the active version for an asset.
+ */
+export async function setActiveVersionAction(
+  assetId: string,
+  versionId: string,
+  options?: { deliveryId?: string; workspaceSlug?: string }
+) {
+  try {
+    const services = await getServerServices();
+    const user = await services.auth.getCurrentUser();
+
+    if (!user) {
+      return { success: false, error: "Unauthorized. Please log in." };
+    }
+
+    const asset = await services.asset.getAssetById(assetId);
+    if (!asset) {
+      return { success: false, error: "Asset not found." };
+    }
+
+    const isMember = await services.member
+      .isMember(asset.workspaceId, user.id)
+      .catch(() => false);
+    if (!isMember) {
+      return {
+        success: false,
+        error: "You do not have permission to modify this asset.",
+      };
+    }
+
+    await services.asset.setActiveVersion(assetId, versionId);
+
+    const deliveryIdToRevalidate = asset.deliveryId || options?.deliveryId;
+    if (deliveryIdToRevalidate) {
+      try {
+        const delivery = await services.delivery.getDeliveryById(deliveryIdToRevalidate);
+        if (delivery?.shareToken) {
+          revalidatePath(`/deliver/${delivery.shareToken}`);
+        }
+      } catch {
+        // Non-critical
+      }
+    }
+
+    if (options?.workspaceSlug) {
+      revalidatePath(`/${options.workspaceSlug}/portfolio`);
+      revalidatePath(`/${options.workspaceSlug}/deliveries`);
+      if (deliveryIdToRevalidate) {
+        revalidatePath(`/${options.workspaceSlug}/deliveries/${deliveryIdToRevalidate}`);
+      }
+      revalidatePath(`/p/${options.workspaceSlug}`);
+    }
+    revalidatePath("/[workspaceSlug]/portfolio", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/deliver/[shareToken]", "page");
+    revalidatePath("/p/[handle]", "page");
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("setActiveVersionAction error:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to set active version.",
     };
   }
 }

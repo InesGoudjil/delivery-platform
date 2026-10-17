@@ -13,7 +13,7 @@ export default function NotFound() {
         </div>
 
         <div className="space-y-2">
-          <span className="text-4xl font-extrabold font-mono text-[#f5551d]">404</span>
+          <span className="text-4xl font-extrabold font-mono text-primary">404</span>
           <h2 className="text-xl font-bold font-heading text-[#f6f3ec]">
             Frame Not Found
           </h2>
@@ -25,7 +25,7 @@ export default function NotFound() {
         <div className="flex justify-center pt-2">
           <Button
             asChild
-            className="rounded-xl bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] cursor-pointer h-10 px-6"
+            className="rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 cursor-pointer h-10 px-6"
           >
             <Link href="/">
               <Home className="size-4 mr-2" /> Back to Workspace

@@ -11,6 +11,18 @@ export interface PortfolioAsset {
   resolution?: string;
 }
 
+export interface SelectableCoverAsset {
+  id: string;
+  title: string;
+  type: "video" | "still";
+  url: string;
+  thumbnailUrl: string;
+  aspectRatio?: string;
+  duration?: string | null;
+  category?: string;
+  projectName?: string;
+}
+
 export interface PublicFeaturedItem {
   id: string;
   title: string;
@@ -51,9 +63,11 @@ export interface FilmmakerProfile {
   handle: string;
   title: string;
   avatar: string;
+  logoUrl?: string | null;
   bio: string;
   tagline: string;
   heroImage: string;
+  heroCover?: any;
   featuredProjectId?: string | number;
   stats: {
     filmsDelivered: string;

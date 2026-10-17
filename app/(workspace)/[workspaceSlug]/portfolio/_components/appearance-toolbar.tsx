@@ -85,7 +85,7 @@ export function AppearanceToolbar({
       {/* Header using CardHeader, CardTitle, and CardAction */}
       <CardHeader className="border-b border-white/[0.06] pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-bold text-white font-heading tracking-wide">
-          <SlidersHorizontal className="size-4 text-[#f5551d]" />
+          <SlidersHorizontal className="size-4 text-primary" />
           <span>Appearance</span>
         </CardTitle>
 
@@ -115,7 +115,7 @@ export function AppearanceToolbar({
                 }}
                 className={`px-3 py-1 h-auto rounded-md text-xs font-semibold transition-all cursor-pointer ${
                   cardSize === sz
-                    ? "bg-[#f5551d] text-white font-bold hover:bg-[#ff8a45] shadow-sm"
+                    ? "bg-primary text-primary-foreground font-bold hover:bg-primary/90 shadow-sm"
                     : "text-zinc-400 hover:text-white hover:bg-transparent"
                 }`}
               >
@@ -143,7 +143,7 @@ export function AppearanceToolbar({
                     }}
                     className={`p-1.5 px-2 h-auto rounded-md transition-all cursor-pointer flex items-center justify-center ${
                       aspectRatio === "16:9"
-                        ? "bg-[#f5551d] text-white hover:bg-[#ff8a45] shadow-sm"
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                         : "text-zinc-400 hover:text-white hover:bg-transparent"
                     }`}
                   >
@@ -168,7 +168,7 @@ export function AppearanceToolbar({
                     }}
                     className={`p-1.5 px-2 h-auto rounded-md transition-all cursor-pointer flex items-center justify-center ${
                       aspectRatio === "1:1"
-                        ? "bg-[#f5551d] text-white hover:bg-[#ff8a45] shadow-sm"
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                         : "text-zinc-400 hover:text-white hover:bg-transparent"
                     }`}
                   >
@@ -193,7 +193,7 @@ export function AppearanceToolbar({
                     }}
                     className={`p-1.5 px-2 h-auto rounded-md transition-all cursor-pointer flex items-center justify-center ${
                       aspectRatio === "9:16"
-                        ? "bg-[#f5551d] text-white hover:bg-[#ff8a45] shadow-sm"
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                         : "text-zinc-400 hover:text-white hover:bg-transparent"
                     }`}
                   >
@@ -218,7 +218,7 @@ export function AppearanceToolbar({
                     }}
                     className={`p-1.5 px-2 h-auto rounded-md transition-all cursor-pointer flex items-center justify-center ${
                       aspectRatio === "grid" || aspectRatio === "4:3" || aspectRatio === "masonry"
-                        ? "bg-[#f5551d] text-white hover:bg-[#ff8a45] shadow-sm"
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                         : "text-zinc-400 hover:text-white hover:bg-transparent"
                     }`}
                   >
@@ -250,7 +250,7 @@ export function AppearanceToolbar({
                       }}
                       className={`px-3 py-1 h-auto rounded-md text-xs font-semibold capitalize transition-all cursor-pointer ${
                         thumbnailScale === sc
-                          ? "bg-[#f5551d] text-white font-bold hover:bg-[#ff8a45] shadow-sm"
+                          ? "bg-primary text-primary-foreground font-bold hover:bg-primary/90 shadow-sm"
                           : "text-zinc-400 hover:text-white hover:bg-transparent"
                       }`}
                     >
@@ -275,7 +275,7 @@ export function AppearanceToolbar({
               setShowClientInfo(val);
               persistAppearance({ showClientInfo: val });
             }}
-            className="data-[state=checked]:bg-[#f5551d]"
+            className="data-[state=checked]:bg-primary"
           />
         </div>
       </CardContent>
