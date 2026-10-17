@@ -37,7 +37,7 @@ const YoutubeIcon = () => (
 export function FooterSection() {
   return (
     <footer className="w-full border-t border-white/10 bg-[#070709] pt-16 pb-12 text-left">
-      <div className="mx-auto max-w-7xl px-4 sm:px-8 space-y-12">
+      <div className="w-full px-4 sm:px-6 lg:px-8 space-y-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
           {/* Left Column: Logo, Description & Social Icons */}
           <div className="lg:col-span-6 space-y-6">

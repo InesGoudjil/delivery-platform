@@ -141,18 +141,18 @@ export function WorkspaceSidebar({
         icon: MessageSquare,
       },
     ],
-    resources: [
-      {
-        name: "Help & Shortcuts",
-        url: `/${workspaceSlug}/help`,
-        icon: HelpCircle,
-      },
-      {
-        name: "Studio Docs",
-        url: `/${workspaceSlug}/docs`,
-        icon: BookOpen,
-      },
-    ],
+    // resources: [
+    //   {
+    //     name: "Help & Shortcuts",
+    //     url: `/${workspaceSlug}/help`,
+    //     icon: HelpCircle,
+    //   },
+    //   {
+    //     name: "Studio Docs",
+    //     url: `/${workspaceSlug}/docs`,
+    //     icon: BookOpen,
+    //   },
+    // ],
   };
 
   const brandName = workspace?.brandName || "Pedro Concreato";
@@ -185,7 +185,7 @@ export function WorkspaceSidebar({
       <SidebarContent className="px-3 py-4 space-y-6">
         <NavDocuments title="WORKSPACE" items={data.documents} />
         <NavDocuments title="ACCOUNT" items={data.account} />
-        <NavDocuments title="RESOURCES" items={data.resources} />
+        {/*<NavDocuments title="RESOURCES" items={data.resources} />*/}
       </SidebarContent>
 
       <SidebarFooter className="p-3 border-t border-sidebar-border/30">

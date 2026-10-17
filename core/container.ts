@@ -29,6 +29,7 @@ import {
   SupabaseNotificationLogRepository,
   SupabaseInvoiceRepository,
   SupabaseWaitlistRepository,
+  SupabaseInquiryRepository,
 } from "./repositories";
 import { ResendEmailProvider } from "./providers/email";
 
@@ -72,6 +73,7 @@ export interface CoreServices {
     feedback: SupabaseFeedbackRepository;
     notification: SupabaseNotificationLogRepository;
     waitlist: SupabaseWaitlistRepository;
+    inquiry: SupabaseInquiryRepository;
   };
   services: {
     auth: AuthService;
@@ -92,6 +94,7 @@ export interface CoreServices {
     storage: IStorageProvider;
     silo: SiloService;
     siloProvider: ISiloStorageProvider;
+    email: ResendEmailProvider;
   };
 }
 
@@ -133,6 +136,7 @@ export function createCoreServices(
   const notificationRepo = new SupabaseNotificationLogRepository(supabase);
   const invoiceRepo = new SupabaseInvoiceRepository(systemClient);
   const waitlistRepo = new SupabaseWaitlistRepository(systemClient);
+  const inquiryRepo = new SupabaseInquiryRepository(systemClient);
 
   // Email Provider
   const emailProvider = new ResendEmailProvider();
@@ -244,6 +248,7 @@ export function createCoreServices(
       feedback: feedbackRepo,
       notification: notificationRepo,
       waitlist: waitlistRepo,
+      inquiry: inquiryRepo,
     },
     services: {
       auth: authService,
@@ -264,6 +269,7 @@ export function createCoreServices(
       storage: storageProvider,
       silo: siloService,
       siloProvider,
+      email: emailProvider,
     },
   };
 }

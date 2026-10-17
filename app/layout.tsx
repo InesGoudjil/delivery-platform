@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import "./globals.css";
 import localFont from "next/font/local";
+import { Manrope } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/i18n/context";
@@ -11,8 +12,9 @@ import { PostHogProvider } from "@/lib/posthog/client";
 import { PostHogPageView } from "@/components/posthog/PostHogPageView";
 import { PostHogIdentify } from "@/components/posthog/PostHogIdentify";
 
-const manrope = localFont({
-  src: "../public/fonts/Manrope-Regular.otf",
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
   variable: "--font-manrope",
   display: "swap",
 });
@@ -60,7 +62,7 @@ export default function RootLayout({
         />
         <MetaPixel />
       </head>
-      <body className="min-h-screen bg-background text-foreground antialiased selection:bg-[#f5551d] selection:text-black">
+      <body className="min-h-screen bg-background text-foreground antialiased selection:bg-primary selection:text-primary-foreground">
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

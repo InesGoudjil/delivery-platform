@@ -3,23 +3,30 @@
 import { getServerServices } from "@/core/server";
 import { revalidatePath } from "next/cache";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
+import {
+  updatePortfolioSchema,
+  updateBrandingSchema,
+  toggleFeaturedItemSchema,
+  reorderFeaturedItemsSchema,
+  safeValidate,
+  type UpdatePortfolioInput,
+  type UpdateBrandingInput,
+} from "@/lib/validations";
 
 export async function updatePortfolioAction(
   portfolioId: string,
-  data: {
-    title?: string;
-    bio?: string | null;
-    coverAssetUrl?: string | null;
-    socialLinks?: Record<string, string | undefined>;
-    isPublished?: boolean;
-    appearance?: any;
-    experience?: any[];
-    whatsappNumber?: string | null;
-    stats?: any;
-    layoutTemplate?: string;
-  }
+  data: UpdatePortfolioInput
 ) {
   try {
+    if (!portfolioId?.trim()) {
+      return { success: false, error: "Portfolio ID is required." };
+    }
+
+    const validated = safeValidate(updatePortfolioSchema, data);
+    if (!validated.success) {
+      return { success: false, error: validated.error };
+    }
+
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
 
@@ -27,24 +34,25 @@ export async function updatePortfolioAction(
       return { success: false, error: "Unauthorized. Please log in." };
     }
 
-    const current = await services.portfolio.getPortfolioById(portfolioId);
+    const current = await services.portfolio.getPortfolioById(portfolioId.trim());
     if (!current) {
       return { success: false, error: "Portfolio not found." };
     }
 
-    if (data.appearance) {
+    const updatePayload = { ...validated.data };
+    if (updatePayload.appearance) {
       const existingAppearance: any = current.appearance || {};
-      data.appearance = {
+      updatePayload.appearance = {
         ...existingAppearance,
-        ...data.appearance,
+        ...updatePayload.appearance,
         featuredItemIds:
-          data.appearance.featuredItemIds !== undefined
-            ? data.appearance.featuredItemIds
+          updatePayload.appearance.featuredItemIds !== undefined
+            ? updatePayload.appearance.featuredItemIds
             : (existingAppearance.featuredItemIds || []),
       };
     }
 
-    const updated = await services.portfolio.updatePortfolio(portfolioId, data);
+    const updated = await services.portfolio.updatePortfolio(portfolioId.trim(), updatePayload);
 
     if (current.slug) {
       revalidatePath(`/${current.slug}/portfolio`);
@@ -67,6 +75,16 @@ export async function toggleFeaturedItemAction(
   isFeatured: boolean
 ) {
   try {
+    const validated = safeValidate(toggleFeaturedItemSchema, {
+      portfolioId,
+      itemId,
+      itemType,
+      isFeatured,
+    });
+    if (!validated.success) {
+      return { success: false, error: validated.error };
+    }
+
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
 
@@ -74,7 +92,7 @@ export async function toggleFeaturedItemAction(
       return { success: false, error: "Unauthorized." };
     }
 
-    const portfolio = await services.portfolio.getPortfolioById(portfolioId);
+    const portfolio = await services.portfolio.getPortfolioById(validated.data.portfolioId);
     if (!portfolio) {
       return { success: false, error: "Portfolio not found." };
     }
@@ -92,17 +110,17 @@ export async function toggleFeaturedItemAction(
       : [];
 
     let updatedFeaturedIds: string[];
-    if (isFeatured) {
-      if (!currentFeaturedIds.includes(itemId)) {
-        updatedFeaturedIds = [...currentFeaturedIds, itemId];
+    if (validated.data.isFeatured) {
+      if (!currentFeaturedIds.includes(validated.data.itemId)) {
+        updatedFeaturedIds = [...currentFeaturedIds, validated.data.itemId];
       } else {
         updatedFeaturedIds = currentFeaturedIds;
       }
     } else {
-      updatedFeaturedIds = currentFeaturedIds.filter((id) => id !== itemId);
+      updatedFeaturedIds = currentFeaturedIds.filter((id) => id !== validated.data.itemId);
     }
 
-    await services.portfolio.updatePortfolio(portfolioId, {
+    await services.portfolio.updatePortfolio(validated.data.portfolioId, {
       appearance: {
         ...currentAppearance,
         featuredItemIds: updatedFeaturedIds,
@@ -127,6 +145,11 @@ export async function reorderFeaturedItemsAction(
   itemIds: string[]
 ) {
   try {
+    const validated = safeValidate(reorderFeaturedItemsSchema, { portfolioId, itemIds });
+    if (!validated.success) {
+      return { success: false, error: validated.error };
+    }
+
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
 
@@ -134,7 +157,7 @@ export async function reorderFeaturedItemsAction(
       return { success: false, error: "Unauthorized." };
     }
 
-    const portfolio = await services.portfolio.getPortfolioById(portfolioId);
+    const portfolio = await services.portfolio.getPortfolioById(validated.data.portfolioId);
     if (!portfolio) {
       return { success: false, error: "Portfolio not found." };
     }
@@ -147,10 +170,10 @@ export async function reorderFeaturedItemsAction(
       featuredItemIds: [],
     };
 
-    await services.portfolio.updatePortfolio(portfolioId, {
+    await services.portfolio.updatePortfolio(validated.data.portfolioId, {
       appearance: {
         ...currentAppearance,
-        featuredItemIds: itemIds,
+        featuredItemIds: validated.data.itemIds,
       },
     });
 
@@ -178,19 +201,17 @@ export async function toggleFeaturedProjectAction(
 export async function updateBrandingAction(
   workspaceId: string,
   portfolioId: string,
-  data: {
-    brandName?: string;
-    accentColor?: string;
-    logoUrl?: string | null;
-    bio?: string | null;
-    coverAssetUrl?: string | null;
-    whatsappNumber?: string | null;
-    experience?: any[];
-    stats?: any;
-    slug?: string;
-  }
+  data: UpdateBrandingInput
 ) {
   try {
+    if (!workspaceId?.trim()) return { success: false, error: "Workspace ID is required." };
+    if (!portfolioId?.trim()) return { success: false, error: "Portfolio ID is required." };
+
+    const validated = safeValidate(updateBrandingSchema, data);
+    if (!validated.success) {
+      return { success: false, error: validated.error };
+    }
+
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
 
@@ -198,8 +219,10 @@ export async function updateBrandingAction(
       return { success: false, error: "Unauthorized. Please log in." };
     }
 
-    if (data.accentColor !== undefined || data.logoUrl !== undefined) {
-      const canBranding = await services.subscription.isBrandingAllowed(workspaceId);
+    const cleanData = validated.data;
+
+    if (cleanData.accentColor !== undefined || cleanData.logoUrl !== undefined) {
+      const canBranding = await services.subscription.isBrandingAllowed(workspaceId.trim());
       if (!canBranding) {
         return {
           success: false,
@@ -208,8 +231,8 @@ export async function updateBrandingAction(
       }
     }
 
-    if (data.whatsappNumber && data.whatsappNumber.trim()) {
-      const canWhatsApp = await services.subscription.canDeliverWhatsApp(workspaceId);
+    if (cleanData.whatsappNumber && cleanData.whatsappNumber.trim()) {
+      const canWhatsApp = await services.subscription.canDeliverWhatsApp(workspaceId.trim());
       if (!canWhatsApp) {
         return {
           success: false,
@@ -219,32 +242,50 @@ export async function updateBrandingAction(
     }
 
     const wsUpdate: any = {};
-    if (data.brandName !== undefined) wsUpdate.brandName = data.brandName;
-    if (data.accentColor !== undefined) wsUpdate.accentColor = data.accentColor;
-    if (data.logoUrl !== undefined) wsUpdate.logoUrl = data.logoUrl;
+    if (cleanData.brandName !== undefined) wsUpdate.brandName = cleanData.brandName;
+    if (cleanData.accentColor !== undefined) wsUpdate.accentColor = cleanData.accentColor;
+    if (cleanData.logoUrl !== undefined) wsUpdate.logoUrl = cleanData.logoUrl;
 
     if (Object.keys(wsUpdate).length > 0) {
-      await services.workspace.updateWorkspaceBranding(workspaceId, wsUpdate);
+      await services.workspace.updateWorkspaceBranding(workspaceId.trim(), wsUpdate);
+    }
+
+    if (cleanData.avatarUrl !== undefined) {
+      await services.profile.updateProfile(user.id, {
+        avatarUrl: cleanData.avatarUrl,
+      });
     }
 
     const portfolioUpdate: any = {};
-    if (data.bio !== undefined) portfolioUpdate.bio = data.bio;
-    if (data.coverAssetUrl !== undefined) portfolioUpdate.coverAssetUrl = data.coverAssetUrl;
-    if (data.whatsappNumber !== undefined) portfolioUpdate.whatsappNumber = data.whatsappNumber;
-    if (data.brandName !== undefined) portfolioUpdate.title = `${data.brandName} Portfolio`;
-    if (data.experience !== undefined) portfolioUpdate.experience = data.experience;
-    if (data.stats !== undefined) portfolioUpdate.stats = data.stats;
+    if (cleanData.bio !== undefined) portfolioUpdate.bio = cleanData.bio;
+    if (cleanData.coverAssetUrl !== undefined) portfolioUpdate.coverAssetUrl = cleanData.coverAssetUrl;
+    if (cleanData.whatsappNumber !== undefined) portfolioUpdate.whatsappNumber = cleanData.whatsappNumber;
+    if (cleanData.brandName !== undefined) portfolioUpdate.title = `${cleanData.brandName} Portfolio`;
+    if (cleanData.experience !== undefined) portfolioUpdate.experience = cleanData.experience;
+    if (cleanData.stats !== undefined) portfolioUpdate.stats = cleanData.stats;
+
+    if (cleanData.heroCover !== undefined) {
+      const currentPortfolio = await services.portfolio.getPortfolioById(portfolioId.trim());
+      const existingAppearance: any = currentPortfolio?.appearance || {};
+      portfolioUpdate.appearance = {
+        ...existingAppearance,
+        heroCover: cleanData.heroCover,
+      };
+      if (cleanData.heroCover?.thumbnailUrl && !cleanData.coverAssetUrl) {
+        portfolioUpdate.coverAssetUrl = cleanData.heroCover.thumbnailUrl;
+      }
+    }
 
     let updatedPortfolio = null;
     if (Object.keys(portfolioUpdate).length > 0) {
-      updatedPortfolio = await services.portfolio.updatePortfolio(portfolioId, portfolioUpdate);
+      updatedPortfolio = await services.portfolio.updatePortfolio(portfolioId.trim(), portfolioUpdate);
     }
 
-    if (data.slug) {
-      revalidatePath(`/${data.slug}`, "layout");
-      revalidatePath(`/${data.slug}/settings`);
-      revalidatePath(`/${data.slug}/portfolio`);
-      revalidatePath(`/p/${data.slug}`);
+    if (cleanData.slug) {
+      revalidatePath(`/${cleanData.slug}`, "layout");
+      revalidatePath(`/${cleanData.slug}/settings`);
+      revalidatePath(`/${cleanData.slug}/portfolio`);
+      revalidatePath(`/p/${cleanData.slug}`);
     } else {
       revalidatePath("/[workspaceSlug]", "layout");
       revalidatePath("/[workspaceSlug]/settings", "page");
@@ -260,9 +301,11 @@ export async function updateBrandingAction(
 
 export async function getProjectAssetsAction(projectId: string) {
   try {
+    if (!projectId?.trim()) return { success: false, error: "Project ID is required.", assets: [] };
+
     const services = await getServerServices();
-    const project = await services.project.getProjectById(projectId);
-    const deliveryId = project?.sourceDeliveryId || projectId;
+    const project = await services.project.getProjectById(projectId.trim());
+    const deliveryId = project?.sourceDeliveryId || projectId.trim();
 
     let assets = await services.asset.listAssets(deliveryId);
     if (assets.length === 0 && project && project.id !== deliveryId) {
@@ -368,5 +411,3 @@ export async function updateAssetAction(
   const { updateAssetAction: upd } = await import("./assets");
   return upd(itemId, data, options);
 }
-
-

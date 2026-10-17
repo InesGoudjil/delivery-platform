@@ -219,7 +219,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
         <div>
-          <div className="text-xs font-mono text-[#f5551d] uppercase tracking-wider mb-1">
+          <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1">
             Stripe &amp; Billing Control
           </div>
           <h1 className="text-3xl font-black font-heading text-foreground tracking-tight">
@@ -235,7 +235,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
             setServerError(null);
             setCreateModalOpen(true);
           }}
-          className="rounded-full bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] shadow-lg shadow-[#f5551d]/20 cursor-pointer"
+          className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 shadow-lg shadow-primary/20 cursor-pointer"
         >
           <Plus className="size-3.5 mr-1.5" /> Create New Tier
         </Button>
@@ -416,7 +416,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
         <DialogContent className="sm:max-w-md bg-card border-border">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              <Plus className="size-5 text-[#f5551d]" />
+              <Plus className="size-5 text-primary" />
               Create Subscription Tier (Auto-Stripe Sync)
             </DialogTitle>
             <DialogDescription>
@@ -506,7 +506,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
               <Button
                 type="submit"
                 disabled={isPending || createSuccess}
-                className="rounded-full bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45]"
+                className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90"
               >
                 {createSuccess ? (
                   <>

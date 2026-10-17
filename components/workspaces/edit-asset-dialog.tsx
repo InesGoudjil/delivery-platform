@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { X, UploadCloud, Loader2, Image as ImageIcon, Link as LinkIcon, Crop } from "lucide-react";
+import { UploadCloud, Loader2, Image as ImageIcon, Link as LinkIcon, Crop } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { UniversalDialog } from "@/components/ui/universal-dialog";
 import { requestAssetUploadAction } from "@/app/actions/upload";
 import { createUploadProgressToast } from "@/lib/upload-toast";
 import {
@@ -174,32 +174,16 @@ export function EditAssetDialog({
   const computedTitle = dialogTitle || (item?.type === "project" ? "EDIT PROJECT" : "EDIT ASSET");
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent
-        showCloseButton={false}
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-[#141418]/95 backdrop-blur-xl border border-white/15 text-white rounded-3xl p-6 sm:p-7 w-full max-w-lg shadow-2xl space-y-5"
+    <>
+      <UniversalDialog
+        open={isOpen}
+        onOpenChange={(open) => !open && onClose()}
+        size="lg"
+        title={computedTitle}
+        description="Update title, thumbnail cover, description, or display format."
       >
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div>
-            <h3 className="text-lg font-black font-heading tracking-wide uppercase text-white">
-              {computedTitle}
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Update title, thumbnail cover, description, or display format.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-muted-foreground hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
         {localError && (
-          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-400">
+          <div className="p-3 mb-4 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-400">
             {localError}
           </div>
         )}
@@ -226,10 +210,12 @@ export function EditAssetDialog({
               <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
                 THUMBNAIL COVER
               </label>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="xs"
                 onClick={() => setIsUrlMode(!isUrlMode)}
-                className="text-[11px] text-muted-foreground hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
+                className="text-[11px] text-muted-foreground hover:text-white flex items-center gap-1 transition-colors cursor-pointer h-auto p-0 hover:bg-transparent"
               >
                 {isUrlMode ? (
                   <>
@@ -240,7 +226,7 @@ export function EditAssetDialog({
                     <LinkIcon className="size-3" /> Enter Image URL
                   </>
                 )}
-              </button>
+              </Button>
             </div>
 
             <div className="flex items-center gap-3.5">
@@ -364,18 +350,20 @@ export function EditAssetDialog({
               </label>
               <div className="grid grid-cols-4 gap-1">
                 {ASPECT_RATIOS.map((ratio) => (
-                  <button
+                  <Button
                     key={ratio}
                     type="button"
+                    variant={aspectRatio === ratio ? "default" : "ghost"}
+                    size="sm"
                     onClick={() => setAspectRatio(ratio)}
-                    className={`py-1.5 text-xs font-mono rounded-lg border transition-colors cursor-pointer text-center ${
+                    className={`py-1.5 text-xs font-mono rounded-lg border transition-colors cursor-pointer text-center h-auto ${
                       aspectRatio === ratio
-                        ? "bg-white text-black font-bold border-white"
+                        ? "bg-primary text-primary-foreground font-bold border-primary hover:bg-primary/90"
                         : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:bg-white/10"
                     }`}
                   >
                     {ratio}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -407,7 +395,7 @@ export function EditAssetDialog({
             </Button>
           </div>
         </form>
-      </DialogContent>
+      </UniversalDialog>
 
       <ImageCropEditorDialog
         isOpen={cropState.isOpen}
@@ -420,6 +408,6 @@ export function EditAssetDialog({
         outputFileName={cropState.fileName}
         onApply={handleApplyThumbnailCrop}
       />
-    </Dialog>
+    </>
   );
 }

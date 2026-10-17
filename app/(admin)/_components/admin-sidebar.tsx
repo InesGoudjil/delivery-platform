@@ -70,7 +70,7 @@ export function AdminSidebar() {
                 alt="CineSpace"
                 className="h-5 w-auto block object-contain select-none"
               />
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-[#f5551d]/40 text-[#f5551d] bg-[#f5551d]/10 font-mono">
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/40 text-primary bg-primary/10 font-mono">
                 ADMIN
               </Badge>
             </div>
@@ -136,7 +136,7 @@ export function AdminSidebar() {
           </div>
           <div className="flex items-center justify-between text-[11px] font-mono">
             <span className="text-muted-foreground flex items-center gap-1.5">
-              <span className="size-1.5 rounded-full bg-[#f5551d]" />
+              <span className="size-1.5 rounded-full bg-primary" />
               Stream Queue
             </span>
             <span className="text-foreground font-semibold">Ready</span>

@@ -166,7 +166,7 @@ export function ExperienceSection({
         <DialogContent className="sm:max-w-lg bg-card border-border">
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-card-foreground flex items-center gap-2">
-              <Briefcase className="size-4 text-[#f5551d]" />
+              <Briefcase className="size-4 text-primary" />
               <span>
                 {editingExpId
                   ? "Edit Experience / Credential"
@@ -179,7 +179,7 @@ export function ExperienceSection({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-muted-foreground font-medium block">
-                  Role / Title <span className="text-[#f5551d]">*</span>
+                  Role / Title <span className="text-primary">*</span>
                 </Label>
                 <Input
                   type="text"
@@ -193,7 +193,7 @@ export function ExperienceSection({
 
               <div className="space-y-1">
                 <Label className="text-muted-foreground font-medium block">
-                  Company / Client / Agency <span className="text-[#f5551d]">*</span>
+                  Company / Client / Agency <span className="text-primary">*</span>
                 </Label>
                 <Input
                   type="text"
@@ -240,18 +240,20 @@ export function ExperienceSection({
               </Label>
               <div className="flex flex-wrap gap-1.5 mb-1.5">
                 {CATEGORY_SUGGESTIONS.map((cat) => (
-                  <button
+                  <Button
                     type="button"
                     key={cat}
+                    variant={expCategory === cat ? "default" : "outline"}
+                    size="xs"
                     onClick={() => setExpCategory(cat)}
-                    className={`text-[10px] px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
+                    className={`text-[10px] px-2.5 py-1 rounded-full border transition-all cursor-pointer h-auto ${
                       expCategory === cat
-                        ? "bg-[#f5551d]/20 border-[#f5551d] text-[#f5551d] font-bold"
+                        ? "bg-primary/20 border-primary text-primary hover:bg-primary/30 font-bold"
                         : "bg-muted/40 border-border text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {cat}
-                  </button>
+                  </Button>
                 ))}
               </div>
               <Input
@@ -291,7 +293,7 @@ export function ExperienceSection({
               <Button
                 type="submit"
                 disabled={isPending}
-                className="rounded-xl bg-[#f5551d] hover:bg-[#ff8a45] text-black font-bold text-xs cursor-pointer"
+                className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs cursor-pointer"
               >
                 {isPending ? "Saving..." : editingExpId ? "Save Changes" : "Add Credential"}
               </Button>
@@ -303,7 +305,7 @@ export function ExperienceSection({
       {/* Section Header using CardHeader, CardTitle, and CardAction */}
       <CardHeader className="border-b border-border pb-3 flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2 text-xs font-bold text-foreground font-heading">
-          <Briefcase className="size-4 text-[#f5551d]" />
+          <Briefcase className="size-4 text-primary" />
           <span>Experience &amp; Client Track Record</span>
         </CardTitle>
         <CardAction>
@@ -313,7 +315,7 @@ export function ExperienceSection({
             onClick={handleOpenAdd}
             className="rounded-xl bg-muted hover:bg-muted/80 text-xs font-medium text-foreground border border-border h-7 px-3 cursor-pointer"
           >
-            <Plus className="size-3 mr-1 text-[#f5551d]" /> Add Experience
+            <Plus className="size-3 mr-1 text-primary" /> Add Experience
           </Button>
         </CardAction>
       </CardHeader>
@@ -381,7 +383,7 @@ export function ExperienceSection({
                 </CardHeader>
 
                 <CardContent className="space-y-1.5 text-xs">
-                  <div className="text-[10px] font-mono text-[#f5551d] font-semibold">
+                  <div className="text-[10px] font-mono text-primary font-semibold">
                     {exp.years}
                   </div>
 

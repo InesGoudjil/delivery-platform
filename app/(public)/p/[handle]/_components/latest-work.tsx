@@ -60,17 +60,17 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
   const cardSize = appearance?.cardSize || "M";
   const gridClasses =
     cardSize === "S"
-      ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5"
+      ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5"
       : cardSize === "M"
-      ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-5"
-      : "grid-cols-1 sm:grid-cols-2 gap-6";
+      ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-5"
+      : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6";
 
   const columnsClass =
     cardSize === "S"
-      ? "columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-3.5"
+      ? "columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-3.5"
       : cardSize === "M"
-      ? "columns-1 sm:columns-2 md:columns-3 lg:columns-3 gap-5"
-      : "columns-1 sm:columns-2 gap-6";
+      ? "columns-1 sm:columns-2 md:columns-3 lg:columns-3 xl:columns-4 gap-5"
+      : "columns-1 sm:columns-2 lg:grid-cols-3 gap-6";
 
   const itemSpacing =
     cardSize === "S" ? "mb-3.5" : cardSize === "L" ? "mb-6" : "mb-5";
@@ -109,7 +109,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                 onClick={() => setActiveTab(tab)}
                 className={`px-6 sm:px-8 py-2 rounded-full text-xs font-bold tracking-wide capitalize transition-all duration-200 cursor-pointer h-auto ${
                   isActive
-                    ? "bg-[#f5551d] text-white hover:bg-[#ff8a45] shadow-md"
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md"
                     : "text-zinc-400 hover:text-white hover:bg-transparent"
                 }`}
               >
@@ -162,7 +162,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
 
                       {/* Bottom title and client */}
                       <div className="absolute bottom-4 left-4 right-4 z-10 space-y-0.5 pointer-events-none">
-                        <TypographyH3 className="font-heading font-bold text-base text-white group-hover:text-[#f5551d] transition-colors truncate">
+                        <TypographyH3 className="font-heading font-bold text-base text-white group-hover:text-primary transition-colors truncate">
                           {proj.title}
                         </TypographyH3>
                         {showClient && (
@@ -186,11 +186,11 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                   size="lg"
                   disabled={isLoadingMore}
                   onClick={() => handleLoadMore("projects")}
-                  className="group relative rounded-full px-8 py-3 bg-[#141416]/80 hover:bg-[#1a1a1e] border-white/10 hover:border-[#f5551d]/50 text-white font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-xl cursor-pointer"
+                  className="group relative rounded-full px-8 py-3 bg-[#141416]/80 hover:bg-[#1a1a1e] border-white/10 hover:border-primary/50 text-white font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-xl cursor-pointer"
                 >
                   {isLoadingMore ? (
                     <div className="flex items-center gap-2.5">
-                      <Loader2 className="size-4 animate-spin text-[#f5551d]" />
+                      <Loader2 className="size-4 animate-spin text-primary" />
                       <span>Loading projects...</span>
                     </div>
                   ) : (
@@ -199,7 +199,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                       {projects.length - visibleProjects.length > 0 && (
                         <Badge
                           variant="secondary"
-                          className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-[#f5551d]/15 text-[#f5551d] border border-[#f5551d]/30"
+                          className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
                         >
                           +{projects.length - visibleProjects.length} more
                         </Badge>
@@ -267,14 +267,14 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                           {/* Top-left resolution */}
                           <div className="absolute top-3 left-3 z-10">
                             <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[10px] font-mono font-bold text-white uppercase gap-1.5">
-                              <Film className="size-3 text-[#f5551d]" />
+                              <Film className="size-3 text-primary" />
                               <span>{film.resolution || "4K 60fps"}</span>
                             </Badge>
                           </div>
 
                           {/* Center play icon */}
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="size-12 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white group-hover:scale-110 group-hover:bg-[#f5551d] group-hover:text-black transition-all duration-300 shadow-xl">
+                            <div className="size-12 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300 shadow-xl">
                               <Play className="size-5 fill-current ml-0.5" />
                             </div>
                           </div>
@@ -282,7 +282,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
 
                         {/* Card bottom info */}
                         <div className="p-4 bg-[#121214] border-t border-white/5 space-y-1">
-                          <TypographyH3 className="font-heading font-bold text-base text-white group-hover:text-[#f5551d] transition-colors truncate">
+                          <TypographyH3 className="font-heading font-bold text-base text-white group-hover:text-primary transition-colors truncate">
                             {film.title}
                           </TypographyH3>
                           {showClient && (
@@ -307,11 +307,11 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                   size="lg"
                   disabled={isLoadingMore}
                   onClick={() => handleLoadMore("films")}
-                  className="group relative rounded-full px-8 py-3 bg-[#141416]/80 hover:bg-[#1a1a1e] border-white/10 hover:border-[#f5551d]/50 text-white font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-xl cursor-pointer"
+                  className="group relative rounded-full px-8 py-3 bg-[#141416]/80 hover:bg-[#1a1a1e] border-white/10 hover:border-primary/50 text-white font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-xl cursor-pointer"
                 >
                   {isLoadingMore ? (
                     <div className="flex items-center gap-2.5">
-                      <Loader2 className="size-4 animate-spin text-[#f5551d]" />
+                      <Loader2 className="size-4 animate-spin text-primary" />
                       <span>Loading films...</span>
                     </div>
                   ) : (
@@ -320,7 +320,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                       {films.length - visibleFilms.length > 0 && (
                         <Badge
                           variant="secondary"
-                          className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-[#f5551d]/15 text-[#f5551d] border border-[#f5551d]/30"
+                          className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
                         >
                           +{films.length - visibleFilms.length} more
                         </Badge>
@@ -443,11 +443,11 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                   size="lg"
                   disabled={isLoadingMore}
                   onClick={() => handleLoadMore("stills")}
-                  className="group relative rounded-full px-8 py-3 bg-[#141416]/80 hover:bg-[#1a1a1e] border-white/10 hover:border-[#f5551d]/50 text-white font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-xl cursor-pointer"
+                  className="group relative rounded-full px-8 py-3 bg-[#141416]/80 hover:bg-[#1a1a1e] border-white/10 hover:border-primary/50 text-white font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-xl cursor-pointer"
                 >
                   {isLoadingMore ? (
                     <div className="flex items-center gap-2.5">
-                      <Loader2 className="size-4 animate-spin text-[#f5551d]" />
+                      <Loader2 className="size-4 animate-spin text-primary" />
                       <span>Loading stills...</span>
                     </div>
                   ) : (
@@ -456,7 +456,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                       {stills.length - visibleStills.length > 0 && (
                         <Badge
                           variant="secondary"
-                          className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-[#f5551d]/15 text-[#f5551d] border border-[#f5551d]/30"
+                          className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
                         >
                           +{stills.length - visibleStills.length} more
                         </Badge>

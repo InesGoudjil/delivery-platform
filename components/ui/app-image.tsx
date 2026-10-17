@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image, { ImageProps } from "next/image";
 import { Camera, Film, Image as ImageIcon, RefreshCw } from "lucide-react";
 import { resolveThumbnailUrl, isPlaceholderUrl, resolveMediaUrl } from "@/lib/media";
+import { Button } from "@/components/ui/button";
 
 export interface AppImageProps extends Omit<ImageProps, "src" | "alt"> {
   src?: string | null;
@@ -115,12 +116,12 @@ export function AppImage({
   const renderFallbackIcon = () => {
     switch (fallbackIcon) {
       case "camera":
-        return <Camera className="size-6 text-[#f5551d]/70" />;
+        return <Camera className="size-6 text-primary/70" />;
       case "image":
-        return <ImageIcon className="size-6 text-[#f5551d]/70" />;
+        return <ImageIcon className="size-6 text-primary/70" />;
       case "film":
       default:
-        return <Film className="size-6 text-[#f5551d]/70" />;
+        return <Film className="size-6 text-primary/70" />;
     }
   };
 
@@ -147,7 +148,7 @@ export function AppImage({
         <>
           {isLoading && (
             <div className="absolute inset-0 bg-white/5 animate-pulse z-10 flex items-center justify-center pointer-events-none">
-              <div className="size-5 rounded-full border-2 border-white/20 border-t-[#f5551d] animate-spin" />
+              <div className="size-5 rounded-full border-2 border-white/20 border-t-primary animate-spin" />
             </div>
           )}
           {isVideo ? (
@@ -204,17 +205,18 @@ export function AppImage({
             </span>
           )}
           {src && !isPlaceholderUrl(src) && (
-            <button
-              type="button"
+            <Button
+              variant="link"
+              size="xs"
               onClick={(e) => {
                 e.stopPropagation();
                 setRetryAttempt((prev) => prev + 1);
               }}
-              className="mt-1 flex items-center gap-1 text-[9px] font-mono text-[#f5551d] hover:underline cursor-pointer"
+              className="mt-1 h-auto p-0 flex items-center gap-1 text-[9px] font-mono text-primary hover:underline cursor-pointer"
             >
               <RefreshCw className="size-2.5" />
               <span>Retry</span>
-            </button>
+            </Button>
           )}
         </div>
       )}

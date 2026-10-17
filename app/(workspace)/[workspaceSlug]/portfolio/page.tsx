@@ -108,7 +108,6 @@ export default async function PortfolioPage({
   const mappedStandaloneAssets: PortfolioItem[] = await Promise.all(
     standaloneAssets.map(async (asset) => {
       const activeVersion = await services.asset.getActiveVersion(asset.id);
-      console.log("activeVersion",activeVersion)
       const itemType = asset.type === "photo_gallery" ? ("still" as const) : ("film" as const);
       const isStill = itemType === "still";
       const rawMedia =
@@ -142,8 +141,6 @@ export default async function PortfolioPage({
   const initialFeaturedIds = featuredItemIds.filter((id) =>
     allPortfolioItems.some((item) => item.id === id)
   );
-
-    console.log("port",workspace,portfolio,dbProjects,standaloneAssets)
 
   return (
     <PortfolioClient

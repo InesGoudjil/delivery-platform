@@ -36,7 +36,7 @@ export default async function CopyrightPage() {
           Send notices to our copyright contact: CineSpace — Attn: Copyright Agent,{" "}
           <a
             href="mailto:hello@cinespace.film"
-            className="text-white hover:text-[#f5551d] transition-colors underline underline-offset-2"
+            className="text-white hover:text-primary transition-colors underline underline-offset-2"
           >
             hello@cinespace.film
           </a>

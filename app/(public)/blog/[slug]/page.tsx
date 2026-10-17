@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { HeaderSection } from "@/components/landing/HeaderSection";
 import { FooterSection } from "@/components/landing/FooterSection";
 import { getPostBySlug, getAllPosts } from "@/lib/blog-data";
@@ -56,7 +57,7 @@ export default async function BlogPostPage(props: BlogPostPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased selection:bg-[#f5551d] selection:text-white flex flex-col justify-between relative">
+    <div className="min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased selection:bg-primary selection:text-primary-foreground flex flex-col justify-between relative">
       <AmbientBackground variant="full" />
 
       <div className="relative z-10">
@@ -91,9 +92,9 @@ export default async function BlogPostPage(props: BlogPostPageProps) {
           {/* Article Body Content */}
           <div className="space-y-8 pt-4">
             {/* The short version callout */}
-            <div className="border-l-2 border-[#f5551d] pl-5 sm:pl-6 py-1">
+            <div className="border-l-2 border-primary pl-5 sm:pl-6 py-1">
               <p className="text-sm sm:text-base text-[#aeaeb4] leading-relaxed">
-                <strong className="text-[#f5551d] font-bold">The short version: </strong>
+                <strong className="text-primary font-bold">The short version: </strong>
                 {post.shortVersion}
               </p>
             </div>
@@ -129,13 +130,15 @@ export default async function BlogPostPage(props: BlogPostPageProps) {
 
             {/* Call to Action Box / Button */}
             <div className="pt-8 pb-4">
-              <Link
-                href="/signup"
-                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#f5551d] to-[#df430f] px-8 py-4 text-xs font-bold uppercase tracking-wider text-white shadow-xl shadow-[#f5551d]/30 transition-all hover:scale-[1.03] hover:shadow-[#f5551d]/50"
+              <Button
+                asChild
+                className="inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-8 py-4 h-auto text-xs font-bold uppercase tracking-wider shadow-xl shadow-primary/30 transition-all hover:scale-[1.03] hover:bg-primary/90 hover:shadow-primary/50"
               >
-                <span>TRY CINESPACE FOR FREE</span>
-                <ArrowRight className="size-4" />
-              </Link>
+                <Link href="/signup">
+                  <span>TRY CINESPACE FOR FREE</span>
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
             </div>
           </div>
         </main>

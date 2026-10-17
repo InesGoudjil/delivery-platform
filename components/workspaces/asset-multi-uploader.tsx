@@ -389,7 +389,7 @@ export function AssetMultiUploader({
       {/* Header with Mode Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div className="flex items-center gap-3">
-          <div className="size-11 rounded-2xl bg-[#f5551d]/10 border border-[#f5551d]/30 text-[#f5551d] flex items-center justify-center shrink-0">
+          <div className="size-11 rounded-2xl bg-primary/10 border border-primary/30 text-primary flex items-center justify-center shrink-0">
             <Layers className="size-5" />
           </div>
           <div>
@@ -410,38 +410,44 @@ export function AssetMultiUploader({
         {/* Tab switcher & Close button */}
         <div className="flex items-center gap-2.5">
           <div className="flex items-center bg-black/40 border border-white/10 rounded-xl p-1">
-            <button
+            <Button
               type="button"
+              variant={activeTab === "batch" ? "default" : "ghost"}
+              size="sm"
               onClick={() => setActiveTab("batch")}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer h-auto ${
                 activeTab === "batch"
-                  ? "bg-[#f5551d] text-black shadow-md shadow-[#f5551d]/20"
-                  : "text-muted-foreground hover:text-white"
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90"
+                  : "text-muted-foreground hover:text-white hover:bg-transparent"
               }`}
             >
               Multi-File Batch
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant={activeTab === "single" ? "default" : "ghost"}
+              size="sm"
               onClick={() => setActiveTab("single")}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer h-auto ${
                 activeTab === "single"
-                  ? "bg-[#f5551d] text-black shadow-md shadow-[#f5551d]/20"
-                  : "text-muted-foreground hover:text-white"
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90"
+                  : "text-muted-foreground hover:text-white hover:bg-transparent"
               }`}
             >
               Single Cut
-            </button>
+            </Button>
           </div>
 
           {onClose && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-xs"
               onClick={onClose}
               className="size-8 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-muted-foreground hover:text-white flex items-center justify-center cursor-pointer transition-colors"
             >
               <X className="size-4" />
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -491,12 +497,12 @@ export function AssetMultiUploader({
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-3xl p-10 sm:p-14 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-4 ${
                 dragActive
-                  ? "border-[#f5551d] bg-[#f5551d]/5 scale-[1.01]"
-                  : "border-white/15 hover:border-[#f5551d]/60 hover:bg-white/[0.02]"
+                  ? "border-primary bg-primary/5 scale-[1.01]"
+                  : "border-white/15 hover:border-primary/60 hover:bg-white/[0.02]"
               }`}
             >
-              <div className="size-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-muted-foreground group-hover:text-[#f5551d] transition-colors">
-                <Upload className="size-8 text-[#f5551d]" />
+              <div className="size-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
+                <Upload className="size-8 text-primary" />
               </div>
 
               <div className="space-y-1.5 max-w-md">
@@ -515,7 +521,7 @@ export function AssetMultiUploader({
                   size="sm"
                   className="rounded-full border-white/15 bg-white/5 text-white hover:bg-white/10 text-xs font-semibold"
                 >
-                  <Plus className="size-3.5 mr-1.5 text-[#f5551d]" /> Select Multiple Files
+                  <Plus className="size-3.5 mr-1.5 text-primary" /> Select Multiple Files
                 </Button>
               </div>
             </div>
@@ -530,7 +536,7 @@ export function AssetMultiUploader({
                   </span>
                   <span className="text-muted-foreground">·</span>
                   {videoCount > 0 && (
-                    <span className="flex items-center gap-1 text-[#ff8a45] font-mono text-[11px]">
+                    <span className="flex items-center gap-1 text-primary font-mono text-[11px]">
                       <Film className="size-3.5" /> {videoCount} Video{videoCount > 1 ? "s" : ""}
                     </span>
                   )}
@@ -555,7 +561,7 @@ export function AssetMultiUploader({
                     onClick={() => fileInputRef.current?.click()}
                     className="text-xs text-muted-foreground hover:text-white h-8"
                   >
-                    <Plus className="size-3.5 mr-1 text-[#f5551d]" /> Add More
+                    <Plus className="size-3.5 mr-1 text-primary" /> Add More
                   </Button>
                   <Button
                     type="button"
@@ -580,7 +586,7 @@ export function AssetMultiUploader({
                       key={item.id}
                       className={`rounded-2xl border transition-all p-3.5 sm:p-4 space-y-3 ${
                         item.status === "uploading"
-                          ? "bg-[#f5551d]/5 border-[#f5551d]/40 ring-1 ring-[#f5551d]/30"
+                          ? "bg-primary/5 border-primary/40 ring-1 ring-primary/30"
                           : item.status === "completed"
                           ? "bg-emerald-500/5 border-emerald-500/30"
                           : item.status === "error"
@@ -599,7 +605,7 @@ export function AssetMultiUploader({
                                 className="size-full object-cover"
                               />
                             ) : (
-                              <Film className="size-5 text-[#f5551d]" />
+                              <Film className="size-5 text-primary" />
                             )}
                             <div className="absolute bottom-1 right-1 bg-black/80 rounded px-1 py-0.2 text-[8px] font-mono text-white/80 uppercase">
                               {isImage ? "STILL" : "CUT"}
@@ -614,7 +620,7 @@ export function AssetMultiUploader({
                                 disabled={isProcessing && item.status === "uploading"}
                                 onChange={(e) => updateItemTitle(item.id, e.target.value)}
                                 placeholder="Asset Title"
-                                className="bg-transparent text-xs font-bold text-white border-b border-transparent hover:border-white/20 focus:border-[#f5551d] focus:outline-none px-0.5 py-0.5 w-full max-w-sm truncate"
+                                className="bg-transparent text-xs font-bold text-white border-b border-transparent hover:border-white/20 focus:border-primary focus:outline-none px-0.5 py-0.5 w-full max-w-sm truncate"
                               />
                             </div>
                             <p className="text-[11px] font-mono text-muted-foreground">
@@ -634,7 +640,7 @@ export function AssetMultiUploader({
                               value={item.targetAssetId}
                               disabled={isProcessing && (item.status === "uploading" || item.status === "completed")}
                               onChange={(e) => updateItemTargetAsset(item.id, e.target.value)}
-                              className="bg-black/60 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#f5551d] max-w-[190px] truncate cursor-pointer"
+                              className="bg-black/60 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-primary max-w-[190px] truncate cursor-pointer"
                             >
                               <option value="">New Asset (V1)</option>
                               {existingAssets.map((a) => (
@@ -652,7 +658,7 @@ export function AssetMultiUploader({
                             </span>
                           )}
                           {item.status === "uploading" && (
-                            <span className="text-[10px] font-mono bg-[#f5551d]/20 text-[#f5551d] border border-[#f5551d]/40 px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0">
+                            <span className="text-[10px] font-mono bg-primary/20 text-primary border border-primary/40 px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0">
                               <Loader2 className="size-3 animate-spin" /> {item.progress}%
                             </span>
                           )}
@@ -669,14 +675,16 @@ export function AssetMultiUploader({
 
                           {/* Remove button */}
                           {!isProcessing && item.status !== "uploading" && (
-                            <button
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="icon-xs"
                               onClick={() => removeItem(item.id)}
-                              className="size-7 rounded-lg bg-white/5 hover:bg-destructive/20 text-muted-foreground hover:text-destructive flex items-center justify-center cursor-pointer transition-colors"
+                              className="size-7 rounded-lg bg-white/5 hover:bg-destructive/20 text-muted-foreground hover:text-destructive flex items-center justify-center cursor-pointer transition-colors p-0"
                               title="Remove item"
                             >
                               <X className="size-3.5" />
-                            </button>
+                            </Button>
                           )}
                         </div>
                       </div>
@@ -686,11 +694,11 @@ export function AssetMultiUploader({
                         <div className="space-y-1.5 pt-1 animate-in fade-in">
                           <div className="flex items-center justify-between text-[11px] font-mono">
                             <span className="text-muted-foreground">{item.statusText}</span>
-                            <span className="font-bold text-[#f5551d]">{item.progress}%</span>
+                            <span className="font-bold text-primary">{item.progress}%</span>
                           </div>
                           <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-gradient-to-r from-[#f5551d] to-[#ff8a45] rounded-full transition-all duration-150"
+                              className="h-full bg-primary rounded-full transition-all duration-150"
                               style={{ width: `${item.progress}%` }}
                             />
                           </div>
@@ -738,7 +746,7 @@ export function AssetMultiUploader({
                       type="button"
                       onClick={startBatchUpload}
                       disabled={queuedCount === 0}
-                      className="rounded-full bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] shadow-lg shadow-[#f5551d]/20 cursor-pointer disabled:opacity-50"
+                      className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 shadow-lg shadow-primary/20 cursor-pointer disabled:opacity-50"
                     >
                       <Upload className="size-3.5 mr-1.5" />
                       {queuedCount === 0 ? "All Files Uploaded" : `Upload All (${queuedCount} Files)`}

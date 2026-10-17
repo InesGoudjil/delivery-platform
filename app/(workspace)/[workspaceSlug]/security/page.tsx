@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { changePasswordAction } from "@/app/actions/auth";
 
 export default function SecurityPage() {
@@ -71,7 +72,7 @@ export default function SecurityPage() {
 
       {/* Header */}
       <div className="pb-6 border-b border-border">
-        <div className="text-xs font-mono text-[#f5551d] uppercase tracking-wider mb-1">
+        <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1">
           Account
         </div>
         <h1 className="text-3xl font-bold font-heading text-foreground">
@@ -94,21 +95,14 @@ export default function SecurityPage() {
               Require an authenticator app code (TOTP) when logging into your studio.
             </div>
           </div>
-          <button
-            onClick={() => {
-              setTwoFactor(!twoFactor);
-              toast.success(!twoFactor ? "2FA enabled" : "2FA disabled");
+          <Switch
+            checked={twoFactor}
+            onCheckedChange={(checked) => {
+              setTwoFactor(checked);
+              toast.success(checked ? "2FA enabled" : "2FA disabled");
             }}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              twoFactor ? "bg-[#f5551d]" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                twoFactor ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+            aria-label="Toggle Two-Factor Authentication"
+          />
         </div>
 
         {/* Default Passphrase on Links */}
@@ -121,21 +115,14 @@ export default function SecurityPage() {
               Automatically generate a 6-digit access code for all newly published client review links.
             </div>
           </div>
-          <button
-            onClick={() => {
-              setDefaultPassphrase(!defaultPassphrase);
-              toast.success(!defaultPassphrase ? "Default passcodes enabled" : "Default passcodes disabled");
+          <Switch
+            checked={defaultPassphrase}
+            onCheckedChange={(checked) => {
+              setDefaultPassphrase(checked);
+              toast.success(checked ? "Default passcodes enabled" : "Default passcodes disabled");
             }}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              defaultPassphrase ? "bg-[#f5551d]" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                defaultPassphrase ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+            aria-label="Toggle Default Passphrase on Delivery Rooms"
+          />
         </div>
 
         {/* Restrict Cut Downloads */}
@@ -148,21 +135,14 @@ export default function SecurityPage() {
               Prevent clients from downloading ProRes master files until you explicitly check "Approved for Release".
             </div>
           </div>
-          <button
-            onClick={() => {
-              setRestrictDownloads(!restrictDownloads);
-              toast.success(!restrictDownloads ? "Download restrictions active" : "Download restrictions removed");
+          <Switch
+            checked={restrictDownloads}
+            onCheckedChange={(checked) => {
+              setRestrictDownloads(checked);
+              toast.success(checked ? "Download restrictions active" : "Download restrictions removed");
             }}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              restrictDownloads ? "bg-[#f5551d]" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                restrictDownloads ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+            aria-label="Toggle Restrict Raw Master File Downloads"
+          />
         </div>
 
         {/* Dynamic Watermark */}
@@ -175,21 +155,14 @@ export default function SecurityPage() {
               Overlay subtle client email &amp; timestamp watermark across review cuts.
             </div>
           </div>
-          <button
-            onClick={() => {
-              setWatermarkPreviews(!watermarkPreviews);
-              toast.success(!watermarkPreviews ? "Watermark protection enabled" : "Watermark protection disabled");
+          <Switch
+            checked={watermarkPreviews}
+            onCheckedChange={(checked) => {
+              setWatermarkPreviews(checked);
+              toast.success(checked ? "Watermark protection enabled" : "Watermark protection disabled");
             }}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              watermarkPreviews ? "bg-[#f5551d]" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                watermarkPreviews ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+            aria-label="Toggle Dynamic Anti-Leak Watermark"
+          />
         </div>
       </div>
 
@@ -197,7 +170,7 @@ export default function SecurityPage() {
       <div className="rounded-2xl bg-card border border-border p-6 sm:p-8 space-y-6 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-muted border border-border text-foreground">
-            <KeyRound className="size-5 text-[#f5551d]" />
+            <KeyRound className="size-5 text-primary" />
           </div>
           <div>
             <h3 className="font-heading text-base font-bold text-card-foreground">
@@ -263,19 +236,21 @@ export default function SecurityPage() {
           </div>
 
           <div className="flex items-center justify-between pt-2">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => setShowPassword(!showPassword)}
-              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 cursor-pointer"
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 cursor-pointer h-auto py-1 px-2"
             >
               {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
               {showPassword ? "Hide passwords" : "Show passwords"}
-            </button>
+            </Button>
 
             <Button
               type="submit"
               disabled={isPending}
-              className="rounded-full text-xs font-semibold bg-primary text-black hover:bg-primary/90 cursor-pointer"
+              className="rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
             >
               {isPending ? (
                 <>

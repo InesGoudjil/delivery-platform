@@ -5,7 +5,7 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 export default function SettingsLoading() {
   return (
-    <div className="max-w-5xl mx-auto space-y-10 animate-in fade-in duration-200 pb-16">
+    <div className="w-full space-y-10 animate-in fade-in duration-200 pb-16">
       {/* Page Header Skeleton */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pt-2">
         <div className="space-y-2">

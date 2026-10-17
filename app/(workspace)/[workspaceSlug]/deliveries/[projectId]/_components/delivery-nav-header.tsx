@@ -17,12 +17,12 @@ export function DeliveryNavHeader({ workspaceSlug, shareToken }: DeliveryNavHead
         <span>Projects</span>
       </Link>
 
-      <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+      {/*<div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
         <span>Share Token:</span>
         <span className="bg-muted px-2 py-0.5 rounded text-foreground font-semibold">
           {shareToken}
         </span>
-      </div>
+      </div>*/}
     </div>
   );
 }

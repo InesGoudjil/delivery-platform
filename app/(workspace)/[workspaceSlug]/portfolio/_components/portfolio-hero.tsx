@@ -89,7 +89,7 @@ export function PortfolioHero({
           <div className="flex items-center gap-3">
             <Avatar size="sm" className="ring-1 ring-white/20">
               {portfolio.coverAssetUrl && <AvatarImage src={portfolio.coverAssetUrl} alt={workspace.brandName} />}
-              <AvatarFallback className="bg-[#2a1a15] text-[#f5551d] font-bold text-[10px]">
+              <AvatarFallback className="bg-primary/15 text-primary font-bold text-[10px]">
                 {workspace.brandName.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -118,7 +118,7 @@ export function PortfolioHero({
                   <Link
                     href={`/p/${workspace.slug}`}
                     target="_blank"
-                    className="text-xs text-zinc-400 hover:text-[#f5551d] flex items-center gap-1.5 transition-colors font-mono"
+                    className="text-xs text-zinc-400 hover:text-primary flex items-center gap-1.5 transition-colors font-mono"
                   >
                     <span>/p/{workspace.slug}</span>
                     <ExternalLink className="size-3" />
@@ -152,7 +152,7 @@ export function PortfolioHero({
                   onClick={() => setShowFilmModal(true)}
                   className="rounded-full border-white/15 bg-white/[0.06] hover:bg-white/[0.12] text-white text-xs font-bold px-5 h-10 backdrop-blur-md transition-all shadow-sm flex items-center gap-2 cursor-pointer uppercase tracking-wider"
                 >
-                  <Upload className="size-3.5 text-[#f5551d]" />
+                  <Upload className="size-3.5 text-primary" />
                   <span>UPLOAD FILM OR STILL</span>
                 </Button>
               }

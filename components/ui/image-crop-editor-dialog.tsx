@@ -376,13 +376,15 @@ export function ImageCropEditorDialog({
             </div>
             <p className="text-xs text-zinc-400 mt-0.5">{subtitle}</p>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-xs"
             onClick={onClose}
-            className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white shrink-0 cursor-pointer"
           >
             <X className="size-4" />
-          </button>
+          </Button>
         </div>
 
         {loadError && (
@@ -459,18 +461,20 @@ export function ImageCropEditorDialog({
               {aspectRatioOptions.map((preset) => {
                 const isSelected = aspectRatio === preset;
                 return (
-                  <button
+                  <Button
                     key={preset}
                     type="button"
+                    size="xs"
+                    variant={isSelected ? "default" : "outline"}
                     onClick={() => setAspectRatio(preset)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-mono transition-all cursor-pointer border ${
+                    className={`h-7 px-2.5 rounded-lg text-[11px] font-mono transition-all cursor-pointer border ${
                       isSelected
-                        ? "bg-primary text-primary-foreground font-bold border-primary shadow-sm"
+                        ? "bg-primary text-primary-foreground font-bold border-primary shadow-sm hover:bg-primary/90"
                         : "bg-white/5 text-zinc-400 border-white/10 hover:text-white hover:bg-white/10"
                     }`}
                   >
                     {ASPECT_RATIO_CONFIG[preset].label}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -480,39 +484,45 @@ export function ImageCropEditorDialog({
         {/* Mode Switcher Tabs: Transform vs Color Adjust */}
         <div className="flex items-center justify-between border-b border-white/10 pb-2">
           <div className="flex items-center gap-1.5">
-            <button
+            <Button
               type="button"
+              size="xs"
+              variant={activeTab === "transform" ? "default" : "ghost"}
               onClick={() => setActiveTab("transform")}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`h-7 px-3 rounded-full text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                 activeTab === "transform"
-                  ? "bg-white text-black"
-                  : "text-zinc-400 hover:text-white bg-white/5"
+                  ? "bg-white text-black hover:bg-white/90"
+                  : "text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10"
               }`}
             >
               <RotateCwSquare className="size-3.5" />
               <span>Crop &amp; Transform</span>
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              size="xs"
+              variant={activeTab === "adjust" ? "default" : "ghost"}
               onClick={() => setActiveTab("adjust")}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`h-7 px-3 rounded-full text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                 activeTab === "adjust"
-                  ? "bg-white text-black"
-                  : "text-zinc-400 hover:text-white bg-white/5"
+                  ? "bg-white text-black hover:bg-white/90"
+                  : "text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10"
               }`}
             >
               <SlidersHorizontal className="size-3.5" />
               <span>Tone &amp; Color</span>
-            </button>
+            </Button>
           </div>
 
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="xs"
             onClick={handleResetAll}
-            className="text-[11px] font-mono text-zinc-400 hover:text-white transition-colors cursor-pointer px-2 py-1"
+            className="h-auto py-1 px-2 text-[11px] font-mono text-zinc-400 hover:text-white transition-colors cursor-pointer"
           >
             Reset All
-          </button>
+          </Button>
         </div>
 
         {/* Controls Panel */}
@@ -520,14 +530,16 @@ export function ImageCropEditorDialog({
           <div className="space-y-3.5">
             {/* Zoom Slider */}
             <div className="flex items-center gap-3">
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="icon-xs"
                 onClick={() => setZoom((z) => Math.max(1, Number((z - 0.1).toFixed(2))))}
-                className="size-7 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-zinc-300 cursor-pointer"
+                className="size-7 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 cursor-pointer"
                 title="Zoom Out"
               >
                 <ZoomOut className="size-3.5" />
-              </button>
+              </Button>
               <div className="flex-1 flex items-center gap-3">
                 <input
                   type="range"
@@ -542,14 +554,16 @@ export function ImageCropEditorDialog({
                   {zoom.toFixed(1)}x
                 </span>
               </div>
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="icon-xs"
                 onClick={() => setZoom((z) => Math.min(3, Number((z + 0.1).toFixed(2))))}
-                className="size-7 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-zinc-300 cursor-pointer"
+                className="size-7 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 cursor-pointer"
                 title="Zoom In"
               >
                 <ZoomIn className="size-3.5" />
-              </button>
+              </Button>
             </div>
 
             {/* Rotate & Flip Buttons */}

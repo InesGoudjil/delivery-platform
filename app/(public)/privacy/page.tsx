@@ -53,7 +53,7 @@ export default async function PrivacyPage() {
           We use cookies and similar technologies to keep you signed in, remember preferences, analyse site usage, and measure campaigns. See our{" "}
           <Link
             href="/cookies"
-            className="text-white hover:text-[#f5551d] transition-colors underline underline-offset-2"
+            className="text-white hover:text-primary transition-colors underline underline-offset-2"
           >
             Cookie Policy
           </Link>{" "}
@@ -68,7 +68,7 @@ export default async function PrivacyPage() {
           We keep personal information only as long as needed to provide the Services, comply with legal obligations, resolve disputes, and enforce agreements. Uploaded content is retained according to your plan and storage usage; content exceeding plan limits may be removed after downgrade or termination as described in the{" "}
           <Link
             href="/terms"
-            className="text-white hover:text-[#f5551d] transition-colors underline underline-offset-2"
+            className="text-white hover:text-primary transition-colors underline underline-offset-2"
           >
             Terms of Service
           </Link>
@@ -91,7 +91,7 @@ export default async function PrivacyPage() {
           Depending on where you live, you may have rights to access, correct, delete, or port your personal data, restrict or object to processing, and lodge a complaint with a supervisory authority. To exercise any of these rights, contact{" "}
           <a
             href="mailto:hello@cinespace.film"
-            className="text-white hover:text-[#f5551d] transition-colors underline underline-offset-2"
+            className="text-white hover:text-primary transition-colors underline underline-offset-2"
           >
             hello@cinespace.film
           </a>{" "}
@@ -130,7 +130,7 @@ export default async function PrivacyPage() {
           For privacy questions or requests, contact CineSpace at{" "}
           <a
             href="mailto:hello@cinespace.film"
-            className="text-white hover:text-[#f5551d] transition-colors underline underline-offset-2"
+            className="text-white hover:text-primary transition-colors underline underline-offset-2"
           >
             hello@cinespace.film
           </a>

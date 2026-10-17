@@ -87,7 +87,7 @@ export default async function AdminWorkspaceDetailPage({
       <Card className="bg-card border-border shadow-sm">
         <CardHeader>
           <CardTitle className="text-base font-bold flex items-center gap-2">
-            <CreditCard className="size-4 text-[#f5551d]" /> Subscription Status &amp; Tier
+            <CreditCard className="size-4 text-primary" /> Subscription Status &amp; Tier
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -148,7 +148,7 @@ export default async function AdminWorkspaceDetailPage({
                     variant="outline"
                     className={`text-[10px] font-mono capitalize ${
                       p.status === "approved" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" :
-                      p.status === "in_review" ? "bg-[#f5551d]/10 text-[#f5551d] border-[#f5551d]/30" :
+                      p.status === "in_review" ? "bg-primary/10 text-primary border-primary/30" :
                       "bg-muted text-muted-foreground border-border"
                     }`}
                   >

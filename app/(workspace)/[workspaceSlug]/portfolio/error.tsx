@@ -31,7 +31,7 @@ export default function PortfolioError({
         </div>
         <Button
           onClick={() => reset()}
-          className="rounded-xl bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] cursor-pointer h-9 px-5"
+          className="rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 cursor-pointer h-9 px-5"
         >
           <RefreshCw className="size-3.5 mr-2" /> Reload Portfolio
         </Button>

@@ -26,7 +26,7 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
         {/* Right details & bio */}
         <div className="lg:col-span-7 space-y-6">
           <div className="space-y-2">
-            <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#f5551d]">
+            <span className="text-xs font-mono font-bold uppercase tracking-wider text-primary">
               About
             </span>
             <h2 className="font-heading font-black text-3xl sm:text-4xl text-white tracking-tight uppercase">
@@ -41,7 +41,7 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
           {/* 3 Stat Badges */}
           <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-lg">
             <div className="p-4 rounded-2xl bg-[#18181b] border border-white/10 text-center space-y-1">
-              <div className="flex justify-center text-[#f5551d]">
+              <div className="flex justify-center text-primary">
                 <Film className="size-4" />
               </div>
               <div className="font-heading font-black text-xl sm:text-2xl text-white">
@@ -53,7 +53,7 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
             </div>
 
             <div className="p-4 rounded-2xl bg-[#18181b] border border-white/10 text-center space-y-1">
-              <div className="flex justify-center text-[#f5551d]">
+              <div className="flex justify-center text-primary">
                 <Briefcase className="size-4" />
               </div>
               <div className="font-heading font-black text-xl sm:text-2xl text-white">
@@ -65,7 +65,7 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
             </div>
 
             <div className="p-4 rounded-2xl bg-[#18181b] border border-white/10 text-center space-y-1">
-              <div className="flex justify-center text-[#f5551d]">
+              <div className="flex justify-center text-primary">
                 <MapPin className="size-4" />
               </div>
               <div className="font-heading font-black text-xl sm:text-2xl text-white">
@@ -94,7 +94,7 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
                         {exp.role}
                       </span>
                       {exp.category && (
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#f5551d]/15 text-[#f5551d] border border-[#f5551d]/30 font-medium">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-medium">
                           {exp.category}
                         </span>
                       )}
@@ -124,7 +124,7 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
             <ContactButton
               label="Get In Touch"
               icon={true}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#c85332] hover:bg-[#d95d3a] active:scale-95 text-white text-xs font-extrabold tracking-wider uppercase transition-all shadow-lg hover:shadow-[#c85332]/25 cursor-pointer"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground text-xs font-extrabold tracking-wider uppercase transition-all shadow-lg hover:shadow-primary/25 cursor-pointer h-auto"
             />
           </div>
         </div>

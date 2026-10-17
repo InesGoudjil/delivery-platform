@@ -613,3 +613,158 @@ export function renderSiloRestoreCompletedEmail({
     }),
   };
 }
+
+export interface RenderPortfolioLeadEmailOptions {
+  clientName: string;
+  clientContact: string;
+  projectDetails: string;
+  filmmakerName?: string;
+  portfolioHandle: string;
+  portfolioUrl?: string;
+  brandName?: string;
+}
+
+export function renderPortfolioLeadEmail({
+  clientName,
+  clientContact,
+  projectDetails,
+  filmmakerName = "Filmmaker",
+  portfolioHandle,
+  portfolioUrl,
+  brandName = "CineSpace",
+}: RenderPortfolioLeadEmailOptions): { subject: string; html: string } {
+  const subject = `🎬 New Project Inquiry from ${clientName} on CineSpace`;
+  const viewUrl = portfolioUrl || `https://cinespace.film/p/${portfolioHandle}`;
+
+  const contentHtml = `
+    <div style="margin-bottom: 24px;">
+      <span style="display: inline-block; padding: 4px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #f5551d; background-color: rgba(245, 85, 29, 0.12); border: 1px solid rgba(245, 85, 29, 0.25); border-radius: 9999px;">
+        New Client Inquiry
+      </span>
+    </div>
+
+    <h2 style="font-size: 20px; font-weight: 700; color: #ffffff; margin: 0 0 16px 0; line-height: 1.3;">
+      A prospective client submitted an inquiry on your portfolio!
+    </h2>
+
+    <p style="font-size: 14px; color: #a1a1aa; line-height: 1.6; margin-bottom: 24px;">
+      Hi ${filmmakerName}, you just received a new direct booking inquiry from your public portfolio page (<a href="${viewUrl}" style="color: #f5551d;">@${portfolioHandle}</a>).
+    </p>
+
+    <!-- Client Inquiry Details Card -->
+    <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 20px; margin-bottom: 28px;">
+      <table border="0" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+          <td style="padding-bottom: 12px;">
+            <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #71717a; letter-spacing: 0.5px;">Client / Company</div>
+            <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin-top: 3px;">${clientName}</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom: 12px;">
+            <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #71717a; letter-spacing: 0.5px;">Contact Info</div>
+            <div style="font-size: 14px; font-family: monospace; color: #f5551d; margin-top: 3px; word-break: break-all;">${clientContact}</div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #71717a; letter-spacing: 0.5px;">Project Requirements</div>
+            <div style="font-size: 14px; color: #e4e4e7; line-height: 1.6; margin-top: 6px; white-space: pre-wrap; background-color: #121214; padding: 12px 14px; border-radius: 8px; border: 1px solid #27272a;">${projectDetails}</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="mailto:${clientContact.includes('@') ? clientContact : ''}" class="btn" style="background-color: #f5551d; color: #ffffff; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-decoration: none; padding: 14px 32px; border-radius: 9999px; display: inline-block;">
+        Reply to Client Directly &rarr;
+      </a>
+    </div>
+
+    <p style="font-size: 12px; color: #71717a; text-align: center; margin: 0;">
+      Inquiry received via your CineSpace portfolio at ${viewUrl}
+    </p>
+  `;
+
+  return {
+    subject,
+    html: wrapEmailTemplate({
+      title: subject,
+      previewText: `New client inquiry from ${clientName}: "${projectDetails.slice(0, 80)}..."`,
+      brandName,
+      contentHtml,
+    }),
+  };
+}
+
+export interface RenderContactFormEmailOptions {
+  fullName: string;
+  email: string;
+  reason?: string;
+  message: string;
+  brandName?: string;
+}
+
+export function renderContactFormEmail({
+  fullName,
+  email,
+  reason,
+  message,
+  brandName = "CineSpace",
+}: RenderContactFormEmailOptions): { subject: string; html: string } {
+  const categoryLabel = reason ? `[${reason.toUpperCase()}] ` : "";
+  const subject = `📨 ${categoryLabel}Contact Message from ${fullName || email}`;
+
+  const contentHtml = `
+    <div style="margin-bottom: 24px;">
+      <span style="display: inline-block; padding: 4px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #38bdf8; background-color: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 9999px;">
+        ${reason ? reason.toUpperCase() : "CONTACT MESSAGE"}
+      </span>
+    </div>
+
+    <h2 style="font-size: 20px; font-weight: 700; color: #ffffff; margin: 0 0 16px 0; line-height: 1.3;">
+      New message submitted via website contact form
+    </h2>
+
+    <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 20px; margin-bottom: 28px;">
+      <table border="0" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+          <td style="padding-bottom: 12px;">
+            <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #71717a; letter-spacing: 0.5px;">Sender</div>
+            <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin-top: 3px;">${fullName || "Anonymous"}</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom: 12px;">
+            <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #71717a; letter-spacing: 0.5px;">Email</div>
+            <div style="font-size: 14px; font-family: monospace; color: #38bdf8; margin-top: 3px;">
+              <a href="mailto:${email}" style="color: #38bdf8;">${email}</a>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #71717a; letter-spacing: 0.5px;">Message</div>
+            <div style="font-size: 14px; color: #e4e4e7; line-height: 1.6; margin-top: 6px; white-space: pre-wrap; background-color: #121214; padding: 12px 14px; border-radius: 8px; border: 1px solid #27272a;">${message}</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="mailto:${email}" class="btn" style="background-color: #38bdf8; color: #09090b; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-decoration: none; padding: 14px 32px; border-radius: 9999px; display: inline-block;">
+        Reply to ${email} &rarr;
+      </a>
+    </div>
+  `;
+
+  return {
+    subject,
+    html: wrapEmailTemplate({
+      title: subject,
+      previewText: `New contact message from ${fullName || email}: "${message.slice(0, 80)}..."`,
+      brandName,
+      contentHtml,
+    }),
+  };
+}

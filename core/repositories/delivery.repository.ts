@@ -125,6 +125,7 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
     if (data.isWatermarked !== undefined) payload.is_watermarked = data.isWatermarked;
     if (data.appearance !== undefined) payload.appearance = data.appearance;
     if (data.status !== undefined) payload.status = data.status;
+    if (data.shareToken !== undefined) payload.share_token = data.shareToken;
     if (data.expiresAt !== undefined) payload.expires_at = data.expiresAt;
     if (data.location !== undefined) payload.location = data.location;
     if (data.deliveryDate !== undefined) payload.delivery_date = data.deliveryDate;

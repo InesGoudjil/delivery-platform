@@ -8,12 +8,30 @@ export interface SocialLinks {
   [key: string]: string | undefined;
 }
 
+export interface PortfolioHeroCover {
+  assetId?: string | null;
+  type: "video" | "still";
+  mediaUrl: string;
+  thumbnailUrl?: string;
+  title?: string;
+  category?: string;
+  description?: string;
+  aspectRatio?: "21:9" | "16:9" | "3:1" | "full";
+  overlayOpacity?: number; // 0 to 100
+  videoBehavior?: "ambient_loop" | "click_to_play";
+  autoPlay?: boolean;
+  loop?: boolean;
+  muted?: boolean;
+  showSoundToggle?: boolean;
+}
+
 export interface PortfolioAppearance {
   cardSize: "S" | "M" | "L";
   aspectRatio: "16:9" | "9:16" | "1:1" | "4:3" | "grid" | "masonry";
   thumbnailScale: "fit" | "fill";
   showClientInfo: boolean;
   featuredItemIds?: string[];
+  heroCover?: PortfolioHeroCover;
 }
 
 export interface PortfolioExperience {

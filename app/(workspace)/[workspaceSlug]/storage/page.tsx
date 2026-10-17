@@ -9,7 +9,7 @@ import {
   Layers,
   Sparkles,
 } from "lucide-react";
-import { getServerServices } from "@/core/server";
+import { getServerServices, getServerAdminServices } from "@/core/server";
 import {
   Card,
   CardHeader,
@@ -38,10 +38,13 @@ import { ArchiveManagerButton } from "./_components/archive-manager-button";
 
 export default async function StoragePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ workspaceSlug: string }>;
+  searchParams: Promise<{ billing?: string; session_id?: string }>;
 }) {
   const { workspaceSlug } = await params;
+  const { billing, session_id } = await searchParams;
   const services = await getServerServices();
   const user = await services.auth.getCurrentUser();
 
@@ -54,7 +57,24 @@ export default async function StoragePage({
     redirect("/");
   }
 
-  // 1. Fetch all assets for this workspace (covers client deliveries, projects, and standalone assets), plan, and features
+  // 1. If returning from a successful Stripe storage upgrade checkout session, synchronize immediately
+  let storageUpgradeSuccess = false;
+  if (billing === "success" && session_id) {
+    try {
+      const adminServices = await getServerAdminServices();
+      const syncResult = await adminServices.stripe.syncCheckoutSession(
+        session_id,
+        adminServices.subscription
+      );
+      if (syncResult.success) {
+        storageUpgradeSuccess = true;
+      }
+    } catch (err: any) {
+      console.warn("[StoragePage] Checkout session sync error:", err.message);
+    }
+  }
+
+  // 2. Fetch all assets for this workspace (covers client deliveries, projects, and standalone assets), plan, and features
   const [allWorkspaceAssets, currentPlan, features] = await Promise.all([
     services.asset.listWorkspaceAssets(workspace.id),
     services.subscription.getCurrentPlan(workspace.id),
@@ -143,6 +163,25 @@ export default async function StoragePage({
           </TypographyLead>
         </div>
 
+        {/* Success Banner upon returning from Stripe Checkout */}
+        {billing === "success" && (
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 sm:p-5 flex items-center justify-between gap-4 animate-in fade-in duration-300">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="size-5" />
+              </div>
+              <div>
+                <h4 className="font-heading font-bold text-sm text-foreground">
+                  +1 TB High-Speed Storage Boost Activated!
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Your Cloudflare R2 storage allocation has been upgraded by 1,024 GB.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Main Active Storage Meter */}
         <TiltCard tiltIntensity={1.5} glareIntensity={0.04} className="rounded-2xl">
           <Card className="rounded-2xl border border-border p-6 sm:p-8 space-y-6 shadow-sm hover:translate-y-0">
@@ -194,8 +233,8 @@ export default async function StoragePage({
                             percentage >= 90
                               ? "bg-destructive shadow-destructive/50"
                               : percentage >= 75
-                              ? "bg-[#f5551d] shadow-[#f5551d]/50"
-                              : "bg-gradient-to-r from-primary to-[#ff8a45] shadow-primary/50"
+                              ? "bg-amber-500 shadow-amber-500/50"
+                              : "bg-primary shadow-primary/50"
                           }`}
                           style={{ width: `${Math.max(percentage, 2)}%` }}
                         />
@@ -251,7 +290,7 @@ export default async function StoragePage({
                           <Card className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1 hover:translate-y-0 shadow-none h-full cursor-help">
                             <CardContent className="p-0 space-y-1">
                               <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                                <Layers className="size-3.5 text-[#ff8a45]" />
+                                <Layers className="size-3.5 text-primary" />
                                 Adaptive 4K HLS Streams
                               </div>
                               <div className="text-sm font-mono font-bold text-foreground">
@@ -303,7 +342,10 @@ export default async function StoragePage({
 
             {/* Storage Boost CTA using CardFooter */}
             <CardFooter className="p-0 pt-4 border-t border-border flex items-center justify-end">
-              <StorageUpgradeButton />
+              <StorageUpgradeButton
+                workspaceId={workspace.id}
+                workspaceSlug={workspace.slug}
+              />
             </CardFooter>
           </Card>
         </TiltCard>

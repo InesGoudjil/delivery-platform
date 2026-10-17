@@ -15,6 +15,14 @@ export interface CreateCheckoutSessionInput {
   origin: string;
 }
 
+export interface CreateStorageCheckoutSessionInput {
+  workspaceId: string;
+  workspaceSlug?: string;
+  userId: string;
+  userEmail?: string | null;
+  origin: string;
+}
+
 export interface CreatePortalSessionInput {
   workspaceId: string;
   workspaceSlug?: string;
@@ -165,6 +173,96 @@ export class StripeService {
   }
 
   /**
+   * Creates a Stripe Checkout Session specifically for upgrading Cloudflare R2 storage (+1 TB at $15/mo).
+   */
+  async createStorageAddonCheckoutSession(
+    input: CreateStorageCheckoutSessionInput
+  ): Promise<{ url: string | null }> {
+    // 1. Verify workspace permission (owner or admin member)
+    const member = await this.memberRepo.findByWorkspaceAndUserId(input.workspaceId, input.userId);
+    let isOwner = member && ['owner', 'admin'].includes(member.role);
+
+    if (!isOwner && this.workspaceRepo) {
+      const workspace = await this.workspaceRepo.findById(input.workspaceId);
+      if (workspace && workspace.ownerId === input.userId) {
+        isOwner = true;
+      }
+    }
+
+    if (!isOwner) {
+      throw new Error('Permission denied for this workspace. Only owners or admins can upgrade storage.');
+    }
+
+    let slug = input.workspaceSlug;
+    if (!slug && this.workspaceRepo) {
+      const ws = await this.workspaceRepo.findById(input.workspaceId);
+      slug = ws?.slug;
+    }
+    const pathSlug = slug || input.workspaceId;
+
+    const stripe = getStripeClient();
+    if (!stripe) {
+      // In local dev without live Stripe secret key, simulate test checkout redirect
+      console.warn('[StripeService] Stripe not configured; generating mock storage checkout session.');
+      const mockSessionId = `mock_storage_${input.workspaceId}_${Date.now()}`;
+      return {
+        url: `${input.origin}/${pathSlug}/storage?billing=success&session_id=${mockSessionId}`,
+      };
+    }
+
+    const customerId = await this.getOrCreateValidCustomer(
+      stripe,
+      input.workspaceId,
+      input.userId,
+      input.userEmail
+    );
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: '+1 TB High-Speed Storage Add-on',
+              description: '1 TB additional high-speed Cloudflare R2 edge capacity for your CineSpace workspace',
+            },
+            unit_amount: 1500, // $15.00
+            recurring: {
+              interval: 'month',
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      client_reference_id: input.workspaceId,
+      metadata: {
+        workspace_id: input.workspaceId,
+        workspace_slug: pathSlug,
+        type: 'storage_addon',
+        storage_gb_delta: '1024',
+        user_id: input.userId,
+        email: input.userEmail || '',
+      },
+      subscription_data: {
+        metadata: {
+          workspace_id: input.workspaceId,
+          workspace_slug: pathSlug,
+          type: 'storage_addon',
+          storage_gb_delta: '1024',
+          email: input.userEmail || '',
+        },
+      },
+      success_url: `${input.origin}/${pathSlug}/storage?billing=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${input.origin}/${pathSlug}/storage?billing=cancel`,
+    });
+
+    return { url: session.url };
+  }
+
+  /**
    * Synchronizes a completed Stripe Checkout Session back into Supabase.
    * Useful when returning directly from Checkout (e.g. In local development or before webhooks arrive).
    */
@@ -172,6 +270,37 @@ export class StripeService {
     sessionId: string,
     subscriptionService: SubscriptionService
   ): Promise<{ success: boolean; planName?: string }> {
+    // Check for simulated/test storage add-on session
+    if (sessionId.startsWith('mock_storage_')) {
+      const parts = sessionId.split('_');
+      const wsId = parts[2];
+      if (wsId) {
+        try {
+          const currentFeatures = await subscriptionService.getFeatures(wsId);
+          const currentStorageGB = currentFeatures.storage_gb || 2;
+          const newStorageGB = currentStorageGB + 1024;
+
+          await subscriptionService.updateWorkspaceFeatures(wsId, {
+            ...currentFeatures,
+            storage_gb: newStorageGB,
+          });
+
+          await subscriptionService.recordInvoice({
+            workspaceId: wsId,
+            amountCents: 1500,
+            currency: 'USD',
+            description: '+1 TB High-Speed Storage Add-on (Test Mode)',
+            status: 'paid',
+          });
+
+          console.log(`[StripeService:Mock] Added 1024 GB storage to workspace ${wsId}`);
+          return { success: true, planName: '+1 TB Storage' };
+        } catch (e: any) {
+          console.warn('[StripeService:Mock] Error applying storage add-on:', e.message);
+        }
+      }
+    }
+
     const stripe = this.getStripe();
 
     try {
@@ -191,7 +320,36 @@ export class StripeService {
       const customerId =
         typeof session.customer === 'string' ? session.customer : session.customer?.id;
 
-      if (!workspaceId || !stripeSubId) {
+      if (!workspaceId) {
+        return { success: false };
+      }
+
+      // Check if session is for +1 TB Storage Add-on
+      if (session.metadata?.type === 'storage_addon') {
+        const deltaGB = parseInt(session.metadata?.storage_gb_delta || '1024', 10);
+        const currentFeatures = await subscriptionService.getFeatures(workspaceId);
+        const currentStorageGB = currentFeatures.storage_gb || 2;
+        const newStorageGB = currentStorageGB + deltaGB;
+
+        await subscriptionService.updateWorkspaceFeatures(workspaceId, {
+          ...currentFeatures,
+          storage_gb: newStorageGB,
+        });
+
+        await subscriptionService.recordInvoice({
+          workspaceId,
+          amountCents: 1500,
+          currency: 'USD',
+          description: '+1 TB Storage Add-on ($15/mo)',
+          stripeCustomerId: customerId || undefined,
+          status: 'paid',
+        });
+
+        console.log(`[StripeService] Successfully added ${deltaGB} GB storage to workspace ${workspaceId}`);
+        return { success: true, planName: '+1 TB Storage' };
+      }
+
+      if (!stripeSubId) {
         return { success: false };
       }
 

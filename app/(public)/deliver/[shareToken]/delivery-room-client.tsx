@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useTransition } from "react";
+import Link from "next/link";
 import {
   Play,
   Check,
@@ -24,6 +25,7 @@ import {
   EyeOff,
   Image as ImageIcon,
   RotateCcw,
+  CornerDownRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CutReviewPlayer, type CutReviewPlayerRef } from "@/components/video/cut-review-player";
@@ -40,7 +42,7 @@ import {
   approveCutAction,
   recordClientDownloadAction,
 } from "@/app/actions/deliveries";
-import { addFeedbackAction, toggleFeedbackResolvedAction } from "@/app/actions/feedback";
+import { addFeedbackAction, addFeedbackReplyAction, toggleFeedbackResolvedAction } from "@/app/actions/feedback";
 import { AmbientBackground } from "@/components/ui/ambient-background";
 import { AccentThemeProvider } from "@/components/theme/accent-theme-provider";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -76,6 +78,14 @@ export interface AssetVersionItem {
   isActiveVersion?: boolean;
 }
 
+export interface FeedbackReplyItem {
+  id: string;
+  feedbackId: string;
+  authorName: string;
+  commentText: string;
+  createdAt: string;
+}
+
 export interface FeedbackItem {
   id: string;
   assetVersionId: string;
@@ -84,6 +94,7 @@ export interface FeedbackItem {
   timestampSeconds?: number | null;
   isResolved: boolean;
   createdAt: string;
+  replies?: FeedbackReplyItem[];
 }
 
 export interface DeliveryAssetItem {
@@ -232,6 +243,9 @@ export function DeliveryRoomClient({
   const [commentText, setCommentText] = useState("");
   const [isSubmittingComment, startCommentTransition] = useTransition();
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [replyInputText, setReplyInputText] = useState("");
+  const [isSubmittingReply, startReplyTransition] = useTransition();
 
   // Timecode playhead state
   const cutPlayerRef = useRef<CutReviewPlayerRef | null>(null);
@@ -316,15 +330,19 @@ export function DeliveryRoomClient({
 
   const displayAssetCount = assets.length > 0 ? assets.length : (initialAssetCount || 0);
 
-  const daysRemaining = delivery.expiresAt
-    ? Math.max(
-        1,
-        Math.ceil(
-          (new Date(delivery.expiresAt).getTime() - Date.now()) /
-            (1000 * 60 * 60 * 24)
-        )
-      )
-    : 30;
+  const isExpired = delivery.expiresAt ? new Date(delivery.expiresAt).getTime() < Date.now() : false;
+  const expiryLabel = (() => {
+    if (!delivery.expiresAt) return "Never expires";
+    const diffMs = new Date(delivery.expiresAt).getTime() - Date.now();
+    if (diffMs <= 0) return `Expired on ${new Date(delivery.expiresAt).toLocaleDateString()}`;
+    const diffHours = diffMs / (1000 * 60 * 60);
+    if (diffHours < 24) {
+      const h = Math.max(1, Math.round(diffHours));
+      return `expires in ${h} ${h === 1 ? "hour" : "hours"}`;
+    }
+    const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    return `expires in ${days} ${days === 1 ? "day" : "days"}`;
+  })();
 
   const firstAsset = assets[0];
   const firstVersion = firstAsset?.activeVersion || firstAsset?.versions[0];
@@ -577,6 +595,81 @@ export function DeliveryRoomClient({
     await toggleFeedbackResolvedAction(feedbackId, !currentResolved, delivery.shareToken, delivery.id);
   };
 
+  // 5b. Add Feedback Reply
+  const handleAddReply = (feedbackId: string) => {
+    if (!replyInputText.trim() || !activeAsset) return;
+    const content = replyInputText.trim();
+    const author = commentAuthor.trim() || "Client Reviewer";
+    const tempReplyId = `temp_reply_${Date.now()}`;
+
+    const newReply: FeedbackReplyItem = {
+      id: tempReplyId,
+      feedbackId,
+      authorName: author,
+      commentText: content,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Optimistic update
+    setAssets((prev) =>
+      prev.map((a) => {
+        if (a.id === activeAsset.id) {
+          return {
+            ...a,
+            feedback: a.feedback.map((f) =>
+              f.id === feedbackId
+                ? {
+                    ...f,
+                    replies: [...(f.replies || []), newReply],
+                  }
+                : f
+            ),
+          };
+        }
+        return a;
+      })
+    );
+
+    setReplyInputText("");
+    setReplyingToId(null);
+    toast.success("Reply posted");
+
+    startReplyTransition(async () => {
+      const res = await addFeedbackReplyAction({
+        feedbackId,
+        commentText: content,
+        authorName: author,
+        shareToken: delivery.shareToken,
+        deliveryId: delivery.id,
+      });
+
+      if (res.success && res.reply) {
+        setAssets((prev) =>
+          prev.map((a) => {
+            if (a.id === activeAsset.id) {
+              return {
+                ...a,
+                feedback: a.feedback.map((f) =>
+                  f.id === feedbackId
+                    ? {
+                        ...f,
+                        replies: (f.replies || []).map((r) =>
+                          r.id === tempReplyId ? (res.reply as FeedbackReplyItem) : r
+                        ),
+                      }
+                    : f
+                ),
+              };
+            }
+            return a;
+          })
+        );
+      } else if (res.error) {
+        toast.error(res.error);
+      }
+    });
+  };
+
   // 6. WhatsApp Share & Message Creator
   const handleWhatsAppShare = () => {
     const text = encodeURIComponent(
@@ -679,12 +772,12 @@ export function DeliveryRoomClient({
             showCloseButton={false}
             className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-[#121216]/95 backdrop-blur-2xl border border-white/20 text-[#f6f3ec] rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl space-y-6"
           >
-            <div className="w-16 h-16 rounded-2xl bg-[#f5551d]/15 text-[#f5551d] mx-auto flex items-center justify-center shadow-inner">
+            <div className="w-16 h-16 rounded-2xl bg-primary/15 text-primary mx-auto flex items-center justify-center shadow-inner">
               <KeyRound className="size-8" />
             </div>
 
             <div className="text-center space-y-2">
-              <Badge variant="orange" className="font-mono text-[11px] uppercase tracking-wider text-[#ff8a45]">
+              <Badge variant="outline" className="font-mono text-[11px] uppercase tracking-wider text-primary border-primary/30">
                 Protected Review Room
               </Badge>
               <TypographyH2 className="text-2xl font-bold font-display text-[#f6f3ec]">
@@ -704,18 +797,20 @@ export function DeliveryRoomClient({
                     placeholder="Enter client passcode"
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 text-center text-sm rounded-xl py-6 px-10 focus-visible:border-[#f5551d] text-white placeholder:text-neutral-500 font-mono tracking-wider"
+                    className="w-full bg-white/5 border border-white/10 text-center text-sm rounded-xl py-6 px-10 focus-visible:border-primary text-white placeholder:text-neutral-500 font-mono tracking-wider"
                     autoFocus
                     disabled={isVerifyingPasscode}
                   />
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={() => setShowPasscode(!showPasscode)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors cursor-pointer p-1 z-10"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 size-7 text-neutral-400 hover:text-white cursor-pointer p-1 z-10"
                     title={showPasscode ? "Hide passcode" : "Show passcode"}
                   >
                     {showPasscode ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                  </button>
+                  </Button>
                 </div>
                 {passcodeError && (
                   <div className="flex items-center justify-center gap-1.5 text-xs text-red-400 mt-2 font-medium">
@@ -728,7 +823,7 @@ export function DeliveryRoomClient({
               <Button
                 type="submit"
                 disabled={isVerifyingPasscode}
-                className="w-full bg-[#f5551d] hover:bg-[#e0440d] text-black font-bold py-6 text-xs rounded-full flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-lg disabled:opacity-50"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-6 text-xs rounded-full flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-lg shadow-primary/25 disabled:opacity-50"
               >
                 <ShieldCheck className="size-4" />
                 {isVerifyingPasscode ? "Verifying..." : "Unlock Review Room"}
@@ -742,7 +837,7 @@ export function DeliveryRoomClient({
                   variant="link"
                   onClick={handleCreatorUnlock}
                   disabled={isVerifyingPasscode}
-                  className="text-[11px] font-mono text-[#f5551d] hover:underline cursor-pointer transition-colors h-auto p-0"
+                  className="text-[11px] font-mono text-primary hover:underline cursor-pointer transition-colors h-auto p-0"
                 >
                   Workspace Creator: Quick Unlock Preview
                 </Button>
@@ -757,7 +852,26 @@ export function DeliveryRoomClient({
 
       {/* Main Review Room Content (blurred when locked) */}
       <div className={`relative z-10 ${isLocked ? "filter blur-lg pointer-events-none select-none opacity-30 transition-all duration-500" : ""}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+        {/* Creator Preview Banner when link is expired */}
+        {isExpired && isWorkspaceMember && (
+          <div className="bg-amber-500/10 border border-amber-500/20 px-4 sm:px-6 py-3 rounded-2xl text-xs text-amber-200 flex flex-wrap items-center justify-between gap-3 font-mono">
+            <div className="flex items-center gap-2">
+              <Clock className="size-4 text-amber-400 shrink-0" />
+              <span>
+                <strong>CREATOR PREVIEW MODE:</strong> This public link expired on{" "}
+                {new Date(delivery.expiresAt!).toLocaleDateString()}. Clients are blocked from viewing this review room.
+              </span>
+            </div>
+            <Link
+              href={`/${workspace.slug}/deliveries/${delivery.id}`}
+              className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 px-3 py-1 rounded-lg font-bold text-[11px] transition-colors"
+            >
+              Renew Expiration &rarr;
+            </Link>
+          </div>
+        )}
+
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
           {/* 1. Prototype Brand Header */}
           <header className="py-4 border-b border-white/10 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
@@ -770,17 +884,21 @@ export function DeliveryRoomClient({
               ) : (
                 <span className="font-heading font-extrabold text-lg sm:text-xl text-[#f6f3ec] tracking-tight">
                   {workspace.brandName}
-                  <span className="text-[#f5551d]">.</span>
+                  <span className="text-primary">.</span>
                 </span>
               )}
             </div>
 
             <Badge
               variant="outline"
-              className="rounded-full px-3.5 py-1.5 text-xs font-mono border-white/15 bg-white/5 text-[#aeaeb4] gap-2 font-normal"
+              className={`rounded-full px-3.5 py-1.5 text-xs font-mono gap-2 font-normal ${
+                isExpired
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
+                  : "border-white/15 bg-white/5 text-[#aeaeb4]"
+              }`}
             >
-              <Lock className="size-3 text-[#aeaeb4]" />
-              <span>Private · expires in {daysRemaining} days</span>
+              <Lock className="size-3" />
+              <span>Private · {expiryLabel}</span>
             </Badge>
           </header>
 
@@ -796,7 +914,7 @@ export function DeliveryRoomClient({
 
             {/* Inner Content */}
             <div className="relative z-10 p-6 sm:p-10 lg:p-12 w-full">
-              <div className="text-xs sm:text-sm font-semibold text-[#f5551d] font-sans tracking-wide">
+              <div className="text-xs sm:text-sm font-semibold text-primary font-sans tracking-wide">
                 Delivery for {clientName || "Prestige Rentals"}
               </div>
 
@@ -828,7 +946,7 @@ export function DeliveryRoomClient({
                   <span className="font-mono text-[10px] uppercase tracking-widest text-[#aeaeb4]">
                     TOTAL SIZE
                   </span>
-                  <span className="font-heading font-bold text-sm sm:text-base text-[#f5551d]">
+                  <span className="font-heading font-bold text-sm sm:text-base text-primary">
                     {formattedTotalSize}
                   </span>
                 </div>
@@ -847,7 +965,7 @@ export function DeliveryRoomClient({
               <div className="mt-6">
                 <Button
                   onClick={handleDownloadAll}
-                  className="rounded-full bg-gradient-to-r from-[#d9481d] to-[#802010] hover:from-[#f5551d] hover:to-[#992e10] text-white font-bold text-xs tracking-wider uppercase px-6 py-3 shadow-lg shadow-[#d9481d]/30 border border-[#f5551d]/40 transition-all duration-200 hover:scale-[1.02] cursor-pointer h-auto gap-2"
+                  className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs tracking-wider uppercase px-6 py-3 shadow-lg shadow-primary/30 border border-primary/40 transition-all duration-200 hover:scale-[1.02] cursor-pointer h-auto gap-2"
                 >
                   {isGlobalDownloadUnlocked || approvedCount > 0 ? (
                     <Download className="size-4" />
@@ -872,7 +990,7 @@ export function DeliveryRoomClient({
             <div className="flex items-center gap-3.5 w-full sm:w-auto">
               <div className="flex-1 sm:w-64 h-2 bg-white/10 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-[#f5551d] to-[#ff8a45] rounded-full transition-all duration-500 ease-out"
+                  className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
                   style={{
                     width: `${Math.round(
                       (approvedCount / (assets.length || 1)) * 100
@@ -919,7 +1037,7 @@ export function DeliveryRoomClient({
                 <Button
                   onClick={handleApproveAll}
                   disabled={isApprovingAll}
-                  className="rounded-full bg-gradient-to-r from-[#d9481d] to-[#802010] hover:from-[#f5551d] hover:to-[#992e10] text-white font-bold text-xs tracking-wider uppercase px-6 py-2.5 shadow-md shadow-[#d9481d]/20 transition-all duration-200 hover:scale-[1.02] cursor-pointer h-auto gap-2"
+                  className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs tracking-wider uppercase px-6 py-2.5 shadow-md shadow-primary/20 transition-all duration-200 hover:scale-[1.02] cursor-pointer h-auto gap-2"
                 >
                   {isApprovingAll ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -935,7 +1053,7 @@ export function DeliveryRoomClient({
           {/* 4. Asset Library / Project Files (.dlib) */}
           <div className="space-y-5 pt-4">
             <div className="space-y-1">
-              <div className="text-xs sm:text-sm font-semibold text-[#f5551d] font-sans tracking-wide">
+              <div className="text-xs sm:text-sm font-semibold text-primary font-sans tracking-wide">
                 Asset library
               </div>
               <h2 className="font-heading font-black text-2xl sm:text-4xl text-[#f6f3ec] uppercase tracking-tight">
@@ -944,46 +1062,52 @@ export function DeliveryRoomClient({
             </div>
 
             {/* Filter Tabs */}
-            <div className="inline-flex items-center bg-[#141416] border border-white/10 rounded-full p-1 shadow-inner">
-              <button
+            <div className="inline-flex items-center bg-[#141416] border border-white/10 rounded-full p-1 shadow-inner gap-1">
+              <Button
                 type="button"
+                variant={assetTab === "all" ? "default" : "ghost"}
+                size="xs"
                 onClick={() => setAssetTab("all")}
-                className={`px-5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                className={`h-7 px-5 rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                   assetTab === "all"
-                    ? "bg-white text-black shadow-md"
-                    : "text-[#aeaeb4] hover:text-white"
+                    ? "bg-white text-black hover:bg-white/90 shadow-md"
+                    : "text-[#aeaeb4] hover:text-white hover:bg-white/5"
                 }`}
               >
                 ALL
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant={assetTab === "video" ? "default" : "ghost"}
+                size="xs"
                 onClick={() => setAssetTab("video")}
-                className={`px-5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                className={`h-7 px-5 rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                   assetTab === "video"
-                    ? "bg-white text-black shadow-md"
-                    : "text-[#aeaeb4] hover:text-white"
+                    ? "bg-white text-black hover:bg-white/90 shadow-md"
+                    : "text-[#aeaeb4] hover:text-white hover:bg-white/5"
                 }`}
               >
                 VIDEOS
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant={assetTab === "photo" ? "default" : "ghost"}
+                size="xs"
                 onClick={() => setAssetTab("photo")}
-                className={`px-5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                className={`h-7 px-5 rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                   assetTab === "photo"
-                    ? "bg-white text-black shadow-md"
-                    : "text-[#aeaeb4] hover:text-white"
+                    ? "bg-white text-black hover:bg-white/90 shadow-md"
+                    : "text-[#aeaeb4] hover:text-white hover:bg-white/5"
                 }`}
               >
                 PHOTOS
-              </button>
+              </Button>
             </div>
 
             {/* 3-Column Asset Grid */}
             {filteredAssets.length === 0 ? (
               <div className="bg-[#111115] border border-white/10 rounded-3xl p-12 text-center space-y-4">
-                <FileVideo className="w-12 h-12 text-[#f5551d] mx-auto opacity-70" />
+                <FileVideo className="w-12 h-12 text-primary mx-auto opacity-70" />
                 <div className="space-y-1">
                   <h4 className="font-heading font-bold text-lg text-white">
                     No Files in this Category
@@ -1011,17 +1135,17 @@ export function DeliveryRoomClient({
                 const containerClasses = isMasonry
                   ? `columns-1 ${
                       cardSize === "S"
-                        ? "sm:columns-2 md:columns-3 lg:columns-4"
+                        ? "sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5"
                         : cardSize === "L"
-                        ? "sm:columns-1 md:columns-2"
-                        : "sm:columns-2 md:columns-3"
+                        ? "sm:columns-1 md:columns-2 lg:columns-3"
+                        : "sm:columns-2 md:columns-3 xl:columns-4"
                     } gap-5 space-y-5 pt-1`
                   : `grid grid-cols-1 ${
                       cardSize === "S"
-                        ? "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                        ? "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
                         : cardSize === "L"
-                        ? "sm:grid-cols-1 md:grid-cols-2"
-                        : "sm:grid-cols-2 lg:grid-cols-3"
+                        ? "sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+                        : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
                     } gap-5 pt-1`;
 
                 const numericRatio =
@@ -1082,21 +1206,25 @@ export function DeliveryRoomClient({
                           {/* Top-Right: Interactive Approve / Unapprove + Quick Download */}
                           <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
                             {(isGlobalDownloadUnlocked || asset.isApproved) && (
-                              <button
+                              <Button
                                 type="button"
+                                variant="ghost"
+                                size="icon-xs"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleSingleAssetDownload(asset);
                                 }}
                                 title={`Download ${asset.title}`}
-                                className="size-7 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white/90 hover:text-white hover:bg-white/20 hover:border-white/40 flex items-center justify-center shadow-md transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100"
+                                className="size-7 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white/90 hover:text-white hover:bg-white/20 hover:border-white/40 flex items-center justify-center shadow-md transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 p-0"
                               >
                                 <Download className="size-3.5" />
-                              </button>
+                              </Button>
                             )}
 
-                            <button
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="icon-xs"
                               disabled={approvingAssetId === asset.id}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1107,7 +1235,7 @@ export function DeliveryRoomClient({
                                   ? "Approved — click to unapprove"
                                   : "Click to approve cut"
                               }
-                              className={`size-7 rounded-full flex items-center justify-center shadow-md font-bold transition-all cursor-pointer ${
+                              className={`size-7 rounded-full p-0 flex items-center justify-center shadow-md font-bold transition-all cursor-pointer ${
                                 asset.isApproved
                                   ? "bg-[#86b98f] hover:bg-amber-400 text-black opacity-100"
                                   : "bg-black/60 backdrop-blur-md border border-white/20 text-white/80 hover:text-black hover:bg-[#86b98f] hover:border-[#86b98f] opacity-0 group-hover:opacity-100 max-sm:opacity-100"
@@ -1118,7 +1246,7 @@ export function DeliveryRoomClient({
                               ) : (
                                 <Check className="size-3.5 stroke-[3]" />
                               )}
-                            </button>
+                            </Button>
                           </div>
 
                           {/* Bottom-Right: Duration timecode (videos only) */}
@@ -1172,8 +1300,10 @@ export function DeliveryRoomClient({
                                 {asset.title}
                               </span>
                               <div className="flex items-center gap-1.5 shrink-0">
-                                <button
+                                <Button
                                   type="button"
+                                  variant="ghost"
+                                  size="xs"
                                   disabled={approvingAssetId === asset.id}
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -1184,7 +1314,7 @@ export function DeliveryRoomClient({
                                       ? "Click to unapprove"
                                       : "Click to approve"
                                   }
-                                  className="cursor-pointer focus:outline-none"
+                                  className="h-auto p-0 hover:bg-transparent cursor-pointer focus:outline-none"
                                 >
                                   <Badge
                                     variant="outline"
@@ -1196,7 +1326,7 @@ export function DeliveryRoomClient({
                                   >
                                     {asset.isApproved ? "✓ Approved" : "In Review"}
                                   </Badge>
-                                </button>
+                                </Button>
                                 <Button
                                   type="button"
                                   variant="ghost"
@@ -1250,7 +1380,7 @@ export function DeliveryRoomClient({
             {/* Modal Top Bar */}
             <div className="flex items-center justify-between border-b border-white/10 pb-3 sm:pb-4">
               <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                <FileVideo className="size-5 sm:size-6 text-[#f5551d] shrink-0" />
+                <FileVideo className="size-5 sm:size-6 text-primary shrink-0" />
                 <div className="min-w-0">
                   <TypographyH3 className="font-display font-bold text-base sm:text-lg text-[#f6f3ec] truncate">
                     {activeAsset.title}
@@ -1306,7 +1436,7 @@ export function DeliveryRoomClient({
                         onClick={() => handleSingleAssetDownload(activeAsset, activeVersion)}
                         className="rounded-full border-white/20 text-white bg-white/10 hover:bg-white/20 text-xs font-bold px-3 py-1.5 cursor-pointer flex items-center gap-1.5 disabled:opacity-40"
                       >
-                        <Download className="size-3.5 text-[#f5551d]" />
+                        <Download className="size-3.5 text-primary" />
                         <span className="hidden sm:inline">Download Cut</span>
                       </Button>
                     }
@@ -1400,7 +1530,7 @@ export function DeliveryRoomClient({
                 {activeAsset.versions && activeAsset.versions.length > 0 && (
                   <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
                     <div className="flex items-center gap-2">
-                      <Layers className="size-3.5 text-[#f5551d]" />
+                      <Layers className="size-3.5 text-primary" />
                       <span className="text-xs font-mono text-[#aeaeb4]">
                         Version:
                       </span>
@@ -1417,7 +1547,7 @@ export function DeliveryRoomClient({
                             onClick={() => setSelectedVersionId(v.id)}
                             className={`px-3 py-1.5 h-7 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer flex items-center gap-1 ${
                               isSelected
-                                ? "bg-[#f5551d] text-black hover:bg-[#e0440d] shadow-md border-transparent"
+                                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md border-transparent"
                                 : "bg-white/5 border-white/10 text-[#aeaeb4] hover:text-[#f6f3ec] hover:bg-white/10"
                             }`}
                           >
@@ -1446,7 +1576,7 @@ export function DeliveryRoomClient({
                     <div className="space-y-3 sm:space-y-4 overflow-hidden flex flex-col h-full">
                       <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
                         <TypographyH4 className="font-display font-bold text-sm text-[#f6f3ec] flex items-center gap-2">
-                          <MessageCircle className={`size-4 ${isStill ? "text-emerald-400" : "text-[#f5551d]"}`} />
+                          <MessageCircle className={`size-4 ${isStill ? "text-emerald-400" : "text-primary"}`} />
                           Notes ({activeFeedback.length})
                         </TypographyH4>
                         {isStill ? (
@@ -1454,7 +1584,7 @@ export function DeliveryRoomClient({
                             Still Photography
                           </Badge>
                         ) : (
-                          <Badge variant="orange" className="text-[10px] font-mono">
+                          <Badge variant="outline" className="text-[10px] font-mono text-primary border-primary/30">
                             Playhead: {currentPlayheadTc}
                           </Badge>
                         )}
@@ -1491,7 +1621,7 @@ export function DeliveryRoomClient({
                                   hasTimestamp ? "cursor-pointer" : ""
                                 } ${
                                   isSelected
-                                    ? "bg-[#f5551d]/20 border-[#f5551d] text-[#f6f3ec] ring-1 ring-[#f5551d]"
+                                    ? "bg-primary/20 border-primary text-[#f6f3ec] ring-1 ring-primary"
                                     : c.isResolved
                                     ? "bg-white/5 border-white/5 text-[#71717a] opacity-75"
                                     : "bg-[#18181c] border-white/10 text-[#f6f3ec] hover:border-white/20"
@@ -1517,7 +1647,25 @@ export function DeliveryRoomClient({
                                   )}
                                 </div>
                                 <p className="leading-snug text-xs">{c.commentText}</p>
-                                <div className="flex items-center justify-end pt-1">
+
+                                {/* Action Row: Reply & Resolve */}
+                                <div className="flex items-center justify-between pt-1">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (replyingToId === c.id) {
+                                        setReplyingToId(null);
+                                      } else {
+                                        setReplyingToId(c.id);
+                                        setReplyInputText("");
+                                      }
+                                    }}
+                                    className="text-[10px] text-[#aeaeb4] hover:text-white flex items-center gap-1 font-mono transition-colors cursor-pointer"
+                                  >
+                                    <CornerDownRight className="size-3" />
+                                    {replyingToId === c.id ? "Cancel" : "Reply"}
+                                  </button>
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -1534,6 +1682,62 @@ export function DeliveryRoomClient({
                                     {c.isResolved ? "✓ Resolved" : "Mark resolved"}
                                   </Button>
                                 </div>
+
+                                {/* Threaded Replies */}
+                                {c.replies && c.replies.length > 0 && (
+                                  <div className="mt-2 pt-2 border-t border-white/5 space-y-2">
+                                    {c.replies.map((r) => (
+                                      <div
+                                        key={r.id}
+                                        className="flex items-start gap-2 pl-2 border-l-2 border-primary/40 text-[11px]"
+                                      >
+                                        <Avatar className="size-4 text-[8px] shrink-0 mt-0.5">
+                                          <AvatarFallback className="text-[8px] bg-white/10 text-white font-mono">
+                                            {r.authorName ? r.authorName.slice(0, 2).toUpperCase() : "U"}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 min-w-0">
+                                          <span className="font-semibold text-white/90 text-[10px] block font-mono">
+                                            {r.authorName}
+                                          </span>
+                                          <p className="text-white/80 leading-snug">{r.commentText}</p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Inline Reply Input */}
+                                {replyingToId === c.id && (
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="mt-2 pt-2 border-t border-white/10 flex gap-2"
+                                  >
+                                    <Input
+                                      type="text"
+                                      placeholder={`Reply to ${c.authorName}...`}
+                                      value={replyInputText}
+                                      onChange={(e) => setReplyInputText(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter" && !e.shiftKey) {
+                                          e.preventDefault();
+                                          handleAddReply(c.id);
+                                        }
+                                      }}
+                                      autoFocus
+                                      className="flex-1 bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-white h-7 focus-visible:ring-1 focus-visible:ring-primary"
+                                    />
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      disabled={!replyInputText.trim() || isSubmittingReply}
+                                      onClick={() => handleAddReply(c.id)}
+                                      className="h-7 px-2.5 text-xs bg-primary hover:bg-primary/90 text-white rounded-lg cursor-pointer"
+                                    >
+                                      <Send className="size-3" />
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                             );
                           })
@@ -1561,7 +1765,7 @@ export function DeliveryRoomClient({
                               Still Note
                             </Badge>
                           ) : (
-                            <Badge variant="orange" className="text-[10px] font-mono font-bold py-0 h-4">
+                            <Badge variant="outline" className="text-[10px] font-mono font-bold py-0 h-4 text-primary border-primary/30">
                               {currentPlayheadTc}
                             </Badge>
                           )}
@@ -1577,7 +1781,7 @@ export function DeliveryRoomClient({
                             value={commentText}
                             onChange={(e) => setCommentText(e.target.value)}
                             disabled={isSubmittingComment}
-                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs focus-visible:ring-1 focus-visible:ring-[#f5551d] focus-visible:border-[#f5551d] text-white placeholder:text-neutral-500 min-h-[44px]"
+                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary text-white placeholder:text-neutral-500 min-h-[44px]"
                           />
                           <Tooltip>
                             <TooltipTrigger
@@ -1585,7 +1789,7 @@ export function DeliveryRoomClient({
                                 <Button
                                   type="submit"
                                   disabled={isSubmittingComment || !commentText.trim()}
-                                  className="bg-[#f5551d] hover:bg-[#ff8a45] disabled:opacity-40 text-black font-bold px-4 rounded-xl text-xs h-[44px] flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                                  className="bg-primary hover:bg-primary/90 disabled:opacity-40 text-primary-foreground font-bold px-4 rounded-xl text-xs h-[44px] flex items-center justify-center transition-colors cursor-pointer shrink-0 shadow-md shadow-primary/25"
                                 >
                                   {isSubmittingComment ? (
                                     <Loader2 className="size-4 animate-spin" />

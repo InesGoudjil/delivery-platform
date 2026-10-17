@@ -21,6 +21,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { UniversalDialog } from "@/components/ui/universal-dialog";
 import { toast } from "sonner";
 import {
   Avatar,
@@ -241,83 +242,78 @@ export function MembersClient({
       )}
 
       {/* Invite Modal */}
-      {showInviteModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border p-6 rounded-2xl max-w-md w-full shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            <div>
-              <div className="flex items-center justify-between">
-                <h3 className="font-heading text-lg font-bold text-card-foreground">
-                  Invite Team Collaborator
-                </h3>
-                <span className="text-[11px] font-mono text-muted-foreground">
-                  {seatStats.remainingSeats} seat{seatStats.remainingSeats > 1 ? "s" : ""} left
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Collaborators can upload cuts, reply to client notes, and manage deliveries.
-              </p>
-            </div>
-
-            <form onSubmit={handleSendInvite} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  required
-                  disabled={isSubmitting}
-                  placeholder="editor@posthouse.film"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  className="w-full bg-muted border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:border-primary disabled:opacity-50"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">
-                  Permission Role
-                </label>
-                <select
-                  value={inviteRole}
-                  disabled={isSubmitting}
-                  onChange={(e) => setInviteRole(e.target.value as any)}
-                  className="w-full bg-muted border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:border-primary cursor-pointer disabled:opacity-50"
-                >
-                  <option value="editor">Editor (Upload cuts &amp; reply to client comments)</option>
-                  <option value="admin">Admin (Manage team seats &amp; workspace branding)</option>
-                  <option value="viewer">Viewer (Read-only internal review)</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setShowInviteModal(false)}
-                  className="rounded-full text-xs cursor-pointer"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isSubmitting || !inviteEmail.trim()}
-                  className="rounded-full text-xs font-bold bg-primary text-black hover:bg-primary/90 cursor-pointer"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="size-3.5 mr-1.5 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    "Send Invitation"
-                  )}
-                </Button>
-              </div>
-            </form>
+      <UniversalDialog
+        open={showInviteModal}
+        onOpenChange={setShowInviteModal}
+        size="md"
+        title="Invite Team Collaborator"
+        badge={
+          <span className="text-[11px] font-mono text-muted-foreground">
+            {seatStats.remainingSeats} seat{seatStats.remainingSeats > 1 ? "s" : ""} left
+          </span>
+        }
+        description="Collaborators can upload cuts, reply to client notes, and manage deliveries."
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShowInviteModal(false)}
+              className="rounded-full text-xs cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSendInvite}
+              disabled={isSubmitting || !inviteEmail.trim()}
+              className="rounded-full text-xs font-bold bg-primary text-black hover:bg-primary/90 cursor-pointer"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                "Send Invitation"
+              )}
+            </Button>
+          </>
+        }
+      >
+        <form onSubmit={handleSendInvite} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-foreground">
+              Email Address
+            </label>
+            <input
+              type="email"
+              required
+              disabled={isSubmitting}
+              placeholder="editor@posthouse.film"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              className="w-full bg-muted border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:border-primary disabled:opacity-50"
+            />
           </div>
-        </div>
-      )}
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-foreground">
+              Permission Role
+            </label>
+            <select
+              value={inviteRole}
+              disabled={isSubmitting}
+              onChange={(e) => setInviteRole(e.target.value as any)}
+              className="w-full bg-muted border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:border-primary cursor-pointer disabled:opacity-50"
+            >
+              <option value="editor">Editor (Upload cuts &amp; reply to client comments)</option>
+              <option value="admin">Admin (Manage team seats &amp; workspace branding)</option>
+              <option value="viewer">Viewer (Read-only internal review)</option>
+            </select>
+          </div>
+        </form>
+      </UniversalDialog>
 
       {/* Active Members Section */}
       <div className="space-y-3">
@@ -348,7 +344,7 @@ export function MembersClient({
                 <div className="flex items-center gap-3.5">
                   <Avatar size="sm" className="size-10 ring-1 ring-border">
                     {mem.avatarUrl && <AvatarImage src={mem.avatarUrl} alt={mem.name} />}
-                    <AvatarFallback className="bg-gradient-to-br from-[#f5551d] to-[#ff8a45] text-black font-bold text-xs">
+                    <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">
                       {initials}
                     </AvatarFallback>
                   </Avatar>

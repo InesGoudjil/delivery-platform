@@ -185,10 +185,12 @@ export function LoginForm({
               className="pr-10"
               autoComplete="current-password"
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-xs"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? (
@@ -196,7 +198,7 @@ export function LoginForm({
               ) : (
                 <Eye className="size-4" />
               )}
-            </button>
+            </Button>
           </div>
           {fieldErrors.password && (
             <FieldError errors={[{ message: fieldErrors.password }]} />

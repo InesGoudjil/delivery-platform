@@ -19,6 +19,7 @@ import {
 } from "@/app/actions/waitlist";
 import { trackLead } from "@/lib/meta/pixel";
 import { motion, AnimatePresence } from "@/components/ui/motion";
+import { Button } from "@/components/ui/button";
 
 interface WaitlistModalProps {
   isOpen: boolean;
@@ -120,17 +121,19 @@ export function WaitlistModal({
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
           >
         {/* Close Button */}
-        <button
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-full p-2 text-white/50 hover:bg-white/10 hover:text-white transition-colors"
+          className="absolute right-4 top-4 rounded-full text-white/50 hover:bg-white/10 hover:text-white"
         >
           <X className="size-5" />
-        </button>
+        </Button>
 
         {/* Header Tabs */}
         {!result?.data ? (
           <div className="mb-6">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#f5551d] mb-2">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary mb-2">
               <Sparkles className="size-4" />
               <span>Early Beta Access</span>
             </div>
@@ -142,34 +145,38 @@ export function WaitlistModal({
             </p>
 
             <div className="mt-4 flex rounded-lg bg-white/5 p-1 border border-white/5">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   setTab("join");
                   setResult(null);
                 }}
                 className={`flex-1 rounded-md py-1.5 text-xs font-medium transition-all ${
                   tab === "join"
-                    ? "bg-[#f5551d] text-white shadow"
+                    ? "bg-primary text-primary-foreground shadow hover:bg-primary hover:text-primary-foreground"
                     : "text-white/60 hover:text-white"
                 }`}
               >
                 Join Waitlist
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   setTab("status");
                   setResult(null);
                 }}
                 className={`flex-1 rounded-md py-1.5 text-xs font-medium transition-all ${
                   tab === "status"
-                    ? "bg-[#f5551d] text-white shadow"
+                    ? "bg-primary text-primary-foreground shadow hover:bg-primary hover:text-primary-foreground"
                     : "text-white/60 hover:text-white"
                 }`}
               >
                 Check My Spot
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
@@ -209,7 +216,7 @@ export function WaitlistModal({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@studio.com"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-[#f5551d] focus:outline-none focus:ring-1 focus:ring-[#f5551d] transition-colors"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
               />
             </div>
 
@@ -222,7 +229,7 @@ export function WaitlistModal({
                   name="role"
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-[#16161c] px-3 py-2.5 text-xs text-white focus:border-[#f5551d] focus:outline-none transition-colors"
+                  className="w-full rounded-xl border border-white/10 bg-[#16161c] px-3 py-2.5 text-xs text-white focus:border-primary focus:outline-none transition-colors"
                 >
                   <option value="">Select role...</option>
                   <option value="editor">Video Editor</option>
@@ -241,7 +248,7 @@ export function WaitlistModal({
                   name="companySize"
                   value={companySize}
                   onChange={(e) => setCompanySize(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-[#16161c] px-3 py-2.5 text-xs text-white focus:border-[#f5551d] focus:outline-none transition-colors"
+                  className="w-full rounded-xl border border-white/10 bg-[#16161c] px-3 py-2.5 text-xs text-white focus:border-primary focus:outline-none transition-colors"
                 >
                   <option value="">Select size...</option>
                   <option value="1">Solo / Freelancer</option>
@@ -253,16 +260,16 @@ export function WaitlistModal({
             </div>
 
             {referralCode && (
-              <div className="rounded-lg bg-white/5 border border-white/10 p-2.5 text-xs text-[#f5551d] flex items-center gap-2">
+              <div className="rounded-lg bg-white/5 border border-white/10 p-2.5 text-xs text-primary flex items-center gap-2">
                 <Users className="size-4" />
                 <span>Referred with priority code: <strong>{referralCode}</strong></span>
               </div>
             )}
 
-            <button
+            <Button
               type="submit"
               disabled={isPending}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#f5551d] py-3 text-sm font-semibold text-white shadow-lg hover:bg-[#e04a16] transition-all disabled:opacity-50"
+              className="w-full h-auto flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-lg hover:bg-primary/90 transition-all disabled:opacity-50"
             >
               {isPending ? (
                 <>
@@ -275,7 +282,7 @@ export function WaitlistModal({
                   <ArrowRight className="size-4" />
                 </>
               )}
-            </button>
+            </Button>
           </form>
         )}
 
@@ -292,14 +299,15 @@ export function WaitlistModal({
                 value={statusEmail}
                 onChange={(e) => setStatusEmail(e.target.value)}
                 placeholder="you@studio.com"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-[#f5551d] focus:outline-none transition-colors"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-primary focus:outline-none transition-colors"
               />
             </div>
 
-            <button
+            <Button
               type="submit"
               disabled={isPending}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-white/10 py-3 text-sm font-semibold text-white hover:bg-white/20 transition-all disabled:opacity-50"
+              variant="outline"
+              className="w-full h-auto flex items-center justify-center gap-2 rounded-xl bg-white/10 py-3 text-sm font-semibold text-white hover:bg-white/20 transition-all disabled:opacity-50 border-white/10"
             >
               {isPending ? (
                 <>
@@ -312,14 +320,14 @@ export function WaitlistModal({
                   <span>Check Status</span>
                 </>
               )}
-            </button>
+            </Button>
           </form>
         )}
 
         {/* Success / Position Result View */}
         {result?.data && (
           <div className="py-2 text-center animate-in zoom-in-95 duration-200">
-            <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-[#f5551d]/10 text-[#f5551d] border border-[#f5551d]/20">
+            <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
               <Sparkles className="size-7" />
             </div>
 
@@ -339,7 +347,7 @@ export function WaitlistModal({
                   <div className="text-xs font-semibold uppercase tracking-wider text-white/50">
                     Your Queue Position
                   </div>
-                  <div className="mt-1 text-4xl font-extrabold text-[#f5551d] tracking-tight">
+                  <div className="mt-1 text-4xl font-extrabold text-primary tracking-tight">
                     #{result.data.position}
                   </div>
                   <div className="mt-1 text-xs text-white/50">
@@ -358,49 +366,58 @@ export function WaitlistModal({
                       value={referralLink}
                       className="flex-1 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white/90 font-mono select-all focus:outline-none"
                     />
-                    <button
+                    <Button
                       type="button"
+                      size="sm"
                       onClick={handleCopyLink}
-                      className="flex items-center gap-1.5 rounded-xl bg-[#f5551d] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#e04a16] transition-colors"
+                      className="flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
                     >
                       {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
                       <span>{copied ? "Copied" : "Copy"}</span>
-                    </button>
+                    </Button>
                   </div>
                   <p className="text-[11px] text-white/50">
                     Each friend who joins bumps you <strong>10 spots forward</strong>. (Current referrals: {result.data.referralCount})
                   </p>
 
                   <div className="pt-2 flex items-center justify-center gap-2">
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
                       onClick={shareOnTwitter}
                       className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 hover:text-white transition-colors"
                     >
                       Share on X
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
                       onClick={shareOnLinkedIn}
                       className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 hover:text-white transition-colors"
                     >
                       Share on LinkedIn
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
                       onClick={shareOnWhatsApp}
                       className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 hover:text-white transition-colors"
                     >
                       WhatsApp
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </>
             )}
 
             <div className="mt-6 pt-4 border-t border-white/10">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   setResult(null);
                   onClose();
@@ -408,7 +425,7 @@ export function WaitlistModal({
                 className="text-xs text-white/50 hover:text-white transition-colors"
               >
                 Close & Return
-              </button>
+              </Button>
             </div>
           </div>
         )}

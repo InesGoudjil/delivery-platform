@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerServices } from '@/core/server';
+import { stripeCheckoutSchema, safeValidate } from '@/lib/validations';
 
 export async function POST(req: Request) {
   try {
@@ -10,13 +11,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { workspaceId, workspaceSlug, planId } = await req.json();
-
-    if (!workspaceId || !planId) {
-      return NextResponse.json({ error: 'workspaceId and planId are required' }, { status: 400 });
+    const body = await req.json().catch(() => ({}));
+    const validated = safeValidate(stripeCheckoutSchema, body);
+    if (!validated.success) {
+      return NextResponse.json({ error: validated.error }, { status: 400 });
     }
 
+    const { workspaceId, workspaceSlug, planId, type } = validated.data;
     const origin = req.headers.get('origin') || 'http://localhost:3000';
+
+    if (type === 'storage_addon') {
+      const session = await services.stripe.createStorageAddonCheckoutSession({
+        workspaceId,
+        workspaceSlug,
+        userId: user.id,
+        userEmail: user.email,
+        origin,
+      });
+      return NextResponse.json({ url: session.url });
+    }
+
+    if (!planId) {
+      return NextResponse.json({ error: 'planId is required for subscription checkouts' }, { status: 400 });
+    }
 
     // Delegate session creation completely to core StripeService
     const session = await services.stripe.createCheckoutSession({

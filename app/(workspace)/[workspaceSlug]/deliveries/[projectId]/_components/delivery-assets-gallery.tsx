@@ -108,17 +108,17 @@ export function DeliveryAssetsGallery({
   const containerClasses = isMasonry
     ? `columns-1 ${
         cardSize === "S"
-          ? "sm:columns-2 md:columns-3 lg:columns-4"
+          ? "sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5"
           : cardSize === "L"
-          ? "sm:columns-1 md:columns-2"
-          : "sm:columns-2 md:columns-3"
+          ? "sm:columns-1 md:columns-2 lg:columns-3"
+          : "sm:columns-2 md:columns-3 xl:columns-4"
       } gap-4 space-y-4`
     : `grid grid-cols-1 ${
         cardSize === "S"
-          ? "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+          ? "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
           : cardSize === "L"
-          ? "sm:grid-cols-1 md:grid-cols-2"
-          : "sm:grid-cols-2 md:grid-cols-3"
+          ? "sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+          : "sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4"
       } gap-4`;
 
   return (
@@ -218,7 +218,7 @@ export function DeliveryAssetsGallery({
                 <div className="px-2 h-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-[10px] font-mono font-bold text-white tracking-wider">
                   V{item.versionNumber || 1}
                   {item.totalVersions && item.totalVersions > 1 && (
-                    <span className="text-[9px] text-[#ff8a45] ml-1">
+                    <span className="text-[9px] text-primary ml-1">
                       ({item.totalVersions})
                     </span>
                   )}
@@ -399,8 +399,10 @@ export function DeliveryAssetsGallery({
                       <span>Aspect: {item.aspectRatio}</span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {onToggleApproval ? (
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               onToggleApproval(item.id, item.status);
@@ -410,7 +412,7 @@ export function DeliveryAssetsGallery({
                                 ? "Click to unapprove asset"
                                 : "Click to approve asset"
                             }
-                            className="cursor-pointer focus:outline-none"
+                            className="cursor-pointer focus:outline-none h-auto p-0 hover:bg-transparent"
                           >
                             <Badge
                               variant={item.status === "approved" ? "sage" : "orange"}
@@ -418,7 +420,7 @@ export function DeliveryAssetsGallery({
                             >
                               {item.status === "approved" ? "✓ Approved" : "In Review"}
                             </Badge>
-                          </button>
+                          </Button>
                         ) : (
                           <Badge
                             variant={item.status === "approved" ? "sage" : "orange"}

@@ -2,6 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerServices } from "@/core/server";
+import {
+  createWorkspaceProjectSchema,
+  createShowcaseProjectSchema,
+  updateDeliveryDetailsSchema,
+  safeValidate,
+  type CreateShowcaseProjectInput,
+} from "@/lib/validations";
 
 export async function createWorkspaceProjectAction(
   workspaceId: string,
@@ -9,14 +16,21 @@ export async function createWorkspaceProjectAction(
   description?: string
 ) {
   try {
+    const validated = safeValidate(createWorkspaceProjectSchema, {
+      workspaceId,
+      title,
+      description,
+    });
+    if (!validated.success) return { error: validated.error };
+
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
     if (!user) return { error: "User is not authenticated." };
 
     const delivery = await services.delivery.createDelivery({
-      workspaceId,
-      title: title || "Untitled Delivery",
-      description: description || undefined,
+      workspaceId: validated.data.workspaceId,
+      title: validated.data.title,
+      description: validated.data.description,
     });
 
     revalidatePath("/[workspaceSlug]/deliveries", "page");
@@ -32,14 +46,19 @@ export async function createProjectAction(formData: FormData) {
     const user = await services.auth.getCurrentUser();
     if (!user) return { error: "User is not authenticated." };
 
-    const title = formData.get("title") as string;
-    const description = formData.get("description") as string;
     const workspace = await services.workspace.getOrCreateWorkspace(user.id);
+
+    const validated = safeValidate(createWorkspaceProjectSchema, {
+      workspaceId: workspace.id,
+      title: formData.get("title") || undefined,
+      description: formData.get("description") || undefined,
+    });
+    if (!validated.success) return { error: validated.error };
 
     const delivery = await services.delivery.createDelivery({
       workspaceId: workspace.id,
-      title: title || "Untitled Delivery",
-      description: description || undefined,
+      title: validated.data.title,
+      description: validated.data.description,
     });
 
     if (workspace?.slug) {
@@ -54,8 +73,10 @@ export async function createProjectAction(formData: FormData) {
 
 export async function approveCutAction(deliveryId: string, approvedByName?: string) {
   try {
+    if (!deliveryId?.trim()) return { error: "Delivery ID is required." };
+
     const services = await getServerServices();
-    const delivery = await services.delivery.approveCut(deliveryId, approvedByName);
+    const delivery = await services.delivery.approveCut(deliveryId.trim(), approvedByName?.trim());
 
     revalidatePath(`/deliver/${delivery.shareToken}`);
     revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
@@ -71,16 +92,21 @@ export async function updateProjectDetailsAction(
   data: { title?: string; description?: string; clientName?: string; status?: any; location?: string; deliveryDate?: string }
 ) {
   try {
+    if (!deliveryId?.trim()) return { error: "Delivery ID is required." };
+
+    const validated = safeValidate(updateDeliveryDetailsSchema, data);
+    if (!validated.success) return { error: validated.error };
+
     const services = await getServerServices();
     const user = await services.auth.getCurrentUser();
     if (!user) return { error: "User is not authenticated." };
 
     let clientId: string | undefined = undefined;
-    if (data.clientName) {
+    if (validated.data.clientName) {
       const workspace = await services.workspace.getOrCreateWorkspace(user.id);
       const existingClients = await services.client.listClients(workspace.id);
       const existingClient = existingClients.find(
-        (c) => c.name.toLowerCase() === data.clientName?.toLowerCase()
+        (c) => c.name.toLowerCase() === validated.data.clientName?.toLowerCase()
       );
 
       if (existingClient) {
@@ -88,19 +114,19 @@ export async function updateProjectDetailsAction(
       } else {
         const newClient = await services.client.createClient({
           workspaceId: workspace.id,
-          name: data.clientName,
+          name: validated.data.clientName,
         });
         clientId = newClient.id;
       }
     }
 
-    const updated = await services.delivery.updateDelivery(deliveryId, {
-      ...(data.title !== undefined ? { title: data.title } : {}),
-      ...(data.description !== undefined ? { description: data.description } : {}),
+    const updated = await services.delivery.updateDelivery(deliveryId.trim(), {
+      ...(validated.data.title !== undefined ? { title: validated.data.title } : {}),
+      ...(validated.data.description !== undefined ? { description: validated.data.description } : {}),
       ...(clientId !== undefined ? { clientId } : {}),
-      ...(data.status !== undefined ? { status: data.status } : {}),
-      ...(data.location !== undefined ? { location: data.location } : {}),
-      ...(data.deliveryDate !== undefined ? { deliveryDate: data.deliveryDate } : {}),
+      ...(validated.data.status !== undefined ? { status: validated.data.status } : {}),
+      ...(validated.data.location !== undefined ? { location: validated.data.location } : {}),
+      ...(validated.data.deliveryDate !== undefined ? { deliveryDate: validated.data.deliveryDate } : {}),
     });
 
     revalidatePath(`/deliver/${updated.shareToken}`);
@@ -114,8 +140,10 @@ export async function updateProjectDetailsAction(
 
 export async function archiveProjectAction(deliveryId: string) {
   try {
+    if (!deliveryId?.trim()) return { error: "Delivery ID is required." };
+
     const services = await getServerServices();
-    const delivery = await services.delivery.updateStatus(deliveryId, "archived");
+    const delivery = await services.delivery.updateStatus(deliveryId.trim(), "archived");
 
     revalidatePath("/[workspaceSlug]/deliveries", "page");
     revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
@@ -137,15 +165,22 @@ export async function createShowcaseProjectAction(
   }
 ) {
   try {
-    const services = await getServerServices();
-    const project = await services.project.createProject({
+    const validated = safeValidate(createShowcaseProjectSchema, {
       workspaceId,
       portfolioId,
-      title: data.title,
-      clientName: data.clientName,
-      description: data.description,
-      category: data.category || "Commercial",
-      coverAssetUrl: data.coverAssetUrl,
+      ...data,
+    });
+    if (!validated.success) return { error: validated.error };
+
+    const services = await getServerServices();
+    const project = await services.project.createProject({
+      workspaceId: validated.data.workspaceId,
+      portfolioId: validated.data.portfolioId,
+      title: validated.data.title,
+      clientName: validated.data.clientName,
+      description: validated.data.description,
+      category: validated.data.category,
+      coverAssetUrl: validated.data.coverAssetUrl,
     });
 
     revalidatePath("/[workspaceSlug]/portfolio", "page");

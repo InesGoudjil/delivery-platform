@@ -2,23 +2,24 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerServices, getServerAdminServices, getServerCore } from "@/core/server";
-import { AssetType } from "@/core/entities/asset";
+import {
+  requestUploadSchema,
+  confirmUploadSchema,
+  checkAssetStatusSchema,
+  safeValidate,
+  type RequestUploadInput,
+  type ConfirmUploadInput,
+} from "@/lib/validations";
 
-export interface RequestUploadInput {
-  workspaceId: string;
-  projectId: string;
-  assetId?: string | null;
-  title: string;
-  filename: string;
-  fileSizeBytes: number;
-  assetType?: AssetType;
-  maxDurationSeconds?: number;
-  category?: string;
-  metadata?: Record<string, string>;
-}
+export type { RequestUploadInput, ConfirmUploadInput };
 
 export async function requestAssetUploadAction(input: RequestUploadInput) {
   try {
+    const validated = safeValidate(requestUploadSchema, input);
+    if (!validated.success) {
+      return { success: false, error: validated.error };
+    }
+
     const userServices = await getServerServices();
     const user = await userServices.auth.getCurrentUser();
 
@@ -28,16 +29,16 @@ export async function requestAssetUploadAction(input: RequestUploadInput) {
 
     const adminServices = await getServerAdminServices();
     const result = await adminServices.upload.requestAssetUpload({
-      workspaceId: input.workspaceId,
-      projectId: input.projectId,
-      assetId: input.assetId,
-      title: input.title,
-      filename: input.filename,
-      fileSizeBytes: input.fileSizeBytes,
-      assetType: input.assetType || "video",
-      maxDurationSeconds: input.maxDurationSeconds,
-      category: input.category,
-      metadata: input.metadata,
+      workspaceId: validated.data.workspaceId,
+      projectId: validated.data.projectId,
+      assetId: validated.data.assetId,
+      title: validated.data.title,
+      filename: validated.data.filename,
+      fileSizeBytes: validated.data.fileSizeBytes,
+      assetType: validated.data.assetType,
+      maxDurationSeconds: validated.data.maxDurationSeconds,
+      category: validated.data.category,
+      metadata: validated.data.metadata,
     });
 
     return {
@@ -58,15 +59,13 @@ export async function requestVideoUploadAction(input: RequestUploadInput) {
   return requestAssetUploadAction({ ...input, assetType: "video" });
 }
 
-export interface ConfirmUploadInput {
-  assetVersionId: string;
-  providerUid: string;
-  durationSeconds?: number;
-  fileSizeBytes?: number;
-}
-
 export async function confirmUploadCompletedAction(input: ConfirmUploadInput) {
   try {
+    const validated = safeValidate(confirmUploadSchema, input);
+    if (!validated.success) {
+      return { success: false, error: validated.error };
+    }
+
     const userServices = await getServerServices();
     const user = await userServices.auth.getCurrentUser();
 
@@ -76,10 +75,10 @@ export async function confirmUploadCompletedAction(input: ConfirmUploadInput) {
 
     const adminServices = await getServerAdminServices();
     const updatedVersion = await adminServices.upload.confirmUploadCompleted({
-      assetVersionId: input.assetVersionId,
-      providerUid: input.providerUid,
-      durationSeconds: input.durationSeconds,
-      fileSizeBytes: input.fileSizeBytes,
+      assetVersionId: validated.data.assetVersionId,
+      providerUid: validated.data.providerUid,
+      durationSeconds: validated.data.durationSeconds,
+      fileSizeBytes: validated.data.fileSizeBytes,
     });
 
     try {
@@ -114,8 +113,13 @@ export async function confirmUploadCompletedAction(input: ConfirmUploadInput) {
 
 export async function checkAssetStatusAction(providerUid: string) {
   try {
+    const validated = safeValidate(checkAssetStatusSchema, { providerUid });
+    if (!validated.success) {
+      return { success: false, error: validated.error };
+    }
+
     const core = await getServerCore();
-    const status = await core.storageProvider.getAssetStatus(providerUid);
+    const status = await core.storageProvider.getAssetStatus(validated.data.providerUid);
     return { success: true, status };
   } catch (error: any) {
     return { success: false, error: error.message };

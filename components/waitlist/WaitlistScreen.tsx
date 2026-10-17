@@ -20,6 +20,7 @@ import {
   Share2,
   Loader2,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { DemoModal } from "@/components/landing/DemoModal";
 import { joinWaitlistAction, WaitlistActionState } from "@/app/actions/waitlist";
 import { getWaitlistImageUrl, CLOUDFLARE_PUBLIC_DOMAIN } from "@/lib/assets";
@@ -221,17 +222,15 @@ export function WaitlistScreen({
                         <label>I'm a…</label>
                         <div className="wl-roles">
                           {ROLES.map((r) => (
-                            <motion.button
+                            <Button
                               key={r}
                               type="button"
-                              className={"wl-role" + (role === r ? " on" : "")}
+                              variant="ghost"
+                              className={"wl-role h-auto " + (role === r ? "on" : "")}
                               onClick={() => setRole(r)}
-                              whileHover={{ scale: 1.04 }}
-                              whileTap={{ scale: 0.96 }}
-                              transition={{ duration: 0.15 }}
                             >
                               {r}
-                            </motion.button>
+                            </Button>
                           ))}
                         </div>
                       </div>
@@ -240,13 +239,10 @@ export function WaitlistScreen({
                         <div className="wl-err">{result.error}</div>
                       )}
 
-                      <motion.button
+                      <Button
                         type="submit"
-                        className="wl-cta"
+                        className="wl-cta h-auto"
                         disabled={isPending || !email}
-                        whileHover={!isPending && email ? { scale: 1.02, y: -2 } : {}}
-                        whileTap={!isPending && email ? { scale: 0.98 } : {}}
-                        transition={{ duration: 0.15 }}
                       >
                         {isPending ? (
                           "Joining…"
@@ -255,7 +251,7 @@ export function WaitlistScreen({
                             Join the waitlist <ArrowRight size={17} />
                           </>
                         )}
-                      </motion.button>
+                      </Button>
 
                       <div className="wl-count">
                         <Users size={14} />{" "}
@@ -302,14 +298,15 @@ export function WaitlistScreen({
                           value={referralLink}
                           className="flex-1 bg-black/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/90 font-mono select-all focus:outline-none"
                         />
-                        <button
+                        <Button
                           type="button"
+                          size="sm"
                           onClick={handleCopyLink}
-                          className="flex items-center gap-1 rounded-lg bg-[#f5551d] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#e04a16] transition-colors"
+                          className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors h-auto"
                         >
                           {copied ? <Check size={13} /> : <Copy size={13} />}
                           <span>{copied ? "Copied" : "Copy"}</span>
-                        </button>
+                        </Button>
                       </div>
                       <div className="text-[10.5px] text-white/50 mt-1.5">
                         Each friend who signs up moves you <strong>10 spots forward</strong>.
@@ -317,20 +314,24 @@ export function WaitlistScreen({
                     </div>
 
                     <div className="flex items-center justify-center gap-2 pt-1">
-                      <button
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={shareOnTwitter}
-                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 hover:text-white transition-colors h-auto"
                       >
                         Share on X
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={shareOnWhatsApp}
-                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 hover:text-white transition-colors h-auto"
                       >
                         WhatsApp
-                      </button>
+                      </Button>
                     </div>
 
                     <div className="wl-count">
@@ -338,8 +339,9 @@ export function WaitlistScreen({
                       <AnimatedCounter to={displayCount + 1} duration={1.6} /> filmmakers already waiting
                     </div>
 
-                    <button
-                      className="wl-ghost"
+                    <Button
+                      variant="ghost"
+                      className="wl-ghost h-auto"
                       onClick={() => {
                         setResult(null);
                         setName("");
@@ -348,7 +350,7 @@ export function WaitlistScreen({
                       }}
                     >
                       Add another email
-                    </button>
+                    </Button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -690,16 +692,13 @@ export function WaitlistScreen({
           <p className="wl-sec-sub">
             Join {displayCount.toLocaleString()} filmmakers already on the list.
           </p>
-          <motion.button
-            className="wl-cta"
+          <Button
+            className="wl-cta h-auto"
             style={{ maxWidth: 320, margin: "0 auto" }}
             onClick={scrollToForm}
-            whileHover={{ scale: 1.03, y: -2 }}
-            whileTap={{ scale: 0.97 }}
-            transition={{ duration: 0.15 }}
           >
             Join the waitlist <ArrowRight size={17} />
-          </motion.button>
+          </Button>
         </ScrollReveal>
 
         {/* Footer */}

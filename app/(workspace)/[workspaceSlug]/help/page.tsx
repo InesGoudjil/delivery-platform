@@ -65,7 +65,7 @@ export default async function HelpPage({
     <div className="max-w-4xl mx-auto space-y-10">
       {/* Header */}
       <div className="pb-6 border-b border-border">
-        <div className="text-xs font-mono text-[#f5551d] uppercase tracking-wider mb-1">
+        <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1">
           Support &amp; Resources
         </div>
         <h1 className="text-3xl font-bold font-heading text-foreground">
@@ -82,10 +82,10 @@ export default async function HelpPage({
           href={`/${workspaceSlug}/docs`}
           className="p-5 rounded-2xl bg-card border border-border hover:border-border/80 hover:bg-muted/40 transition-all group"
         >
-          <div className="size-9 rounded-xl bg-[#f5551d]/10 text-[#f5551d] flex items-center justify-center mb-3">
+          <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3">
             <Film className="size-5" />
           </div>
-          <h3 className="text-sm font-bold font-heading text-card-foreground group-hover:text-[#f5551d] transition-colors">
+          <h3 className="text-sm font-bold font-heading text-card-foreground group-hover:text-primary transition-colors">
             Studio Documentation
           </h3>
           <p className="text-xs text-muted-foreground mt-1">
@@ -112,10 +112,10 @@ export default async function HelpPage({
           href={`/${workspaceSlug}/security`}
           className="p-5 rounded-2xl bg-card border border-border hover:border-border/80 hover:bg-muted/40 transition-all group"
         >
-          <div className="size-9 rounded-xl bg-[#ff8a45]/10 text-[#ff8a45] flex items-center justify-center mb-3">
+          <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3">
             <ShieldCheck className="size-5" />
           </div>
-          <h3 className="text-sm font-bold font-heading text-card-foreground group-hover:text-[#ff8a45] transition-colors">
+          <h3 className="text-sm font-bold font-heading text-card-foreground group-hover:text-primary transition-colors">
             Security &amp; Passcodes
           </h3>
           <p className="text-xs text-muted-foreground mt-1">
@@ -127,7 +127,7 @@ export default async function HelpPage({
       {/* Keyboard Shortcuts Section */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Keyboard className="size-5 text-[#f5551d]" />
+          <Keyboard className="size-5 text-primary" />
           <h2 className="text-xl font-bold font-heading text-foreground">
             Review Player Keyboard Shortcuts
           </h2>
@@ -198,7 +198,7 @@ export default async function HelpPage({
               Our video engineering team is available to help with high-volume uploads, custom branding domains, or review player troubleshooting.
             </p>
           </div>
-          <div className="size-10 rounded-2xl bg-[#f5551d]/10 text-[#f5551d] flex items-center justify-center shrink-0">
+          <div className="size-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
             <Mail className="size-5" />
           </div>
         </div>
@@ -206,7 +206,7 @@ export default async function HelpPage({
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <Button
             asChild
-            className="bg-[#f5551d] hover:bg-[#f5551d]/90 text-white font-semibold text-xs rounded-xl px-4 py-2"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs rounded-xl px-4 py-2"
           >
             <a href="mailto:support@cinespace.video?subject=Filmmaker Support Request">
               Email Engineering Support

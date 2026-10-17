@@ -150,7 +150,7 @@ export function WorkspacesClient({ workspaces: initialWorkspaces, plans }: Works
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
         <div>
-          <div className="text-xs font-mono text-[#f5551d] uppercase tracking-wider mb-1">
+          <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1">
             Studio Workspaces
           </div>
           <h1 className="text-3xl font-black font-heading text-foreground tracking-tight">
@@ -226,7 +226,7 @@ export function WorkspacesClient({ workspaces: initialWorkspaces, plans }: Works
                         Admin Options
                       </DropdownMenuLabel>
                       <DropdownMenuItem onClick={() => handleOpenPlanModal(ws)} className="cursor-pointer text-xs gap-2">
-                        <CreditCard className="size-3.5 text-[#f5551d]" /> Change Plan Tier
+                        <CreditCard className="size-3.5 text-primary" /> Change Plan Tier
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleOpenFeaturesModal(ws)} className="cursor-pointer text-xs gap-2">
                         <Sliders className="size-3.5 text-primary" /> Adjust Storage Quota
@@ -280,7 +280,7 @@ export function WorkspacesClient({ workspaces: initialWorkspaces, plans }: Works
         <DialogContent className="sm:max-w-md bg-card border-border">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              <CreditCard className="size-5 text-[#f5551d]" />
+              <CreditCard className="size-5 text-primary" />
               Update Subscription Plan
             </DialogTitle>
             <DialogDescription>
@@ -291,11 +291,12 @@ export function WorkspacesClient({ workspaces: initialWorkspaces, plans }: Works
           <form onSubmit={handleSavePlan} className="space-y-4 py-2">
             <div className="space-y-2">
               {plans.map((p) => (
-                <button
+                <Button
                   key={p.id}
                   type="button"
+                  variant="outline"
                   onClick={() => setSelectedPlanId(p.id)}
-                  className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                  className={`w-full h-auto p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between whitespace-normal ${
                     selectedPlanId === p.id
                       ? "border-primary bg-primary/10 text-foreground font-bold"
                       : "border-border bg-muted/40 text-muted-foreground hover:bg-muted"
@@ -303,12 +304,12 @@ export function WorkspacesClient({ workspaces: initialWorkspaces, plans }: Works
                 >
                   <div>
                     <p className="text-xs font-bold">{p.name}</p>
-                    <p className="text-[10px] font-mono text-muted-foreground">slug: {p.slug}</p>
+                    <p className="text-[10px] font-mono text-muted-foreground font-normal">slug: {p.slug}</p>
                   </div>
                   <span className="font-mono text-xs font-bold text-primary">
                     ${(p.priceCents / 100).toFixed(0)}/mo
                   </span>
-                </button>
+                </Button>
               ))}
             </div>
 

@@ -140,46 +140,60 @@ interface FeaturesSectionProps {
 export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
   return (
     <TooltipProvider delay={150}>
-      <section id="features" className="py-16 space-y-24">
+      <section id="features" className="scroll-mt-24 py-16 sm:py-20 lg:py-24 space-y-16 sm:space-y-24">
         {/* 1. 6-Card Feature Grid Section with TiltCard */}
-        <ScrollReveal
-          className="space-y-12 text-center"
-        >
-          <TypographyKicker color="orange">
-            Everything you send clients
-          </TypographyKicker>
+        <ScrollReveal className="text-center">
+          {/* Section Header */}
+          <div className="space-y-3 max-w-3xl mx-auto">
+            <div className="flex justify-center">
+              <Badge variant="orange" className="text-xs font-mono uppercase tracking-widest font-semibold px-3.5 py-1">
+                Everything you send clients
+              </Badge>
+            </div>
 
-          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left" staggerDelay={0.08}>
-            {GRID_FEATURES.map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <StaggerItem key={index}>
-                  <TiltCard tiltIntensity={6} glareIntensity={0.18} className="h-full rounded-2xl">
-                    <Card className="group relative rounded-2xl border border-white/10 bg-[#121217]/90 p-8 shadow-xl transition-all duration-300 hover:border-white/25 hover:bg-[#16161c] h-full flex flex-col justify-between">
-                      <div>
-                        <div className="mb-6 flex size-12 items-center justify-center rounded-xl bg-[#2a1b18] text-[#f5551d] border border-[#f5551d]/20 transition-transform group-hover:scale-110">
-                          <Icon className="size-5" />
+            <TypographyH2 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight font-display uppercase">
+              BUILT FOR STUDIO WORKFLOWS
+            </TypographyH2>
+
+            <TypographyLead className="text-sm sm:text-base text-[#aeaeb4] max-w-2xl mx-auto leading-relaxed">
+              From private client reviews to branded screening rooms and high-speed delivery — every tool you need in one place.
+            </TypographyLead>
+          </div>
+
+          {/* Small spacing from header block to content */}
+          <div className="mt-10 sm:mt-12">
+            <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left" staggerDelay={0.08}>
+              {GRID_FEATURES.map((item, index) => {
+                const Icon = item.icon;
+                return (
+                  <StaggerItem key={index}>
+                    <TiltCard tiltIntensity={6} glareIntensity={0.18} className="h-full rounded-2xl">
+                      <Card className="group relative rounded-2xl border border-white/10 bg-[#121217]/90 p-8 shadow-xl transition-all duration-300 hover:border-white/25 hover:bg-[#16161c] h-full flex flex-col justify-between">
+                        <div>
+                          <div className="mb-6 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 transition-transform group-hover:scale-110">
+                            <Icon className="size-5" />
+                          </div>
+
+                          <CardTitle className="mb-2 text-lg font-bold text-white font-display">
+                            {item.title}
+                          </CardTitle>
+                          <p className="text-sm leading-relaxed text-[#a0a0aa]">
+                            {item.description}
+                          </p>
                         </div>
-
-                        <CardTitle className="mb-2 text-lg font-bold text-white font-display">
-                          {item.title}
-                        </CardTitle>
-                        <p className="text-sm leading-relaxed text-[#a0a0aa]">
-                          {item.description}
-                        </p>
-                      </div>
-                    </Card>
-                  </TiltCard>
-                </StaggerItem>
-              );
-            })}
-          </StaggerContainer>
+                      </Card>
+                    </TiltCard>
+                  </StaggerItem>
+                );
+              })}
+            </StaggerContainer>
+          </div>
         </ScrollReveal>
 
         <WorkflowSection />
 
         {/* 2. Spotlight Feature 01: Portfolio That Sells */}
-        <ScrollReveal className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center pt-8">
+        <ScrollReveal className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-5 space-y-4 text-left">
             <Badge variant="orange" className="text-xs uppercase tracking-widest font-mono">
               Feature 01
@@ -218,7 +232,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
                         <Tooltip>
                           <TooltipTrigger
                             render={
-                              <div className="size-10 rounded-full bg-black/60 border border-white/30 backdrop-blur-md flex items-center justify-center group-hover:scale-110 group-hover:bg-[#f5551d] transition-all pointer-events-auto">
+                              <div className="size-10 rounded-full bg-black/60 border border-white/30 backdrop-blur-md flex items-center justify-center group-hover:scale-110 group-hover:bg-primary transition-all pointer-events-auto">
                                 <Play className="size-4 fill-current text-white ml-0.5" />
                               </div>
                             }
@@ -235,7 +249,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
         </ScrollReveal>
 
         {/* 3. Spotlight Feature 02: Feedback & Approval */}
-        <ScrollReveal className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center pt-8">
+        <ScrollReveal className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-7 order-2 lg:order-1">
             <Card className="rounded-[28px] border border-white/10 bg-[#121217] p-6 shadow-2xl space-y-4">
               <div className="relative rounded-2xl overflow-hidden bg-black border border-white/10 flex items-center justify-center">
@@ -324,7 +338,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
         </ScrollReveal>
 
         {/* 4. Spotlight Feature 03: Deliver on WhatsApp */}
-        <ScrollReveal className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center pt-8">
+        <ScrollReveal className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-5 space-y-4 text-left">
             <Badge variant="orange" className="text-xs uppercase tracking-widest font-mono">
               Feature 03
@@ -350,7 +364,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
                   <a
                     href="#"
                     onClick={(e) => e.preventDefault()}
-                    className="text-xs font-mono text-[#f5551d] hover:underline block"
+                    className="text-xs font-mono text-primary hover:underline block"
                   >
                     cinespace.film/aisha-omar
                   </a>
@@ -392,11 +406,11 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
             </div>
 
             <div className="lg:col-span-6">
-              <div className="rounded-2xl p-6 bg-gradient-to-tr from-[#df3b0b] to-[#7f1396] border border-white/20 shadow-2xl space-y-4">
+              <div className="rounded-2xl p-6 bg-gradient-to-tr from-primary/80 to-primary/40 border border-white/20 shadow-2xl space-y-4">
                 <div className="rounded-xl bg-[#0d0d12] p-4 border border-white/10 space-y-3 text-left">
                   <div className="flex items-center justify-between border-b border-white/10 pb-2">
                     <span className="text-xs font-bold text-white font-mono flex items-center gap-2">
-                      <Sparkles className="size-3 text-[#f5551d]" /> CineSpace Screening Room
+                      <Sparkles className="size-3 text-primary" /> CineSpace Screening Room
                     </span>
                     <Badge variant="sage" className="text-[10px] uppercase font-bold py-0.5">
                       BRANDED
@@ -419,7 +433,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
                   <div className="pt-2">
                     <Attachment state="done" size="sm" className="w-full bg-white/[0.05] border-white/15">
                       <AttachmentMedia variant="icon">
-                        <Film className="size-4 text-[#f5551d]" />
+                        <Film className="size-4 text-primary" />
                       </AttachmentMedia>
                       <AttachmentContent>
                         <AttachmentTitle className="text-xs text-white">Aisha_Omar_Master_4K_ProRes.mov</AttachmentTitle>

@@ -135,18 +135,18 @@ export function WorkspaceHeader({
         {/* LIVE PREVIEW Glowing Button */}
         <Button
           asChild
-          className="rounded-full bg-gradient-to-r from-[#d9481d] to-[#802010] hover:from-[#f5551d] hover:to-[#992e10] text-white font-bold text-xs tracking-wider uppercase px-4 py-1.5 shadow-lg shadow-[#d9481d]/30 border border-[#f5551d]/40 transition-all duration-200 hover:scale-[1.02] cursor-pointer h-8 gap-1.5"
+          className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs tracking-wider uppercase px-4 py-1.5 shadow-lg shadow-primary/25 border-0 transition-all duration-200 hover:scale-[1.02] cursor-pointer h-8 gap-1.5"
         >
           <Link href={`/p/${workspaceSlug}`} target="_blank" rel="noreferrer">
-            <Play className="size-3 fill-white" />
+            <Play className="size-3 fill-current" />
             <span>LIVE PREVIEW</span>
           </Link>
         </Button>
 
-        <LanguageToggle
+        {/*<LanguageToggle
           allowedLanguages={features?.languages || plan?.features?.languages}
           workspaceSlug={workspaceSlug}
-        />
+        />*/}
         {/* <ModeToggle /> */}
 
         {/* User Avatar Menu */}
@@ -154,7 +154,7 @@ export function WorkspaceHeader({
           <DropdownMenuTrigger className="flex items-center rounded-full p-0.5 outline-none cursor-pointer group">
             <Avatar size="sm" className="size-8 ring-2 ring-border group-hover:ring-primary/60 transition-all">
               {avatarUrl && <AvatarImage src={avatarUrl} alt={userName} />}
-              <AvatarFallback className="bg-gradient-to-br from-[#f5551d] to-[#ff8a45] text-black font-bold text-xs">
+              <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">
                 {initials}
               </AvatarFallback>
               <AvatarBadge className="bg-[#86b98f] ring-2 ring-background" />
@@ -172,7 +172,7 @@ export function WorkspaceHeader({
               <div className="flex items-center gap-3">
                 <Avatar size="sm" className="size-9 ring-1 ring-border shrink-0">
                   {avatarUrl && <AvatarImage src={avatarUrl} alt={userName} />}
-                  <AvatarFallback className="bg-gradient-to-br from-[#f5551d] to-[#ff8a45] text-black font-bold text-xs">
+                  <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">
                     {initials}
                   </AvatarFallback>
                 </Avatar>

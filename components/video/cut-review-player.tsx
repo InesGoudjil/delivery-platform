@@ -37,6 +37,7 @@ import {
 import { formatTimecode, stepByFrames } from "@/lib/timecode";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 import { WatermarkOverlay } from "@/components/ui/watermark-overlay";
+import { Button } from "@/components/ui/button";
 
 export function isImageSource(url?: string): boolean {
   if (!url) return false;
@@ -435,12 +436,12 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                 {isEncoding && (
                   <div className="absolute inset-0 z-30 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-4 animate-in fade-in">
                     <div className="relative">
-                      <div className="size-14 rounded-full bg-[#f5551d]/15 text-[#f5551d] flex items-center justify-center border border-[#f5551d]/30">
+                      <div className="size-14 rounded-full bg-primary/15 text-primary flex items-center justify-center border border-primary/30">
                         <Loader2 className="size-7 animate-spin" />
                       </div>
                       <span className="absolute -bottom-1 -right-1 flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#f5551d] opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-[#f5551d]"></span>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
                       </span>
                     </div>
 
@@ -458,17 +459,19 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
 
                     {computedIframeUrl && (
                       <div className="pt-1">
-                        <button
+                        <Button
                           type="button"
+                          variant="outline"
+                          size="sm"
                           onClick={() => {
                             setUseIframeFallback(true);
                             setIsEncoding(false);
                             setMediaError(null);
                           }}
-                          className="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors cursor-pointer border border-white/15"
+                          className="rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors cursor-pointer border-white/15 h-auto py-1.5 px-4"
                         >
                           Watch in Cloudflare Player Now
-                        </button>
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -477,7 +480,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                 {/* Stream Error Recovery Overlay */}
                 {mediaError && !isEncoding && (
                   <div className="absolute inset-0 z-30 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-3 animate-in fade-in">
-                    <div className="size-12 rounded-full bg-[#f5551d]/20 text-[#f5551d] flex items-center justify-center border border-[#f5551d]/40">
+                    <div className="size-12 rounded-full bg-primary/20 text-primary flex items-center justify-center border border-primary/40">
                       <AlertCircle className="size-6" />
                     </div>
                     <div className="space-y-1">
@@ -487,8 +490,9 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-                      <button
+                      <Button
                         type="button"
+                        size="sm"
                         onClick={() => {
                           setMediaError(null);
                           setRetryCount(0);
@@ -498,21 +502,23 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                             playerRef.current.play().catch(() => {});
                           }
                         }}
-                        className="px-4 py-1.5 rounded-full bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] transition-colors cursor-pointer"
+                        className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 transition-colors cursor-pointer h-auto py-1.5 px-4 border-0"
                       >
                         Retry Stream
-                      </button>
+                      </Button>
                       {computedIframeUrl && (
-                        <button
+                        <Button
                           type="button"
+                          variant="outline"
+                          size="sm"
                           onClick={() => {
                             setUseIframeFallback(true);
                             setMediaError(null);
                           }}
-                          className="px-4 py-1.5 rounded-full bg-white/10 text-white font-bold text-xs hover:bg-white/20 transition-colors cursor-pointer"
+                          className="rounded-full bg-white/10 text-white font-bold text-xs hover:bg-white/20 transition-colors cursor-pointer border-white/15 h-auto py-1.5 px-4"
                         >
                           Use Cloudflare Player
-                        </button>
+                        </Button>
                       )}
                       {!showWatermark && resolvedVideoSrc && !resolvedVideoSrc.includes("manifest/video.m3u8") && (
                         <a
@@ -534,7 +540,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                 className="absolute inset-0 cursor-pointer flex items-center justify-center"
               >
                 {isPaused && !mediaError && (
-                  <div className="w-16 h-16 rounded-full bg-black/60 border border-white/20 backdrop-blur-md flex items-center justify-center text-[#f5551d] shadow-2xl scale-95 group-hover/player:scale-105 transition-transform">
+                  <div className="w-16 h-16 rounded-full bg-black/60 border border-white/20 backdrop-blur-md flex items-center justify-center text-primary shadow-2xl scale-95 group-hover/player:scale-105 transition-transform">
                     <Play className="size-7 fill-current ml-1" />
                   </div>
                 )}
@@ -543,7 +549,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
               {/* Floating Timecode Pill (Top Left) */}
               <div className="absolute top-4 left-4 z-20 flex items-center gap-2 pointer-events-none">
                 <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-black/80 text-white border border-white/15 backdrop-blur-md shadow-lg flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#f5551d] animate-pulse" />
+                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                   {formatTimecode(currentTime, fps)}
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono text-muted-foreground bg-black/60 border border-white/10 backdrop-blur-md">
@@ -578,47 +584,55 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
               <div className="flex items-center gap-2">
                 {/* Zoom Controls */}
                 <div className="flex items-center bg-black/60 border border-white/10 rounded-lg p-0.5">
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={() => setZoomLevel((prev) => Math.max(1, prev - 0.5))}
                     disabled={zoomLevel <= 1}
-                    className="p-1 text-muted-foreground hover:text-white disabled:opacity-30 cursor-pointer"
+                    className="p-1 text-muted-foreground hover:text-white disabled:opacity-30 cursor-pointer h-auto hover:bg-transparent"
                     title="Zoom Out"
                   >
                     <ZoomOut className="size-3.5" />
-                  </button>
+                  </Button>
                   <span className="px-2 text-[10px] font-mono text-white font-bold min-w-[38px] text-center">
                     {Math.round(zoomLevel * 100)}%
                   </span>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={() => setZoomLevel((prev) => Math.min(4, prev + 0.5))}
                     disabled={zoomLevel >= 4}
-                    className="p-1 text-muted-foreground hover:text-white disabled:opacity-30 cursor-pointer"
+                    className="p-1 text-muted-foreground hover:text-white disabled:opacity-30 cursor-pointer h-auto hover:bg-transparent"
                     title="Zoom In"
                   >
                     <ZoomIn className="size-3.5" />
-                  </button>
+                  </Button>
                 </div>
 
                 {zoomLevel > 1 && (
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => setZoomLevel(1)}
-                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-mono text-white cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-mono text-white cursor-pointer h-auto border-white/10"
                   >
                     Reset Fit
-                  </button>
+                  </Button>
                 )}
 
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon-xs"
                   onClick={toggleFullscreen}
-                  className="w-7 h-7 rounded-lg bg-black/60 border border-white/10 text-white/80 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+                  className="size-7 rounded-lg bg-black/60 border border-white/10 text-white/80 hover:text-white flex items-center justify-center cursor-pointer transition-colors p-0"
                   title="Fullscreen"
                 >
                   {isFullscreen ? <Minimize className="size-3.5" /> : <Maximize className="size-3.5" />}
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
@@ -637,13 +651,13 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
 
                   {/* Played Progress Bar */}
                   <div
-                    className="absolute left-0 h-1.5 bg-[#f5551d] rounded-full transition-all pointer-events-none group-hover/scrub:h-2"
+                    className="absolute left-0 h-1.5 bg-primary rounded-full transition-all pointer-events-none group-hover/scrub:h-2"
                     style={{ width: `${progressPercent}%` }}
                   />
 
                   {/* Scrubber Playhead Thumb */}
                   <div
-                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-[#f5551d] shadow-lg pointer-events-none transition-transform group-hover/scrub:scale-125"
+                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-primary shadow-lg pointer-events-none transition-transform group-hover/scrub:scale-125"
                     style={{ left: `${progressPercent}%` }}
                   />
 
@@ -682,10 +696,10 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                           onMouseLeave={() => setHoveredComment(null)}
                           className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-2.5 h-2.5 rounded-full cursor-pointer transition-all hover:scale-150 ${
                             isActive
-                              ? "bg-white ring-2 ring-[#f5551d] scale-125"
+                              ? "bg-white ring-2 ring-primary scale-125"
                               : comment.isResolved
                               ? "bg-emerald-400"
-                              : "bg-[#f5551d]"
+                              : "bg-primary"
                           }`}
                           style={{ left: `${markerPercent}%` }}
                         />
@@ -696,8 +710,8 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                 {/* Hover Tooltip (shows time or comment details) */}
                 {hoveredComment && hoveredComment.timestampSeconds !== null && hoveredComment.timestampSeconds !== undefined && (
                   <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 bg-black/90 border border-white/20 px-3 py-1.5 rounded-xl text-xs backdrop-blur-md shadow-2xl flex items-center gap-2 pointer-events-none animate-in fade-in">
-                    <MessageSquare className="size-3 text-[#f5551d]" />
-                    <span className="font-mono font-bold text-[#ff8a45]">
+                    <MessageSquare className="size-3 text-primary" />
+                    <span className="font-mono font-bold text-primary">
                       [{formatTimecode(hoveredComment.timestampSeconds, fps)}]
                     </span>
                     <span className="font-semibold text-white truncate max-w-[200px]">
@@ -719,10 +733,11 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
               <div className="flex items-center justify-between gap-3 text-xs">
                 {/* Left Group: Play/Pause, Frame Stepping, Timecode */}
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button
                     type="button"
+                    size="icon"
                     onClick={togglePlay}
-                    className="w-8 h-8 rounded-lg bg-[#f5551d] text-black hover:bg-[#ff8a45] flex items-center justify-center cursor-pointer transition-all active:scale-95"
+                    className="size-8 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center cursor-pointer transition-all active:scale-95 border-0 p-0"
                     title={isPaused ? "Play (Space)" : "Pause (Space)"}
                   >
                     {isPaused ? (
@@ -730,34 +745,38 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                     ) : (
                       <Pause className="size-4 fill-current" />
                     )}
-                  </button>
+                  </Button>
 
                   {/* Precision Frame Stepping */}
                   <div className="flex items-center bg-black/60 border border-white/10 rounded-lg p-0.5">
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="xs"
                       onClick={() => handleStepFrame(-1)}
-                      className="px-2 py-1 rounded text-[11px] font-mono text-white/80 hover:text-white hover:bg-white/10 flex items-center gap-0.5 transition-colors cursor-pointer"
+                      className="px-2 py-1 rounded text-[11px] font-mono text-white/80 hover:text-white hover:bg-white/10 flex items-center gap-0.5 transition-colors cursor-pointer h-auto"
                       title="Step -1 Frame (←)"
                     >
                       <ChevronLeft className="size-3" />
                       <span>-1F</span>
-                    </button>
+                    </Button>
                     <div className="w-[1px] h-3 bg-white/10" />
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="xs"
                       onClick={() => handleStepFrame(1)}
-                      className="px-2 py-1 rounded text-[11px] font-mono text-white/80 hover:text-white hover:bg-white/10 flex items-center gap-0.5 transition-colors cursor-pointer"
+                      className="px-2 py-1 rounded text-[11px] font-mono text-white/80 hover:text-white hover:bg-white/10 flex items-center gap-0.5 transition-colors cursor-pointer h-auto"
                       title="Step +1 Frame (→)"
                     >
                       <span>+1F</span>
                       <ChevronRight className="size-3" />
-                    </button>
+                    </Button>
                   </div>
 
                   {/* Timecode Readout */}
                   <div className="font-mono text-xs text-white/90 px-2 py-1 bg-black/40 rounded-lg border border-white/5 flex items-center gap-1.5">
-                    <span className="text-[#ff8a45] font-bold">
+                    <span className="text-primary font-bold">
                       {formatTimecode(currentTime, fps)}
                     </span>
                     <span className="text-white/40">/</span>
@@ -770,40 +789,46 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                   {/* Playback Rate Selector */}
                   <div className="flex items-center bg-black/60 border border-white/10 rounded-lg p-0.5 text-[10px]">
                     {([0.5, 1, 1.5, 2] as const).map((rate) => (
-                      <button
+                      <Button
                         key={rate}
                         type="button"
+                        variant={playbackRate === rate ? "default" : "ghost"}
+                        size="xs"
                         onClick={() => handleRateChange(rate)}
-                        className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
+                        className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer h-auto text-[10px] ${
                           playbackRate === rate
-                            ? "bg-[#f5551d] text-black font-bold"
-                            : "text-white/60 hover:text-white"
+                            ? "bg-primary text-primary-foreground font-bold hover:bg-primary/90"
+                            : "text-white/60 hover:text-white hover:bg-transparent"
                         }`}
                       >
                         {rate}x
-                      </button>
+                      </Button>
                     ))}
                   </div>
 
                   {/* Volume / Mute */}
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={toggleMute}
-                    className="w-7 h-7 rounded-lg bg-black/60 border border-white/10 text-white/80 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+                    className="size-7 rounded-lg bg-black/60 border border-white/10 text-white/80 hover:text-white flex items-center justify-center cursor-pointer transition-colors p-0"
                     title={isMuted ? "Unmute" : "Mute"}
                   >
                     {isMuted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
-                  </button>
+                  </Button>
 
                   {/* Fullscreen */}
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={toggleFullscreen}
-                    className="w-7 h-7 rounded-lg bg-black/60 border border-white/10 text-white/80 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+                    className="size-7 rounded-lg bg-black/60 border border-white/10 text-white/80 hover:text-white flex items-center justify-center cursor-pointer transition-colors p-0"
                     title="Fullscreen"
                   >
                     {isFullscreen ? <Minimize className="size-3.5" /> : <Maximize className="size-3.5" />}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </>

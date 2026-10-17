@@ -24,7 +24,7 @@ export default async function WorkspaceDashboardPage({
   const approvedCount = projects.filter((p) => p.status === "approved").length;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="w-full space-y-8">
       <div className="pb-6 border-b border-line">
         <h1 className="font-display text-3xl font-bold">
           Welcome back, {workspace.brandName}

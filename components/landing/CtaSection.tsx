@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { motion, ScrollReveal } from "@/components/ui/motion";
 
 interface CtaSectionProps {
@@ -9,8 +10,8 @@ interface CtaSectionProps {
 
 export function CtaSection({ onStartTrial }: CtaSectionProps) {
   return (
-    <ScrollReveal className="py-16">
-      <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-r from-[#ce3a09] via-[#df4510] to-[#7f1307] p-12 sm:p-20 text-center shadow-2xl border border-white/10">
+    <ScrollReveal className="py-16 sm:py-20 lg:py-24">
+      <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-r from-primary/80 via-primary to-primary/60 p-12 sm:p-20 text-center shadow-2xl border border-white/10">
         {/* Ambient Dark Image & Glow Overlay */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-500/20 via-black/40 to-black/80 pointer-events-none" />
         <div
@@ -35,12 +36,14 @@ export function CtaSection({ onStartTrial }: CtaSectionProps) {
               transition={{ duration: 0.15 }}
               className="inline-block"
             >
-              <Link
-                href="/signup"
-                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#f5551d] to-[#e0430e] px-8 py-4 text-sm sm:text-base font-bold uppercase tracking-wider text-white shadow-2xl shadow-[#f5551d]/50 transition-shadow hover:shadow-[#f5551d]/75"
+              <Button
+                asChild
+                className="inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-8 py-4 h-auto text-sm sm:text-base font-bold uppercase tracking-wider shadow-2xl shadow-primary/50 transition-all hover:bg-primary/90 hover:shadow-primary/75"
               >
-                GET STARTED <ArrowRight className="size-4 sm:size-5" />
-              </Link>
+                <Link href="/signup">
+                  GET STARTED <ArrowRight className="size-4 sm:size-5" />
+                </Link>
+              </Button>
             </motion.div>
           </div>
         </div>

@@ -24,7 +24,7 @@ export default function RootError({
         </div>
 
         <div className="space-y-2">
-          <span className="text-[11px] font-mono text-[#f5551d] uppercase tracking-widest font-semibold block">
+          <span className="text-[11px] font-mono text-primary uppercase tracking-widest font-semibold block">
             System Alert
           </span>
           <h2 className="text-2xl font-bold font-heading text-[#f6f3ec]">
@@ -38,7 +38,7 @@ export default function RootError({
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <Button
             onClick={() => reset()}
-            className="w-full sm:w-auto rounded-xl bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] cursor-pointer h-10 px-5"
+            className="w-full sm:w-auto rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 cursor-pointer h-10 px-5"
           >
             <RefreshCw className="size-3.5 mr-2" /> Try Again
           </Button>

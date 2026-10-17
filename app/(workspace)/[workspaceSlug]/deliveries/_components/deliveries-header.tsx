@@ -118,7 +118,7 @@ export function DeliveriesHeader({
                 <Button
                   asChild
                   size="sm"
-                  className="bg-[#f5551d] hover:bg-[#ff8a45] text-black font-extrabold text-xs h-8 rounded-full"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs h-8 rounded-full"
                 >
                   <Link href={`/${workspace.slug}/subscription`}>
                     Upgrade Plan (Unlimited Links)
@@ -137,7 +137,7 @@ export function DeliveriesHeader({
           <form onSubmit={handleCreateProject} className="space-y-4 pt-1">
             <div className="space-y-1.5">
               <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
-                Project Title <span className="text-[#f5551d]">*</span>
+                Project Title <span className="text-primary">*</span>
               </Label>
               <Input
                 type="text"
@@ -178,7 +178,7 @@ export function DeliveriesHeader({
                 type="submit"
                 disabled={creating || isAtLimit}
                 size="sm"
-                className="bg-primary hover:bg-primary/90 text-black font-bold text-xs rounded-full shadow-md disabled:opacity-50"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-full shadow-md disabled:opacity-50"
               >
                 {creating ? "Creating..." : isAtLimit ? "Plan Limit Reached" : "Create & Upload Cut"}
               </Button>
@@ -190,7 +190,7 @@ export function DeliveriesHeader({
       {/* Workspace Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
         <div>
-          <div className="text-xs font-mono text-[#f5551d] uppercase tracking-wider mb-1 font-semibold">
+          <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1 font-semibold">
             WORKSPACE DASHBOARD
           </div>
           <h1 className="text-3xl font-bold font-display text-foreground">

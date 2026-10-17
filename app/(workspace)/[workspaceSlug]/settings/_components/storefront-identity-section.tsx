@@ -2,7 +2,22 @@
 
 import React, { useRef } from "react";
 import Link from "next/link";
-import { MessageCircle, Palette, Check, Camera, Trash2, Upload, Film, Briefcase, MapPin, User, Sparkles, Crop } from "lucide-react";
+import {
+  MessageCircle,
+  Palette,
+  Check,
+  Camera,
+  Trash2,
+  Upload,
+  Film,
+  Briefcase,
+  MapPin,
+  User,
+  Sparkles,
+  Crop,
+  Shield,
+  Building2,
+} from "lucide-react";
 import { ACCENTS } from "./constants";
 import { getContrastForeground } from "@/lib/theme-utils";
 import { PortfolioStats } from "@/core/entities/portfolio";
@@ -23,10 +38,19 @@ interface StorefrontIdentitySectionProps {
   onWhatsappChange: (val: string) => void;
   accent: string;
   onAccentChange: (val: string) => void;
+
+  // 1. Studio Brand Logo
   logoUrl?: string | null;
-  onProfileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onEditProfile?: () => void;
-  onRemoveProfile: () => void;
+  onLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onEditLogo?: () => void;
+  onRemoveLogo: () => void;
+
+  // 2. Director / Filmmaker Profile Photo
+  avatarUrl?: string | null;
+  onAvatarUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onEditAvatar?: () => void;
+  onRemoveAvatar: () => void;
+
   stats: PortfolioStats;
   onStatsChange: (val: PortfolioStats) => void;
   canBranding?: boolean;
@@ -44,16 +68,21 @@ export function StorefrontIdentitySection({
   accent,
   onAccentChange,
   logoUrl,
-  onProfileUpload,
-  onEditProfile,
-  onRemoveProfile,
+  onLogoUpload,
+  onEditLogo,
+  onRemoveLogo,
+  avatarUrl,
+  onAvatarUpload,
+  onEditAvatar,
+  onRemoveAvatar,
   stats,
   onStatsChange,
   canBranding = true,
   canWhatsapp = true,
   workspaceSlug,
 }: StorefrontIdentitySectionProps) {
-  const profileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const initials =
     brandName
@@ -75,7 +104,7 @@ export function StorefrontIdentitySection({
           BRAND &amp; URL SETTINGS
         </TypographyH2>
         <TypographyMuted className="text-xs text-muted-foreground mt-0.5">
-          Configure how your name, profile photo, link, and accent styling appear to prospective clients.
+          Configure your studio brand mark, personal profile photo, showcase link, and accent colors.
         </TypographyMuted>
       </div>
 
@@ -99,98 +128,73 @@ export function StorefrontIdentitySection({
           </div>
         )}
 
-        {/* Profile Image & Avatar Upload Card */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 p-4 rounded-xl bg-muted/40 border border-border">
-          <input
-            type="file"
-            ref={profileInputRef}
-            onChange={onProfileUpload}
-            accept="image/*"
-            disabled={!canBranding}
-            className="hidden"
-          />
+        {/* 🌟 TWO DISTINCT VISUAL IDENTITIES: BRAND LOGO & PROFILE PICTURE */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Card 1: Studio Brand Logo */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl bg-muted/40 border border-border">
+            <input
+              type="file"
+              ref={logoInputRef}
+              onChange={onLogoUpload}
+              accept="image/*"
+              disabled={!canBranding}
+              className="hidden"
+            />
 
-          <div className="relative group/avatar shrink-0">
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <button
-                    type="button"
-                    disabled={!canBranding}
-                    onClick={() => profileInputRef.current?.click()}
-                    className="relative shrink-0 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background cursor-pointer disabled:cursor-not-allowed"
-                  />
-                }
-              >
-                <Avatar
-                  className="size-16 sm:size-20 rounded-2xl overflow-hidden flex items-center justify-center shadow-xl border-2 border-border cursor-pointer relative"
-                  style={{ backgroundColor: accent }}
-                >
-                  {logoUrl && (
-                    <AvatarImage
-                      src={logoUrl}
-                      alt={brandName}
-                      className="rounded-2xl object-cover"
-                    />
-                  )}
-                  <AvatarFallback
-                    className="rounded-2xl font-extrabold text-xl sm:text-2xl text-black bg-transparent select-none"
-                  >
-                    {initials}
-                  </AvatarFallback>
-                  <div className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity rounded-2xl">
-                    <Camera className="size-5 text-primary" />
-                    <span className="text-[9px] font-bold uppercase mt-1 tracking-wider">Change</span>
-                  </div>
-                </Avatar>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                {!canBranding
-                  ? "Custom profile photo requires Pro or Studio plan"
-                  : "Click to upload new director avatar or studio portrait"}
-              </TooltipContent>
-            </Tooltip>
-          </div>
-
-          <div className="space-y-1.5 flex-1">
-            <div className="flex items-center gap-2">
-              <User className="size-4 text-primary" />
-              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
-                Profile Photo &amp; Avatar
-              </h3>
-              {!canBranding && (
-                <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[9px] font-mono font-bold">
-                  PRO+
-                </Badge>
-              )}
-            </div>
-            <TypographyMuted className="text-xs text-muted-foreground leading-relaxed">
-              Upload your director portrait, logo, or headshot. Displayed in your public portfolio header, about card, and client delivery rooms.
-            </TypographyMuted>
-            <div className="flex flex-wrap items-center gap-2 pt-1">
+            <div className="relative group/logo shrink-0">
               <Tooltip>
                 <TooltipTrigger
                   render={
                     <Button
                       type="button"
-                      variant="outline"
-                      size="sm"
+                      variant="ghost"
                       disabled={!canBranding}
-                      onClick={() => profileInputRef.current?.click()}
-                      className="rounded-full bg-muted hover:bg-muted/80 border-border text-foreground text-xs font-semibold px-4 h-8 gap-1.5 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Upload className="size-3 text-primary" />
-                      <span>{logoUrl ? "Replace Photo" : "Upload Profile Photo"}</span>
-                    </Button>
+                      onClick={() => logoInputRef.current?.click()}
+                      className="relative shrink-0 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background cursor-pointer disabled:cursor-not-allowed p-0 h-auto hover:bg-transparent"
+                    />
                   }
-                />
-                <TooltipContent side="bottom">
+                >
+                  <div className="size-16 sm:size-20 rounded-2xl overflow-hidden flex items-center justify-center shadow-md border-2 border-border/80 bg-zinc-950 p-1.5 cursor-pointer relative">
+                    {logoUrl ? (
+                      <img
+                        src={logoUrl}
+                        alt="Brand Logo"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="w-full h-full rounded-xl bg-zinc-900 border border-white/5 flex flex-col items-center justify-center text-zinc-500">
+                        <Building2 className="size-5 text-primary mb-0.5" />
+                        <span className="text-[9px] font-mono font-bold uppercase">LOGO</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity rounded-2xl">
+                      <Camera className="size-5 text-primary" />
+                      <span className="text-[9px] font-bold uppercase mt-1 tracking-wider">Change</span>
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top">
                   {!canBranding
-                    ? "Custom profile photo requires Pro or Studio plan"
-                    : "JPG, PNG or WebP up to 10MB"}
+                    ? "Custom logo requires Pro or Studio plan"
+                    : "Upload studio logo mark (PNG, SVG, JPG)"}
                 </TooltipContent>
               </Tooltip>
-              {logoUrl && onEditProfile && (
+            </div>
+
+            <div className="space-y-1.5 flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <Building2 className="size-4 text-primary shrink-0" />
+                <h3 className="text-xs font-bold text-foreground uppercase tracking-wider truncate">
+                  Brand Logo
+                </h3>
+                <Badge variant="outline" className="text-[9px] font-mono uppercase px-1.5 py-0 border-white/10">
+                  Header &amp; Rooms
+                </Badge>
+              </div>
+              <TypographyMuted className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
+                Appears in your public portfolio header, client delivery rooms, and invoices.
+              </TypographyMuted>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
                 <Tooltip>
                   <TooltipTrigger
                     render={
@@ -199,40 +203,187 @@ export function StorefrontIdentitySection({
                         variant="outline"
                         size="sm"
                         disabled={!canBranding}
-                        onClick={onEditProfile}
-                        className="rounded-full bg-muted hover:bg-muted/80 border-border text-foreground text-xs font-semibold px-3.5 h-8 gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
+                        onClick={() => logoInputRef.current?.click()}
+                        className="rounded-full bg-muted hover:bg-muted/80 border-border text-foreground text-xs font-semibold px-3 h-7 gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
                       >
-                        <Crop className="size-3 text-primary" />
-                        <span>Edit / Crop</span>
+                        <Upload className="size-3 text-primary" />
+                        <span>{logoUrl ? "Replace Logo" : "Upload Logo"}</span>
                       </Button>
                     }
                   />
                   <TooltipContent side="bottom">
-                    Crop, zoom, rotate, or fine-tune profile photo
+                    PNG, SVG, or JPG with transparent or dark backdrop
                   </TooltipContent>
                 </Tooltip>
-              )}
-              {logoUrl && (
+
+                {logoUrl && onEditLogo && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={!canBranding}
+                          onClick={onEditLogo}
+                          className="rounded-full bg-muted hover:bg-muted/80 border-border text-foreground text-xs font-semibold px-2.5 h-7 gap-1 cursor-pointer shadow-sm"
+                        >
+                          <Crop className="size-3 text-primary" />
+                          <span>Crop</span>
+                        </Button>
+                      }
+                    />
+                    <TooltipContent side="bottom">Frame or adjust brand logo</TooltipContent>
+                  </Tooltip>
+                )}
+
+                {logoUrl && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={onRemoveLogo}
+                          className="rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-semibold px-2.5 h-7 gap-1 cursor-pointer"
+                        >
+                          <Trash2 className="size-3" />
+                          <span>Remove</span>
+                        </Button>
+                      }
+                    />
+                    <TooltipContent side="bottom">Remove custom logo</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Filmmaker Profile Photo */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl bg-muted/40 border border-border">
+            <input
+              type="file"
+              ref={avatarInputRef}
+              onChange={onAvatarUpload}
+              accept="image/*"
+              className="hidden"
+            />
+
+            <div className="relative group/avatar shrink-0">
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="relative shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background cursor-pointer p-0 h-auto hover:bg-transparent"
+                    />
+                  }
+                >
+                  <Avatar
+                    className="size-16 sm:size-20 rounded-full overflow-hidden flex items-center justify-center shadow-md border-2 border-border cursor-pointer relative"
+                    style={{ backgroundColor: accent }}
+                  >
+                    {avatarUrl ? (
+                      <AvatarImage
+                        src={avatarUrl}
+                        alt="Filmmaker Profile Photo"
+                        className="rounded-full object-cover"
+                      />
+                    ) : null}
+                    <AvatarFallback
+                      className="rounded-full font-extrabold text-lg sm:text-xl text-black bg-transparent select-none"
+                    >
+                      {initials}
+                    </AvatarFallback>
+                    <div className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity rounded-full">
+                      <Camera className="size-5 text-primary" />
+                      <span className="text-[9px] font-bold uppercase mt-1 tracking-wider">Photo</span>
+                    </div>
+                  </Avatar>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  Click to upload filmmaker headshot or director portrait
+                </TooltipContent>
+              </Tooltip>
+            </div>
+
+            <div className="space-y-1.5 flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <User className="size-4 text-primary shrink-0" />
+                <h3 className="text-xs font-bold text-foreground uppercase tracking-wider truncate">
+                  Profile Picture
+                </h3>
+                <Badge variant="outline" className="text-[9px] font-mono uppercase px-1.5 py-0 border-white/10">
+                  About Bio
+                </Badge>
+              </div>
+              <TypographyMuted className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
+                Appears in your public &ldquo;About the Filmmaker&rdquo; bio card and director credits.
+              </TypographyMuted>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
                 <Tooltip>
                   <TooltipTrigger
                     render={
                       <Button
                         type="button"
-                        variant="destructive"
+                        variant="outline"
                         size="sm"
-                        onClick={onRemoveProfile}
-                        className="rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-semibold px-3 h-8 gap-1 cursor-pointer"
+                        onClick={() => avatarInputRef.current?.click()}
+                        className="rounded-full bg-muted hover:bg-muted/80 border-border text-foreground text-xs font-semibold px-3 h-7 gap-1.5 cursor-pointer shadow-sm"
                       >
-                        <Trash2 className="size-3" />
-                        <span>Remove</span>
+                        <Upload className="size-3 text-primary" />
+                        <span>{avatarUrl ? "Replace Photo" : "Upload Portrait"}</span>
                       </Button>
                     }
                   />
                   <TooltipContent side="bottom">
-                    Remove custom photo and use initials
+                    Square or portrait headshot (JPG, PNG, WebP)
                   </TooltipContent>
                 </Tooltip>
-              )}
+
+                {avatarUrl && onEditAvatar && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={onEditAvatar}
+                          className="rounded-full bg-muted hover:bg-muted/80 border-border text-foreground text-xs font-semibold px-2.5 h-7 gap-1 cursor-pointer shadow-sm"
+                        >
+                          <Crop className="size-3 text-primary" />
+                          <span>Crop</span>
+                        </Button>
+                      }
+                    />
+                    <TooltipContent side="bottom">Frame or adjust profile portrait</TooltipContent>
+                  </Tooltip>
+                )}
+
+                {avatarUrl && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={onRemoveAvatar}
+                          className="rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-semibold px-2.5 h-7 gap-1 cursor-pointer"
+                        >
+                          <Trash2 className="size-3" />
+                          <span>Remove</span>
+                        </Button>
+                      }
+                    />
+                    <TooltipContent side="bottom">Reset to initials</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -319,18 +470,18 @@ export function StorefrontIdentitySection({
                   <Tooltip key={preset.color}>
                     <TooltipTrigger
                       render={
-                        <button
+                        <Button
                           type="button"
                           onClick={() => onAccentChange(preset.color)}
                           style={{ backgroundColor: preset.color }}
-                          className={`size-8 sm:size-9 rounded-full flex items-center justify-center transition-all border-2 cursor-pointer ${
+                          className={`size-8 sm:size-9 rounded-full flex items-center justify-center transition-all border-2 cursor-pointer p-0 ${
                             isSelected
                               ? "border-white scale-110 shadow-lg ring-2 ring-primary/40 ring-offset-2 ring-offset-background"
                               : "border-transparent opacity-80 hover:opacity-100 hover:scale-105"
                           } ${!canBranding ? "opacity-60 cursor-not-allowed" : ""}`}
                         >
                           {isSelected && <Check className="size-4 font-bold" style={{ color: textColor }} />}
-                        </button>
+                        </Button>
                       }
                     />
                     <TooltipContent side="top">

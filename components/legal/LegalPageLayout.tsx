@@ -29,7 +29,7 @@ export function LegalPageLayout({
   workspace,
 }: LegalPageLayoutProps) {
   return (
-    <div className="min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased selection:bg-[#f5551d] selection:text-white flex flex-col justify-between relative">
+    <div className="min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased selection:bg-primary selection:text-primary-foreground flex flex-col justify-between relative">
       <AmbientBackground variant="hero" />
 
       <div className="relative z-10">
@@ -38,7 +38,7 @@ export function LegalPageLayout({
         <main className="mx-auto max-w-4xl px-4 sm:px-8 py-16 sm:py-24 space-y-8">
           {/* Header */}
           <div className="text-center space-y-3 max-w-2xl mx-auto">
-            <span className="inline-block px-3.5 py-1 rounded-full border border-[#f5551d]/60 bg-[#f5551d]/10 text-[10px] sm:text-[11px] font-bold tracking-widest text-[#f5551d] uppercase">
+            <span className="inline-block px-3.5 py-1 rounded-full border border-primary/60 bg-primary/10 text-[10px] sm:text-[11px] font-bold tracking-widest text-primary uppercase">
               {badge}
             </span>
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white font-display uppercase">

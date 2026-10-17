@@ -397,7 +397,7 @@ export function VideoUploader({
           />
 
           <div className="size-14 rounded-2xl bg-muted border border-border flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:border-primary transition-colors">
-            <Upload className="size-7 text-[#f5551d]" />
+            <Upload className="size-7 text-primary" />
           </div>
 
           <div className="space-y-1">
@@ -493,7 +493,7 @@ export function VideoUploader({
               </div>
               <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden border border-border">
                 <div
-                  className="h-full bg-gradient-to-r from-[#f5551d] to-[#ff8a45] rounded-full transition-all duration-150"
+                  className="h-full bg-primary rounded-full transition-all duration-150"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -514,7 +514,7 @@ export function VideoUploader({
             ) : (
               <Button
                 onClick={startDirectUpload}
-                className="rounded-full bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] shadow-md shadow-[#f5551d]/20 cursor-pointer"
+                className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 shadow-md shadow-primary/20 cursor-pointer"
               >
                 <Upload className="size-3.5 mr-1.5" /> Start Direct Upload
               </Button>

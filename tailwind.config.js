@@ -22,7 +22,9 @@ module.exports = {
       },
       fontFamily: {
         display: ['var(--font-satoshi)', 'sans-serif'],
+        heading: ['var(--font-satoshi)', 'var(--font-manrope)', 'sans-serif'],
         sans: ['var(--font-manrope)', 'system-ui', 'sans-serif'],
+        body: ['var(--font-manrope)', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         xl2: '20px',

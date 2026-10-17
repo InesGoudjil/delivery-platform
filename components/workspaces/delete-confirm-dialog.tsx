@@ -2,10 +2,7 @@
 
 import React from "react";
 import { Trash2, AlertTriangle, Loader2 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
+import { UniversalDialog } from "@/components/ui/universal-dialog";
 import { Button } from "@/components/ui/button";
 
 interface DeleteConfirmDialogProps {
@@ -41,42 +38,23 @@ export function DeleteConfirmDialog({
     confirmText || (isPermanent ? "Delete Forever" : "Move to Trash");
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !isDeleting && onOpenChange(open)}>
-      <DialogContent
-        showCloseButton={!isDeleting}
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-[#141418]/95 backdrop-blur-xl border border-white/15 text-white rounded-3xl p-6 sm:p-7 w-full max-w-md shadow-2xl space-y-5"
-      >
-        <div className="flex items-center gap-3.5">
-          <div
-            className={`size-10 rounded-full flex items-center justify-center shrink-0 border ${
-              isPermanent
-                ? "bg-red-500/15 border-red-500/30 text-red-400"
-                : "bg-amber-500/15 border-amber-500/30 text-amber-400"
-            }`}
-          >
-            {isPermanent ? (
-              <AlertTriangle className="size-5" />
-            ) : (
-              <Trash2 className="size-5" />
-            )}
-          </div>
-          <div>
-            <h3 className="text-base font-bold font-heading text-white">
-              {displayTitle}
-            </h3>
-            {itemName && (
-              <p className="text-xs font-mono text-zinc-400 truncate max-w-[260px]">
-                &ldquo;{itemName}&rdquo;
-              </p>
-            )}
-          </div>
-        </div>
-
-        <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-sans">
-          {displayDescription}
-        </p>
-
-        <div className="flex items-center justify-end gap-3 pt-2">
+    <UniversalDialog
+      open={isOpen}
+      onOpenChange={(open) => !isDeleting && onOpenChange(open)}
+      size="md"
+      variant={isPermanent ? "destructive" : "warning"}
+      icon={
+        isPermanent ? (
+          <AlertTriangle className="size-5" />
+        ) : (
+          <Trash2 className="size-5" />
+        )
+      }
+      title={displayTitle}
+      description={itemName ? `“${itemName}”` : undefined}
+      showCloseButton={!isDeleting}
+      footer={
+        <>
           <Button
             type="button"
             variant="outline"
@@ -93,10 +71,10 @@ export function DeleteConfirmDialog({
             onClick={async () => {
               await onConfirm();
             }}
-            className={`rounded-full text-white font-bold text-xs px-5 py-2 flex items-center gap-1.5 shadow-lg cursor-pointer ${
+            className={`rounded-full font-bold text-xs px-5 py-2 flex items-center gap-1.5 shadow-lg cursor-pointer ${
               isPermanent
-                ? "bg-red-600 hover:bg-red-700 shadow-red-600/20"
-                : "bg-[#f5551d] hover:bg-[#d44413] shadow-[#f5551d]/20"
+                ? "bg-red-600 hover:bg-red-700 text-white shadow-red-600/20"
+                : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20"
             }`}
           >
             {isDeleting ? (
@@ -111,9 +89,12 @@ export function DeleteConfirmDialog({
               </>
             )}
           </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </>
+      }
+    >
+      <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-sans">
+        {displayDescription}
+      </p>
+    </UniversalDialog>
   );
 }
-

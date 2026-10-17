@@ -49,7 +49,7 @@ export default function SettingsError({
                 render={
                   <Button
                     onClick={() => reset()}
-                    className="rounded-full bg-[#f5551d] text-black font-extrabold text-xs hover:bg-[#ff8a45] cursor-pointer h-10 px-6 uppercase tracking-wider shadow-lg shadow-[#f5551d]/20"
+                    className="rounded-full bg-primary text-primary-foreground font-extrabold text-xs hover:bg-primary/90 cursor-pointer h-10 px-6 uppercase tracking-wider shadow-lg shadow-primary/20"
                   >
                     <RefreshCw className="size-3.5 mr-2" />
                     <span>Reload Brand Settings</span>

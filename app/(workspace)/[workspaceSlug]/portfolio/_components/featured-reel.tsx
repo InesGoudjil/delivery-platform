@@ -124,9 +124,9 @@ export function FeaturedReel({
                         e.stopPropagation();
                         handleToggleFeature(item);
                       }}
-                      className="absolute top-1.5 right-1.5 z-10 size-6 rounded-full bg-black/60 hover:bg-[#f5551d] text-white border border-white/20 p-0 flex items-center justify-center transition-all cursor-pointer shadow-md"
+                      className="absolute top-1.5 right-1.5 z-10 size-6 rounded-full bg-black/60 hover:bg-primary hover:text-primary-foreground text-white border border-white/20 p-0 flex items-center justify-center transition-all cursor-pointer shadow-md"
                     >
-                      <Star className="size-3 fill-current text-[#f5551d] group-hover:text-white" />
+                      <Star className="size-3 fill-current text-primary group-hover:text-primary-foreground" />
                     </Button>
                   }
                 />

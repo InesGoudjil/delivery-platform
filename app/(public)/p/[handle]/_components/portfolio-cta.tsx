@@ -25,7 +25,7 @@ export function PortfolioCta({ profile }: PortfolioCtaProps) {
         <div>
           <ContactButton
             label="Start A Project"
-            className="px-8 py-3.5 rounded-full bg-[#c85332] hover:bg-[#d95d3a] active:scale-95 text-white text-xs font-extrabold tracking-wider uppercase transition-all shadow-xl hover:shadow-[#c85332]/25 cursor-pointer"
+            className="px-8 py-3.5 rounded-full bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground text-xs font-extrabold tracking-wider uppercase transition-all shadow-xl hover:shadow-primary/25 cursor-pointer h-auto"
           />
         </div>
       </div>

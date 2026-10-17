@@ -158,7 +158,7 @@ export function AdminDashboardClient({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-mono text-[#f5551d] uppercase tracking-wider font-semibold">
+            <span className="text-xs font-mono text-primary uppercase tracking-wider font-semibold">
               Super Admin Console
             </span>
           </div>
@@ -179,7 +179,7 @@ export function AdminDashboardClient({
                 size="sm"
                 className="rounded-full text-xs font-semibold gap-1.5 cursor-pointer hover:bg-accent"
               >
-                <Megaphone className="size-3.5 text-[#f5551d]" /> Broadcast Notice
+                <Megaphone className="size-3.5 text-primary" /> Broadcast Notice
               </Button>
             } />
             <DialogContent className="sm:max-w-md bg-card border-border">
@@ -207,7 +207,7 @@ export function AdminDashboardClient({
                   <Button
                     type="submit"
                     disabled={announcementSent}
-                    className="rounded-full bg-primary text-black font-bold text-xs hover:bg-primary/90"
+                    className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90"
                   >
                     {announcementSent ? (
                       <>
@@ -224,7 +224,7 @@ export function AdminDashboardClient({
 
           <Button
             render={<Link href="/admin/workspaces" />}
-            className="rounded-full bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] shadow-lg shadow-[#f5551d]/20 cursor-pointer"
+            className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 shadow-lg shadow-primary/20 cursor-pointer"
           >
             <Sliders className="size-3.5 mr-1.5" /> Manage Workspaces
           </Button>
@@ -263,7 +263,7 @@ export function AdminDashboardClient({
               <CardDescription className="text-xs uppercase font-mono font-semibold">
                 Creator Studios
               </CardDescription>
-              <span className="p-2 rounded-xl bg-[#f5551d]/10 text-[#f5551d]">
+              <span className="p-2 rounded-xl bg-primary/10 text-primary">
                 <Building2 className="size-4" />
               </span>
             </div>
@@ -354,17 +354,20 @@ export function AdminDashboardClient({
 
               <div className="flex items-center gap-1 bg-muted p-1 rounded-xl border border-border">
                 {["all", "Studio", "Pro", "Basic", "Starter"].map((plan) => (
-                  <button
+                  <Button
                     key={plan}
+                    type="button"
+                    variant={selectedPlanFilter.toLowerCase() === plan.toLowerCase() ? "default" : "ghost"}
+                    size="xs"
                     onClick={() => setSelectedPlanFilter(plan)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold capitalize transition-colors cursor-pointer ${
+                    className={`h-7 px-2.5 rounded-lg text-[11px] font-semibold capitalize transition-colors cursor-pointer ${
                       selectedPlanFilter.toLowerCase() === plan.toLowerCase()
-                        ? "bg-card text-foreground shadow-xs font-bold"
+                        ? "bg-card text-foreground shadow-xs font-bold hover:bg-card"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {plan}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
