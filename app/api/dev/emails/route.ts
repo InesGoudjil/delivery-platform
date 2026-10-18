@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ResendEmailProvider } from "@/core/providers/email";
+import { ZeptoMailEmailProvider } from "@/core/providers/email";
 import {
   renderWaitlistWelcomeEmail,
   renderWaitlistInviteEmail,
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
   // If a live send was requested: ?sendTo=user@example.com&type=waitlist-welcome
   if (sendTo) {
     const selectedTemplate = templates[type] || templates["waitlist-welcome"];
-    const emailProvider = new ResendEmailProvider();
+    const emailProvider = new ZeptoMailEmailProvider();
 
     const result = await emailProvider.sendEmail({
       to: sendTo,
@@ -88,8 +88,8 @@ export async function GET(request: NextRequest) {
       recipient: sendTo,
       result,
       note: result.messageId?.startsWith("mock_")
-        ? "Mock mode active. No RESEND_API_KEY in .env. Output was logged to server terminal."
-        : "Dispatched through Resend API.",
+        ? "Mock mode active. No ZEPTOMAIL_API_TOKEN in .env. Output was logged to server terminal."
+        : "Dispatched through Zoho ZeptoMail API.",
     });
   }
 
@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
 
           <div class="test-send-card">
             <h3>⚡ Test Send Live Email to Your Inbox</h3>
-            <span style="font-size: 12px; color: #71717a;">Works immediately. If RESEND_API_KEY is not set, it simulates mock delivery and logs to your terminal.</span>
+            <span style="font-size: 12px; color: #71717a;">Works immediately. If ZEPTOMAIL_API_TOKEN is not set, it simulates mock delivery and logs to your terminal.</span>
             <form action="/api/dev/emails" method="GET" class="test-form">
               <input type="email" name="sendTo" placeholder="your-email@example.com" required />
               <select name="type">

@@ -21,10 +21,11 @@ module.exports = {
         grey: '#6B7580',
       },
       fontFamily: {
-        display: ['var(--font-satoshi)', 'sans-serif'],
-        heading: ['var(--font-satoshi)', 'var(--font-manrope)', 'sans-serif'],
-        sans: ['var(--font-manrope)', 'system-ui', 'sans-serif'],
-        body: ['var(--font-manrope)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-satoshi)', 'Satoshi', 'sans-serif'],
+        heading: ['var(--font-satoshi)', 'Satoshi', 'sans-serif'],
+        sans: ['var(--font-satoshi)', 'Satoshi', 'system-ui', 'sans-serif'],
+        body: ['var(--font-satoshi)', 'Satoshi', 'system-ui', 'sans-serif'],
+        satoshi: ['var(--font-satoshi)', 'Satoshi', 'sans-serif'],
       },
       borderRadius: {
         xl2: '20px',

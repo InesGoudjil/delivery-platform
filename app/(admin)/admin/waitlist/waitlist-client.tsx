@@ -42,7 +42,7 @@ export function WaitlistClient({ metrics, entries: initialEntries }: WaitlistCli
       if (res.success && "invitedCount" in res) {
         setFeedback({
           type: "success",
-          message: `Successfully invited ${res.invitedCount} users! Check Resend logs for delivery.`,
+          message: `Successfully invited ${res.invitedCount} users! Check ZeptoMail delivery logs.`,
         });
       } else {
         setFeedback({

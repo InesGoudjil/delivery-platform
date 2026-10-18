@@ -12,7 +12,7 @@
   - Supabase: rotate `SUPABASE_SERVICE_ROLE_KEY`, rotate the anon key (Dashboard → Settings → API), invalidate all existing sessions (Auth → Sessions → revoke), force password reset for all users.
   - Stripe: roll `STRIPE_WEBHOOK_SECRET` (new secret, update both endpoint and env), check Stripe logs for unexpected portal sessions / checkouts created by users who aren't workspace owners.
   - Cloudflare: roll the Stream API token and R2 API token; review R2 access logs for bulk downloads.
-  - Resend: roll `RESEND_API_KEY`; check `notification_logs` for emails sent outside normal flows.
+  - Zoho ZeptoMail / Resend: roll `ZEPTOMAIL_API_TOKEN` (and legacy `RESEND_API_KEY`); check `notification_logs` for emails sent outside normal flows.
 - [ ] **Snapshot the database**: `supabase db dump -f backup-$(date +%F).sql`.
 - [ ] **Capture the live schema drift**: `supabase db pull` — bring the untracked `deliveries` and `project_assets` tables plus their live RLS policies under version control in a new migration. Commit this *before* changing any policy so there's a rollback point.
 - [ ] Create branch `fix/security`.

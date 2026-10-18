@@ -31,7 +31,7 @@ import {
   SupabaseWaitlistRepository,
   SupabaseInquiryRepository,
 } from "./repositories";
-import { ResendEmailProvider } from "./providers/email";
+import { ZeptoMailEmailProvider, IEmailProvider } from "./providers/email";
 
 // Services
 import {
@@ -94,7 +94,7 @@ export interface CoreServices {
     storage: IStorageProvider;
     silo: SiloService;
     siloProvider: ISiloStorageProvider;
-    email: ResendEmailProvider;
+    email: IEmailProvider;
   };
 }
 
@@ -138,8 +138,8 @@ export function createCoreServices(
   const waitlistRepo = new SupabaseWaitlistRepository(systemClient);
   const inquiryRepo = new SupabaseInquiryRepository(systemClient);
 
-  // Email Provider
-  const emailProvider = new ResendEmailProvider();
+  // Email Provider (Zoho ZeptoMail)
+  const emailProvider = new ZeptoMailEmailProvider();
 
   // Notification Service (Hub for multi-channel notifications)
   const notificationService = new NotificationService(

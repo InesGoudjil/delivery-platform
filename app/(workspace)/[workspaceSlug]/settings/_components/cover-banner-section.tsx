@@ -194,27 +194,10 @@ export function CoverBannerSection({
                   </Badge>
                 </div>
 
-                {/* Overlaid Headline & Category Metadata */}
-                <div className="absolute bottom-4 left-4 right-4 z-10 flex items-end justify-between gap-4">
-                  <div className="space-y-1.5 max-w-xl">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="default" className="font-extrabold uppercase tracking-wider text-primary-foreground bg-primary px-2.5 py-0.5 text-[10px]">
-                        {heroCover.category || (isVideo ? "Featured Film" : "Featured Still")}
-                      </Badge>
-                      {logoUrl && (
-                        <div className="size-5 rounded-full overflow-hidden border border-white/20 bg-black">
-                          <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
-                        </div>
-                      )}
-                      <span className="text-xs font-semibold text-zinc-300">{brandName}</span>
-                    </div>
-                    <div className="font-heading font-extrabold text-lg sm:text-2xl text-white tracking-tight uppercase drop-shadow-md">
-                      {heroCover.title || brandName}
-                    </div>
-                  </div>
-
-                  <div className="text-[11px] font-mono text-zinc-400 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 hidden sm:block">
-                    cinespace.film/p/{handle}
+                {/* Overlaid Headline - Minimal Title Only */}
+                <div className="absolute bottom-4 left-4 right-4 z-10 pointer-events-none">
+                  <div className="font-heading font-extrabold text-lg sm:text-2xl text-white tracking-tight uppercase drop-shadow-md max-w-xl">
+                    {heroCover.title || brandName}
                   </div>
                 </div>
               </AspectRatio>

@@ -48,7 +48,14 @@ const envSchema = z.object({
   STORAGE_PROVIDER: z.enum(["cloudflare", "mock", "auto"]).default("auto"),
   NEXT_PUBLIC_APP_URL: z.string().optional().default("http://localhost:3000"),
 
-  // Resend Email Configuration
+  // Zoho ZeptoMail Configuration
+  ZEPTOMAIL_API_TOKEN: z.string().optional().default(""),
+  ZEPTOMAIL_FROM_EMAIL: z.string().optional().default("noreply@cinespace.film"),
+  ZEPTOMAIL_FROM_NAME: z.string().optional().default("CineSpace"),
+  ZEPTOMAIL_API_URL: z.string().optional().default("https://api.zeptomail.com/v1.1/email"),
+  ZEPTOMAIL_BOUNCE_ADDRESS: z.string().optional().default(""),
+
+  // Resend Email Configuration (Legacy / Fallback during migration)
   RESEND_API_KEY: z.string().optional().default(""),
   RESEND_FROM_EMAIL: z.string().optional().default("onboarding@resend.dev"),
 
@@ -100,6 +107,7 @@ export type Env = z.infer<typeof envSchema> & {
   isPostHogClientEnabled: boolean;
   isPostHogServerEnabled: boolean;
   isPostHogSessionReplayEnabled: boolean;
+  isZeptoMailConfigured: boolean;
 };
 
 /**
@@ -158,6 +166,11 @@ function parseEnv(): Env {
   const isPostHogSessionReplayEnabled =
     isPostHogClientEnabled && parsed.POSTHOG_SESSION_REPLAY_ENABLED;
 
+  const isZeptoMailConfigured =
+    Boolean(parsed.ZEPTOMAIL_API_TOKEN) &&
+    parsed.ZEPTOMAIL_API_TOKEN.trim() !== "" &&
+    parsed.ZEPTOMAIL_API_TOKEN !== "your-zeptomail-token";
+
   return {
     ...parsed,
     CLOUDFLARE_R2_PUBLIC_BUCKET: publicBucket,
@@ -170,6 +183,7 @@ function parseEnv(): Env {
     isPostHogClientEnabled,
     isPostHogServerEnabled,
     isPostHogSessionReplayEnabled,
+    isZeptoMailConfigured,
   };
 }
 

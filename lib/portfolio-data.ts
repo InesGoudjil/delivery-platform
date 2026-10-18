@@ -94,7 +94,7 @@ export const DEFAULT_PROFILE_TEMPLATE: FilmmakerProfile = {
   heroImage: "/images/hero.jpg",
   stats: {
     filmsDelivered: "80+",
-    experienceYears: "6 YRS",
+    experienceYears: "6 Years",
     based: "UAE",
   },
   experience: [],
