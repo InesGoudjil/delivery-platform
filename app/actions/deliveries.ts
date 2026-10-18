@@ -1105,11 +1105,8 @@ export async function recordClientDownloadAction(params: {
       </div>
     `;
 
-    const { ResendEmailProvider } = await import("@/core/providers/email");
-    const emailProvider = new ResendEmailProvider();
-
     for (const email of notifyEmails) {
-      const sendRes = await emailProvider.sendEmail({
+      const sendRes = await core.services.email.sendEmail({
         to: email,
         subject,
         html,

@@ -409,7 +409,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     featuredProjectId: heroCover?.assetId || featuredItems[0]?.id || finalProjects[0]?.id || finalAssets[0]?.id || undefined,
     stats: {
       filmsDelivered: portfolio?.stats?.projects || `${finalAssets.filter((a) => a.kind === "film").length || "80+"}`,
-      experienceYears: portfolio?.stats?.years || "6 YRS",
+      experienceYears: portfolio?.stats?.years || "6 Years",
       based: portfolio?.stats?.location || "UAE",
     },
     experience: realExperiences,

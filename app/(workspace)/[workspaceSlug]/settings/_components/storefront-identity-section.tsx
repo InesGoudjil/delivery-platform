@@ -19,6 +19,7 @@ import {
   Building2,
 } from "lucide-react";
 import { ACCENTS } from "./constants";
+import { cn } from "@/lib/utils";
 import { getContrastForeground } from "@/lib/theme-utils";
 import { PortfolioStats } from "@/core/entities/portfolio";
 import { Card } from "@/components/ui/card";
@@ -562,15 +563,49 @@ export function StorefrontIdentitySection({
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
-                <Briefcase className="size-3 text-primary" />
-                Industry Experience
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                  <Briefcase className="size-3 text-primary" />
+                  Industry Experience
+                </label>
+                <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-lg border border-border">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const num = (stats.years || "").replace(/[^\d.+]/g, "").trim() || "6";
+                      onStatsChange({ ...stats, years: `${num} ${num === "1" ? "Year" : "Years"}` });
+                    }}
+                    className={cn(
+                      "px-2 py-0.5 text-[10px] font-semibold rounded-md transition-colors cursor-pointer",
+                      !stats.years?.toLowerCase().includes("month") && !stats.years?.toLowerCase().includes("mo")
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Years
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const num = (stats.years || "").replace(/[^\d.+]/g, "").trim() || "6";
+                      onStatsChange({ ...stats, years: `${num} ${num === "1" ? "Month" : "Months"}` });
+                    }}
+                    className={cn(
+                      "px-2 py-0.5 text-[10px] font-semibold rounded-md transition-colors cursor-pointer",
+                      stats.years?.toLowerCase().includes("month") || stats.years?.toLowerCase().includes("mo")
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Months
+                  </button>
+                </div>
+              </div>
               <Input
                 type="text"
-                value={stats.years || "6 YRS"}
+                value={stats.years || "6 Years"}
                 onChange={(e) => onStatsChange({ ...stats, years: e.target.value })}
-                placeholder="e.g. 6 YRS"
+                placeholder="e.g. 6 Years or 8 Months"
                 className="h-9 rounded-xl bg-muted/50 border-border text-xs text-foreground font-mono px-3.5"
               />
             </div>

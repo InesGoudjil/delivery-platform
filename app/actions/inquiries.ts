@@ -19,7 +19,7 @@ export type { SubmitPortfolioInquiryInput, SubmitContactFormInput, SubmitPartner
 
 /**
  * Server Action: Submit a client lead/inquiry from a filmmaker's public portfolio.
- * Stores inquiry in the database and dispatches an instant notification email via Resend.
+ * Stores inquiry in the database and dispatches an instant notification email via Zoho ZeptoMail.
  */
 export async function submitPortfolioInquiryAction(input: SubmitPortfolioInquiryInput) {
   try {
@@ -81,7 +81,7 @@ export async function submitPortfolioInquiryAction(input: SubmitPortfolioInquiry
       },
     });
 
-    // 4. Send notification email via Resend
+    // 4. Send notification email via Zoho ZeptoMail
     const recipient = ownerEmail || process.env.CONTACT_EMAIL || "filmmaker@cinespace.film";
     const { subject, html } = renderPortfolioLeadEmail({
       clientName: cleanName,
@@ -134,7 +134,7 @@ export async function submitContactFormAction(input: SubmitContactFormInput) {
       },
     });
 
-    // 2. Send notification email via Resend
+    // 2. Send notification email via Zoho ZeptoMail
     const { subject, html } = renderContactFormEmail({
       fullName: cleanName,
       email: cleanEmail,
@@ -142,7 +142,11 @@ export async function submitContactFormAction(input: SubmitContactFormInput) {
       message: cleanMessage,
     });
 
-    const contactRecipient = process.env.CONTACT_EMAIL || process.env.RESEND_FROM_EMAIL || "contact@cinespace.film";
+    const contactRecipient =
+      process.env.CONTACT_EMAIL ||
+      process.env.ZEPTOMAIL_FROM_EMAIL ||
+      process.env.RESEND_FROM_EMAIL ||
+      "contact@cinespace.film";
     await core.services.email.sendEmail({
       to: contactRecipient,
       subject,
@@ -159,7 +163,7 @@ export async function submitContactFormAction(input: SubmitContactFormInput) {
 
 /**
  * Server Action: Submit a creator partnership application.
- * Stores lead in inquiries table and notifies team via Resend.
+ * Stores lead in inquiries table and notifies team via Zoho ZeptoMail.
  */
 export async function submitPartnershipAction(input: SubmitPartnershipInput) {
   try {
@@ -202,7 +206,11 @@ export async function submitPartnershipAction(input: SubmitPartnershipInput) {
       message,
     });
 
-    const contactRecipient = process.env.CONTACT_EMAIL || process.env.RESEND_FROM_EMAIL || "contact@cinespace.film";
+    const contactRecipient =
+      process.env.CONTACT_EMAIL ||
+      process.env.ZEPTOMAIL_FROM_EMAIL ||
+      process.env.RESEND_FROM_EMAIL ||
+      "contact@cinespace.film";
     await core.services.email.sendEmail({
       to: contactRecipient,
       subject,

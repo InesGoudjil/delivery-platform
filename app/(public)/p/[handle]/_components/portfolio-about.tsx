@@ -8,6 +8,41 @@ interface PortfolioAboutProps {
   profile: FilmmakerProfile;
 }
 
+function formatExperienceDisplay(exp?: string | null): string {
+  if (!exp || !exp.trim()) return "6 Years";
+  const val = exp.trim();
+  const lower = val.toLowerCase();
+
+  // If already contains months / mo / mos
+  if (lower.includes("month") || lower.includes("mos") || lower.includes("mo")) {
+    const numMatch = val.match(/^([\d.]+\+?|\+?[\d.]+)/);
+    if (numMatch) {
+      const num = numMatch[1];
+      return `${num} ${num === "1" ? "Month" : "Months"}`;
+    }
+    return val;
+  }
+
+  // If contains years / yr / yrs
+  if (lower.includes("year") || lower.includes("yr")) {
+    const numMatch = val.match(/^([\d.]+\+?|\+?[\d.]+)/);
+    if (numMatch) {
+      const num = numMatch[1];
+      return `${num} ${num === "1" ? "Year" : "Years"}`;
+    }
+    return val;
+  }
+
+  // If just a raw number e.g. "6" or "18"
+  const rawNumMatch = val.match(/^([\d.]+\+?|\+?[\d.]+)/);
+  if (rawNumMatch) {
+    const num = rawNumMatch[1];
+    return `${num} ${num === "1" ? "Year" : "Years"}`;
+  }
+
+  return val;
+}
+
 export function PortfolioAbout({ profile }: PortfolioAboutProps) {
   return (
     <section className="relative rounded-[2.5rem] bg-[#121214] border border-white/10 overflow-hidden shadow-2xl">
@@ -57,10 +92,10 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
                 <Briefcase className="size-4" />
               </div>
               <div className="font-heading font-black text-xl sm:text-2xl text-white">
-                {profile.stats.experienceYears}
+                {formatExperienceDisplay(profile.stats.experienceYears)}
               </div>
               <div className="text-[11px] text-zinc-400 font-mono">
-                Experience
+                Industry Experience
               </div>
             </div>
 

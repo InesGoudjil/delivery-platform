@@ -109,7 +109,7 @@ export class NotificationService {
   }
 
   /**
-   * Sends branded video delivery review email to client via Resend.
+   * Sends branded video delivery review email to client via Zoho ZeptoMail.
    */
   async sendDeliveryEmail(params: SendDeliveryEmailParams): Promise<{
     success: boolean;

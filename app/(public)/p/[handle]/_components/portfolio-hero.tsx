@@ -1,14 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { Play, Film, Image as ImageIcon, Volume2, VolumeX } from "lucide-react";
+import { Play, Image as ImageIcon, Volume2, VolumeX } from "lucide-react";
 import { FilmmakerProfile, PublicFeaturedItem, PortfolioProject, PortfolioAsset } from "@/lib/portfolio-data";
 import { HeroPreviewTrigger } from "./portfolio-buttons";
 import { AppImage } from "@/components/ui/app-image";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { TypographyH2, TypographyLead } from "@/components/ui/typography";
+import { TypographyH2 } from "@/components/ui/typography";
 
 interface PortfolioHeroProps {
   profile: FilmmakerProfile;
@@ -51,26 +49,7 @@ export function PortfolioHero({
 
   const overlayOpacity = heroCover?.overlayOpacity ?? 50;
 
-  const badgeTitle =
-    heroCover?.category ||
-    (primaryFeatured
-      ? primaryFeatured.type === "project"
-        ? "Featured Project"
-        : primaryFeatured.type === "film"
-        ? "Featured Film"
-        : "Featured Still"
-      : featuredProject
-      ? "Featured Project"
-      : "Cinematic Portfolio");
-
   const heroTitle = heroCover?.title || primaryFeatured?.title || featuredProject?.title || profile.name;
-  const heroDesc =
-    heroCover?.description ||
-    primaryFeatured?.project?.desc ||
-    primaryFeatured?.asset?.desc ||
-    featuredProject?.desc ||
-    profile.bio ||
-    profile.tagline;
 
   const isAmbientVideo = isCoverVideo && videoBehavior === "ambient_loop" && Boolean(mediaUrl);
 
@@ -152,63 +131,11 @@ export function PortfolioHero({
           </div>
         )}
 
-        {/* Bottom-left information */}
-        <div className="absolute bottom-6 left-6 right-6 sm:bottom-10 sm:left-10 sm:right-10 z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4 pointer-events-none">
-          <div className="space-y-2.5 max-w-xl text-left">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge
-                variant="default"
-                className="font-extrabold uppercase tracking-wider text-primary-foreground bg-primary px-3 py-1 text-[11px] shadow-md"
-              >
-                {badgeTitle}
-              </Badge>
-
-              {/* Brand Logo or Avatar Pill */}
-              {profile.logoUrl ? (
-                <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/15 shadow-sm">
-                  <div className="size-4 rounded overflow-hidden shrink-0">
-                    <img src={profile.logoUrl} alt={profile.name} className="w-full h-full object-contain" />
-                  </div>
-                  <span className="font-semibold text-xs text-zinc-200">{profile.name}</span>
-                </div>
-              ) : profile.avatar ? (
-                <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/15 shadow-sm">
-                  <Avatar size="sm" className="size-4 ring-1 ring-white/20">
-                    <AvatarImage src={profile.avatar} alt={profile.name} />
-                    <AvatarFallback className="text-[8px] bg-zinc-800 text-white">
-                      {profile.name.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="font-semibold text-xs text-zinc-200">{profile.name}</span>
-                </div>
-              ) : null}
-            </div>
-
-            <TypographyH2 className="font-heading font-extrabold text-2xl sm:text-4xl lg:text-5xl text-white tracking-tight drop-shadow-md uppercase">
-              {heroTitle}
-            </TypographyH2>
-
-            <TypographyLead className="text-xs sm:text-sm text-zinc-300 font-sans leading-relaxed drop-shadow-sm line-clamp-2 max-w-lg">
-              {heroDesc}
-            </TypographyLead>
-          </div>
-
-          <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-zinc-300 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 shrink-0 shadow-lg">
-            {isCoverStill ? (
-              <>
-                <ImageIcon className="size-3.5 text-primary" />
-                <span>{heroCover?.category || primaryFeatured?.category || "Photo Gallery"}</span>
-              </>
-            ) : (
-              <>
-                <Film className="size-3.5 text-primary" />
-                <span>
-                  {primaryFeatured?.asset?.resolution || "4K 60fps"} ·{" "}
-                  {heroCover?.category || "Cinematic Reel"}
-                </span>
-              </>
-            )}
-          </div>
+        {/* Minimal Hero Information - Title Only */}
+        <div className="absolute bottom-6 left-6 right-6 sm:bottom-10 sm:left-10 sm:right-10 z-10 pointer-events-none">
+          <TypographyH2 className="font-heading font-extrabold text-2xl sm:text-4xl lg:text-5xl text-white tracking-tight drop-shadow-md uppercase max-w-3xl">
+            {heroTitle}
+          </TypographyH2>
         </div>
       </HeroPreviewTrigger>
     </section>
