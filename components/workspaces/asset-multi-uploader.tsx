@@ -398,11 +398,11 @@ export function AssetMultiUploader({
                 Media Asset Uploader
               </h3>
               <span className="text-[10px] font-mono uppercase bg-white/10 text-white/90 px-2 py-0.5 rounded-full">
-                Cloudflare 4K HLS & Stills
+                Video Cuts & Stills
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Upload standalone stills, high-res photos, or 4K video cuts with automatic versioning.
+              Upload standalone stills, high-res photos, or video cuts with automatic versioning.
             </p>
           </div>
         </div>
@@ -510,7 +510,7 @@ export function AssetMultiUploader({
                   Drop your videos & photo stills here, or click to browse
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Select as many files as you want at once. Supports 4K ProRes 422/4444, MP4, MOV, PNG, JPG, WEBP up to 5GB each.
+                  Select as many files as you want at once. Supports ProRes 422/4444, MP4, MOV, PNG, JPG, WEBP up to 5GB each.
                 </p>
               </div>
 
@@ -725,7 +725,7 @@ export function AssetMultiUploader({
                     </span>
                   ) : (
                     <span>
-                      {queuedCount} {queuedCount === 1 ? "asset" : "assets"} ready to upload directly to Cloudflare
+                      {queuedCount} {queuedCount === 1 ? "asset" : "assets"} ready for direct upload
                     </span>
                   )}
                 </p>

@@ -11,8 +11,8 @@ import {
   type AddFeedbackReplyInput,
 } from "@/lib/validations";
 
-export type AddFeedbackParams = AddFeedbackInput;
-export type AddFeedbackReplyParams = AddFeedbackReplyInput;
+type AddFeedbackParams = AddFeedbackInput;
+type AddFeedbackReplyParams = AddFeedbackReplyInput;
 
 export async function addFeedbackAction(params: AddFeedbackParams) {
   try {

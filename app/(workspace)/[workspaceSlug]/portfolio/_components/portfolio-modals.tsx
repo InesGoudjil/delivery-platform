@@ -331,7 +331,7 @@ export function FilmPlayerModal({
                 {item.title}
               </h3>
               <p className="text-xs text-zinc-400 font-mono">
-                {"category" in item && item.category ? item.category : "Film Cut"} · 4K Stream
+                {"category" in item && item.category ? item.category : "Film Cut"} · Video Cut
               </p>
             </div>
           </div>
@@ -390,7 +390,7 @@ export function FilmPlayerModal({
 
         {/* Footer Details */}
         <div className="flex items-center justify-between pt-1 text-xs text-zinc-400 font-mono">
-          <span>Cloudflare 4K Edge Delivery · CUT Player</span>
+          <span>Secure Edge Delivery · CUT Player</span>
           <span>Press ESC to close</span>
         </div>
       </div>

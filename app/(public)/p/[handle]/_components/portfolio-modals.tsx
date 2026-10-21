@@ -267,7 +267,7 @@ export function PortfolioModals() {
                     {activeFilm.title}
                   </h3>
                   <p className="text-xs text-zinc-400 font-mono">
-                    {activeFilm.resolution || "4K 60fps"} · {activeFilm.tc}
+                    {activeFilm.resolution || "HD 60fps"} · {activeFilm.tc}
                   </p>
                 </div>
               </div>

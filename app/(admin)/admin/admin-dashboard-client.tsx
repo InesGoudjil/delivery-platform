@@ -166,7 +166,7 @@ export function AdminDashboardClient({
             Platform Operations &amp; Metrics
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Real-time multi-tenant monitoring across Cloudflare Stream, R2 Storage, Supabase, and Stripe.
+            Real-time multi-tenant monitoring across Video Streaming, Cloud Storage, Database, and Stripe.
           </p>
         </div>
 
@@ -197,7 +197,7 @@ export function AdminDashboardClient({
                   <textarea
                     required
                     rows={3}
-                    placeholder="e.g. Scheduled maintenance: Cloudflare Stream 4K transcode updates tonight at 02:00 UTC."
+                    placeholder="e.g. Scheduled maintenance: Video transcode infrastructure updates tonight at 02:00 UTC."
                     value={announcementText}
                     onChange={(e) => setAnnouncementText(e.target.value)}
                     className="w-full bg-muted border border-border rounded-xl p-3 text-xs text-foreground focus:outline-none focus:border-primary"
@@ -280,7 +280,7 @@ export function AdminDashboardClient({
           </CardContent>
         </Card>
 
-        {/* Projects / 4K Cuts Card */}
+        {/* Projects / Video Cuts Card */}
         <Card className="bg-card border-border hover:border-primary/40 transition-colors shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -298,17 +298,17 @@ export function AdminDashboardClient({
           <CardContent>
             <div className="flex items-center gap-1.5 text-xs text-blue-400 font-medium">
               <Zap className="size-3.5" />
-              <span>100% 4K Stream Uptime</span>
+              <span>100% Stream Uptime</span>
             </div>
           </CardContent>
         </Card>
 
-        {/* R2 Storage Consumed Card */}
+        {/* Cloud Storage Consumed Card */}
         <Card className="bg-card border-border hover:border-primary/40 transition-colors shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardDescription className="text-xs uppercase font-mono font-semibold">
-                Cloudflare R2 Storage
+                Cloud Storage Volume
               </CardDescription>
               <span className="p-2 rounded-xl bg-purple-500/10 text-purple-400">
                 <HardDrive className="size-4" />

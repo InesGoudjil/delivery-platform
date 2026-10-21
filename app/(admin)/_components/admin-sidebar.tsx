@@ -130,7 +130,7 @@ export function AdminSidebar() {
           <div className="flex items-center justify-between text-[11px] font-mono">
             <span className="text-muted-foreground flex items-center gap-1.5">
               <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Cloudflare Edge
+              Global Edge Network
             </span>
             <span className="text-emerald-400 font-bold">99.98%</span>
           </div>

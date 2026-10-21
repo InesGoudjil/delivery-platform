@@ -61,6 +61,10 @@ export class AssetService {
     return this.assetRepo.assignToDelivery(assetId, deliveryId);
   }
 
+  async detachAllFromDelivery(deliveryId: string): Promise<void> {
+    return this.assetRepo.detachAllFromDelivery(deliveryId);
+  }
+
   async toggleApproval(assetId: string, isApproved: boolean): Promise<Asset> {
     return this.assetRepo.toggleApproval(assetId, isApproved);
   }

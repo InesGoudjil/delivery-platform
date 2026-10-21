@@ -32,7 +32,7 @@ export function DeleteConfirmDialog({
   const displayDescription =
     description ||
     (isPermanent
-      ? "This will permanently purge the media from Cloudflare storage and recover your workspace quota. This action cannot be undone."
+      ? "This will permanently purge the media from cloud storage and recover your workspace quota. This action cannot be undone."
       : "This asset will be moved to your workspace Trash. It will immediately be hidden from active client deliveries and portfolio views, and safely retained for 30 days.");
   const displayConfirmText =
     confirmText || (isPermanent ? "Delete Forever" : "Move to Trash");

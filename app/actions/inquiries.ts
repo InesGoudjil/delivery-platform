@@ -15,8 +15,6 @@ import {
   type SubmitPartnershipInput,
 } from "@/lib/validations";
 
-export type { SubmitPortfolioInquiryInput, SubmitContactFormInput, SubmitPartnershipInput };
-
 /**
  * Server Action: Submit a client lead/inquiry from a filmmaker's public portfolio.
  * Stores inquiry in the database and dispatches an instant notification email via Zoho ZeptoMail.

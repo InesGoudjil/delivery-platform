@@ -204,7 +204,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
         tc,
         image: rawThumb || rawMedia || "/images/hero.jpg",
         videoUrl: isStill ? undefined : (rawMedia || undefined),
-        resolution: isStill ? "High Res" : "4K 60fps",
+        resolution: isStill ? "High Res" : "HD 60fps",
       };
 
       realAssets.push(assetItem);
@@ -270,7 +270,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
       tc,
       image: rawThumb || rawMedia || "/images/hero.jpg",
       videoUrl: isStill ? undefined : (rawMedia || undefined),
-      resolution: isStill ? "High Res" : "4K 60fps",
+      resolution: isStill ? "High Res" : "HD 60fps",
     });
   }
 

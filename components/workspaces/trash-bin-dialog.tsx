@@ -131,7 +131,7 @@ export function TrashBinDialog({
       });
 
       if (res.success) {
-        toast.success(`"${permanentTarget.title}" permanently deleted from Cloudflare.`);
+        toast.success(`"${permanentTarget.title}" permanently deleted.`);
         setAssets((prev) => prev.filter((a) => a.id !== permanentTarget.id));
         onItemPermanentlyDeleted?.(permanentTarget.id);
         setPermanentTarget(null);
@@ -338,7 +338,7 @@ export function TrashBinDialog({
         isPermanent={true}
         title="Delete Forever"
         itemName={permanentTarget?.title}
-        description="This will permanently purge this asset and its video files from Cloudflare Stream and R2 storage, and recover workspace quota. This cannot be undone."
+        description="This will permanently purge this asset and its video files from cloud storage, and recover workspace quota. This cannot be undone."
         confirmText="Delete Forever"
         isDeleting={isPermanentDeleting}
         onConfirm={handlePermanentDelete}
@@ -350,7 +350,7 @@ export function TrashBinDialog({
         onOpenChange={(open) => !open && setShowEmptyConfirm(false)}
         isPermanent={true}
         title="Empty Workspace Trash"
-        description={`Are you sure you want to permanently delete all ${assets.length} items from trash? All associated media files will be deleted from Cloudflare storage forever.`}
+        description={`Are you sure you want to permanently delete all ${assets.length} items from trash? All associated media files will be deleted from cloud storage forever.`}
         confirmText="Empty Trash Forever"
         isDeleting={isEmptying}
         onConfirm={handleEmptyTrash}

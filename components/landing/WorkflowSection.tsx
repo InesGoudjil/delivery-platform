@@ -19,7 +19,7 @@ const STEPS = [
         img:SHOT_UPLOAD,
 
     // img: "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?auto=format&fit=crop&w=600&q=80",
-    // badgeText: "TRANSCODING 4K",
+    // badgeText: "TRANSCODING",
   },
   {
     step: "02",

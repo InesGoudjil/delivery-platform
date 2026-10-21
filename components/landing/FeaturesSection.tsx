@@ -212,7 +212,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
             <Card className="rounded-[28px] border border-white/10 bg-[#121217] p-4 sm:p-6 shadow-2xl">
               <div className="grid grid-cols-2 gap-4">
                 {[
-                  { img: IMG_CONCERT, title: "Live Concert 4K" },
+                  { img: IMG_CONCERT, title: "Live Concert Film" },
                   { img: IMG_CITY, title: "Dubai Skyline" },
                   { img: IMG_CAR, title: "Supercar Commercial" },
                   { img: IMG_FASHION, title: "Fashion Campaign" },
@@ -436,7 +436,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
                         <Film className="size-4 text-primary" />
                       </AttachmentMedia>
                       <AttachmentContent>
-                        <AttachmentTitle className="text-xs text-white">Aisha_Omar_Master_4K_ProRes.mov</AttachmentTitle>
+                        <AttachmentTitle className="text-xs text-white">Aisha_Omar_Master_ProRes.mov</AttachmentTitle>
                         <AttachmentDescription className="text-[11px] text-zinc-400">
                           4.8 GB · 10-bit ProRes 422 HQ · Ready for Download
                         </AttachmentDescription>

@@ -121,7 +121,7 @@ export default function NotificationsPage() {
               Master File Download Alerts
             </div>
             <div className="text-xs text-muted-foreground">
-              Get notified when a client initiates a full 4K ProRes master file download.
+              Get notified when a client initiates a full ProRes master file download.
             </div>
           </div>
           <Switch

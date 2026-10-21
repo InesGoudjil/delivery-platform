@@ -268,7 +268,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                           <div className="absolute top-3 left-3 z-10">
                             <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[10px] font-mono font-bold text-white uppercase gap-1.5">
                               <Film className="size-3 text-primary" />
-                              <span>{film.resolution || "4K 60fps"}</span>
+                              <span>{film.resolution || "HD 60fps"}</span>
                             </Badge>
                           </div>
 

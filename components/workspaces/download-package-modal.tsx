@@ -320,7 +320,7 @@ export function DownloadPackageModal({
         } queued for download!`,
         {
           id: toastId,
-          description: "Files stream directly from Cloudflare R2 to your disk.",
+          description: "Files stream directly from cloud storage to your disk.",
         }
       );
       onClientDownload?.({
@@ -383,7 +383,7 @@ export function DownloadPackageModal({
       footer={
         <div className="w-full flex flex-col sm:flex-row items-center justify-between text-[11px] text-[#71717a] font-mono gap-1">
           <span>
-            💡 Direct stream from Cloudflare R2 — zero browser memory limit
+            💡 Direct stream from cloud storage — zero browser memory limit
           </span>
           <span>Compatible with Free Download Manager, IDM &amp; browser shelf</span>
         </div>
@@ -424,8 +424,8 @@ export function DownloadPackageModal({
                   {selectedDownloadableItems.length > 0 && selectedSizeBytes > 0
                     ? `${selectedDownloadableItems.length} selected (${formatBytes(
                         selectedSizeBytes
-                      )}) · Streams directly from Cloudflare R2 to disk.`
-                    : "Multi-file queue transfers directly from Cloudflare R2 to your disk with zero browser RAM limit."}
+                      )}) · Streams directly from cloud storage to disk.`
+                    : "Multi-file queue transfers directly from cloud storage to your disk with zero browser RAM limit."}
                 </p>
               </div>
 

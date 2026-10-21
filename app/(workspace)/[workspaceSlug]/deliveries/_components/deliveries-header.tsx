@@ -37,6 +37,8 @@ export function DeliveriesHeader({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newClient, setNewClient] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
   const [creating, setCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -56,7 +58,9 @@ export function DeliveriesHeader({
       workspace.id,
       trimmedTitle,
       undefined,
-      newClient.trim() || undefined
+      newClient.trim() || undefined,
+      newEmail.trim() || undefined,
+      newPhone.trim() || undefined
     );
 
     if (res?.success && (res.delivery || res.project)) {
@@ -65,6 +69,8 @@ export function DeliveriesHeader({
       setShowCreateModal(false);
       setNewTitle("");
       setNewClient("");
+      setNewEmail("");
+      setNewPhone("");
       router.push(`/${workspace.slug}/deliveries/${createdId}`);
     } else {
       const errMsg = res?.error || "Failed to create project delivery room.";
@@ -84,6 +90,8 @@ export function DeliveriesHeader({
           if (!open) {
             setNewTitle("");
             setNewClient("");
+            setNewEmail("");
+            setNewPhone("");
             setErrorMessage(null);
           }
         }}
@@ -98,7 +106,7 @@ export function DeliveriesHeader({
                 Create Delivery Workspace
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground font-sans">
-                Set up a dedicated 4K review workspace for your client.
+                Set up a dedicated review workspace for your client.
               </DialogDescription>
             </div>
           </DialogHeader>
@@ -164,6 +172,42 @@ export function DeliveriesHeader({
               />
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
+                    Client Email
+                  </Label>
+                  <span className="text-[10px] text-muted-foreground/60 font-mono">Optional</span>
+                </div>
+                <Input
+                  type="email"
+                  disabled={isAtLimit}
+                  placeholder="client@example.com"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
+                    Phone / WhatsApp
+                  </Label>
+                  <span className="text-[10px] text-muted-foreground/60 font-mono">Optional</span>
+                </div>
+                <Input
+                  type="tel"
+                  disabled={isAtLimit}
+                  placeholder="+1 555 123 4567"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+            </div>
+
             <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
               <Button
                 type="button"
@@ -197,7 +241,7 @@ export function DeliveriesHeader({
             Client Deliveries
           </h1>
           <p className="text-sm text-muted-foreground mt-1 font-sans">
-            Your projects and client review links with 4K HDR streaming, timecoded feedback, and WhatsApp delivery.
+            Your projects and client review links with video streaming, timecoded feedback, and WhatsApp delivery.
           </p>
         </div>
 

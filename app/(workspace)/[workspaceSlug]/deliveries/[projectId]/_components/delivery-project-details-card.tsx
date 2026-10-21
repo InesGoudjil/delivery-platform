@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Mail, Phone, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { updateDeliveryDetailsAction } from "@/app/actions/deliveries";
 import {
@@ -19,8 +20,16 @@ interface DeliveryProjectDetailsCardProps {
   projectId: string;
   initialTitle: string;
   initialClientName: string;
+  initialClientEmail?: string | null;
+  initialClientPhone?: string | null;
   initialDescription: string;
-  onSaved: (title: string, clientName: string, description: string) => void;
+  onSaved: (
+    title: string,
+    clientName: string,
+    description: string,
+    clientEmail: string,
+    clientPhone: string
+  ) => void;
   triggerToast: (msg: string) => void;
 }
 
@@ -28,12 +37,16 @@ export function DeliveryProjectDetailsCard({
   projectId,
   initialTitle,
   initialClientName,
+  initialClientEmail = "",
+  initialClientPhone = "",
   initialDescription,
   onSaved,
   triggerToast,
 }: DeliveryProjectDetailsCardProps) {
   const [title, setTitle] = useState(initialTitle);
   const [clientName, setClientName] = useState(initialClientName);
+  const [clientEmail, setClientEmail] = useState(initialClientEmail || "");
+  const [clientPhone, setClientPhone] = useState(initialClientPhone || "");
   const [description, setDescription] = useState(initialDescription);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -43,10 +56,12 @@ export function DeliveryProjectDetailsCard({
       const res = await updateDeliveryDetailsAction(projectId, {
         title,
         clientName,
+        clientEmail: clientEmail.trim(),
+        clientPhone: clientPhone.trim(),
         description,
       });
       if (res.success) {
-        onSaved(title, clientName, description);
+        onSaved(title, clientName, description, clientEmail.trim(), clientPhone.trim());
         triggerToast("Delivery details updated successfully");
       } else {
         toast.error(res.error || "Failed to update delivery details");
@@ -93,18 +108,64 @@ export function DeliveryProjectDetailsCard({
           />
         </Field>
 
-        <Field orientation="vertical">
-          <FieldLabel htmlFor="project-client" className="text-muted-foreground font-mono text-xs">
-            Client
-          </FieldLabel>
-          <Input
-            id="project-client"
-            type="text"
-            value={clientName}
-            onChange={(e) => setClientName(e.target.value)}
-            className="h-10 bg-muted/40 border border-input rounded-xl px-3.5 text-foreground font-medium text-sm focus-visible:border-primary transition-colors"
-          />
-        </Field>
+        {/* Client Information Section */}
+        <div className="space-y-3 pt-1">
+          <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+            CLIENT CONTACT INFORMATION
+          </span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Field orientation="vertical">
+              <FieldLabel htmlFor="project-client" className="text-muted-foreground font-mono text-xs flex items-center gap-1.5">
+                <User className="size-3 text-muted-foreground/70" />
+                <span>Client / Brand</span>
+              </FieldLabel>
+              <Input
+                id="project-client"
+                type="text"
+                placeholder="e.g. Lost in Tokyo Group"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                className="h-10 bg-muted/40 border border-input rounded-xl px-3.5 text-foreground font-medium text-sm focus-visible:border-primary transition-colors"
+              />
+            </Field>
+
+            <Field orientation="vertical">
+              <FieldLabel htmlFor="project-client-email" className="text-muted-foreground font-mono text-xs flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Mail className="size-3 text-muted-foreground/70" />
+                  <span>Email</span>
+                </span>
+                <span className="text-[10px] text-muted-foreground/60">Optional</span>
+              </FieldLabel>
+              <Input
+                id="project-client-email"
+                type="email"
+                placeholder="client@example.com"
+                value={clientEmail}
+                onChange={(e) => setClientEmail(e.target.value)}
+                className="h-10 bg-muted/40 border border-input rounded-xl px-3.5 text-foreground font-medium text-sm focus-visible:border-primary transition-colors"
+              />
+            </Field>
+
+            <Field orientation="vertical">
+              <FieldLabel htmlFor="project-client-phone" className="text-muted-foreground font-mono text-xs flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Phone className="size-3 text-muted-foreground/70" />
+                  <span>Phone / WhatsApp</span>
+                </span>
+                <span className="text-[10px] text-muted-foreground/60">Optional</span>
+              </FieldLabel>
+              <Input
+                id="project-client-phone"
+                type="tel"
+                placeholder="+1 555 123 4567"
+                value={clientPhone}
+                onChange={(e) => setClientPhone(e.target.value)}
+                className="h-10 bg-muted/40 border border-input rounded-xl px-3.5 text-foreground font-medium text-sm focus-visible:border-primary transition-colors"
+              />
+            </Field>
+          </div>
+        </div>
 
         <Field orientation="vertical">
           <FieldLabel htmlFor="project-desc" className="text-muted-foreground font-mono text-xs">
