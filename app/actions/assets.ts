@@ -564,7 +564,7 @@ export async function deleteDeliveryAction(
       };
     }
 
-    // Delete associated assets and storage files
+    // Delete associated assets and storage files (moves to workspace Trash)
     try {
       const assets = await services.asset.listDeliveryAssets(deliveryId);
       for (const asset of assets) {
@@ -575,6 +575,14 @@ export async function deleteDeliveryAction(
       }
     } catch (e) {
       console.warn("Delivery asset cleanup notice:", e);
+    }
+
+    // Detach all assets from this delivery so they remain preserved in workspace Trash
+    // and cannot violate foreign key constraints when deleting the delivery room
+    try {
+      await services.asset.detachAllFromDelivery(deliveryId);
+    } catch (detachErr) {
+      console.warn("Delivery asset detachment notice:", detachErr);
     }
 
     // Delete delivery entity

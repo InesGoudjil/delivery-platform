@@ -42,7 +42,7 @@ export default async function HelpPage({
     {
       question: "What video formats and resolutions are supported?",
       answer:
-        "You can upload high-bitrate masters including ProRes 422, ProRes 4444, DNxHR, H.264, and HEVC/H.265 up to 4K 60fps. CineSpace creates fast adaptive-bitrate streaming proxies for instant playback while preserving your original untouched master file for client download.",
+        "You can upload high-bitrate masters including ProRes 422, ProRes 4444, DNxHR, H.264, and HEVC/H.265 at up to 60fps. CineSpace creates fast adaptive-bitrate streaming proxies for instant playback while preserving your original untouched master file for client download.",
     },
     {
       question: "How do passcodes and security work?",

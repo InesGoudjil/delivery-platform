@@ -134,7 +134,7 @@ export function DeliveryExpiredScreen({
 
       {/* Footer */}
       <footer className="w-full px-6 py-4 border-t border-white/5 text-center text-[11px] font-mono text-neutral-600 relative z-10">
-        Powered by CineSpace · Secure 4K Master Deliveries
+        Powered by CineSpace · Secure Master Deliveries
       </footer>
     </div>
   );

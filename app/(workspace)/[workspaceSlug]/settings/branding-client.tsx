@@ -110,7 +110,7 @@ export function BrandingClient({
   // Bio
   const [bio, setBio] = useState(
     portfolio.bio ||
-      "Directing high-impact commercial campaigns, brand documentaries, and luxury wedding films across Dubai, Abu Dhabi, and the Gulf region. Full end-to-end 4K/8K production."
+      "Directing high-impact commercial campaigns, brand documentaries, and luxury wedding films across Dubai, Abu Dhabi, and the Gulf region. Full end-to-end digital production."
   );
 
   // Interactive Image Crop / Edit Dialog State

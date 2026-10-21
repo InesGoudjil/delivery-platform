@@ -316,6 +316,8 @@ export function DeliveryDetailClient({
   const [projectMeta, setProjectMeta] = useState({
     title: project.title || "Boxing Event",
     clientName: project.clientName || "Boxing Event",
+    clientEmail: project.clientEmail || "",
+    clientPhone: project.clientPhone || "",
     description:
       project.description ||
       "A cinematic boxing project featuring films and stills captured across the event.",
@@ -857,6 +859,7 @@ export function DeliveryDetailClient({
           approvedCount={approvedCount}
           shareUrl={shareUrl}
           clientName={projectMeta.clientName}
+          clientPhone={projectMeta.clientPhone}
           siloStatus={projectMeta.siloStatus}
           siloTier={projectMeta.siloTier}
           onOpenShareDialog={() => setActiveDialog("share")}
@@ -934,13 +937,17 @@ export function DeliveryDetailClient({
           projectId={project.id}
           initialTitle={projectMeta.title}
           initialClientName={projectMeta.clientName}
+          initialClientEmail={projectMeta.clientEmail}
+          initialClientPhone={projectMeta.clientPhone}
           initialDescription={projectMeta.description}
-          onSaved={(newTitle, newClient, newDesc) => {
+          onSaved={(newTitle, newClient, newDesc, newEmail, newPhone) => {
             setProjectMeta((prev) => ({
               ...prev,
               title: newTitle,
               clientName: newClient,
               description: newDesc,
+              clientEmail: newEmail,
+              clientPhone: newPhone,
             }));
           }}
           triggerToast={triggerToast}
@@ -953,6 +960,7 @@ export function DeliveryDetailClient({
           projectId={project.id}
           shareToken={currentShareToken}
           projectTitle={projectMeta.title}
+          clientEmail={projectMeta.clientEmail}
           initialPasscodeProtected={project.passcodeProtected ?? false}
           initialDownloadAllowed={project.isDownloadAllowed ?? false}
           initialExpiresAt={project.expiresAt ?? null}

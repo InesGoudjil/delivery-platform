@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     "delivery-review": renderDeliveryReviewEmail({
       brandName: "Apex Cine Studio",
       projectTitle: "Nike - 'Never Stop' Campaign Cut v3",
-      projectDescription: "Latest 4K color grade and sound mix ready for client review and approval.",
+      projectDescription: "Latest color grade and sound mix ready for client review and approval.",
       reviewUrl: "http://localhost:3000/deliver/demo-share-token",
       customMessage: "Hey team, please review the color balance at 00:45. Let us know if this cut is good for final master export.",
       isPasscodeProtected: true,

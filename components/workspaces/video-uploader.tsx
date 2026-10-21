@@ -228,7 +228,7 @@ export function VideoUploader({
     setUploading(true);
     setErrorMessage(null);
     setProgress(0);
-    setStatusText("Requesting Cloudflare direct upload token...");
+    setStatusText("Requesting direct upload token...");
 
     const uploadToast = createUploadProgressToast();
     uploadToastRef.current = uploadToast;
@@ -323,10 +323,10 @@ export function VideoUploader({
           </div>
           <div>
             <h3 className="font-heading text-base font-bold text-card-foreground">
-              Direct Cloudflare Media Upload
+              Direct Media Upload
             </h3>
             <p className="text-xs text-muted-foreground">
-              Direct-to-edge 4K HLS video stream & high-res image gallery upload up to 5GB
+              Direct video stream & high-res image gallery upload up to 5GB
             </p>
           </div>
         </div>
@@ -360,8 +360,8 @@ export function VideoUploader({
           </div>
           <p className="text-xs text-muted-foreground">
             {assetType === "video"
-              ? "Your cut is being encoded into adaptive multi-bitrate HLS streams across Cloudflare edge nodes."
-              : "Your photo gallery asset is now optimized and served globally via Cloudflare CDN."}
+              ? "Your cut is being encoded into adaptive multi-bitrate streams across global edge nodes."
+              : "Your photo gallery asset is now optimized and served globally via high-speed CDN."}
           </p>
           <div className="flex items-center gap-3 pt-2">
             <Button
@@ -431,7 +431,7 @@ export function VideoUploader({
               <AttachmentContent>
                 <AttachmentTitle>{selectedFile.name}</AttachmentTitle>
                 <AttachmentDescription>
-                  {formatBytes(selectedFile.size)} · {assetType === "video" ? "4K Video Cut" : "Photo Gallery Asset"}
+                  {formatBytes(selectedFile.size)} · {assetType === "video" ? "Video Cut" : "Photo Gallery Asset"}
                 </AttachmentDescription>
               </AttachmentContent>
               {!uploading && (

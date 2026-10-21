@@ -151,14 +151,14 @@ export default async function StoragePage({
               WORKSPACE DASHBOARD
             </Badge>
             <Badge variant="outline" className="text-xs font-mono">
-              Cloudflare R2 &amp; Stream
+              Cloud Storage &amp; Streaming
             </Badge>
           </div>
           <TypographyH1 className="text-3xl font-bold font-heading text-foreground">
             Storage &amp; Usage
           </TypographyH1>
           <TypographyLead className="text-sm text-muted-foreground font-sans max-w-2xl">
-            Track real-time Cloudflare R2 master storage, HLS video streams, and cold archives for{" "}
+            Track real-time master storage, video streams, and cold archives for{" "}
             <strong className="text-foreground">{workspace.brandName}</strong>.
           </TypographyLead>
         </div>
@@ -175,7 +175,7 @@ export default async function StoragePage({
                   +1 TB High-Speed Storage Boost Activated!
                 </h4>
                 <p className="text-xs text-muted-foreground">
-                  Your Cloudflare R2 storage allocation has been upgraded by 1,024 GB.
+                  Your storage allocation has been upgraded by 1,024 GB.
                 </p>
               </div>
             </div>
@@ -192,10 +192,10 @@ export default async function StoragePage({
                 </div>
                 <div>
                   <CardTitle className="font-heading text-lg font-bold text-card-foreground">
-                    Active Cloudflare R2 &amp; Stream Storage
+                    Active Storage &amp; Streaming
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Fast edge storage &amp; adaptive HLS 4K video streaming
+                    Fast edge storage &amp; adaptive video streaming
                   </CardDescription>
                 </div>
               </div>
@@ -291,13 +291,13 @@ export default async function StoragePage({
                             <CardContent className="p-0 space-y-1">
                               <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
                                 <Layers className="size-3.5 text-primary" />
-                                Adaptive 4K HLS Streams
+                                Adaptive Video Streams
                               </div>
                               <div className="text-sm font-mono font-bold text-foreground">
                                 {formatSize(totalStreamBytes)}
                               </div>
                               <TypographyMuted className="text-[10px] text-muted-foreground">
-                                Cloudflare transcoded stream cache
+                                Transcoded stream cache
                               </TypographyMuted>
                             </CardContent>
                           </Card>
@@ -306,7 +306,7 @@ export default async function StoragePage({
                     }
                   />
                   <TooltipContent>
-                    Edge-cached multi-bitrate HLS video ladder for instant buffer-free client streaming
+                    Edge-cached multi-bitrate video stream for instant buffer-free client streaming
                   </TooltipContent>
                 </Tooltip>
 

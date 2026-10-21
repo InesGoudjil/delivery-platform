@@ -74,7 +74,7 @@ export function StorageUpgradeButton({
         }
       />
       <TooltipContent>
-        Instantly add 1 TB high-speed Cloudflare R2 edge capacity to your workspace
+        Instantly add 1 TB high-speed storage capacity to your workspace
       </TooltipContent>
     </Tooltip>
   );

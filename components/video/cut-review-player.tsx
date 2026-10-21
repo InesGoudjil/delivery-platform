@@ -364,7 +364,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
               <div className="relative w-full h-full bg-black flex items-center justify-center">
                 <iframe
                   src={computedIframeUrl}
-                  title={title || "Cloudflare Stream"}
+                  title={title || "Video Player"}
                   allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
                   allowFullScreen
                   className="w-full h-full border-0"
@@ -409,7 +409,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                     } else {
                       setIsEncoding(false);
                       if (computedIframeUrl) {
-                        setMediaError("Direct HLS stream is taking longer to finish encoding. You can switch to the Cloudflare Player or retry.");
+                        setMediaError("Direct video stream is taking longer to finish encoding. You can switch to the web player or retry.");
                       } else {
                         setMediaError("Video stream processing or temporarily unavailable.");
                       }
@@ -447,10 +447,10 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
 
                     <div className="space-y-1.5 max-w-sm">
                       <h4 className="font-bold text-sm text-white">
-                        Cloudflare Edge Encoding
+                        Processing Video Cut
                       </h4>
                       <p className="text-xs text-zinc-400">
-                        Transcoding 4K cut & generating adaptive HLS streaming tiers...
+                        Transcoding video cut & generating adaptive streaming tiers...
                       </p>
                       <p className="text-[11px] font-mono text-zinc-500">
                         Checking stream readiness (Attempt {retryCount + 1} of 8)
@@ -470,7 +470,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                           }}
                           className="rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors cursor-pointer border-white/15 h-auto py-1.5 px-4"
                         >
-                          Watch in Cloudflare Player Now
+                          Watch in Web Player Now
                         </Button>
                       </div>
                     )}
@@ -517,7 +517,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                           }}
                           className="rounded-full bg-white/10 text-white font-bold text-xs hover:bg-white/20 transition-colors cursor-pointer border-white/15 h-auto py-1.5 px-4"
                         >
-                          Use Cloudflare Player
+                          Use Web Player
                         </Button>
                       )}
                       {!showWatermark && resolvedVideoSrc && !resolvedVideoSrc.includes("manifest/video.m3u8") && (

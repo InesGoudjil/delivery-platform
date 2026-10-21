@@ -11,7 +11,7 @@ import {
 export const FAQS = [
   {
     q: "How does delivery work?",
-    a: "Upload your video export (MP4 or ProRes). CineSpace generates a private, branded screening room link. You can send it directly to your client via WhatsApp or email for instant 4K playback and frame-accurate feedback.",
+    a: "Upload your video export (MP4 or ProRes). CineSpace generates a private, branded screening room link. You can send it directly to your client via WhatsApp or email for instant playback and frame-accurate feedback.",
   },
   {
     q: "Can I cancel anytime?",

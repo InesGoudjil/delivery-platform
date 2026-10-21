@@ -179,7 +179,7 @@ export const DEMO_PORTFOLIO_ASSETS: PortfolioAsset[] = [
     tc: "01:15",
     image: "/images/portfolio/projects/Boxing/3.webp",
     videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    resolution: "4K 60fps",
+    resolution: "HD 60fps",
   },
   {
     id: "asset_fashion_8",
@@ -191,7 +191,7 @@ export const DEMO_PORTFOLIO_ASSETS: PortfolioAsset[] = [
     tc: "00:48",
     image: "/images/portfolio/projects/fashion/8.webp",
     videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-    resolution: "4K 24fps",
+    resolution: "HD 24fps",
   },
   {
     id: "asset_gclass_3",
@@ -203,7 +203,7 @@ export const DEMO_PORTFOLIO_ASSETS: PortfolioAsset[] = [
     tc: "01:30",
     image: "/images/portfolio/projects/G-class/3.webp",
     videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-    resolution: "4K 60fps",
+    resolution: "HD 60fps",
   },
   {
     id: "asset_maserati_3",
@@ -215,7 +215,7 @@ export const DEMO_PORTFOLIO_ASSETS: PortfolioAsset[] = [
     tc: "00:54",
     image: "/images/portfolio/projects/Maserati/3.webp",
     videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4",
-    resolution: "4K 60fps",
+    resolution: "HD 60fps",
   },
   {
     id: "asset_restaurant_4",
@@ -227,7 +227,7 @@ export const DEMO_PORTFOLIO_ASSETS: PortfolioAsset[] = [
     tc: "01:05",
     image: "/images/portfolio/projects/Restaurant/4.webp",
     videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
-    resolution: "4K 24fps",
+    resolution: "HD 24fps",
   },
   {
     id: "asset_tennis_2",
@@ -239,7 +239,7 @@ export const DEMO_PORTFOLIO_ASSETS: PortfolioAsset[] = [
     tc: "00:42",
     image: "/images/portfolio/projects/Tenis/2.webp",
     videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
-    resolution: "4K 60fps",
+    resolution: "HD 60fps",
   },
   {
     id: "asset_urus_5",
@@ -251,7 +251,7 @@ export const DEMO_PORTFOLIO_ASSETS: PortfolioAsset[] = [
     tc: "01:20",
     image: "/images/portfolio/projects/Urus/5.webp",
     videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
-    resolution: "4K 60fps",
+    resolution: "HD 60fps",
   },
   {
     id: "asset_gts_1",
@@ -263,7 +263,7 @@ export const DEMO_PORTFOLIO_ASSETS: PortfolioAsset[] = [
     tc: "01:24",
     image: "/images/portfolio/projects/Martin-katler/1.webp",
     videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    resolution: "4K 60fps",
+    resolution: "HD 60fps",
   },
   // Stills
   {

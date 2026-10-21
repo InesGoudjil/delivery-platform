@@ -48,6 +48,7 @@ export interface IAssetRepository {
   listByIds(ids: string[]): Promise<Asset[]>;
   create(dto: CreateAssetDTO): Promise<Asset>;
   assignToDelivery(assetId: string, deliveryId: string | null): Promise<Asset>;
+  detachAllFromDelivery(deliveryId: string): Promise<void>;
   toggleApproval(assetId: string, isApproved: boolean): Promise<Asset>;
   archive(id: string): Promise<Asset>;
   restore(id: string): Promise<Asset>;

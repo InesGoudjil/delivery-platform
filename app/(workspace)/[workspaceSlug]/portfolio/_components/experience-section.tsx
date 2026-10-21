@@ -271,7 +271,7 @@ export function ExperienceSection({
               </Label>
               <textarea
                 rows={3}
-                placeholder="Directing 4K commercial campaigns, high-speed tracking reels, or key broadcast commercials..."
+                placeholder="Directing commercial campaigns, high-speed tracking reels, or key broadcast commercials..."
                 value={expDesc}
                 onChange={(e) => setExpDesc(e.target.value)}
                 className="w-full bg-muted/50 border border-border rounded-xl px-3.5 py-2 text-foreground focus:outline-none focus:border-primary text-xs resize-none"

@@ -233,7 +233,7 @@ export function AssetLightboxModal({
     setIsUploadingVersion(true);
     setUploadError(null);
     setUploadProgress(0);
-    setUploadStatusText("Requesting Cloudflare direct upload token...");
+    setUploadStatusText("Requesting direct upload token...");
 
     try {
       const resolvedType =
@@ -350,7 +350,7 @@ export function AssetLightboxModal({
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground font-mono">
-                Aspect: {activeItem.aspectRatio} · Format: {isStill ? "Hi-Res Still" : "4K ProRes"}
+                Aspect: {activeItem.aspectRatio} · Format: {isStill ? "Hi-Res Still" : "ProRes Master"}
               </p>
             </div>
           </div>
@@ -629,7 +629,7 @@ export function AssetLightboxModal({
                   <p className="text-[11px] text-muted-foreground">
                     {isStill
                       ? "High-resolution photo still (PNG, JPG, WEBP, AVIF up to 5GB)"
-                      : "4K ProRes 422/4444, MP4, or MOV video cut directly to Cloudflare edge (up to 5GB)"}
+                      : "ProRes 422/4444, MP4, or MOV video cut directly uploaded (up to 5GB)"}
                   </p>
                 </div>
               </div>

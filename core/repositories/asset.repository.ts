@@ -219,6 +219,15 @@ export class SupabaseAssetRepository implements IAssetRepository {
     return this.mapRowToEntity(data);
   }
 
+  async detachAllFromDelivery(deliveryId: string): Promise<void> {
+    const { error } = await (this.supabase as any)
+      .from("assets")
+      .update({ delivery_id: null, updated_at: new Date().toISOString() })
+      .eq("delivery_id", deliveryId);
+
+    if (error) throw new Error(`Error detaching assets from delivery: ${error.message}`);
+  }
+
   async toggleApproval(assetId: string, isApproved: boolean): Promise<Asset> {
     const { data, error } = await (this.supabase as any)
       .from("assets")

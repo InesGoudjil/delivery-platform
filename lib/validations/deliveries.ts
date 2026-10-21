@@ -22,6 +22,8 @@ export const createDeliverySchema = z.object({
     .default("Untitled Delivery"),
   description: z.string().trim().max(5000).optional(),
   clientNameOrId: z.string().trim().max(255).optional(),
+  clientEmail: z.string().trim().email("Invalid email address").optional().or(z.literal("")).nullable(),
+  clientPhone: z.string().trim().max(50, "Phone number is too long").optional().or(z.literal("")).nullable(),
 });
 
 export type CreateDeliveryInput = z.infer<typeof createDeliverySchema>;
@@ -30,6 +32,8 @@ export const updateDeliveryDetailsSchema = z.object({
   title: z.string().trim().min(1, "Title cannot be empty").max(255).optional(),
   description: z.string().trim().max(5000).optional(),
   clientName: z.string().trim().max(255).optional(),
+  clientEmail: z.string().trim().email("Invalid email address").optional().or(z.literal("")).nullable(),
+  clientPhone: z.string().trim().max(50, "Phone number is too long").optional().or(z.literal("")).nullable(),
   status: deliveryStatusSchema.optional(),
   location: z.string().trim().max(255).optional(),
   deliveryDate: z.string().trim().max(100).optional(),

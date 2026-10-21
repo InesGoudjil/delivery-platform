@@ -160,7 +160,7 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
                   00:24 / {activeProject.tc}
                 </span>
                 <span className="bg-black/60 px-2.5 py-1 rounded-md text-[#86b98f]">
-                  4K Ultra-HD
+                  Ultra-HD
                 </span>
               </div>
             </div>

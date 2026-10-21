@@ -117,7 +117,7 @@ export function renderWaitlistWelcomeEmail({
       You're in line! 🎉
     </h1>
     <p style="margin: 0 0 24px 0; font-size: 15px; color: #a1a1aa; line-height: 1.6;">
-      Thank you for joining CineSpace. We're rolling out access in batches to ensure seamless 4K video deliveries and instant client review workflows.
+      Thank you for joining CineSpace. We're rolling out access in batches to ensure seamless video deliveries and instant client review workflows.
     </p>
 
     <!-- Position Badge -->
@@ -189,7 +189,7 @@ export function renderWaitlistInviteEmail({
     <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 10px; padding: 20px; margin-bottom: 28px;">
       <div style="font-size: 13px; font-weight: 600; color: #ffffff; margin-bottom: 8px;">What's unlocked for you:</div>
       <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #a1a1aa; line-height: 1.7;">
-        <li>Fast 4K video deliveries with instant browser playback</li>
+        <li>Fast video deliveries with instant browser playback</li>
         <li>Pinpoint timecoded client feedback (no client login needed)</li>
         <li>Passcode protection and custom studio branding</li>
         <li>Client signoff &amp; one-click cut approvals</li>

@@ -11,8 +11,6 @@ import {
   type ConfirmUploadInput,
 } from "@/lib/validations";
 
-export type { RequestUploadInput, ConfirmUploadInput };
-
 export async function requestAssetUploadAction(input: RequestUploadInput) {
   try {
     const validated = safeValidate(requestUploadSchema, input);

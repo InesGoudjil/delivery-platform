@@ -87,6 +87,8 @@ export interface DeliveryDetailClientProps {
     isDownloadAllowed: boolean;
     passcodeProtected: boolean;
     clientName: string;
+    clientEmail?: string | null;
+    clientPhone?: string | null;
     expiresAt?: string | null;
     appearance?: AppearanceSettings | null;
     createdAt: string;

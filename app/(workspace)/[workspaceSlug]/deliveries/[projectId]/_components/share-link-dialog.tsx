@@ -36,6 +36,7 @@ interface ShareLinkDialogProps {
   projectId: string;
   shareToken: string;
   projectTitle: string;
+  clientEmail?: string | null;
   initialPasscodeProtected: boolean;
   initialDownloadAllowed: boolean;
   initialExpiresAt?: string | null;
@@ -69,6 +70,7 @@ export function ShareLinkDialog({
   projectId,
   shareToken,
   projectTitle,
+  clientEmail: initialClientEmail,
   initialPasscodeProtected,
   initialDownloadAllowed,
   initialExpiresAt,
@@ -162,9 +164,16 @@ export function ShareLinkDialog({
   };
 
   // Email Sharing State
-  const [clientEmail, setClientEmail] = useState("");
-  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [clientEmail, setClientEmail] = useState(initialClientEmail || "");
+  const [showEmailInput, setShowEmailInput] = useState(Boolean(initialClientEmail));
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  useEffect(() => {
+    if (initialClientEmail) {
+      setClientEmail(initialClientEmail);
+      setShowEmailInput(true);
+    }
+  }, [initialClientEmail]);
 
   const handleSendEmail = async () => {
     if (!clientEmail.trim()) {

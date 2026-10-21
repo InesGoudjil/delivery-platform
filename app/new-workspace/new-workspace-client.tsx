@@ -194,7 +194,7 @@ export function NewWorkspaceClient({
                   <Check className="size-4 text-primary shrink-0 mt-0.5" />
                   <div>
                     <span className="font-bold">2,048 GB (2 TB) High-Speed Storage</span>
-                    <p className="text-muted-foreground text-[11px]">Ample space for 4K ProRes cuts and project master exports</p>
+                    <p className="text-muted-foreground text-[11px]">Ample space for ProRes cuts and project master exports</p>
                   </div>
                 </div>
 

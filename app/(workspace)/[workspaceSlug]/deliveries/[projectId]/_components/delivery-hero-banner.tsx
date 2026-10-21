@@ -28,6 +28,7 @@ interface DeliveryHeroBannerProps {
   approvedCount: number;
   shareUrl: string;
   clientName: string;
+  clientPhone?: string | null;
   siloStatus?: "archived" | "restoring" | "restored" | null;
   siloTier?: "Bulk" | "Standard" | null;
   onOpenShareDialog: () => void;
@@ -50,6 +51,7 @@ export function DeliveryHeroBanner({
   approvedCount,
   shareUrl,
   clientName,
+  clientPhone,
   siloStatus,
   siloTier,
   onOpenShareDialog,
@@ -143,7 +145,9 @@ export function DeliveryHeroBanner({
             className="rounded-full border-border/60 bg-background/50 backdrop-blur-md hover:bg-muted text-foreground font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
           >
             <a
-              href={`https://wa.me/?text=${encodeURIComponent(
+              href={`https://wa.me/${
+                clientPhone ? clientPhone.replace(/[^0-9]/g, "") : ""
+              }?text=${encodeURIComponent(
                 `Hi ${clientName}, your review cut for ${projectTitle} is ready: ${
                   typeof window !== "undefined" ? window.location.origin : ""
                 }${shareUrl}`
@@ -152,7 +156,7 @@ export function DeliveryHeroBanner({
               rel="noreferrer"
             >
               <MessageCircle className="size-3.5 text-emerald-400" />
-              <span>SEND TO CLIENT</span>
+              <span>{clientPhone ? "WHATSAPP CLIENT" : "SEND TO CLIENT"}</span>
             </a>
           </Button>
 

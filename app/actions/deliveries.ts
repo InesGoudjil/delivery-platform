@@ -191,7 +191,9 @@ export async function createDeliveryAction(
   workspaceId: string,
   title: string,
   description?: string,
-  clientNameOrId?: string
+  clientNameOrId?: string,
+  clientEmail?: string | null,
+  clientPhone?: string | null
 ) {
   try {
     const validated = safeValidate(createDeliverySchema, {
@@ -199,6 +201,8 @@ export async function createDeliveryAction(
       title,
       description,
       clientNameOrId,
+      clientEmail,
+      clientPhone,
     });
     if (!validated.success) return { error: validated.error };
 
@@ -207,6 +211,8 @@ export async function createDeliveryAction(
       title: cleanTitle,
       description: cleanDescription,
       clientNameOrId: cleanClientNameOrId,
+      clientEmail: cleanClientEmail,
+      clientPhone: cleanClientPhone,
     } = validated.data;
 
     const services = await getServerServices();
@@ -214,21 +220,29 @@ export async function createDeliveryAction(
     if (!user) return { error: "User is not authenticated." };
 
     let clientId: string | undefined = undefined;
-    if (cleanClientNameOrId) {
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanClientNameOrId);
+    if (cleanClientNameOrId || cleanClientEmail || cleanClientPhone) {
+      const isUuid = cleanClientNameOrId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanClientNameOrId);
       if (isUuid) {
         clientId = cleanClientNameOrId;
       } else {
         const existingClients = await services.client.listClients(cleanWorkspaceId);
-        const existingClient = existingClients.find(
-          (c) => c.name.toLowerCase() === cleanClientNameOrId.toLowerCase()
-        );
+        const existingClient = cleanClientNameOrId
+          ? existingClients.find((c) => c.name.toLowerCase() === cleanClientNameOrId.toLowerCase())
+          : null;
         if (existingClient) {
           clientId = existingClient.id;
+          if (cleanClientEmail || cleanClientPhone) {
+            await services.client.updateClient(existingClient.id, {
+              ...(cleanClientEmail ? { email: cleanClientEmail } : {}),
+              ...(cleanClientPhone ? { phoneNumber: cleanClientPhone } : {}),
+            });
+          }
         } else {
           const newClient = await services.client.createClient({
             workspaceId: cleanWorkspaceId,
-            name: cleanClientNameOrId,
+            name: cleanClientNameOrId || "Private Client",
+            email: cleanClientEmail || null,
+            phoneNumber: cleanClientPhone || null,
           });
           clientId = newClient.id;
         }
@@ -409,20 +423,44 @@ export async function updateDeliveryDetailsAction(
     const user = await services.auth.getCurrentUser();
     if (!user) return { error: "User is not authenticated." };
 
-    let clientId: string | undefined = undefined;
-    if (validated.data.clientName) {
-      const workspace = await services.workspace.getOrCreateWorkspace(user.id);
+    const delivery = await services.delivery.getDeliveryById(deliveryId.trim());
+    if (!delivery) return { error: "Delivery not found." };
+
+    let clientId: string | undefined = delivery.clientId || undefined;
+    const clientName = validated.data.clientName !== undefined ? validated.data.clientName.trim() : undefined;
+    const hasEmail = validated.data.clientEmail !== undefined;
+    const hasPhone = validated.data.clientPhone !== undefined;
+    const clientEmail = hasEmail ? (validated.data.clientEmail?.trim() || null) : undefined;
+    const clientPhone = hasPhone ? (validated.data.clientPhone?.trim() || null) : undefined;
+
+    if (clientId) {
+      await services.client.updateClient(clientId, {
+        ...(clientName !== undefined ? { name: clientName } : {}),
+        ...(hasEmail ? { email: clientEmail } : {}),
+        ...(hasPhone ? { phoneNumber: clientPhone } : {}),
+      });
+    } else if (clientName || clientEmail || clientPhone) {
+      const workspace = (await services.workspace.getWorkspaceById(delivery.workspaceId)) ||
+        (await services.workspace.getOrCreateWorkspace(user.id));
       const existingClients = await services.client.listClients(workspace.id);
-      const existingClient = existingClients.find(
-        (c) => c.name.toLowerCase() === validated.data.clientName?.toLowerCase()
-      );
+      const existingClient = clientName
+        ? existingClients.find((c) => c.name.toLowerCase() === clientName.toLowerCase())
+        : null;
 
       if (existingClient) {
         clientId = existingClient.id;
+        if (hasEmail || hasPhone) {
+          await services.client.updateClient(existingClient.id, {
+            ...(hasEmail ? { email: clientEmail } : {}),
+            ...(hasPhone ? { phoneNumber: clientPhone } : {}),
+          });
+        }
       } else {
         const newClient = await services.client.createClient({
           workspaceId: workspace.id,
-          name: validated.data.clientName,
+          name: clientName || "Private Client",
+          email: clientEmail || null,
+          phoneNumber: clientPhone || null,
         });
         clientId = newClient.id;
       }

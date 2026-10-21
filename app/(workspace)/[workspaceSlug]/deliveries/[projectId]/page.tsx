@@ -79,11 +79,18 @@ export default async function DeliveryDetailPage({
     } as any;
   }
 
-  // 3. Resolve client name
+  // 3. Resolve client details (name, email, phone)
   let clientName = project?.client?.name || (project as any).clientName || "Private Client";
-  if (!clientName && project.clientId) {
+  let clientEmail = project?.client?.email || "";
+  let clientPhone = project?.client?.phoneNumber || "";
+
+  if (project.clientId && (!project.client || !clientEmail || !clientPhone)) {
     const client = await services.client.getClientById(project.clientId);
-    if (client) clientName = client.name;
+    if (client) {
+      if (!clientName || clientName === "Private Client") clientName = client.name;
+      if (!clientEmail && client.email) clientEmail = client.email;
+      if (!clientPhone && client.phoneNumber) clientPhone = client.phoneNumber;
+    }
   }
 
   // 4. Map assets and feedback
@@ -246,6 +253,8 @@ export default async function DeliveryDetailPage({
         project={{
           ...project,
           clientName,
+          clientEmail,
+          clientPhone,
           passcodeProtected: Boolean(project.passcodeHash),
         }}
         assets={mappedAssets}
