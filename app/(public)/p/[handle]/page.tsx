@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getServerServices } from "@/core/server";
+import { getServerAdminServices } from "@/core/server";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 import {
   PortfolioAsset,
@@ -29,7 +29,7 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { handle } = await params;
   try {
-    const services = await getServerServices();
+    const services = await getServerAdminServices();
     let workspace = await services.workspace.getWorkspaceBySlug(handle);
     let portfolio = null;
 
@@ -74,7 +74,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PublicPortfolioPage({ params }: PageProps) {
   const { handle } = await params;
-  const services = await getServerServices();
+  const services = await getServerAdminServices();
 
   let workspace = null;
   let portfolio = null;

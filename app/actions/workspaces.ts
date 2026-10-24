@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { getServerServices, getServerAdminServices } from "@/core/server";
 import {
   createTeamWorkspaceSchema,
-  switchWorkspacePlanSchema,
   safeValidate,
 } from "@/lib/validations";
 
@@ -93,53 +92,3 @@ export async function createTeamWorkspaceAction(formData: FormData): Promise<Wor
   }
 }
 
-/**
- * Development & Demo helper to switch a workspace's subscription plan directly (e.g. Upgrade to Studio).
- * Allows instant verification of the team workspace unlock without needing live Stripe webhooks.
- */
-export async function switchWorkspacePlanAction(
-  workspaceId: string,
-  planSlug: string
-): Promise<WorkspaceActionResult> {
-  try {
-    const validated = safeValidate(switchWorkspacePlanSchema, { workspaceId, planSlug });
-    if (!validated.success) {
-      return { success: false, error: validated.error };
-    }
-
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    // Check ownership or admin status
-    const workspace = await services.workspace.getWorkspaceById(workspaceId);
-    if (!workspace) {
-      return { success: false, error: "Workspace not found" };
-    }
-
-    const member = await services.member.getMember(workspaceId, user.id);
-    const canManage = workspace.ownerId === user.id || member?.role === "owner" || member?.role === "admin";
-    if (!canManage) {
-      return { success: false, error: "Permission denied: Only workspace owners can change plans." };
-    }
-
-    const adminServices = await getServerAdminServices();
-    const plan = await adminServices.subscription.getPlanBySlug(planSlug);
-    if (!plan) {
-      return { success: false, error: `Plan "${planSlug}" not found.` };
-    }
-
-    await adminServices.subscription.adminChangeWorkspacePlan(workspaceId, plan.id, "active");
-
-    revalidatePath("/", "layout");
-    revalidatePath(`/${workspace.slug}`);
-    revalidatePath(`/${workspace.slug}/subscription`);
-    revalidatePath("/new-workspace");
-
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to switch plan." };
-  }
-}

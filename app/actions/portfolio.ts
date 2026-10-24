@@ -1,6 +1,7 @@
 "use server";
 
 import { getServerServices } from "@/core/server";
+import { requireUser, requireWorkspaceMember } from "@/core/security/guards";
 import { revalidatePath } from "next/cache";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 import {
@@ -27,17 +28,14 @@ export async function updatePortfolioAction(
       return { success: false, error: validated.error };
     }
 
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-
-    if (!user) {
-      return { success: false, error: "Unauthorized. Please log in." };
-    }
+    const { services, user } = await requireUser();
 
     const current = await services.portfolio.getPortfolioById(portfolioId.trim());
     if (!current) {
       return { success: false, error: "Portfolio not found." };
     }
+
+    await requireWorkspaceMember(current.workspaceId, "editor");
 
     const updatePayload = { ...validated.data };
     if (updatePayload.appearance) {
@@ -85,17 +83,14 @@ export async function toggleFeaturedItemAction(
       return { success: false, error: validated.error };
     }
 
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-
-    if (!user) {
-      return { success: false, error: "Unauthorized." };
-    }
+    const { services, user } = await requireUser();
 
     const portfolio = await services.portfolio.getPortfolioById(validated.data.portfolioId);
     if (!portfolio) {
       return { success: false, error: "Portfolio not found." };
     }
+
+    await requireWorkspaceMember(portfolio.workspaceId, "editor");
 
     const currentAppearance = portfolio.appearance || {
       cardSize: "M",
@@ -150,17 +145,14 @@ export async function reorderFeaturedItemsAction(
       return { success: false, error: validated.error };
     }
 
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-
-    if (!user) {
-      return { success: false, error: "Unauthorized." };
-    }
+    const { services, user } = await requireUser();
 
     const portfolio = await services.portfolio.getPortfolioById(validated.data.portfolioId);
     if (!portfolio) {
       return { success: false, error: "Portfolio not found." };
     }
+
+    await requireWorkspaceMember(portfolio.workspaceId, "editor");
 
     const currentAppearance = portfolio.appearance || {
       cardSize: "M",
@@ -212,12 +204,7 @@ export async function updateBrandingAction(
       return { success: false, error: validated.error };
     }
 
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-
-    if (!user) {
-      return { success: false, error: "Unauthorized. Please log in." };
-    }
+    const { services, user } = await requireWorkspaceMember(workspaceId.trim(), "admin");
 
     const cleanData = validated.data;
 

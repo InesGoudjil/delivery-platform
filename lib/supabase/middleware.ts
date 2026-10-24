@@ -65,9 +65,14 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    const isAdmin =
-      user.user_metadata?.platform_role === 'admin' ||
-      user.user_metadata?.is_admin === true;
+    // Query actual user_profiles row in database instead of client user_metadata
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('platform_role')
+      .eq('id', user.id)
+      .single();
+
+    const isAdmin = profile?.platform_role === 'admin';
 
     if (!isAdmin) {
       url.pathname = '/';

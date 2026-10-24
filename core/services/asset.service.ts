@@ -69,6 +69,10 @@ export class AssetService {
     return this.assetRepo.toggleApproval(assetId, isApproved);
   }
 
+  async getVersionById(versionId: string): Promise<AssetVersion | null> {
+    return this.assetVersionRepo.findById(versionId);
+  }
+
   async getActiveVersion(assetId: string): Promise<AssetVersion | null> {
     return this.assetVersionRepo.findActiveVersion(assetId);
   }

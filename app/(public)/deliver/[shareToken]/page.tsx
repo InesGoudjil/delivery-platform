@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import { createHash } from "crypto";
-import { getServerServices } from "@/core/server";
+import { getServerServices, getServerAdminServices } from "@/core/server";
 import { presignDeliveryAssets } from "@/lib/media-server";
 import { DeliveryRoomClient, DeliveryAssetItem } from "./delivery-room-client";
 import { DeliveryExpiredScreen } from "./_components/delivery-expired-screen";
@@ -15,7 +15,7 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { shareToken } = await params;
   try {
-    const services = await getServerServices();
+    const services = await getServerAdminServices();
     const delivery = await services.delivery.getDeliveryByShareToken(shareToken, { allowExpired: true });
     if (!delivery) {
       return {
@@ -39,11 +39,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ClientDeliveryPage(props: PageProps) {
   const { shareToken } = await props.params;
-  const services = await getServerServices();
-  const user = await services.auth.getCurrentUser();
+  const adminServices = await getServerAdminServices();
+  const userServices = await getServerServices();
+  const user = await userServices.auth.getCurrentUser();
 
   // 1. Fetch full delivery details (delivery, client, assets, versions, feedback)
-  const fullDetails = await services.delivery.getDeliveryWithFullDetails(shareToken);
+  const fullDetails = await adminServices.delivery.getDeliveryWithFullDetails(shareToken);
 
   if (!fullDetails) {
     notFound();
@@ -51,9 +52,9 @@ export default async function ClientDeliveryPage(props: PageProps) {
 
   // 2. Fetch workspace identity, features, and portfolio branding
   const [workspace, workspaceFeatures, portfolio] = await Promise.all([
-    services.workspace.getWorkspaceById(fullDetails.workspaceId),
-    services.subscription.getFeatures(fullDetails.workspaceId),
-    services.portfolio.getPortfolioByWorkspace(fullDetails.workspaceId).catch(() => null),
+    adminServices.workspace.getWorkspaceById(fullDetails.workspaceId),
+    adminServices.subscription.getFeatures(fullDetails.workspaceId),
+    adminServices.portfolio.getPortfolioByWorkspace(fullDetails.workspaceId).catch(() => null),
   ]);
   const brandName = workspace?.brandName || "Studio Workspace";
   const workspaceSlug = workspace?.slug || "studio";
@@ -131,7 +132,7 @@ export default async function ClientDeliveryPage(props: PageProps) {
 
   // Check if current user is owner or member of the workspace
   const isWorkspaceMember = user
-    ? await services.member.isMember(fullDetails.workspaceId, user.id).catch(() => false)
+    ? await adminServices.member.isMember(fullDetails.workspaceId, user.id).catch(() => false)
     : false;
 
   // Check if link has expired
@@ -170,7 +171,7 @@ export default async function ClientDeliveryPage(props: PageProps) {
   // 6. Current user info if filmmaker / team member is inspecting
   let userProfile = null;
   if (user) {
-    const profile = await services.profile.getProfile(user.id);
+    const profile = await adminServices.profile.getProfile(user.id);
     userProfile = {
       id: user.id,
       name: profile?.fullName || user.email?.split("@")[0] || null,
@@ -181,7 +182,7 @@ export default async function ClientDeliveryPage(props: PageProps) {
   // 7. Media access gate: Only send assets/streams/comments if public or unlocked
   const deliveredAssets = (isPasscodeProtected && !isInitiallyUnlocked)
     ? []
-    : await presignDeliveryAssets(mappedAssets, services.storage, 7200);
+    : await presignDeliveryAssets(mappedAssets, adminServices.storage, 7200);
 
   return (
     <DeliveryRoomClient

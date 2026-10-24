@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getServerServices } from "@/core/server";
+import { cookies } from "next/headers";
+import { getServerServices, getServerAdminServices } from "@/core/server";
+import { requireUser, requireWorkspaceMember } from "@/core/security/guards";
 import {
   addFeedbackSchema,
   addFeedbackReplySchema,
@@ -13,6 +15,44 @@ import {
 
 type AddFeedbackParams = AddFeedbackInput;
 type AddFeedbackReplyParams = AddFeedbackReplyInput;
+
+/**
+ * Helper to verify guest or member access to a delivery cut
+ */
+async function verifyDeliveryAccessContext(shareToken?: string, deliveryId?: string) {
+  const adminServices = await getServerAdminServices();
+  let delivery = null;
+
+  if (shareToken) {
+    delivery = await adminServices.delivery.getDeliveryByShareToken(shareToken);
+  } else if (deliveryId) {
+    delivery = await adminServices.delivery.getDeliveryById(deliveryId);
+  }
+
+  const userServices = await getServerServices();
+  const user = await userServices.auth.getCurrentUser();
+
+  if (delivery && user) {
+    const isMember = await adminServices.member.isMember(delivery.workspaceId, user.id).catch(() => false);
+    if (isMember) {
+      return { isAuthorized: true, delivery, user, adminServices };
+    }
+  }
+
+  if (delivery) {
+    if (!delivery.passcodeHash) {
+      return { isAuthorized: true, delivery, user, adminServices };
+    }
+
+    const cookieStore = await cookies();
+    const access = cookieStore.get(`delivery_access_${delivery.shareToken}`)?.value;
+    if (access === "verified") {
+      return { isAuthorized: true, delivery, user, adminServices };
+    }
+  }
+
+  return { isAuthorized: false, delivery, user, adminServices };
+}
 
 export async function addFeedbackAction(params: AddFeedbackParams) {
   try {
@@ -30,26 +70,25 @@ export async function addFeedbackAction(params: AddFeedbackParams) {
       shareToken,
     } = validated.data;
 
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
+    const adminServices = await getServerAdminServices();
+    const userServices = await getServerServices();
+    const user = await userServices.auth.getCurrentUser();
 
-    // Verify passcode access if protected shareToken is passed
+    // Verify access
     if (shareToken) {
-      const delivery = await services.delivery.getDeliveryByShareToken(shareToken);
-      if (delivery?.passcodeHash) {
-        const { cookies } = await import("next/headers");
-        const cookieStore = await cookies();
-        const access = cookieStore.get(`delivery_access_${shareToken}`)?.value;
-        const isMember = user ? await services.member.isMember(delivery.workspaceId, user.id).catch(() => false) : false;
-        if (access !== "verified" && !isMember) {
-          return { error: "Passcode verification required to leave feedback on this cut." };
-        }
+      const { isAuthorized } = await verifyDeliveryAccessContext(shareToken);
+      if (!isAuthorized) {
+        return { error: "Passcode verification required to leave feedback on this cut." };
+      }
+    } else {
+      if (!user) {
+        return { error: "Unauthorized. Authentication or delivery share token required." };
       }
     }
 
     // If a parentId is provided, delegate to addReply for backward compatibility
     if (parentId) {
-      const reply = await services.feedback.addReply({
+      const reply = await adminServices.feedback.addReply({
         feedbackId: parentId,
         authorUserId: user?.id,
         authorName: authorName || (user?.email ? user.email.split("@")[0] : "Client Guest"),
@@ -64,7 +103,7 @@ export async function addFeedbackAction(params: AddFeedbackParams) {
       return { success: true, reply };
     }
 
-    const feedback = await services.feedback.addFeedback({
+    const feedback = await adminServices.feedback.addFeedback({
       assetVersionId,
       authorUserId: user?.id,
       authorName: authorName || (user?.email ? user.email.split("@")[0] : "Client Guest"),
@@ -92,24 +131,23 @@ export async function addFeedbackReplyAction(params: AddFeedbackReplyParams) {
 
     const { feedbackId, commentText, authorName, shareToken } = validated.data;
 
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
+    const adminServices = await getServerAdminServices();
+    const userServices = await getServerServices();
+    const user = await userServices.auth.getCurrentUser();
 
-    // Verify passcode access if protected shareToken is passed
+    // Verify access
     if (shareToken) {
-      const delivery = await services.delivery.getDeliveryByShareToken(shareToken);
-      if (delivery?.passcodeHash) {
-        const { cookies } = await import("next/headers");
-        const cookieStore = await cookies();
-        const access = cookieStore.get(`delivery_access_${shareToken}`)?.value;
-        const isMember = user ? await services.member.isMember(delivery.workspaceId, user.id).catch(() => false) : false;
-        if (access !== "verified" && !isMember) {
-          return { error: "Passcode verification required to reply to feedback." };
-        }
+      const { isAuthorized } = await verifyDeliveryAccessContext(shareToken);
+      if (!isAuthorized) {
+        return { error: "Passcode verification required to reply to feedback." };
+      }
+    } else {
+      if (!user) {
+        return { error: "Unauthorized. Authentication or delivery share token required." };
       }
     }
 
-    const reply = await services.feedback.addReply({
+    const reply = await adminServices.feedback.addReply({
       feedbackId,
       authorUserId: user?.id,
       authorName: authorName || (user?.email ? user.email.split("@")[0] : "Client Guest"),
@@ -131,8 +169,17 @@ export async function deleteFeedbackReplyAction(replyId: string, shareToken?: st
   try {
     if (!replyId?.trim()) return { error: "Reply ID is required." };
 
-    const services = await getServerServices();
-    await services.feedback.deleteReply(replyId.trim());
+    const { isAuthorized, adminServices } = await verifyDeliveryAccessContext(shareToken, deliveryId);
+    if (!isAuthorized) {
+      // Must be authenticated workspace member
+      const { user } = await requireUser();
+      const isMember = deliveryId ? await adminServices.member.isMember(deliveryId, user.id).catch(() => false) : false;
+      if (!isMember) {
+        return { error: "Unauthorized to delete feedback reply." };
+      }
+    }
+
+    await adminServices.feedback.deleteReply(replyId.trim());
 
     if (shareToken) {
       revalidatePath(`/deliver/${shareToken}`);
@@ -157,8 +204,15 @@ export async function toggleFeedbackResolvedAction(feedbackId: string, isResolve
       return { error: validated.error };
     }
 
-    const services = await getServerServices();
-    const feedback = await services.feedback.toggleResolved(
+    const { isAuthorized, adminServices } = await verifyDeliveryAccessContext(
+      validated.data.shareToken,
+      validated.data.deliveryId
+    );
+    if (!isAuthorized) {
+      return { error: "Unauthorized: Passcode or workspace membership required." };
+    }
+
+    const feedback = await adminServices.feedback.toggleResolved(
       validated.data.feedbackId,
       validated.data.isResolved
     );
@@ -177,8 +231,16 @@ export async function deleteFeedbackAction(feedbackId: string, shareToken?: stri
   try {
     if (!feedbackId?.trim()) return { error: "Feedback ID is required." };
 
-    const services = await getServerServices();
-    await services.feedback.deleteFeedback(feedbackId.trim());
+    const { isAuthorized, adminServices } = await verifyDeliveryAccessContext(shareToken, deliveryId);
+    if (!isAuthorized) {
+      const { user } = await requireUser();
+      const isMember = deliveryId ? await adminServices.member.isMember(deliveryId, user.id).catch(() => false) : false;
+      if (!isMember) {
+        return { error: "Unauthorized to delete feedback." };
+      }
+    }
+
+    await adminServices.feedback.deleteFeedback(feedbackId.trim());
 
     if (shareToken) {
       revalidatePath(`/deliver/${shareToken}`);
