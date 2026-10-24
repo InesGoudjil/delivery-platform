@@ -4,11 +4,13 @@ out
 .env*.local
 .DS_Store
 npm-debug.log*
+coverage
 
 
 /package-lock.json
 
-/supabase
+/supabase/*
+!/supabase/migrations/
 
 .agents
 

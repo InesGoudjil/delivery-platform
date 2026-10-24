@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getServerServices, getServerAdminServices, getServerCore } from "@/core/server";
+import { getServerCore } from "@/core/server";
+import { requireUser, requireWorkspaceMember } from "@/core/security/guards";
 import {
   requestUploadSchema,
   confirmUploadSchema,
@@ -18,15 +19,11 @@ export async function requestAssetUploadAction(input: RequestUploadInput) {
       return { success: false, error: validated.error };
     }
 
-    const userServices = await getServerServices();
-    const user = await userServices.auth.getCurrentUser();
+    // Enforce workspace membership with editor role
+    const { services } = await requireWorkspaceMember(validated.data.workspaceId, "editor");
 
-    if (!user) {
-      return { success: false, error: "Unauthorized. Please sign in." };
-    }
-
-    const adminServices = await getServerAdminServices();
-    const result = await adminServices.upload.requestAssetUpload({
+    // Initiate upload under authenticated user context
+    const result = await services.upload.requestAssetUpload({
       workspaceId: validated.data.workspaceId,
       projectId: validated.data.projectId,
       assetId: validated.data.assetId,
@@ -64,15 +61,23 @@ export async function confirmUploadCompletedAction(input: ConfirmUploadInput) {
       return { success: false, error: validated.error };
     }
 
-    const userServices = await getServerServices();
-    const user = await userServices.auth.getCurrentUser();
+    const { services } = await requireUser();
 
-    if (!user) {
-      return { success: false, error: "Unauthorized. Please sign in." };
+    // Verify target asset and workspace ownership
+    const version = await services.asset.getVersionById(validated.data.assetVersionId);
+    if (!version) {
+      return { success: false, error: "Asset version not found." };
     }
 
-    const adminServices = await getServerAdminServices();
-    const updatedVersion = await adminServices.upload.confirmUploadCompleted({
+    const asset = await services.asset.getAssetById(version.assetId);
+    if (!asset) {
+      return { success: false, error: "Asset not found." };
+    }
+
+    // Caller must be an editor of the asset's workspace
+    await requireWorkspaceMember(asset.workspaceId, "editor");
+
+    const updatedVersion = await services.upload.confirmUploadCompleted({
       assetVersionId: validated.data.assetVersionId,
       providerUid: validated.data.providerUid,
       durationSeconds: validated.data.durationSeconds,
@@ -80,9 +85,8 @@ export async function confirmUploadCompletedAction(input: ConfirmUploadInput) {
     });
 
     try {
-      const asset = await userServices.asset.getAssetById(updatedVersion.assetId);
-      if (asset?.deliveryId) {
-        const delivery = await userServices.delivery.getDeliveryById(asset.deliveryId);
+      if (asset.deliveryId) {
+        const delivery = await services.delivery.getDeliveryById(asset.deliveryId);
         if (delivery?.shareToken) {
           revalidatePath(`/deliver/${delivery.shareToken}`);
         }
@@ -115,6 +119,8 @@ export async function checkAssetStatusAction(providerUid: string) {
     if (!validated.success) {
       return { success: false, error: validated.error };
     }
+
+    await requireUser();
 
     const core = await getServerCore();
     const status = await core.storageProvider.getAssetStatus(validated.data.providerUid);

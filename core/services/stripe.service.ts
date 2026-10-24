@@ -202,12 +202,7 @@ export class StripeService {
 
     const stripe = getStripeClient();
     if (!stripe) {
-      // In local dev without live Stripe secret key, simulate test checkout redirect
-      console.warn('[StripeService] Stripe not configured; generating mock storage checkout session.');
-      const mockSessionId = `mock_storage_${input.workspaceId}_${Date.now()}`;
-      return {
-        url: `${input.origin}/${pathSlug}/storage?billing=success&session_id=${mockSessionId}`,
-      };
+      throw new Error("Stripe is not configured in this environment.");
     }
 
     const customerId = await this.getOrCreateValidCustomer(
@@ -270,37 +265,6 @@ export class StripeService {
     sessionId: string,
     subscriptionService: SubscriptionService
   ): Promise<{ success: boolean; planName?: string }> {
-    // Check for simulated/test storage add-on session
-    if (sessionId.startsWith('mock_storage_')) {
-      const parts = sessionId.split('_');
-      const wsId = parts[2];
-      if (wsId) {
-        try {
-          const currentFeatures = await subscriptionService.getFeatures(wsId);
-          const currentStorageGB = currentFeatures.storage_gb || 2;
-          const newStorageGB = currentStorageGB + 1024;
-
-          await subscriptionService.updateWorkspaceFeatures(wsId, {
-            ...currentFeatures,
-            storage_gb: newStorageGB,
-          });
-
-          await subscriptionService.recordInvoice({
-            workspaceId: wsId,
-            amountCents: 1500,
-            currency: 'USD',
-            description: '+1 TB High-Speed Storage Add-on (Test Mode)',
-            status: 'paid',
-          });
-
-          console.log(`[StripeService:Mock] Added 1024 GB storage to workspace ${wsId}`);
-          return { success: true, planName: '+1 TB Storage' };
-        } catch (e: any) {
-          console.warn('[StripeService:Mock] Error applying storage add-on:', e.message);
-        }
-      }
-    }
-
     const stripe = this.getStripe();
 
     try {

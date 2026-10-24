@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerServices } from "@/core/server";
+import { requireWorkspaceMember } from "@/core/security/guards";
 import {
   createWorkspaceProjectSchema,
   createShowcaseProjectSchema,
@@ -23,9 +24,7 @@ export async function createWorkspaceProjectAction(
     });
     if (!validated.success) return { error: validated.error };
 
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-    if (!user) return { error: "User is not authenticated." };
+    const { services, user } = await requireWorkspaceMember(validated.data.workspaceId, "editor");
 
     const delivery = await services.delivery.createDelivery({
       workspaceId: validated.data.workspaceId,

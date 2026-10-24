@@ -12,13 +12,12 @@ import {
   ShieldCheck,
   Loader2,
   Lock,
-  Zap,
   ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { createTeamWorkspaceAction, switchWorkspacePlanAction } from "@/app/actions/workspaces";
+import { createTeamWorkspaceAction } from "@/app/actions/workspaces";
 
 interface PlanFeatureItem {
   id: string;
@@ -60,7 +59,6 @@ export function NewWorkspaceClient({
   const [accentColor, setAccentColor] = useState("#f5551d");
   const [defaultLanguage, setDefaultLanguage] = useState<"ar" | "en">("en");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUpgrading, setIsUpgrading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,19 +98,6 @@ export function NewWorkspaceClient({
     } else {
       router.push("/");
     }
-  };
-
-  const handleQuickUpgrade = async () => {
-    setIsUpgrading(true);
-    setErrorMsg(null);
-    const res = await switchWorkspacePlanAction(primaryWorkspaceId, "studio");
-    if (!res.success) {
-      setErrorMsg(res.error || "Failed to upgrade plan.");
-      setIsUpgrading(false);
-      return;
-    }
-    router.refresh();
-    setIsUpgrading(false);
   };
 
   const studioPlan = plans.find((p) => p.slug === "studio") || {
@@ -265,28 +250,6 @@ export function NewWorkspaceClient({
               </div>
 
               <div className="flex flex-col sm:flex-row items-center gap-2.5">
-                {/* 1-Click Fast Upgrade for Development / Demo testing */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleQuickUpgrade}
-                  disabled={isUpgrading}
-                  className="rounded-full text-xs font-semibold cursor-pointer w-full sm:w-auto"
-                  title="Instantly switch your workspace to Studio plan in development test mode"
-                >
-                  {isUpgrading ? (
-                    <>
-                      <Loader2 className="size-3.5 mr-1.5 animate-spin" />
-                      Upgrading...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="size-3.5 mr-1.5 text-amber-400" />
-                      1-Click Upgrade (Demo)
-                    </>
-                  )}
-                </Button>
-
                 <Button
                   asChild
                   size="sm"

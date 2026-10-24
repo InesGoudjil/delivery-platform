@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { createHash } from "crypto";
-import { getServerServices } from "@/core/server";
+import { getServerServices, getServerAdminServices } from "@/core/server";
+import { requireUser, requireWorkspaceMember, requireDeliveryAccess } from "@/core/security/guards";
 import { presignDeliveryAssets } from "@/lib/media-server";
 import { resolveThumbnailUrl, resolveMediaUrl } from "@/lib/media";
 import type { DeliveryAppearanceSettings } from "@/core/entities/delivery";
@@ -22,6 +23,39 @@ import {
   type DeliveryAppearanceInput,
   type UpdateDeliverySecurityInput,
 } from "@/lib/validations";
+
+async function requireDeliveryGuestOrMemberAccess(deliveryId: string) {
+  const adminServices = await getServerAdminServices();
+  const delivery = await adminServices.delivery.getDeliveryById(deliveryId.trim());
+  if (!delivery) {
+    throw new Error("Delivery cut not found.");
+  }
+
+  // Check if caller is authenticated workspace member
+  const userServices = await getServerServices();
+  const user = await userServices.auth.getCurrentUser();
+  if (user) {
+    const isMember = await adminServices.member.isMember(delivery.workspaceId, user.id).catch(() => false);
+    if (isMember) {
+      return { delivery, services: adminServices, isMember: true, user };
+    }
+  }
+
+  // If guest, verify delivery is active and passcode (if required) is verified
+  if (delivery.status === "archived") {
+    throw new Error("This delivery has been archived.");
+  }
+
+  if (delivery.passcodeHash) {
+    const cookieStore = await cookies();
+    const verified = cookieStore.get(`delivery_access_${delivery.shareToken}`)?.value === "verified";
+    if (!verified) {
+      throw new Error("Passcode verification required to perform this action.");
+    }
+  }
+
+  return { delivery, services: adminServices, isMember: false, user: null };
+}
 
 export async function verifyDeliveryPasscodeAction(
   shareToken: string,
@@ -44,7 +78,7 @@ export async function verifyDeliveryPasscodeAction(
       isCreatorBypass: bypass,
     } = validated.data;
 
-    const services = await getServerServices();
+    const services = await getServerAdminServices();
     const delivery = await services.delivery.getDeliveryByShareToken(cleanShareToken, { allowExpired: bypass });
     if (!delivery) {
       return { success: false, error: "Delivery not found or link has expired." };
@@ -145,7 +179,7 @@ export async function verifyDeliveryPasscodeAction(
 
 export async function verifyPassphraseWithTokenAction(shareToken: string, candidatePassphrase: string) {
   try {
-    const services = await getServerServices();
+    const services = await getServerAdminServices();
     const delivery = await services.delivery.getDeliveryByShareToken(shareToken);
     if (!delivery) {
       return { success: false, error: "Delivery not found." };
@@ -215,9 +249,7 @@ export async function createDeliveryAction(
       clientPhone: cleanClientPhone,
     } = validated.data;
 
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-    if (!user) return { error: "User is not authenticated." };
+    const { services, user } = await requireWorkspaceMember(cleanWorkspaceId, "editor");
 
     let clientId: string | undefined = undefined;
     if (cleanClientNameOrId || cleanClientEmail || cleanClientPhone) {
@@ -269,7 +301,7 @@ export async function createDeliveryAction(
 
 export async function approveCutAction(deliveryId: string, approvedByName?: string) {
   try {
-    const services = await getServerServices();
+    const { delivery, services } = await requireDeliveryGuestOrMemberAccess(deliveryId);
 
     let origin = "https://cut.app";
     try {
@@ -284,26 +316,23 @@ export async function approveCutAction(deliveryId: string, approvedByName?: stri
 
     let notifyEmails: string[] = [];
     try {
-      const existing = await services.delivery.getDeliveryById(deliveryId);
-      if (existing) {
-        const members = await services.member.listMembers(existing.workspaceId);
-        notifyEmails = members
-          .filter((m) => (m.role === "owner" || m.role === "admin") && Boolean(m.email))
-          .map((m) => m.email as string);
-      }
+      const members = await services.member.listMembers(delivery.workspaceId);
+      notifyEmails = members
+        .filter((m) => (m.role === "owner" || m.role === "admin") && Boolean(m.email))
+        .map((m) => m.email as string);
     } catch {
       // fallback
     }
 
-    const delivery = await services.delivery.approveCut(deliveryId, approvedByName, {
+    const updatedDelivery = await services.delivery.approveCut(deliveryId, approvedByName, {
       origin,
       notifyEmails,
     });
 
-    revalidatePath(`/deliver/${delivery.shareToken}`);
+    revalidatePath(`/deliver/${updatedDelivery.shareToken}`);
     revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
     revalidatePath("/[workspaceSlug]/deliveries", "page");
-    return { success: true, delivery, project: delivery };
+    return { success: true, delivery: updatedDelivery, project: updatedDelivery };
   } catch (err: any) {
     return { error: err.message || "Failed to approve cut." };
   }
@@ -315,9 +344,8 @@ export async function toggleAssetApprovalAction(
   isApproved: boolean
 ) {
   try {
-    const services = await getServerServices();
+    const { delivery, services } = await requireDeliveryGuestOrMemberAccess(deliveryId);
     const asset = await services.delivery.toggleAssetApproval(deliveryId, assetId, isApproved);
-    const delivery = await services.delivery.getDeliveryById(deliveryId);
 
     if (delivery?.shareToken) {
       revalidatePath(`/deliver/${delivery.shareToken}`);
@@ -332,7 +360,7 @@ export async function toggleAssetApprovalAction(
 
 export async function approveAllAssetsAction(deliveryId: string, approvedByName?: string) {
   try {
-    const services = await getServerServices();
+    const { delivery, services } = await requireDeliveryGuestOrMemberAccess(deliveryId);
 
     let origin = "https://cut.app";
     try {
@@ -347,13 +375,10 @@ export async function approveAllAssetsAction(deliveryId: string, approvedByName?
 
     let notifyEmails: string[] = [];
     try {
-      const existing = await services.delivery.getDeliveryById(deliveryId);
-      if (existing) {
-        const members = await services.member.listMembers(existing.workspaceId);
-        notifyEmails = members
-          .filter((m) => (m.role === "owner" || m.role === "admin") && Boolean(m.email))
-          .map((m) => m.email as string);
-      }
+      const members = await services.member.listMembers(delivery.workspaceId);
+      notifyEmails = members
+        .filter((m) => (m.role === "owner" || m.role === "admin") && Boolean(m.email))
+        .map((m) => m.email as string);
     } catch {
       // fallback
     }
@@ -362,14 +387,14 @@ export async function approveAllAssetsAction(deliveryId: string, approvedByName?
       origin,
       notifyEmails,
     });
-    const delivery = await services.delivery.getDeliveryById(deliveryId);
+    const updated = await services.delivery.getDeliveryById(deliveryId);
 
-    if (delivery?.shareToken) {
-      revalidatePath(`/deliver/${delivery.shareToken}`);
+    if (updated?.shareToken) {
+      revalidatePath(`/deliver/${updated.shareToken}`);
     }
     revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
     revalidatePath("/[workspaceSlug]/deliveries", "page");
-    return { success: true, delivery };
+    return { success: true, delivery: updated };
   } catch (err: any) {
     return { error: err.message || "Failed to approve all assets." };
   }
@@ -377,15 +402,15 @@ export async function approveAllAssetsAction(deliveryId: string, approvedByName?
 
 export async function unapproveAllAssetsAction(deliveryId: string) {
   try {
-    const services = await getServerServices();
-    const delivery = await services.delivery.unapproveAllAssets(deliveryId);
+    const { delivery, services } = await requireDeliveryGuestOrMemberAccess(deliveryId);
+    const updated = await services.delivery.unapproveAllAssets(deliveryId);
 
-    if (delivery?.shareToken) {
-      revalidatePath(`/deliver/${delivery.shareToken}`);
+    if (updated?.shareToken) {
+      revalidatePath(`/deliver/${updated.shareToken}`);
     }
     revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
     revalidatePath("/[workspaceSlug]/deliveries", "page");
-    return { success: true, delivery };
+    return { success: true, delivery: updated };
   } catch (err: any) {
     return { error: err.message || "Failed to unapprove assets." };
   }
@@ -397,19 +422,16 @@ export async function publishDeliveryToPortfolioAction(
   options?: { title?: string; description?: string; category?: string; coverAssetUrl?: string }
 ) {
   try {
-    const services = await getServerServices();
+    const { services, delivery } = await requireDeliveryAccess(deliveryId, "editor");
     let targetPortfolioId = portfolioId;
 
     if (!targetPortfolioId?.trim()) {
-      const delivery = await services.delivery.getDeliveryById(deliveryId.trim());
-      if (delivery) {
-        const portfolio = await services.portfolio.getOrCreatePortfolio(
-          delivery.workspaceId,
-          `${delivery.title} Portfolio`,
-          delivery.workspaceId
-        );
-        targetPortfolioId = portfolio.id;
-      }
+      const portfolio = await services.portfolio.getOrCreatePortfolio(
+        delivery.workspaceId,
+        `${delivery.title} Portfolio`,
+        delivery.workspaceId
+      );
+      targetPortfolioId = portfolio.id;
     }
 
     if (!targetPortfolioId?.trim()) {
@@ -437,12 +459,7 @@ export async function updateDeliveryDetailsAction(
     const validated = safeValidate(updateDeliveryDetailsSchema, data);
     if (!validated.success) return { error: validated.error };
 
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-    if (!user) return { error: "User is not authenticated." };
-
-    const delivery = await services.delivery.getDeliveryById(deliveryId.trim());
-    if (!delivery) return { error: "Delivery not found." };
+    const { services, delivery, user } = await requireDeliveryAccess(deliveryId, "editor");
 
     let clientId: string | undefined = delivery.clientId || undefined;
     const clientName = validated.data.clientName !== undefined ? validated.data.clientName.trim() : undefined;
@@ -513,12 +530,7 @@ export async function updateDeliveryAppearanceAction(
     const validated = safeValidate(deliveryAppearanceSchema, appearance);
     if (!validated.success) return { error: validated.error };
 
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-    if (!user) return { error: "User is not authenticated." };
-
-    const existing = await services.delivery.getDeliveryById(deliveryId.trim());
-    if (!existing) return { error: "Delivery not found." };
+    const { services, delivery: existing } = await requireDeliveryAccess(deliveryId, "editor");
 
     const canWatermark = await services.subscription.isWatermarkAllowed(existing.workspaceId);
     if (validated.data.watermarkMedia === true && !canWatermark) {
@@ -561,8 +573,7 @@ export async function updateDeliveryAppearanceAction(
 
 export async function archiveDeliveryAction(deliveryId: string) {
   try {
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
+    const { services, delivery, user } = await requireDeliveryAccess(deliveryId, "admin");
 
     // Move master cut assets into AWS S3 Glacier Deep Archive and free active workspace quota
     await services.silo.archiveDelivery(deliveryId, {
@@ -590,12 +601,7 @@ export async function updateDeliverySecurityAction(
     const validated = safeValidate(updateDeliverySecuritySchema, data);
     if (!validated.success) return { error: validated.error };
 
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-    if (!user) return { error: "User is not authenticated." };
-
-    const delivery = await services.delivery.getDeliveryById(deliveryId.trim());
-    if (!delivery) return { error: "Delivery not found." };
+    const { services, delivery } = await requireDeliveryAccess(deliveryId, "admin");
 
     if (validated.data.passphrase && validated.data.passphrase.trim().length > 0) {
       const canPasswordProtect = await services.subscription.isPasswordProtectionAllowed(delivery.workspaceId);
@@ -650,15 +656,7 @@ export async function regenerateDeliveryShareTokenAction(deliveryId: string) {
   try {
     if (!deliveryId?.trim()) return { success: false, error: "Delivery ID is required." };
 
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-    if (!user) return { success: false, error: "User is not authenticated." };
-
-    const delivery = await services.delivery.getDeliveryById(deliveryId.trim());
-    if (!delivery) return { success: false, error: "Delivery not found." };
-
-    const isMember = await services.member.isMember(delivery.workspaceId, user.id).catch(() => false);
-    if (!isMember) return { success: false, error: "Unauthorized." };
+    const { services, delivery } = await requireDeliveryAccess(deliveryId, "admin");
 
     const oldToken = delivery.shareToken;
     const updated = await services.delivery.regenerateShareToken(deliveryId.trim());
@@ -697,9 +695,7 @@ export async function sendDeliveryEmailAction(
       return { success: false, error: validated.error };
     }
 
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-    if (!user) return { success: false, error: "User is not authenticated." };
+    const { services, delivery } = await requireDeliveryAccess(validated.data.deliveryId, "editor");
 
     let origin = "https://cut.app";
     try {
@@ -804,7 +800,7 @@ export async function loadMoreDeliveryAssetsAction(params: {
 
     const { deliveryId, shareToken, page, pageSize, filter } = validated.data;
 
-    const services = await getServerServices();
+    const services = await getServerAdminServices();
     let delivery = null;
 
     if (deliveryId) {
@@ -987,7 +983,7 @@ export async function getDeliveryDownloadManifestAction(params: {
 
     const { deliveryId, shareToken } = validated.data;
 
-    const services = await getServerServices();
+    const services = await getServerAdminServices();
     let delivery = null;
 
     if (deliveryId) {
