@@ -6,7 +6,7 @@
 --      - Hardcode platform_role to 'user' in handle_new_user()
 --      - Add trigger to prevent non-admins from updating user_profiles.platform_role
 --   2. Remediate multi-tenant RLS leaks (VULN-02):
---      - Drop public read policies on projects, assets, asset_versions
+--      - Drop public read policies on deliveries/projects, assets, asset_versions
 --      - Drop open public policies on feedback and feedback_replies
 --      - Restrict all operations on these tables strictly to authenticated workspace members
 --   3. Audit trail protection:
@@ -113,93 +113,121 @@ CREATE TRIGGER trg_prevent_role_escalation
 -- 2. LOCK DOWN ROW LEVEL SECURITY (RLS) POLICIES (VULN-02)
 -- ============================================================================
 
--- A. Drop open public read policies that expose all tenant rows
-DROP POLICY IF EXISTS "Anyone with share_token can view project" ON public.projects;
+-- A. Deliveries Table (if present)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'deliveries') THEN
+    DROP POLICY IF EXISTS "Anyone with share_token can view delivery" ON public.deliveries;
+    DROP POLICY IF EXISTS "Anyone with share_token can view deliveries" ON public.deliveries;
+    DROP POLICY IF EXISTS "Workspace members can manage deliveries" ON public.deliveries;
+
+    EXECUTE 'CREATE POLICY "Workspace members can manage deliveries" ON public.deliveries
+      FOR ALL
+      TO authenticated
+      USING (public.is_workspace_member(workspace_id, auth.uid()))
+      WITH CHECK (public.is_workspace_member(workspace_id, auth.uid()))';
+  END IF;
+END $$;
+
+-- B. Projects Table (if present)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'projects') THEN
+    DROP POLICY IF EXISTS "Anyone with share_token can view project" ON public.projects;
+    DROP POLICY IF EXISTS "Workspace members can manage projects" ON public.projects;
+
+    EXECUTE 'CREATE POLICY "Workspace members can manage projects" ON public.projects
+      FOR ALL
+      TO authenticated
+      USING (public.is_workspace_member(workspace_id, auth.uid()))
+      WITH CHECK (public.is_workspace_member(workspace_id, auth.uid()))';
+  END IF;
+END $$;
+
+-- C. Assets Table (scoped directly by assets.workspace_id)
 DROP POLICY IF EXISTS "Anyone with share_token can view assets" ON public.assets;
-DROP POLICY IF EXISTS "Anyone with share_token can view asset versions" ON public.asset_versions;
+DROP POLICY IF EXISTS "Workspace members can manage assets" ON public.assets;
 
-DROP POLICY IF EXISTS "Guests can view feedback" ON public.feedback;
-DROP POLICY IF EXISTS "Guests can post feedback" ON public.feedback;
-DROP POLICY IF EXISTS "Guests and users can update feedback" ON public.feedback;
-DROP POLICY IF EXISTS "Guests and users can delete feedback" ON public.feedback;
-
-DROP POLICY IF EXISTS "Guests and users can view feedback replies" ON public.feedback_replies;
-DROP POLICY IF EXISTS "Guests and users can insert feedback replies" ON public.feedback_replies;
-DROP POLICY IF EXISTS "Guests and users can update feedback replies" ON public.feedback_replies;
-DROP POLICY IF EXISTS "Guests and users can delete feedback replies" ON public.feedback_replies;
-
--- B. Enforce strict workspace membership for projects, assets, versions, feedback
-DROP POLICY IF EXISTS "Workspace members can manage projects" ON public.projects;
-CREATE POLICY "Workspace members can manage projects" ON public.projects
+CREATE POLICY "Workspace members can manage assets" ON public.assets
   FOR ALL
   TO authenticated
   USING (public.is_workspace_member(workspace_id, auth.uid()))
   WITH CHECK (public.is_workspace_member(workspace_id, auth.uid()));
 
-DROP POLICY IF EXISTS "Workspace members can manage assets" ON public.assets;
-CREATE POLICY "Workspace members can manage assets" ON public.assets
-  FOR ALL
-  TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.projects p
-    WHERE p.id = assets.project_id AND public.is_workspace_member(p.workspace_id, auth.uid())
-  ))
-  WITH CHECK (EXISTS (
-    SELECT 1 FROM public.projects p
-    WHERE p.id = assets.project_id AND public.is_workspace_member(p.workspace_id, auth.uid())
-  ));
-
+-- D. Asset Versions Table (scoped by assets.workspace_id via asset_versions.asset_id)
+DROP POLICY IF EXISTS "Anyone with share_token can view asset versions" ON public.asset_versions;
 DROP POLICY IF EXISTS "Workspace members can manage asset versions" ON public.asset_versions;
+
 CREATE POLICY "Workspace members can manage asset versions" ON public.asset_versions
   FOR ALL
   TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.assets a
-    JOIN public.projects p ON p.id = a.project_id
-    WHERE a.id = asset_versions.asset_id AND public.is_workspace_member(p.workspace_id, auth.uid())
+    WHERE a.id = asset_versions.asset_id AND public.is_workspace_member(a.workspace_id, auth.uid())
   ))
   WITH CHECK (EXISTS (
     SELECT 1 FROM public.assets a
-    JOIN public.projects p ON p.id = a.project_id
-    WHERE a.id = asset_versions.asset_id AND public.is_workspace_member(p.workspace_id, auth.uid())
+    WHERE a.id = asset_versions.asset_id AND public.is_workspace_member(a.workspace_id, auth.uid())
   ));
 
+-- E. Feedback Table (scoped by asset_versions -> assets -> workspace_id)
+DROP POLICY IF EXISTS "Guests can view feedback" ON public.feedback;
+DROP POLICY IF EXISTS "Guests can post feedback" ON public.feedback;
+DROP POLICY IF EXISTS "Guests and users can update feedback" ON public.feedback;
+DROP POLICY IF EXISTS "Guests and users can delete feedback" ON public.feedback;
 DROP POLICY IF EXISTS "Workspace members can manage feedback" ON public.feedback;
+
 CREATE POLICY "Workspace members can manage feedback" ON public.feedback
   FOR ALL
   TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.asset_versions v
     JOIN public.assets a ON a.id = v.asset_id
-    JOIN public.projects p ON p.id = a.project_id
-    WHERE v.id = feedback.asset_version_id AND public.is_workspace_member(p.workspace_id, auth.uid())
+    WHERE v.id = feedback.asset_version_id AND public.is_workspace_member(a.workspace_id, auth.uid())
   ))
   WITH CHECK (EXISTS (
     SELECT 1 FROM public.asset_versions v
     JOIN public.assets a ON a.id = v.asset_id
-    JOIN public.projects p ON p.id = a.project_id
-    WHERE v.id = feedback.asset_version_id AND public.is_workspace_member(p.workspace_id, auth.uid())
+    WHERE v.id = feedback.asset_version_id AND public.is_workspace_member(a.workspace_id, auth.uid())
   ));
 
-DROP POLICY IF EXISTS "Workspace members can manage feedback replies" ON public.feedback_replies;
-CREATE POLICY "Workspace members can manage feedback replies" ON public.feedback_replies
-  FOR ALL
-  TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.feedback f
-    JOIN public.asset_versions v ON v.id = f.asset_version_id
-    JOIN public.assets a ON a.id = v.asset_id
-    JOIN public.projects p ON p.id = a.project_id
-    WHERE f.id = feedback_replies.feedback_id AND public.is_workspace_member(p.workspace_id, auth.uid())
-  ))
-  WITH CHECK (EXISTS (
-    SELECT 1 FROM public.feedback f
-    JOIN public.asset_versions v ON v.id = f.asset_version_id
-    JOIN public.assets a ON a.id = v.asset_id
-    JOIN public.projects p ON p.id = a.project_id
-    WHERE f.id = feedback_replies.feedback_id AND public.is_workspace_member(p.workspace_id, auth.uid())
-  ));
+-- F. Feedback Replies Table (scoped by feedback -> asset_versions -> assets -> workspace_id)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'feedback_replies') THEN
+    DROP POLICY IF EXISTS "Guests and users can view feedback replies" ON public.feedback_replies;
+    DROP POLICY IF EXISTS "Guests and users can insert feedback replies" ON public.feedback_replies;
+    DROP POLICY IF EXISTS "Guests and users can update feedback replies" ON public.feedback_replies;
+    DROP POLICY IF EXISTS "Guests and users can delete feedback replies" ON public.feedback_replies;
+    DROP POLICY IF EXISTS "Workspace members can manage feedback replies" ON public.feedback_replies;
 
--- C. Audit trail protection: Revoke direct DELETE grants from untrusted roles
-REVOKE DELETE ON public.notification_logs FROM anon, authenticated;
-REVOKE DELETE ON public.invoices FROM anon, authenticated;
+    EXECUTE 'CREATE POLICY "Workspace members can manage feedback replies" ON public.feedback_replies
+      FOR ALL
+      TO authenticated
+      USING (EXISTS (
+        SELECT 1 FROM public.feedback f
+        JOIN public.asset_versions v ON v.id = f.asset_version_id
+        JOIN public.assets a ON a.id = v.asset_id
+        WHERE f.id = feedback_replies.feedback_id AND public.is_workspace_member(a.workspace_id, auth.uid())
+      ))
+      WITH CHECK (EXISTS (
+        SELECT 1 FROM public.feedback f
+        JOIN public.asset_versions v ON v.id = f.asset_version_id
+        JOIN public.assets a ON a.id = v.asset_id
+        WHERE f.id = feedback_replies.feedback_id AND public.is_workspace_member(a.workspace_id, auth.uid())
+      ))';
+  END IF;
+END $$;
+
+-- ============================================================================
+-- 3. AUDIT TRAIL PROTECTION
+-- ============================================================================
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'notification_logs') THEN
+    REVOKE DELETE ON public.notification_logs FROM anon, authenticated;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'invoices') THEN
+    REVOKE DELETE ON public.invoices FROM anon, authenticated;
+  END IF;
+END $$;
