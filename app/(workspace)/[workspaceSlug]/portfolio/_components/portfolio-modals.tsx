@@ -463,6 +463,11 @@ export function ProjectExplorerModal({
       setAssets(project.projectAssets);
       return;
     }
+    if (!project.id?.trim()) {
+      setAssets([]);
+      setLoading(false);
+      return;
+    }
 
     let isMounted = true;
     setLoading(true);

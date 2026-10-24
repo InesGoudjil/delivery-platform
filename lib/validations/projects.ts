@@ -25,6 +25,7 @@ export const createShowcaseProjectSchema = z.object({
   description: z.string().trim().max(5000).optional(),
   category: z.string().trim().max(100).default("Commercial"),
   coverAssetUrl: z.string().trim().optional(),
+  assetIds: z.array(z.string()).optional(),
 });
 
 export type CreateShowcaseProjectInput = z.infer<typeof createShowcaseProjectSchema>;

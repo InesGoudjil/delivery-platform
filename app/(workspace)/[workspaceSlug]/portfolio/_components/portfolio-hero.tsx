@@ -74,6 +74,7 @@ export function PortfolioHero({
       {/* Upload Project Glass Modal */}
       <UploadProjectModal
         workspaceId={workspace.id}
+        portfolioId={portfolio.id}
         isOpen={showProjectModal}
         onClose={() => setShowProjectModal(false)}
         onProjectCreated={handleAssetUploaded}

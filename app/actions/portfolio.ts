@@ -301,7 +301,7 @@ export async function updateBrandingAction(
 
 export async function getProjectAssetsAction(projectId: string) {
   try {
-    if (!projectId?.trim()) return { success: false, error: "Project ID is required.", assets: [] };
+    if (!projectId?.trim()) return { success: true, assets: [] };
 
     const services = await getServerServices();
     const project = await services.project.getProjectById(projectId.trim());
@@ -310,6 +310,13 @@ export async function getProjectAssetsAction(projectId: string) {
     let assets = await services.asset.listAssets(deliveryId);
     if (assets.length === 0 && project && project.id !== deliveryId) {
       assets = await services.asset.listAssets(project.id);
+    }
+
+    if (assets.length === 0 && project) {
+      const projectWithAssets = await services.project.getProjectWithAssets(project.id);
+      if (projectWithAssets?.assets && projectWithAssets.assets.length > 0) {
+        assets = projectWithAssets.assets;
+      }
     }
 
     const enriched = await Promise.all(

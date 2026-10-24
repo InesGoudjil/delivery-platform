@@ -471,8 +471,19 @@ export async function deletePortfolioItemAction(
     }
 
     if (itemType === "project") {
-      const project = await services.project.getProjectById(itemId);
+      let project = await services.project.getProjectById(itemId);
       if (!project) {
+        const delivery = await services.delivery.getDeliveryById(itemId).catch(() => null);
+        if (delivery) {
+          await services.delivery.deleteDelivery(delivery.id);
+          if (workspaceSlug) {
+            revalidatePath(`/${workspaceSlug}/portfolio`);
+            revalidatePath(`/p/${workspaceSlug}`);
+          }
+          revalidatePath("/[workspaceSlug]/portfolio", "page");
+          revalidatePath("/p/[handle]", "page");
+          return { success: true };
+        }
         return { success: false, error: "Project not found." };
       }
 
@@ -654,8 +665,31 @@ export async function updateAssetAction(
     }
 
     if (cleanOptions?.isProject) {
-      const project = await services.project.getProjectById(itemId.trim());
+      let project = await services.project.getProjectById(itemId.trim());
       if (!project) {
+        const delivery = await services.delivery.getDeliveryById(itemId.trim()).catch(() => null);
+        if (delivery) {
+          const isMember = await services.member
+            .isMember(delivery.workspaceId, user.id)
+            .catch(() => false);
+          if (!isMember) {
+            return {
+              success: false,
+              error: "You do not have permission to update this project.",
+            };
+          }
+          const updatedDelivery = await services.delivery.updateDelivery(delivery.id, {
+            ...(data.title !== undefined && { title: data.title.trim() }),
+            ...(data.description !== undefined && { description: data.description.trim() }),
+          });
+          if (options?.workspaceSlug) {
+            revalidatePath(`/${options.workspaceSlug}/portfolio`);
+            revalidatePath(`/p/${options.workspaceSlug}`);
+          }
+          revalidatePath("/[workspaceSlug]/portfolio", "page");
+          revalidatePath("/p/[handle]", "page");
+          return { success: true, item: updatedDelivery };
+        }
         return { success: false, error: "Project not found." };
       }
 
