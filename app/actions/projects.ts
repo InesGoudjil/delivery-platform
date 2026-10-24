@@ -162,6 +162,7 @@ export async function createShowcaseProjectAction(
     description?: string;
     category?: string;
     coverAssetUrl?: string;
+    assetIds?: string[];
   }
 ) {
   try {
@@ -170,7 +171,7 @@ export async function createShowcaseProjectAction(
       portfolioId,
       ...data,
     });
-    if (!validated.success) return { error: validated.error };
+    if (!validated.success) return { success: false, error: validated.error };
 
     const services = await getServerServices();
     const project = await services.project.createProject({
@@ -183,10 +184,52 @@ export async function createShowcaseProjectAction(
       coverAssetUrl: validated.data.coverAssetUrl,
     });
 
+    if (data.assetIds && data.assetIds.length > 0) {
+      for (let i = 0; i < data.assetIds.length; i++) {
+        await services.project.attachAssetToProject(project.id, data.assetIds[i], i);
+      }
+    }
+
     revalidatePath("/[workspaceSlug]/portfolio", "page");
     revalidatePath("/p/[handle]", "page");
     return { success: true, project };
   } catch (err: any) {
-    return { error: err.message || "Failed to create showcase project." };
+    return { success: false, error: err.message || "Failed to create showcase project." };
   }
 }
+
+export async function attachAssetsToShowcaseProjectAction(
+  projectId: string,
+  assetIds: string[]
+) {
+  try {
+    if (!projectId || !assetIds || assetIds.length === 0) {
+      return { success: true };
+    }
+    const services = await getServerServices();
+    for (let i = 0; i < assetIds.length; i++) {
+      await services.project.attachAssetToProject(projectId, assetIds[i], i);
+    }
+    revalidatePath("/[workspaceSlug]/portfolio", "page");
+    revalidatePath("/p/[handle]", "page");
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to attach assets to project." };
+  }
+}
+
+export async function updateShowcaseProjectCoverAction(
+  projectId: string,
+  coverAssetUrl: string
+) {
+  try {
+    const services = await getServerServices();
+    const updated = await services.project.updateProject(projectId, { coverAssetUrl });
+    revalidatePath("/[workspaceSlug]/portfolio", "page");
+    revalidatePath("/p/[handle]", "page");
+    return { success: true, project: updated };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to update project cover." };
+  }
+}
+

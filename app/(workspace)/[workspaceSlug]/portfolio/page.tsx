@@ -49,6 +49,12 @@ export default async function PortfolioPage({
       if (assets.length === 0 && p.id !== deliveryIdToQuery) {
         assets = await services.asset.listAssets(p.id);
       }
+      if (assets.length === 0) {
+        const projectWithAssets = await services.project.getProjectWithAssets(p.id);
+        if (projectWithAssets?.assets && projectWithAssets.assets.length > 0) {
+          assets = projectWithAssets.assets;
+        }
+      }
 
       const projectAssets = await Promise.all(
         assets.map(async (a) => {

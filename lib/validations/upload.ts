@@ -8,7 +8,12 @@ export const assetTypeSchema = z.enum([
 
 export const requestUploadSchema = z.object({
   workspaceId: z.string().trim().min(1, "Workspace ID is required"),
-  projectId: z.string().trim().min(1, "Project ID is required"),
+  projectId: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((val) => (val && val.length > 0 ? val : null)),
   assetId: z.string().trim().nullable().optional(),
   title: z
     .string()

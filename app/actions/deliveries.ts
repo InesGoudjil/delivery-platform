@@ -393,17 +393,35 @@ export async function unapproveAllAssetsAction(deliveryId: string) {
 
 export async function publishDeliveryToPortfolioAction(
   deliveryId: string,
-  portfolioId: string,
-  options?: { title?: string; description?: string; category?: string }
+  portfolioId?: string,
+  options?: { title?: string; description?: string; category?: string; coverAssetUrl?: string }
 ) {
   try {
     const services = await getServerServices();
-    const showcaseProject = await services.delivery.publishToPortfolio(deliveryId, portfolioId, options);
+    let targetPortfolioId = portfolioId;
+
+    if (!targetPortfolioId?.trim()) {
+      const delivery = await services.delivery.getDeliveryById(deliveryId.trim());
+      if (delivery) {
+        const portfolio = await services.portfolio.getOrCreatePortfolio(
+          delivery.workspaceId,
+          `${delivery.title} Portfolio`,
+          delivery.workspaceId
+        );
+        targetPortfolioId = portfolio.id;
+      }
+    }
+
+    if (!targetPortfolioId?.trim()) {
+      return { error: "Portfolio ID is required to publish delivery." };
+    }
+
+    const showcaseProject = await services.delivery.publishToPortfolio(deliveryId, targetPortfolioId, options);
 
     revalidatePath("/[workspaceSlug]/portfolio", "page");
     revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
     revalidatePath("/p/[handle]", "page");
-    return { success: true, showcaseProject };
+    return { success: true, showcaseProject, project: showcaseProject };
   } catch (err: any) {
     return { error: err.message || "Failed to publish delivery to portfolio." };
   }

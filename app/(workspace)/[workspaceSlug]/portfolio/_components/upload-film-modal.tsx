@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Upload,
   X,
@@ -13,15 +14,18 @@ import {
   Sparkles,
   Crop,
   Trash2,
+  Plus,
+  Layers,
+  Info,
 } from "lucide-react";
 import { UniversalDialog } from "@/components/ui/universal-dialog";
-import {
-  requestAssetUploadAction,
-  confirmUploadCompletedAction,
-} from "@/app/actions/upload";
 import { updateAssetAction } from "@/app/actions/assets";
 import { PortfolioItem } from "../portfolio-client";
 import { createUploadProgressToast } from "@/lib/upload-toast";
+import {
+  directUploadMediaFile,
+  formatBytes,
+} from "@/components/workspaces/video-uploader";
 import {
   ImageCropEditorDialog,
   ImageCropResult,
@@ -38,6 +42,20 @@ import {
   AttachmentActions,
   AttachmentAction,
 } from "@/components/ui/attachment";
+
+export interface QueuedFilmItem {
+  id: string;
+  file: File;
+  previewUrl: string | null;
+  assetType: "video" | "photo_gallery";
+  title: string;
+  status: "queued" | "uploading" | "completed" | "error";
+  progress: number;
+  statusText: string;
+  errorMessage: string | null;
+  uploadedAsset?: any;
+  uploadedVersion?: any;
+}
 
 interface UploadFilmModalProps {
   workspaceId: string;
@@ -60,9 +78,9 @@ export function UploadFilmModal({
   limit = 4,
   workspaceSlug,
 }: UploadFilmModalProps) {
+  const router = useRouter();
   const [dragActive, setDragActive] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [title, setTitle] = useState("");
+  const [queue, setQueue] = useState<QueuedFilmItem[]>([]);
   const [description, setDescription] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
@@ -77,22 +95,72 @@ export function UploadFilmModal({
   });
 
   const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [overallProgress, setOverallProgress] = useState(0);
   const [statusText, setStatusText] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const thumbInputRef = useRef<HTMLInputElement>(null);
-  const xhrRef = useRef<XMLHttpRequest | null>(null);
+  const activeXhrRef = useRef<XMLHttpRequest | null>(null);
+  const abortControllerRef = useRef<boolean>(false);
   const uploadToastRef = useRef<ReturnType<typeof createUploadProgressToast> | null>(null);
 
-  const handleFiles = (files: FileList | null) => {
+  // Clean up object URLs on unmount
+  useEffect(() => {
+    return () => {
+      queue.forEach((item) => {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      });
+    };
+  }, [queue]);
+
+  const addFilesToQueue = (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    const file = files[0];
-    setSelectedFile(file);
-    if (!title.trim()) {
-      setTitle(file.name.replace(/\.[^/.]+$/, ""));
-    }
+
+    const newItems: QueuedFilmItem[] = Array.from(files).map((file, idx) => {
+      const isImage = file.type.startsWith("image/");
+      const previewUrl = isImage ? URL.createObjectURL(file) : null;
+      const cleanTitle = file.name.replace(/\.[^/.]+$/, "");
+
+      return {
+        id: `film_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+        file,
+        previewUrl,
+        assetType: isImage ? "photo_gallery" : "video",
+        title: cleanTitle,
+        status: "queued",
+        progress: 0,
+        statusText: "Ready in queue",
+        errorMessage: null,
+      };
+    });
+
+    setQueue((prev) => [...prev, ...newItems]);
+    setErrorMessage(null);
+  };
+
+  const removeItem = (id: string) => {
+    setQueue((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((item) => item.id !== id);
+    });
+  };
+
+  const updateItemTitle = (id: string, title: string) => {
+    setQueue((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, title } : item))
+    );
+  };
+
+  const clearQueue = () => {
+    queue.forEach((item) => {
+      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    });
+    setQueue([]);
+    setDescription("");
+    setThumbnailFile(null);
+    setThumbnailPreview(null);
     setErrorMessage(null);
   };
 
@@ -105,9 +173,7 @@ export function UploadFilmModal({
       imageSrc: objectUrl,
       fileName: file.name,
     });
-    if (thumbInputRef.current) {
-      thumbInputRef.current.value = "";
-    }
+    if (thumbInputRef.current) thumbInputRef.current.value = "";
   };
 
   const handleApplyThumbnailCrop = (result: ImageCropResult) => {
@@ -129,205 +195,305 @@ export function UploadFilmModal({
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFiles(e.dataTransfer.files);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      addFilesToQueue(e.dataTransfer.files);
     }
   };
 
   const resetForm = () => {
-    setSelectedFile(null);
-    setTitle("");
-    setDescription("");
-    setThumbnailFile(null);
-    setThumbnailPreview(null);
+    clearQueue();
     setUploading(false);
-    setProgress(0);
+    setOverallProgress(0);
     setStatusText("");
     setErrorMessage(null);
   };
 
+  /**
+   * Close handler:
+   * Clicking backdrop, ESC, or close button closes the modal view.
+   * If an upload is in progress, it CONTINUES IN THE BACKGROUND without being aborted!
+   */
   const handleClose = () => {
-    if (uploading && xhrRef.current) {
-      xhrRef.current.abort();
+    if (!uploading) {
+      resetForm();
     }
-    resetForm();
     onClose();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedFile || uploading) return;
-
-    setUploading(true);
-    setErrorMessage(null);
-    setProgress(0);
-    setStatusText("Initializing direct upload...");
-
-    const isImage = selectedFile.type.startsWith("image/");
-    const assetType = isImage ? "photo_gallery" : "video";
-    const itemTitle = title.trim() || selectedFile.name;
-
-    const uploadToast = createUploadProgressToast(`portfolio-film-${Date.now()}`);
-    uploadToastRef.current = uploadToast;
-    uploadToast.start(
-      `Uploading "${itemTitle}"...`,
-      "Initializing direct upload..."
-    );
-
-    try {
-      // 1. Request upload URL from server (standalone asset: no projectId)
-      const initRes = await requestAssetUploadAction({
-        workspaceId,
-        projectId: "",
-        title: itemTitle,
-        filename: selectedFile.name,
-        fileSizeBytes: selectedFile.size,
-        assetType,
-        category: assetType === "video" ? "film" : "still",
-      });
-
-      if (!initRes.success || !initRes.directUpload) {
-        throw new Error(initRes.error || "Failed to initialize upload.");
-      }
-
-      const { uploadUrl, providerUid, uploadType, headers } = initRes.directUpload;
-      const assetVersionId = initRes.assetVersion.id;
-
-      setStatusText("Uploading asset...");
-      uploadToast.update({
-        title: `Uploading "${itemTitle}"`,
-        progress: 2,
-        loadedBytes: 0,
-        totalBytes: selectedFile.size,
-      });
-
-      // 2. Direct upload to storage provider via XHR
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhrRef.current = xhr;
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const pct = Math.round((event.loaded / event.total) * 90);
-            setProgress(pct);
-            setStatusText(`Uploading: ${pct}%`);
-            uploadToast.update({
-              title: `Uploading "${itemTitle}"`,
-              progress: Math.round((event.loaded / event.total) * 100),
-              loadedBytes: event.loaded,
-              totalBytes: event.total,
-            });
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve();
-          } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
-          }
-        };
-
-        xhr.onerror = () => reject(new Error("Network error during direct upload."));
-        xhr.onabort = () => reject(new Error("Upload cancelled."));
-
-        if (uploadType === "presigned_put") {
-          xhr.open("PUT", uploadUrl, true);
-          if (headers) {
-            Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
-          }
-          xhr.send(selectedFile);
-        } else {
-          xhr.open("POST", uploadUrl, true);
-          const formData = new FormData();
-          formData.append("file", selectedFile);
-          xhr.send(formData);
-        }
-      });
-
-      // 3. Confirm completion on server
-      setStatusText("Finalizing asset...");
-      uploadToast.update({
-        title: `Finalizing "${itemTitle}"...`,
-        progress: 96,
-        subtitle: "Saving to portfolio...",
-      });
-      const confirmRes = await confirmUploadCompletedAction({
-        assetVersionId,
-        providerUid,
-        fileSizeBytes: selectedFile.size,
-      });
-
-      if (!confirmRes.success) {
-        throw new Error(confirmRes.error || "Failed to finalize asset.");
-      }
-
-      // 4. Persist custom cropped thumbnail or description if provided
-      const customThumbUrl = thumbnailPreview || "";
-      if (customThumbUrl || description.trim()) {
-        await updateAssetAction(
-          initRes.asset.id,
-          {
-            ...(customThumbUrl ? { thumbnailUrl: customThumbUrl } : {}),
-            ...(description.trim() ? { description: description.trim() } : {}),
-          },
-          { workspaceSlug }
-        );
-      }
-
-      setProgress(100);
-      uploadToast.success(
-        `"${itemTitle}" uploaded successfully!`,
-        `Added to your portfolio showcase.`
-      );
-      uploadToastRef.current = null;
-
-      const resolvedMediaUrl = isImage
-        ? (customThumbUrl || confirmRes.assetVersion?.rawFileUrl || "")
-        : (confirmRes.assetVersion?.rawFileUrl || confirmRes.assetVersion?.hlsManifestUrl || "");
-
-      const resolvedThumbUrl =
-        customThumbUrl ||
-        confirmRes.assetVersion?.thumbnailUrl ||
-        (isImage ? confirmRes.assetVersion?.rawFileUrl : "") ||
-        "";
-
-      const newItem: PortfolioItem = {
-        id: initRes.asset.id,
-        title: itemTitle,
-        category: isImage ? "Photo Still" : "Standalone Film",
-        type: isImage ? "still" : "film",
-        assetCount: 1,
-        thumbnailUrl: resolvedThumbUrl,
-        mediaUrl: resolvedMediaUrl,
-      };
-
-      onAssetUploaded(newItem);
-      handleClose();
-    } catch (err: any) {
-      const msg = err.message || "An error occurred during upload.";
-      setErrorMessage(msg);
-      setUploading(false);
-      if (msg === "Upload cancelled.") {
-        uploadToast.info("Upload cancelled", `"${itemTitle}" upload was aborted.`);
-      } else {
-        uploadToast.error("Upload failed", msg);
-      }
+  const cancelActiveUpload = () => {
+    abortControllerRef.current = true;
+    if (activeXhrRef.current) {
+      activeXhrRef.current.abort();
+    }
+    if (uploadToastRef.current) {
+      uploadToastRef.current.info("Upload cancelled", "Batch upload was stopped by user.");
       uploadToastRef.current = null;
     }
+    setUploading(false);
+    setStatusText("Upload cancelled");
   };
+
+  const handleStartBatchUpload = async () => {
+    const queuedItems = queue.filter(
+      (item) => item.status === "queued" || item.status === "error"
+    );
+    if (queuedItems.length === 0 || uploading) return;
+
+    setUploading(true);
+    abortControllerRef.current = false;
+    setErrorMessage(null);
+    setOverallProgress(0);
+
+    const totalFiles = queuedItems.length;
+    const uploadToast = createUploadProgressToast(`portfolio-batch-${Date.now()}`);
+    uploadToastRef.current = uploadToast;
+
+    uploadToast.start({
+      title:
+        totalFiles > 1
+          ? `Uploading ${totalFiles} portfolio assets...`
+          : `Uploading "${queuedItems[0].title || queuedItems[0].file.name}"`,
+      fileName: queuedItems[0].file.name,
+      fileSize: formatBytes(queuedItems[0].file.size),
+      fileIndex: 1,
+      totalFiles,
+      percentage: 0,
+      statusText: "Initializing direct upload...",
+    });
+
+    const completedItems: PortfolioItem[] = [];
+    let failedCount = 0;
+    let lastError = "";
+
+    for (let i = 0; i < queuedItems.length; i++) {
+      if (abortControllerRef.current) break;
+
+      const item = queuedItems[i];
+      const itemTitle = item.title.trim() || item.file.name;
+      const isImage = item.assetType === "photo_gallery";
+
+      setQueue((prev) =>
+        prev.map((q) =>
+          q.id === item.id
+            ? { ...q, status: "uploading", progress: 0, statusText: "Initiating upload..." }
+            : q
+        )
+      );
+
+      const basePct = Math.round((i / totalFiles) * 100);
+      setOverallProgress(basePct);
+      setStatusText(`Uploading (${i + 1}/${totalFiles}): ${itemTitle}`);
+
+      uploadToast.update({
+        title:
+          totalFiles > 1
+            ? `Uploading (${i + 1}/${totalFiles}): ${itemTitle}`
+            : `Uploading "${itemTitle}"`,
+        fileName: item.file.name,
+        fileSize: formatBytes(item.file.size),
+        fileIndex: i + 1,
+        totalFiles,
+        percentage: 0,
+        statusText: "Initiating upload...",
+      });
+
+      try {
+        // Direct upload to Cloudflare / edge with projectId: "" (unassigned standalone asset)
+        const result = await directUploadMediaFile({
+          workspaceId,
+          projectId: "",
+          file: item.file,
+          title: itemTitle,
+          assetType: item.assetType,
+          onProgress: (percent, loaded, total) => {
+            setQueue((prev) =>
+              prev.map((q) =>
+                q.id === item.id
+                  ? {
+                      ...q,
+                      progress: percent,
+                      statusText: `Uploading: ${percent}% (${formatBytes(loaded)} / ${formatBytes(total)})`,
+                    }
+                  : q
+              )
+            );
+
+            const overall = Math.round(((i + percent / 100) / totalFiles) * 98);
+            setOverallProgress(overall);
+
+            uploadToast.update({
+              title:
+                totalFiles > 1
+                  ? `Uploading (${i + 1}/${totalFiles}): ${itemTitle}`
+                  : `Uploading "${itemTitle}"`,
+              fileName: item.file.name,
+              loadedBytes: loaded,
+              totalBytes: total,
+              fileIndex: i + 1,
+              totalFiles,
+              percentage: percent,
+              statusText: percent < 100 ? "Uploading directly to edge..." : "Finalizing asset...",
+            });
+          },
+          onStatusChange: (statusText) => {
+            setQueue((prev) =>
+              prev.map((q) => (q.id === item.id ? { ...q, statusText } : q))
+            );
+          },
+          onXhrCreated: (xhr) => {
+            activeXhrRef.current = xhr;
+          },
+        });
+
+        // If single upload and custom thumbnail or description was provided, apply it
+        const customThumbUrl = thumbnailPreview || "";
+        if ((customThumbUrl || description.trim()) && queuedItems.length === 1) {
+          try {
+            await updateAssetAction(
+              result.asset.id,
+              {
+                ...(customThumbUrl ? { thumbnailUrl: customThumbUrl } : {}),
+                ...(description.trim() ? { description: description.trim() } : {}),
+              },
+              { workspaceSlug }
+            );
+          } catch (updateErr) {
+            console.warn("Asset metadata update notice:", updateErr);
+          }
+        }
+
+        // Mark item completed in state
+        setQueue((prev) =>
+          prev.map((q) =>
+            q.id === item.id
+              ? {
+                  ...q,
+                  status: "completed",
+                  progress: 100,
+                  statusText: "Ready & transcoded",
+                  uploadedAsset: result.asset,
+                  uploadedVersion: result.assetVersion,
+                }
+              : q
+          )
+        );
+
+        const resolvedThumbUrl =
+          customThumbUrl ||
+          result.assetVersion?.thumbnailUrl ||
+          (isImage ? result.assetVersion?.rawFileUrl : "") ||
+          "";
+
+        const resolvedMediaUrl = isImage
+          ? (customThumbUrl || result.assetVersion?.rawFileUrl || "")
+          : (result.assetVersion?.rawFileUrl || result.assetVersion?.hlsManifestUrl || "");
+
+        const portfolioItem: PortfolioItem = {
+          id: result.asset.id,
+          title: itemTitle,
+          category: isImage ? "Photo Still" : "Standalone Film",
+          type: isImage ? "still" : "film",
+          assetCount: 1,
+          thumbnailUrl: resolvedThumbUrl,
+          mediaUrl: resolvedMediaUrl,
+          description: queuedItems.length === 1 && description.trim() ? description.trim() : undefined,
+        };
+
+        completedItems.push(portfolioItem);
+        onAssetUploaded(portfolioItem);
+      } catch (err: any) {
+        failedCount++;
+        lastError = err.message || "Failed to upload asset.";
+        setQueue((prev) =>
+          prev.map((q) =>
+            q.id === item.id
+              ? {
+                  ...q,
+                  status: "error",
+                  statusText: "Upload failed",
+                  errorMessage: lastError,
+                }
+              : q
+          )
+        );
+      } finally {
+        activeXhrRef.current = null;
+      }
+    }
+
+    setUploading(false);
+    setOverallProgress(100);
+
+    if (abortControllerRef.current) {
+      uploadToast.info("Upload cancelled", "Batch upload was interrupted.");
+    } else if (completedItems.length > 0 && failedCount === 0) {
+      uploadToast.success(
+        completedItems.length === 1
+          ? `"${completedItems[0].title}" uploaded!`
+          : `All ${completedItems.length} films & stills uploaded & ready!`,
+        "Added to your portfolio showcase."
+      );
+      router.refresh();
+      resetForm();
+      onClose();
+    } else if (completedItems.length > 0 && failedCount > 0) {
+      uploadToast.error(
+        `Uploaded ${completedItems.length} of ${totalFiles} items (${failedCount} failed)`,
+        lastError
+      );
+      router.refresh();
+    } else if (failedCount > 0) {
+      uploadToast.error("Upload failed", lastError);
+      setErrorMessage(lastError);
+    }
+
+    uploadToastRef.current = null;
+  };
+
+  // Metrics
+  const totalCount = queue.length;
+  const completedCount = queue.filter((q) => q.status === "completed").length;
+  const queuedCount = queue.filter(
+    (q) => q.status === "queued" || q.status === "error"
+  ).length;
+  const videoCount = queue.filter((q) => q.assetType === "video").length;
+  const stillCount = queue.filter((q) => q.assetType === "photo_gallery").length;
+  const isSingleItem = totalCount === 1;
 
   return (
     <>
       <UniversalDialog
         open={isOpen}
-        onOpenChange={(open) => !uploading && !open && handleClose()}
-        size="lg"
+        onOpenChange={(open) => {
+          if (!open) handleClose();
+        }}
+        size="2xl"
         title="UPLOAD FILM OR STILL"
-        description="Add a title and a short description. It'll show on your public Work page under Films or Stills."
-        showCloseButton={!uploading}
+        description="Add standalone films or high-res stills to your public portfolio. Supports batch multi-file uploads with background processing."
+        showCloseButton={true}
         bodyClassName="space-y-5"
       >
+        {/* Background continuation alert while uploading */}
+        {uploading && (
+          <div className="p-3.5 rounded-2xl bg-primary/10 border border-primary/30 text-primary text-xs flex items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <Loader2 className="size-4 animate-spin shrink-0" />
+              <span>
+                <strong>Upload running in background.</strong> You can safely close this modal; progress will continue in the notification.
+              </span>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleClose}
+              className="text-[11px] h-7 px-2.5 rounded-lg border-primary/30 text-primary hover:bg-primary/20 shrink-0 cursor-pointer"
+            >
+              Minimize / Close
+            </Button>
+          </div>
+        )}
+
         {/* Plan Limit Warning */}
         {isAtLimit && (
           <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center justify-between gap-3 animate-in fade-in">
@@ -357,234 +523,463 @@ export function UploadFilmModal({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Dropzone & Attachment Display Area */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="video/*,image/*,.mp4,.mov,.mkv,.m4v,.png,.jpg,.jpeg,.webp"
-            className="hidden"
-            onChange={(e) => handleFiles(e.target.files)}
-            disabled={uploading}
-          />
+        {/* Hidden Multi-file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="video/*,image/*,.mp4,.mov,.mkv,.m4v,.png,.jpg,.jpeg,.webp"
+          className="hidden"
+          onChange={(e) => addFilesToQueue(e.target.files)}
+          disabled={uploading}
+        />
 
-          {selectedFile ? (
-            <Attachment
-              state={uploading ? "uploading" : errorMessage ? "error" : "done"}
-              size="default"
-              className="w-full bg-white/[0.04] border-white/15 p-3"
-            >
-              <AttachmentMedia variant={selectedFile.type.startsWith("image/") ? "image" : "icon"}>
-                {selectedFile.type.startsWith("image/") ? (
-                  <ImageIcon className="size-4" />
-                ) : (
-                  <Film className="size-4 text-primary" />
-                )}
-              </AttachmentMedia>
-              <AttachmentContent>
-                <AttachmentTitle className="text-zinc-100">{selectedFile.name}</AttachmentTitle>
-                <AttachmentDescription className="text-zinc-400">
-                  {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB · Ready for upload
-                </AttachmentDescription>
-              </AttachmentContent>
-              {!uploading && (
-                <AttachmentActions>
-                  <AttachmentAction
-                    variant="ghost"
-                    size="icon-xs"
-                    type="button"
-                    onClick={() => {
-                      setSelectedFile(null);
-                      if (fileInputRef.current) fileInputRef.current.value = "";
-                    }}
-                    title="Remove file"
-                  >
-                    <X className="size-3.5 text-zinc-400 hover:text-white" />
-                  </AttachmentAction>
-                </AttachmentActions>
-              )}
-            </Attachment>
-          ) : (
-            <div
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`border border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-2 ${
-                dragActive
-                  ? "border-primary bg-primary/10 scale-[1.01]"
-                  : "border-white/15 bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.04]"
-              }`}
-            >
-              <div className="size-10 rounded-full flex items-center justify-center text-primary">
-                <Upload className="size-5" />
-              </div>
-
-              <div className="space-y-0.5">
-                <div className="text-xs font-semibold text-zinc-200">
-                  Drop a video here or click to browse
-                </div>
-                <div className="text-[11px] text-zinc-500">
-                  MP4, MOV · up to 5 GB
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Title Field */}
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
-              TITLE
-            </Label>
-            <Input
-              type="text"
-              placeholder="e.g. Dubai Nights"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              disabled={uploading}
-              className="bg-[#0c0c0e]/80 border-white/10 text-xs text-white placeholder:text-zinc-600 focus-visible:border-primary"
-              required
-            />
-          </div>
-
-          {/* Description Field */}
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
-              DESCRIPTION <span className="normal-case text-zinc-500">(optional)</span>
-            </Label>
-            <textarea
-              rows={3}
-              placeholder="A short line about this piece — the brief, the vibe, the client..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              disabled={uploading}
-              className="w-full bg-[#0c0c0e]/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary resize-none transition-all"
-            />
-          </div>
-
-          {/* Thumbnail Section */}
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
-              THUMBNAIL <span className="normal-case text-zinc-500">(optional)</span>
-            </Label>
-
-            <div className="flex items-center gap-2.5">
-              {/* Preview Thumbnail Box */}
-              <div className="w-16 h-11 rounded-xl bg-[#0c0c0e] border border-white/10 flex items-center justify-center text-zinc-500 overflow-hidden shrink-0">
-                {thumbnailPreview ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={thumbnailPreview}
-                    alt="Thumbnail preview"
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  <ImageIcon className="size-4 text-zinc-600" />
-                )}
-              </div>
-
-              {/* Upload / Edit / Remove Thumbnail Buttons */}
-              <input
-                ref={thumbInputRef}
-                type="file"
-                accept="image/*,.png,.jpg,.jpeg,.webp"
-                className="hidden"
-                onChange={(e) => handleThumbnailSelect(e.target.files)}
-                disabled={uploading}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => thumbInputRef.current?.click()}
-                disabled={uploading}
-                className="flex-1 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border-white/15 text-white text-xs font-semibold py-2.5 px-3.5 h-auto flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-              >
-                <Upload className="size-3.5 text-zinc-300" />
-                <span>{thumbnailPreview ? "CHANGE" : "UPLOAD THUMBNAIL"}</span>
-              </Button>
-              {thumbnailPreview && (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                      setThumbCropState({
-                        isOpen: true,
-                        imageSrc: thumbnailPreview,
-                        fileName: thumbnailFile?.name || "film-thumbnail.jpg",
-                      })
-                    }
-                    disabled={uploading}
-                    className="rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border-white/15 text-white text-xs font-semibold py-2.5 px-3 h-auto flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    <Crop className="size-3.5 text-primary" />
-                    <span>EDIT</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setThumbnailFile(null);
-                      setThumbnailPreview(null);
-                    }}
-                    disabled={uploading}
-                    className="rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/30 text-rose-300 text-xs font-semibold py-2.5 px-2.5 h-auto flex items-center justify-center transition-all cursor-pointer disabled:opacity-50"
-                    title="Remove custom thumbnail"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </>
-              )}
+        {/* 1. EMPTY DROPZONE */}
+        {totalCount === 0 && (
+          <div
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-3xl p-10 sm:p-14 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-4 ${
+              dragActive
+                ? "border-primary bg-primary/10 scale-[1.01]"
+                : "border-white/15 bg-white/[0.02] hover:border-primary/50 hover:bg-white/[0.04]"
+            }`}
+          >
+            <div className="size-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-primary shadow-inner">
+              <Upload className="size-7" />
             </div>
 
-            <p className="text-[11px] text-zinc-500 font-sans leading-tight pt-0.5">
-              No thumbnail? We&apos;ll grab a frame from your video automatically.
-            </p>
-          </div>
-
-          {/* Progress Indicator */}
-          {uploading && (
-            <div className="space-y-1.5 pt-1 animate-in fade-in">
-              <div className="flex items-center justify-between text-[11px] font-mono">
-                <span className="text-zinc-400 flex items-center gap-1.5">
-                  <Loader2 className="size-3 animate-spin text-primary" />
-                  {statusText}
-                </span>
-                <span className="font-bold text-primary">{progress}%</span>
+            <div className="space-y-1.5 max-w-sm">
+              <div className="text-sm font-bold text-white">
+                Drop your films & photo stills here, or click to browse
               </div>
-              <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full transition-all duration-150"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Select single or multiple files at once. Supports MP4, MOV, ProRes, PNG, JPG, WEBP up to 5GB each.
+              </p>
             </div>
-          )}
 
-          {/* Submit Action Button */}
-          <div className="pt-2">
             <Button
-              type="submit"
-              disabled={!selectedFile || uploading || isAtLimit}
-              className="w-full rounded-xl py-3 px-4 h-auto bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-primary/25 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-0"
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-full border-white/15 bg-white/5 text-white hover:bg-white/10 text-xs font-semibold cursor-pointer"
             >
-              {uploading ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  <span>UPLOADING...</span>
-                </>
-              ) : isAtLimit ? (
-                <span>PLAN LIMIT REACHED (UPGRADE TO UPLOAD)</span>
-              ) : (
-                <>
-                  <Upload className="size-4" />
-                  <span>UPLOAD FILM OR STILL</span>
-                </>
-              )}
+              <Plus className="size-3.5 mr-1.5 text-primary" /> Select Multiple Files
             </Button>
           </div>
-        </form>
+        )}
+
+        {/* 2. SINGLE ITEM VIEW (Allows Title, Description, and Custom Thumbnail Crop) */}
+        {isSingleItem && (
+          <div className="space-y-4 animate-in fade-in">
+            {/* Attachment Card */}
+            {(() => {
+              const item = queue[0];
+              const isImage = item.assetType === "photo_gallery";
+
+              return (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3 bg-black/40 border border-white/10 rounded-2xl p-3 sm:p-4">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="size-12 rounded-xl bg-black/60 border border-white/10 overflow-hidden relative shrink-0 flex items-center justify-center text-muted-foreground">
+                        {item.previewUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.previewUrl}
+                            alt="Preview"
+                            className="size-full object-cover"
+                          />
+                        ) : (
+                          <Film className="size-5 text-primary" />
+                        )}
+                        <div className="absolute bottom-1 right-1 bg-black/80 rounded px-1 py-0.5 text-[8px] font-mono text-white/80 uppercase">
+                          {isImage ? "STILL" : "CUT"}
+                        </div>
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold text-white truncate">
+                          {item.file.name}
+                        </div>
+                        <p className="text-[11px] font-mono text-zinc-400">
+                          {formatBytes(item.file.size)} · Ready to upload
+                        </p>
+                      </div>
+                    </div>
+
+                    {!uploading && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="text-xs text-zinc-400 hover:text-white h-8"
+                        >
+                          <Plus className="size-3.5 mr-1 text-primary" /> Add More (Batch)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => removeItem(item.id)}
+                          className="size-7 rounded-lg text-zinc-400 hover:text-destructive"
+                          title="Remove file"
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Title Field */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
+                      TITLE
+                    </Label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. Dubai Nights"
+                      value={item.title}
+                      onChange={(e) => updateItemTitle(item.id, e.target.value)}
+                      disabled={uploading}
+                      className="bg-[#0c0c0e]/80 border-white/10 text-xs text-white placeholder:text-zinc-600 focus-visible:border-primary"
+                      required
+                    />
+                  </div>
+
+                  {/* Description Field */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
+                      DESCRIPTION <span className="normal-case text-zinc-500">(optional)</span>
+                    </Label>
+                    <textarea
+                      rows={2}
+                      placeholder="A short line about this piece — the brief, the vibe, the client..."
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      disabled={uploading}
+                      className="w-full bg-[#0c0c0e]/80 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-primary resize-none transition-all"
+                    />
+                  </div>
+
+                  {/* Custom Thumbnail Section (Only needed for single video or custom preview) */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
+                      THUMBNAIL <span className="normal-case text-zinc-500">(optional)</span>
+                    </Label>
+
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-16 h-11 rounded-xl bg-[#0c0c0e] border border-white/10 flex items-center justify-center text-zinc-500 overflow-hidden shrink-0">
+                        {thumbnailPreview ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={thumbnailPreview}
+                            alt="Thumbnail preview"
+                            className="size-full object-cover"
+                          />
+                        ) : (
+                          <ImageIcon className="size-4 text-zinc-600" />
+                        )}
+                      </div>
+
+                      <input
+                        ref={thumbInputRef}
+                        type="file"
+                        accept="image/*,.png,.jpg,.jpeg,.webp"
+                        className="hidden"
+                        onChange={(e) => handleThumbnailSelect(e.target.files)}
+                        disabled={uploading}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => thumbInputRef.current?.click()}
+                        disabled={uploading}
+                        className="flex-1 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border-white/15 text-white text-xs font-semibold py-2.5 px-3.5 h-auto flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        <Upload className="size-3.5 text-zinc-300" />
+                        <span>{thumbnailPreview ? "CHANGE" : "UPLOAD THUMBNAIL"}</span>
+                      </Button>
+                      {thumbnailPreview && (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                              setThumbCropState({
+                                isOpen: true,
+                                imageSrc: thumbnailPreview,
+                                fileName: thumbnailFile?.name || "film-thumbnail.jpg",
+                              })
+                            }
+                            disabled={uploading}
+                            className="rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border-white/15 text-white text-xs font-semibold py-2.5 px-3 h-auto flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                          >
+                            <Crop className="size-3.5 text-primary" />
+                            <span>EDIT</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setThumbnailFile(null);
+                              setThumbnailPreview(null);
+                            }}
+                            disabled={uploading}
+                            className="rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/30 text-rose-300 text-xs font-semibold py-2.5 px-2.5 h-auto flex items-center justify-center transition-all cursor-pointer disabled:opacity-50"
+                            title="Remove custom thumbnail"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* 3. MULTI-FILE BATCH QUEUE VIEW */}
+        {totalCount > 1 && (
+          <div className="space-y-4 animate-in fade-in">
+            {/* Header stats & actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-black/40 border border-white/10 rounded-2xl p-3 sm:p-4">
+              <div className="flex items-center gap-2.5 flex-wrap text-xs">
+                <span className="font-bold text-white">
+                  Queue: {totalCount} Files
+                </span>
+                <span className="text-zinc-500">·</span>
+                {videoCount > 0 && (
+                  <span className="flex items-center gap-1 text-primary font-mono text-[11px]">
+                    <Film className="size-3.5" /> {videoCount} Video{videoCount > 1 ? "s" : ""}
+                  </span>
+                )}
+                {stillCount > 0 && (
+                  <span className="flex items-center gap-1 text-sky-400 font-mono text-[11px]">
+                    <ImageIcon className="size-3.5" /> {stillCount} Still{stillCount > 1 ? "s" : ""}
+                  </span>
+                )}
+                {completedCount > 0 && (
+                  <span className="flex items-center gap-1 text-emerald-400 font-mono text-[11px]">
+                    <CheckCircle2 className="size-3.5" /> {completedCount} Uploaded
+                  </span>
+                )}
+              </div>
+
+              {!uploading && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-xs text-zinc-300 hover:text-white h-8"
+                  >
+                    <Plus className="size-3.5 mr-1 text-primary" /> Add More
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearQueue}
+                    className="text-xs text-zinc-400 hover:text-destructive h-8"
+                  >
+                    <Trash2 className="size-3.5 mr-1" /> Clear Queue
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Scrollable Items List */}
+            <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
+              {queue.map((item) => {
+                const isImage = item.assetType === "photo_gallery";
+
+                return (
+                  <div
+                    key={item.id}
+                    className={`rounded-2xl border transition-all p-3 space-y-2 ${
+                      item.status === "uploading"
+                        ? "bg-primary/5 border-primary/40 ring-1 ring-primary/30"
+                        : item.status === "completed"
+                        ? "bg-emerald-500/5 border-emerald-500/30"
+                        : item.status === "error"
+                        ? "bg-destructive/10 border-destructive/30"
+                        : "bg-black/30 border-white/10 hover:border-white/20"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      {/* Media Thumb & Info */}
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="size-11 rounded-xl bg-black/60 border border-white/10 overflow-hidden relative shrink-0 flex items-center justify-center text-zinc-400">
+                          {item.previewUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={item.previewUrl}
+                              alt="Preview"
+                              className="size-full object-cover"
+                            />
+                          ) : (
+                            <Film className="size-4 text-primary" />
+                          )}
+                          <div className="absolute bottom-0.5 right-0.5 bg-black/80 rounded px-1 py-0.2 text-[7px] font-mono text-white/80 uppercase">
+                            {isImage ? "STILL" : "CUT"}
+                          </div>
+                        </div>
+
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <input
+                            type="text"
+                            value={item.title}
+                            disabled={uploading}
+                            onChange={(e) => updateItemTitle(item.id, e.target.value)}
+                            placeholder="Asset Title"
+                            className="bg-transparent text-xs font-bold text-white border-b border-transparent hover:border-white/20 focus:border-primary focus:outline-none px-0.5 py-0.5 w-full max-w-sm truncate"
+                          />
+                          <p className="text-[10px] font-mono text-zinc-400">
+                            {formatBytes(item.file.size)} · {item.file.name}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Status Badges & Action */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {item.status === "queued" && (
+                          <span className="text-[10px] font-mono bg-white/10 text-zinc-300 px-2.5 py-1 rounded-full">
+                            Queued
+                          </span>
+                        )}
+                        {item.status === "uploading" && (
+                          <span className="text-[10px] font-mono bg-primary/20 text-primary border border-primary/40 px-2.5 py-1 rounded-full flex items-center gap-1 font-bold">
+                            <Loader2 className="size-3 animate-spin" /> {item.progress}%
+                          </span>
+                        )}
+                        {item.status === "completed" && (
+                          <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1 font-bold">
+                            <CheckCircle2 className="size-3" /> Done
+                          </span>
+                        )}
+                        {item.status === "error" && (
+                          <span className="text-[10px] font-mono bg-destructive/20 text-destructive border border-destructive/40 px-2.5 py-1 rounded-full flex items-center gap-1 font-bold">
+                            <AlertCircle className="size-3" /> Error
+                          </span>
+                        )}
+
+                        {!uploading && item.status !== "uploading" && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() => removeItem(item.id)}
+                            className="size-7 rounded-lg text-zinc-400 hover:text-destructive"
+                            title="Remove item"
+                          >
+                            <X className="size-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Active Upload Item Progress */}
+                    {item.status === "uploading" && (
+                      <div className="space-y-1 pt-1 animate-in fade-in">
+                        <div className="flex items-center justify-between text-[10px] font-mono">
+                          <span className="text-zinc-400 truncate max-w-[280px]">{item.statusText}</span>
+                          <span className="font-bold text-primary">{item.progress}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full transition-all duration-150"
+                            style={{ width: `${item.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Global Progress Bar when uploading */}
+        {uploading && (
+          <div className="space-y-1.5 pt-2 border-t border-white/10 animate-in fade-in">
+            <div className="flex items-center justify-between text-xs font-mono">
+              <span className="text-zinc-400 flex items-center gap-1.5 truncate">
+                <Loader2 className="size-3.5 animate-spin text-primary" />
+                {statusText || "Processing upload..."}
+              </span>
+              <span className="font-bold text-primary">{overallProgress}%</span>
+            </div>
+            <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary rounded-full transition-all duration-150"
+                style={{ width: `${overallProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Modal Action Buttons Footer */}
+        {totalCount > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-white/10">
+            <p className="text-xs text-zinc-400">
+              {completedCount === totalCount && totalCount > 0 ? (
+                <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                  <CheckCircle2 className="size-4" /> All {totalCount} items uploaded successfully!
+                </span>
+              ) : (
+                <span>
+                  {queuedCount} {queuedCount === 1 ? "file" : "files"} ready for upload
+                </span>
+              )}
+            </p>
+
+            <div className="flex items-center gap-2.5 justify-end">
+              {uploading ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={cancelActiveUpload}
+                    className="rounded-xl text-xs font-semibold text-destructive border-destructive/30 hover:bg-destructive/10"
+                  >
+                    Cancel Uploads
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleClose}
+                    className="rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-4 cursor-pointer"
+                  >
+                    Continue in Background
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={handleStartBatchUpload}
+                  disabled={queuedCount === 0 || isAtLimit}
+                  className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-extrabold px-6 py-2.5 h-auto shadow-lg shadow-primary/25 cursor-pointer uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Upload className="size-3.5 mr-1.5" />
+                  {isAtLimit
+                    ? "Plan Limit Reached"
+                    : queuedCount === 1
+                    ? "Upload Film / Still"
+                    : `Upload All (${queuedCount} Files)`}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
       </UniversalDialog>
 
       <ImageCropEditorDialog
