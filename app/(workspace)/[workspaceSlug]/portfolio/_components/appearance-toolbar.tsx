@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { TypographyH4 } from "@/components/ui/typography";
 import { updatePortfolioAction } from "@/app/actions/portfolio";
 import { PortfolioAppearance } from "@/core/entities/portfolio";
 
@@ -84,9 +85,11 @@ export function AppearanceToolbar({
     >
       {/* Header using CardHeader, CardTitle, and CardAction */}
       <CardHeader className="border-b border-white/[0.06] pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm font-bold text-white font-heading tracking-wide">
-          <SlidersHorizontal className="size-4 text-primary" />
-          <span>Appearance</span>
+        <CardTitle className="p-0 border-none">
+          <TypographyH4 className="flex items-center gap-2 text-sm font-bold text-white font-heading tracking-wide">
+            <SlidersHorizontal className="size-4 text-primary" />
+            <span>Appearance</span>
+          </TypographyH4>
         </CardTitle>
 
         <CardAction>

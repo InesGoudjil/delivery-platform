@@ -14,6 +14,14 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  TypographyH1,
+  TypographyH3,
+  TypographyLead,
+  TypographyMuted,
+  TypographyKicker,
+  TypographySmall,
+} from "@/components/ui/typography";
 
 interface WhatsAppLog {
   id: string;
@@ -61,15 +69,15 @@ export default function NotificationsPage() {
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Header */}
       <div className="pb-6 border-b border-border">
-        <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1">
+        <TypographyKicker className="text-xs font-mono text-primary uppercase tracking-wider mb-1 block">
           Account
-        </div>
-        <h1 className="text-3xl font-bold font-heading text-foreground">
+        </TypographyKicker>
+        <TypographyH1 className="text-3xl font-bold font-heading text-foreground">
           Notifications &amp; WhatsApp
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        </TypographyH1>
+        <TypographyLead className="text-sm text-muted-foreground mt-1">
           Configure real-time client feedback alerts and WhatsApp delivery automation.
-        </p>
+        </TypographyLead>
       </div>
 
       {/* Notification Preferences */}
@@ -77,12 +85,12 @@ export default function NotificationsPage() {
         {/* Client Approvals */}
         <div className="p-6 flex items-center justify-between gap-4">
           <div className="space-y-0.5">
-            <div className="text-sm font-bold font-heading text-card-foreground">
+            <TypographySmall className="text-sm font-bold font-heading text-card-foreground">
               Client Cut Approvals
-            </div>
-            <div className="text-xs text-muted-foreground">
+            </TypographySmall>
+            <TypographyMuted className="text-xs text-muted-foreground">
               Receive an immediate WhatsApp message and email when a client approves a cut.
-            </div>
+            </TypographyMuted>
           </div>
           <Switch
             checked={notifyApproval}
@@ -97,12 +105,12 @@ export default function NotificationsPage() {
         {/* New Comments */}
         <div className="p-6 flex items-center justify-between gap-4">
           <div className="space-y-0.5">
-            <div className="text-sm font-bold font-heading text-card-foreground">
+            <TypographySmall className="text-sm font-bold font-heading text-card-foreground">
               New Timecoded Notes &amp; Comments
-            </div>
-            <div className="text-xs text-muted-foreground">
+            </TypographySmall>
+            <TypographyMuted className="text-xs text-muted-foreground">
               Notify when a client pauses and leaves timestamped review notes on a scene.
-            </div>
+            </TypographyMuted>
           </div>
           <Switch
             checked={notifyComments}
@@ -117,12 +125,12 @@ export default function NotificationsPage() {
         {/* Master File Downloads */}
         <div className="p-6 flex items-center justify-between gap-4">
           <div className="space-y-0.5">
-            <div className="text-sm font-bold font-heading text-card-foreground">
+            <TypographySmall className="text-sm font-bold font-heading text-card-foreground">
               Master File Download Alerts
-            </div>
-            <div className="text-xs text-muted-foreground">
+            </TypographySmall>
+            <TypographyMuted className="text-xs text-muted-foreground">
               Get notified when a client initiates a full ProRes master file download.
-            </div>
+            </TypographyMuted>
           </div>
           <Switch
             checked={notifyDownloads}
@@ -137,12 +145,12 @@ export default function NotificationsPage() {
         {/* Weekly Digest */}
         <div className="p-6 flex items-center justify-between gap-4">
           <div className="space-y-0.5">
-            <div className="text-sm font-bold font-heading text-card-foreground">
+            <TypographySmall className="text-sm font-bold font-heading text-card-foreground">
               Weekly Studio Activity Summary
-            </div>
-            <div className="text-xs text-muted-foreground">
+            </TypographySmall>
+            <TypographyMuted className="text-xs text-muted-foreground">
               A consolidated email digest of client views, stream minutes, and approvals every Monday morning.
-            </div>
+            </TypographyMuted>
           </div>
           <Switch
             checked={weeklyDigest}
@@ -161,13 +169,13 @@ export default function NotificationsPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="inline-block size-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <h3 className="text-base font-bold font-heading text-card-foreground">
+              <TypographyH3 className="text-base font-bold font-heading text-card-foreground">
                 Official CineSpace WhatsApp Bot
-              </h3>
+              </TypographyH3>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <TypographyMuted className="text-xs text-muted-foreground">
               Messages will be dispatched from +1 (800) 246-3772 to your registered Gulf mobile number.
-            </p>
+            </TypographyMuted>
           </div>
 
           <div className="flex items-center gap-2">

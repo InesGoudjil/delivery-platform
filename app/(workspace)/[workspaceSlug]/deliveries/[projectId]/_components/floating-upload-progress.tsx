@@ -3,6 +3,7 @@
 import { UploadCloud, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { TypographyH4, TypographyMuted } from "@/components/ui/typography";
 import type { UploadProgressState } from "./types";
 
 interface FloatingUploadProgressProps {
@@ -25,12 +26,12 @@ export function FloatingUploadProgress({
               <UploadCloud className="size-4" />
             </div>
             <div className="min-w-0">
-              <h4 className="text-xs font-bold text-card-foreground truncate">
+              <TypographyH4 className="text-xs font-bold font-heading text-card-foreground truncate">
                 {progress.fileName}
-              </h4>
-              <p className="text-[11px] font-mono text-muted-foreground">
+              </TypographyH4>
+              <TypographyMuted className="text-[11px] font-mono text-muted-foreground">
                 {progress.fileSize} · {progress.fileIndex} of {progress.totalFiles} files
-              </p>
+              </TypographyMuted>
             </div>
           </div>
 

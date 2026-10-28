@@ -47,7 +47,7 @@ function UniversalDialogOverlay({
     <DialogPrimitive.Backdrop
       data-slot="universal-dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/80 backdrop-blur-md duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 z-50 bg-black/75 backdrop-blur-md duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className
       )}
       {...props}
@@ -60,6 +60,7 @@ export interface UniversalDialogContentProps
   size?: UniversalDialogSize;
   variant?: UniversalDialogVariant;
   showCloseButton?: boolean;
+  overlayClassName?: string;
 }
 
 function UniversalDialogContent({
@@ -68,20 +69,21 @@ function UniversalDialogContent({
   size = "md",
   variant = "default",
   showCloseButton = true,
+  overlayClassName,
   ...props
 }: UniversalDialogContentProps) {
   return (
     <UniversalDialogPortal>
-      <UniversalDialogOverlay />
+      <UniversalDialogOverlay className={overlayClassName} />
       <DialogPrimitive.Popup
         data-slot="universal-dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-1.5rem)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-3xl bg-[#141418]/95 backdrop-blur-2xl border text-[#f6f3ec] shadow-2xl duration-200 outline-none max-h-[calc(100dvh-2rem)] overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "liquid-glass modal fixed top-1/2 left-1/2 z-50 flex flex-col w-full max-w-[calc(100%-1.5rem)] -translate-x-1/2 -translate-y-1/2 rounded-3xl text-[#f6f3ec] duration-200 outline-none max-h-[calc(100dvh-2rem)] overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           variant === "destructive"
-            ? "border-red-500/25 shadow-[0_25px_60px_-15px_rgba(239,68,68,0.15),inset_0_1px_0_rgba(255,255,255,0.12)]"
+            ? "border-red-500/35 shadow-[0_28px_64px_-20px_rgba(239,68,68,0.25),inset_0_1px_0_rgba(255,255,255,0.25),inset_0_0_0_1px_rgba(239,68,68,0.2)]"
             : variant === "warning"
-            ? "border-amber-500/25 shadow-[0_25px_60px_-15px_rgba(245,158,11,0.15),inset_0_1px_0_rgba(255,255,255,0.12)]"
-            : "border-white/15 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.12)]",
+            ? "border-amber-500/35 shadow-[0_28px_64px_-20px_rgba(245,158,11,0.25),inset_0_1px_0_rgba(255,255,255,0.25),inset_0_0_0_1px_rgba(245,158,11,0.2)]"
+            : "border-white/15 shadow-[0_28px_64px_-30px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.22),inset_0_0_0_1px_rgba(255,255,255,0.04)]",
           universalDialogSizes[size],
           className
         )}
@@ -130,7 +132,7 @@ function UniversalDialogHeader({
       )}
       {...props}
     >
-      <div className="flex items-start gap-3.5 min-w-0">
+      <div className="flex items-start gap-3.5 min-w-0 flex-1">
         {icon && (
           <div
             className={cn(
@@ -145,7 +147,7 @@ function UniversalDialogHeader({
             {icon}
           </div>
         )}
-        <div className="min-w-0 space-y-1">
+        <div className="min-w-0 space-y-1 flex-1">
           {badge && <div className="mb-1.5">{badge}</div>}
           {title && (
             typeof title === "string" ? (
@@ -161,9 +163,9 @@ function UniversalDialogHeader({
               description
             )
           )}
-          {children}
         </div>
       </div>
+      {children && <div className="shrink-0">{children}</div>}
     </div>
   );
 }
@@ -212,7 +214,7 @@ function UniversalDialogBody({
       data-slot="universal-dialog-body"
       className={cn(
         "p-5 sm:p-6",
-        scrollable && "flex-1 overflow-y-auto overscroll-contain",
+        scrollable && "flex-1 min-h-0 overflow-y-auto overscroll-contain",
         className
       )}
       {...props}
@@ -252,6 +254,7 @@ export interface UniversalDialogProps {
   footer?: React.ReactNode;
   showCloseButton?: boolean;
   scrollable?: boolean;
+  overlayClassName?: string;
   contentClassName?: string;
   headerClassName?: string;
   bodyClassName?: string;
@@ -272,6 +275,7 @@ export function UniversalDialog({
   footer,
   showCloseButton = true,
   scrollable = true,
+  overlayClassName,
   contentClassName,
   headerClassName,
   bodyClassName,
@@ -286,6 +290,7 @@ export function UniversalDialog({
         size={size}
         variant={variant}
         showCloseButton={showCloseButton}
+        overlayClassName={overlayClassName}
         className={contentClassName}
       >
         {hasHeader && (
@@ -324,3 +329,17 @@ UniversalDialog.Description = UniversalDialogDescription;
 UniversalDialog.Body = UniversalDialogBody;
 UniversalDialog.Footer = UniversalDialogFooter;
 UniversalDialog.Close = UniversalDialogClose;
+
+export {
+  UniversalDialogRoot,
+  UniversalDialogTrigger,
+  UniversalDialogPortal,
+  UniversalDialogOverlay,
+  UniversalDialogContent,
+  UniversalDialogHeader,
+  UniversalDialogTitle,
+  UniversalDialogDescription,
+  UniversalDialogBody,
+  UniversalDialogFooter,
+  UniversalDialogClose,
+};

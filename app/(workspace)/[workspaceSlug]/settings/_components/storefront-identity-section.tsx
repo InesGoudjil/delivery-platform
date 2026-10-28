@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { TypographyH2, TypographyMuted } from "@/components/ui/typography";
+import { TypographyH2, TypographyH4, TypographyMuted } from "@/components/ui/typography";
 
 interface StorefrontIdentitySectionProps {
   brandName: string;
@@ -185,9 +185,9 @@ export function StorefrontIdentitySection({
             <div className="space-y-1.5 flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <Building2 className="size-4 text-primary shrink-0" />
-                <h3 className="text-xs font-bold text-foreground uppercase tracking-wider truncate">
+                <TypographyH4 className="text-xs font-bold text-foreground uppercase tracking-wider truncate font-heading">
                   Brand Logo
-                </h3>
+                </TypographyH4>
                 <Badge variant="outline" className="text-[9px] font-mono uppercase px-1.5 py-0 border-white/10">
                   Header &amp; Rooms
                 </Badge>
@@ -314,9 +314,9 @@ export function StorefrontIdentitySection({
             <div className="space-y-1.5 flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <User className="size-4 text-primary shrink-0" />
-                <h3 className="text-xs font-bold text-foreground uppercase tracking-wider truncate">
+                <TypographyH4 className="text-xs font-bold text-foreground uppercase tracking-wider truncate font-heading">
                   Profile Picture
-                </h3>
+                </TypographyH4>
                 <Badge variant="outline" className="text-[9px] font-mono uppercase px-1.5 py-0 border-white/10">
                   About Bio
                 </Badge>

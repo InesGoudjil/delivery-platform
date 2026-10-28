@@ -21,6 +21,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
 import type { AppearanceSettings } from "./types";
 
 interface DeliveryAppearanceCardProps {
@@ -54,12 +55,14 @@ export function DeliveryAppearanceCard({
         <div className="flex items-center gap-2.5">
           <Pencil className="size-4 text-primary" />
           <div>
-            <CardTitle className="text-base font-bold font-heading text-card-foreground">
-              Appearance
+            <CardTitle className="p-0 border-none">
+              <TypographyH3 className="text-base font-bold font-heading text-card-foreground">
+                Appearance
+              </TypographyH3>
             </CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
+            <TypographyMuted className="text-xs text-muted-foreground">
               Customize how your client sees and interacts with this gallery
-            </CardDescription>
+            </TypographyMuted>
           </div>
         </div>
 

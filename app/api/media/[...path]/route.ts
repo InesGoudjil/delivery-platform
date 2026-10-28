@@ -181,7 +181,7 @@ export async function GET(
     key = key.slice(privateBucket.length + 1);
   }
 
-  const isPrivate = key.startsWith("private/");
+  const isPrivate = key.startsWith("private/") || (key.startsWith("workspaces/") && key.includes("/deliveries/"));
   const targetBucket = isPrivate ? privateBucket : (publicBucket || privateBucket);
 
   const r2PublicDomain = (
@@ -242,10 +242,12 @@ export async function GET(
         const services = await getServerServices();
         const user = await services.auth.getCurrentUser();
 
-        // Extract workspaceId and deliveryId from key: private/workspaces/{workspaceId}/...
+        // Extract workspaceId and deliveryId from key: (private/)workspaces/{workspaceId}/...
         const segments = key.split("/");
-        const workspaceId = segments[1] === "workspaces" ? segments[2] : null;
-        const deliveryId = segments[3] === "deliveries" ? segments[4] : (segments[3] && segments[3] !== "standalone" ? segments[3] : null);
+        const wsIdx = segments.indexOf("workspaces");
+        const workspaceId = wsIdx !== -1 && segments[wsIdx + 1] ? segments[wsIdx + 1] : null;
+        const delIdx = segments.indexOf("deliveries");
+        const deliveryId = delIdx !== -1 && segments[delIdx + 1] ? segments[delIdx + 1] : null;
 
         // A. Workspace member check (creators and authorized team members)
         if (user && workspaceId) {

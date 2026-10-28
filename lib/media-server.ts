@@ -94,6 +94,8 @@ export async function presignDeliveryAssets<
     rawFileUrl?: string | null;
     thumbnailUrl?: string | null;
     downloadUrl?: string | null;
+    proxyDownloadUrl?: string | null;
+    hlsManifestUrl?: string | null;
     isActiveVersion?: boolean;
     versionNumber?: number;
   },
@@ -129,6 +131,21 @@ export async function presignDeliveryAssets<
           const versionSuffix = v.versionNumber ? `_V${v.versionNumber}` : "";
           const downloadFilename = `${safeTitle}${versionSuffix}.${ext}`;
 
+          // Detect Cloudflare Stream UID if available (to provide optional fast web-proxy download)
+          let streamUid: string | null = null;
+          const streamSource = v.hlsManifestUrl || v.rawFileUrl || "";
+          const streamMatch =
+            streamSource.match(/\/([a-f0-9]{32})(?:\/|$|\?)/i) ||
+            streamSource.match(/^([a-f0-9]{32})$/i);
+          if (streamMatch) {
+            streamUid = streamMatch[1];
+          }
+
+          const proxyDownloadFilename = `${safeTitle}${versionSuffix}_WebProxy.mp4`;
+          const proxyDownloadUrl = streamUid
+            ? `/api/media/${streamUid}?download=true&filename=${encodeURIComponent(proxyDownloadFilename)}`
+            : null;
+
           const [presignedRaw, presignedThumb, presignedDownload] = await Promise.all([
             presignPrivateMediaUrl(v.rawFileUrl, storageProvider, expiresInSeconds),
             presignPrivateMediaUrl(v.thumbnailUrl, storageProvider, expiresInSeconds),
@@ -140,6 +157,7 @@ export async function presignDeliveryAssets<
             rawFileUrl: presignedRaw,
             thumbnailUrl: presignedThumb,
             downloadUrl: presignedDownload || presignedRaw,
+            proxyDownloadUrl,
           };
         })
       );

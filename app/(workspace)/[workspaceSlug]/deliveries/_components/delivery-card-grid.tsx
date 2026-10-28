@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
 import { toast } from "sonner";
 import { DeliveryProjectItem } from "../deliveries-client";
 
@@ -112,14 +113,16 @@ export function DeliveryCardGrid({
               <CardContent className="space-y-3 pt-1">
                 {/* Title & Client */}
                 <Link href={`/${workspaceSlug}/deliveries/${item.id}`} className="block group/link">
-                  <CardTitle className="font-display text-xl font-bold text-card-foreground group-hover/link:text-primary transition-colors flex items-center justify-between">
-                    <span>{item.title}</span>
-                    <ArrowRight className="size-4 text-muted-foreground group-hover/link:text-primary opacity-0 group-hover/link:opacity-100 transition-all transform group-hover/link:translate-x-1" />
+                  <CardTitle className="p-0 border-none">
+                    <TypographyH3 className="text-xl font-bold font-heading text-card-foreground group-hover/link:text-primary transition-colors flex items-center justify-between">
+                      <span>{item.title}</span>
+                      <ArrowRight className="size-4 text-muted-foreground group-hover/link:text-primary opacity-0 group-hover/link:opacity-100 transition-all transform group-hover/link:translate-x-1" />
+                    </TypographyH3>
                   </CardTitle>
                 </Link>
-                <CardDescription className="text-xs text-muted-foreground font-sans">
+                <TypographyMuted className="text-xs text-muted-foreground font-sans">
                   Client: <strong className="text-foreground">{item.clientName}</strong>
-                </CardDescription>
+                </TypographyMuted>
 
                 {/* Specs / Badges */}
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono pt-1">

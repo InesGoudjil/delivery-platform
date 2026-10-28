@@ -18,6 +18,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { TypographyH1, TypographyKicker } from "@/components/ui/typography";
 import { cn } from "@/lib/utils";
 
 interface DeliveryHeroBannerProps {
@@ -83,13 +84,15 @@ export function DeliveryHeroBanner({
           {/* Status Category Prefix */}
           <div className="flex items-center gap-2 text-xs font-bold text-primary tracking-wide uppercase">
             <span className="size-2 rounded-full bg-primary animate-pulse" />
-            <span>Editing · {projectTitle}</span>
+            <TypographyKicker as="span" className="text-primary font-bold">
+              Editing · {projectTitle}
+            </TypographyKicker>
           </div>
 
           {/* Giant Uppercase Title */}
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-black font-heading tracking-tight text-white uppercase drop-shadow-md">
+          <TypographyH1 className="text-4xl sm:text-5xl md:text-6xl font-black font-heading tracking-tight text-white uppercase drop-shadow-md">
             {projectTitle}
-          </h1>
+          </TypographyH1>
         </div>
 
         {/* Stats Bar (STATUS, ASSETS, CLIENT APPROVED) */}

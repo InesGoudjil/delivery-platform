@@ -17,6 +17,14 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  TypographyH1,
+  TypographyH3,
+  TypographyLead,
+  TypographyMuted,
+  TypographyKicker,
+  TypographySmall,
+} from "@/components/ui/typography";
 import { changePasswordAction } from "@/app/actions/auth";
 
 export default function SecurityPage() {
@@ -72,15 +80,15 @@ export default function SecurityPage() {
 
       {/* Header */}
       <div className="pb-6 border-b border-border">
-        <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1">
+        <TypographyKicker className="text-xs font-mono text-primary uppercase tracking-wider mb-1 block">
           Account
-        </div>
-        <h1 className="text-3xl font-bold font-heading text-foreground">
+        </TypographyKicker>
+        <TypographyH1 className="text-3xl font-bold font-heading text-foreground">
           Security &amp; Passcodes
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        </TypographyH1>
+        <TypographyLead className="text-sm text-muted-foreground mt-1">
           Protect your filmmaker account and configure default security rules for client delivery rooms.
-        </p>
+        </TypographyLead>
       </div>
 
       {/* Security Policies / Toggles */}
@@ -88,12 +96,12 @@ export default function SecurityPage() {
         {/* 2FA */}
         <div className="p-6 flex items-center justify-between gap-4">
           <div className="space-y-0.5">
-            <div className="text-sm font-bold font-heading text-card-foreground">
+            <TypographySmall className="text-sm font-bold font-heading text-card-foreground">
               Two-Factor Authentication (2FA)
-            </div>
-            <div className="text-xs text-muted-foreground">
+            </TypographySmall>
+            <TypographyMuted className="text-xs text-muted-foreground">
               Require an authenticator app code (TOTP) when logging into your studio.
-            </div>
+            </TypographyMuted>
           </div>
           <Switch
             checked={twoFactor}
@@ -108,12 +116,12 @@ export default function SecurityPage() {
         {/* Default Passphrase on Links */}
         <div className="p-6 flex items-center justify-between gap-4">
           <div className="space-y-0.5">
-            <div className="text-sm font-bold font-heading text-card-foreground">
+            <TypographySmall className="text-sm font-bold font-heading text-card-foreground">
               Default Passphrase on Delivery Rooms
-            </div>
-            <div className="text-xs text-muted-foreground">
+            </TypographySmall>
+            <TypographyMuted className="text-xs text-muted-foreground">
               Automatically generate a 6-digit access code for all newly published client review links.
-            </div>
+            </TypographyMuted>
           </div>
           <Switch
             checked={defaultPassphrase}
@@ -128,12 +136,12 @@ export default function SecurityPage() {
         {/* Restrict Cut Downloads */}
         <div className="p-6 flex items-center justify-between gap-4">
           <div className="space-y-0.5">
-            <div className="text-sm font-bold font-heading text-card-foreground">
+            <TypographySmall className="text-sm font-bold font-heading text-card-foreground">
               Restrict Raw Master File Downloads
-            </div>
-            <div className="text-xs text-muted-foreground">
+            </TypographySmall>
+            <TypographyMuted className="text-xs text-muted-foreground">
               Prevent clients from downloading ProRes master files until you explicitly check "Approved for Release".
-            </div>
+            </TypographyMuted>
           </div>
           <Switch
             checked={restrictDownloads}
@@ -173,12 +181,12 @@ export default function SecurityPage() {
             <KeyRound className="size-5 text-primary" />
           </div>
           <div>
-            <h3 className="font-heading text-base font-bold text-card-foreground">
+            <TypographyH3 className="font-heading text-base font-bold text-card-foreground">
               Change Account Password
-            </h3>
-            <p className="text-xs text-muted-foreground">
+            </TypographyH3>
+            <TypographyMuted className="text-xs text-muted-foreground">
               Ensure your account is using a long, random password.
-            </p>
+            </TypographyMuted>
           </div>
         </div>
 

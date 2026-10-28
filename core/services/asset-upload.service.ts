@@ -20,6 +20,7 @@ export interface RequestAssetUploadDTO {
   filename: string;
   fileSizeBytes: number;
   assetType?: AssetType;
+  aspectRatio?: string;
   maxDurationSeconds?: number;
   category?: string;
   metadata?: Record<string, string>;
@@ -152,6 +153,7 @@ export class AssetUploadService {
         deliveryId: resolvedDeliveryId,
         title: dto.title,
         type: assetType,
+        aspectRatio: dto.aspectRatio,
         sortOrder: existingAssets.length,
       });
     }
@@ -372,13 +374,69 @@ export class AssetUploadService {
       }
     }
 
+    const isVideo =
+      asset.type === "video" ||
+      (!isImage && /\.(mp4|mov|m4v|webm|mkv|avi)$/i.test(dto.providerUid || ""));
+
+    let resolvedHlsUrl = playbackInfo?.hlsManifestUrl || version.hlsManifestUrl;
+    let initialTranscodingStatus = playbackInfo?.status || "pending";
+
+    // Hybrid Pipeline (Option A): If a video master file is stored in Cloudflare R2, ingest it into Cloudflare Stream via copyFromUrl
+    if (
+      isVideo &&
+      dto.providerUid.includes("workspaces/") &&
+      typeof (this.storageProvider as any).copyFromUrl === "function"
+    ) {
+      try {
+        let presignedSourceUrl: string | null = null;
+        if (typeof this.storageProvider.getSecurePlaybackUrl === "function") {
+          presignedSourceUrl = await this.storageProvider.getSecurePlaybackUrl(
+            dto.providerUid,
+            !isExplicitlyPrivate,
+            86400 // 24 hours for Stream to ingest
+          );
+        }
+
+        if (presignedSourceUrl) {
+          const streamResult = await (this.storageProvider as any).copyFromUrl(
+            presignedSourceUrl,
+            {
+              name: asset.title || "Video Cut",
+              creator: workspaceId,
+              meta: {
+                assetId: asset.id,
+                versionId: version.id,
+                assetVersionId: version.id,
+                workspaceId: workspaceId || "",
+                r2Key: dto.providerUid,
+              },
+            }
+          );
+
+          if (streamResult?.uid) {
+            const streamDomain = (env.CLOUDFLARE_STREAM_SUBDOMAIN || "videodelivery.net")
+              .replace(/^https?:\/\//, "")
+              .replace(/\/+$/, "");
+            resolvedHlsUrl = `https://${streamDomain}/${streamResult.uid}/manifest/video.m3u8`;
+            resolvedThumbnailUrl = `https://${streamDomain}/${streamResult.uid}/thumbnails/thumbnail.jpg?time=1s&height=720`;
+            initialTranscodingStatus = streamResult.status === "ready" ? "ready" : "processing";
+          }
+        }
+      } catch (streamIngestErr: any) {
+        console.warn(
+          `[AssetUploadService] Cloudflare Stream copy ingestion failed for ${dto.providerUid}:`,
+          streamIngestErr?.message || streamIngestErr
+        );
+      }
+    }
+
     const updatedVersion = await this.assetVersionRepo.update(version.id, {
       rawFileUrl: cleanRawUrl,
-      hlsManifestUrl: playbackInfo?.hlsManifestUrl || version.hlsManifestUrl,
+      hlsManifestUrl: resolvedHlsUrl,
       thumbnailUrl: resolvedThumbnailUrl,
       durationSeconds: dto.durationSeconds ?? playbackInfo?.durationSeconds ?? version.durationSeconds,
       fileSizeBytes: dto.fileSizeBytes ?? version.fileSizeBytes,
-      transcodingStatus: mapStorageStatusToTranscodingStatus(playbackInfo?.status),
+      transcodingStatus: mapStorageStatusToTranscodingStatus(initialTranscodingStatus),
       isActiveVersion: true,
     });
 
@@ -408,7 +466,11 @@ export class AssetUploadService {
     const playbackInfo = await this.storageProvider.getPlaybackInfo(providerUid);
     if (!playbackInfo) return;
 
-    const assetVersionId = event?.data?.meta?.assetVersionId || event?.meta?.assetVersionId;
+    const assetVersionId =
+      event?.data?.meta?.assetVersionId ||
+      event?.meta?.assetVersionId ||
+      event?.data?.meta?.versionId ||
+      event?.meta?.versionId;
 
     if (assetVersionId) {
       await this.assetVersionRepo.update(assetVersionId, {

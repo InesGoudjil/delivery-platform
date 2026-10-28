@@ -35,7 +35,7 @@ import { ShareLinkDialog } from "./_components/share-link-dialog";
 import { EditDeliveryDialog } from "./_components/edit-delivery-dialog";
 import { PublishPortfolioDialog } from "./_components/publish-portfolio-dialog";
 import { FloatingUploadProgress } from "./_components/floating-upload-progress";
-import { AssetLightboxModal } from "./_components/asset-lightbox-modal";
+import { AssetLightboxModal } from "@/components/workspaces/asset-lightbox-modal";
 import { DownloadPackageModal } from "@/components/workspaces/download-package-modal";
 
 // Shared Types
@@ -1118,6 +1118,7 @@ export function DeliveryDetailClient({
                 item.rawUrl ||
                 (item.type === "photo" ? item.src : "") ||
                 "",
+              proxyDownloadUrl: (activeVer as any)?.proxyDownloadUrl || null,
               isApproved: item.status === "approved",
             };
           })}

@@ -30,6 +30,7 @@ import { TiltCard } from "@/components/ui/motion";
 import {
   TypographyH1,
   TypographyH3,
+  TypographyH4,
   TypographyLead,
   TypographyMuted,
 } from "@/components/ui/typography";
@@ -171,12 +172,12 @@ export default async function StoragePage({
                 <CheckCircle2 className="size-5" />
               </div>
               <div>
-                <h4 className="font-heading font-bold text-sm text-foreground">
+                <TypographyH4 className="font-heading font-bold text-sm text-foreground">
                   +1 TB High-Speed Storage Boost Activated!
-                </h4>
-                <p className="text-xs text-muted-foreground">
+                </TypographyH4>
+                <TypographyMuted className="text-xs text-muted-foreground">
                   Your storage allocation has been upgraded by 1,024 GB.
-                </p>
+                </TypographyMuted>
               </div>
             </div>
           </div>
@@ -191,12 +192,14 @@ export default async function StoragePage({
                   <HardDrive className="size-6" />
                 </div>
                 <div>
-                  <CardTitle className="font-heading text-lg font-bold text-card-foreground">
-                    Active Storage &amp; Streaming
+                  <CardTitle className="p-0 border-none">
+                    <TypographyH3 className="font-heading text-lg font-bold text-card-foreground">
+                      Active Storage &amp; Streaming
+                    </TypographyH3>
                   </CardTitle>
-                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                  <TypographyMuted className="text-xs text-muted-foreground mt-0.5">
                     Fast edge storage &amp; adaptive video streaming
-                  </CardDescription>
+                  </TypographyMuted>
                 </div>
               </div>
 
@@ -360,16 +363,18 @@ export default async function StoragePage({
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <CardTitle className="font-heading text-lg font-bold text-card-foreground">
-                      The Silo — Deep Cold Archive
+                    <CardTitle className="p-0 border-none">
+                      <TypographyH3 className="font-heading text-lg font-bold text-card-foreground">
+                        The Silo — Deep Cold Archive
+                      </TypographyH3>
                     </CardTitle>
                     <Badge variant="outline" className="text-[10px] font-mono font-semibold bg-blue-500/15 text-blue-400 border-blue-500/30">
                       Secure Archival
                     </Badge>
                   </div>
-                  <CardDescription className="text-xs text-muted-foreground max-w-xl leading-relaxed">
+                  <TypographyMuted className="text-xs text-muted-foreground max-w-xl leading-relaxed">
                     Move delivered, completed commercial projects to long-term cold storage. Keep your active workspace uncluttered while preserving immutable master backups.
-                  </CardDescription>
+                  </TypographyMuted>
                 </div>
               </div>
 

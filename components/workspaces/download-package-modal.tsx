@@ -20,6 +20,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AppImage } from "@/components/ui/app-image";
 import {
+  TypographyH4,
+  TypographyH5,
+  TypographyMuted,
+  TypographySmall,
+} from "@/components/ui/typography";
+import {
   formatBytes,
   getDownloadFilename,
   buildAttachmentDownloadUrl,
@@ -44,6 +50,7 @@ export interface DownloadItem {
   aspectRatio?: string | null;
   thumbnailUrl?: string | null;
   downloadUrl: string;
+  proxyDownloadUrl?: string | null;
   isApproved?: boolean;
 }
 
@@ -252,6 +259,22 @@ export function DownloadPackageModal({
     }, 2500);
   };
 
+  const handleDownloadProxy = (item: DownloadItem) => {
+    const canDownloadItem = isDownloadAllowed || Boolean(item.isApproved);
+    if (!canDownloadItem || !item.proxyDownloadUrl) {
+      toast.error("Web proxy not available for this cut.");
+      return;
+    }
+    const safeTitle = (item.title || "Deliverable").replace(/[/\\?%*:|"<>]/g, "_").trim();
+    const vSuffix = item.versionNumber ? `_V${item.versionNumber}` : "";
+    const filename = `${safeTitle}${vSuffix}_WebProxy.mp4`;
+    triggerDirectDownload(item.proxyDownloadUrl, filename);
+    toast.success(`Downloading Web Proxy for ${item.title}`, {
+      description: `Saving lightweight preview as ${filename}`,
+    });
+    onClientDownload?.({ assetTitle: `${item.title} (Proxy)`, downloadedCount: 1 });
+  };
+
   const handleDownloadSelectedSequential = async () => {
     const targetList =
       selectedDownloadableItems.length > 0
@@ -395,16 +418,16 @@ export function DownloadPackageModal({
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-start gap-3 text-amber-300">
             <Lock className="size-5 shrink-0 mt-0.5 text-amber-400" />
             <div className="space-y-1 text-xs">
-              <p className="font-bold">
+              <TypographySmall className="font-bold">
                 {hasAnyDownloadable
                   ? "Unapproved Drafts Locked — Approved Cuts Unlocked"
                   : "Downloads Currently Restricted"}
-              </p>
-              <p className="text-amber-200/80 leading-relaxed">
+              </TypographySmall>
+              <TypographyMuted className="text-amber-200/80 leading-relaxed">
                 {hasAnyDownloadable
                   ? "Approved assets are unlocked for immediate download below. Approve the remaining cuts to unlock the full package."
                   : "The creator has locked master cut downloads pending final sign-off and approval. Once approved, all high-resolution files unlock automatically."}
-              </p>
+              </TypographyMuted>
             </div>
           </div>
         )}
@@ -416,17 +439,17 @@ export function DownloadPackageModal({
               <div>
                 <div className="flex items-center gap-2">
                   <Sparkles className="size-4 text-primary" />
-                  <h4 className="text-sm font-bold text-white font-display">
+                  <TypographyH4 className="text-sm font-bold text-white font-heading">
                     Direct Cloud Storage Download
-                  </h4>
+                  </TypographyH4>
                 </div>
-                <p className="text-[11px] text-[#aeaeb4] mt-0.5">
+                <TypographyMuted className="text-[11px] text-[#aeaeb4] mt-0.5">
                   {selectedDownloadableItems.length > 0 && selectedSizeBytes > 0
                     ? `${selectedDownloadableItems.length} selected (${formatBytes(
                         selectedSizeBytes
                       )}) · Streams directly from cloud storage to disk.`
                     : "Multi-file queue transfers directly from cloud storage to your disk with zero browser RAM limit."}
-                </p>
+                </TypographyMuted>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
@@ -630,9 +653,9 @@ export function DownloadPackageModal({
 
                       <div className="min-w-0 space-y-0.5">
                         <div className="flex items-center gap-2">
-                          <h5 className="font-semibold text-xs sm:text-sm text-white truncate">
+                          <TypographyH5 className="font-semibold text-xs sm:text-sm text-white truncate font-heading">
                             {item.title}
-                          </h5>
+                          </TypographyH5>
                           {item.versionNumber && (
                             <Badge
                               variant="orange"
@@ -691,6 +714,26 @@ export function DownloadPackageModal({
                             : "Copy direct URL (for FDM / IDM)"}
                         </TooltipContent>
                       </Tooltip>
+
+                      {item.proxyDownloadUrl && (
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={!canDownloadItem}
+                                onClick={() => handleDownloadProxy(item)}
+                                className="h-8 rounded-xl font-mono text-[10px] sm:text-xs font-semibold px-2 sm:px-2.5 text-[#aeaeb4] hover:text-white border-white/10 hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-40 shrink-0"
+                              >
+                                Proxy
+                              </Button>
+                            }
+                          />
+                          <TooltipContent>Download web-compressed proxy (MP4)</TooltipContent>
+                        </Tooltip>
+                      )}
 
                       <Button
                         type="button"

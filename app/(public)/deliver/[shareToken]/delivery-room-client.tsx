@@ -30,7 +30,12 @@ import {
 import { toast } from "sonner";
 import { CutReviewPlayer, type CutReviewPlayerRef } from "@/components/video/cut-review-player";
 import { formatTimecode, parseTimecodeToSeconds } from "@/lib/timecode";
-import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
+import {
+  resolveMediaUrl,
+  resolveThumbnailUrl,
+  parseAspectRatio,
+  detectAspectRatioFromDimensions,
+} from "@/lib/media";
 import { WatermarkOverlay } from "@/components/ui/watermark-overlay";
 import { DownloadPackageModal } from "@/components/workspaces/download-package-modal";
 import { getDownloadFilename, triggerDirectDownload } from "@/lib/download";
@@ -45,7 +50,10 @@ import {
 import { addFeedbackAction, addFeedbackReplyAction, toggleFeedbackResolvedAction } from "@/app/actions/feedback";
 import { AmbientBackground } from "@/components/ui/ambient-background";
 import { AccentThemeProvider } from "@/components/theme/accent-theme-provider";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  UniversalDialogRoot,
+  UniversalDialogContent,
+} from "@/components/ui/universal-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -159,22 +167,25 @@ function DeliveryRoomMasonryMedia({
   src,
   alt,
   type = "video",
+  aspectRatio,
   thumbnailScale,
   children,
 }: {
   src: string;
   alt: string;
   type?: "video" | "photo";
+  aspectRatio?: string | null;
   thumbnailScale?: "Fit" | "Fill";
   children?: React.ReactNode;
 }) {
-  const [naturalAspect, setNaturalAspect] = useState<number | null>(null);
+  const initialRatio = aspectRatio ? parseAspectRatio(aspectRatio).cssRatio : "16 / 10";
+  const [resolvedRatio, setResolvedRatio] = useState<string>(initialRatio);
 
   return (
     <div
       className="relative w-full overflow-hidden bg-black/40"
       style={{
-        aspectRatio: naturalAspect ? `${naturalAspect}` : "16 / 10",
+        aspectRatio: resolvedRatio,
       }}
     >
       <AppImage
@@ -188,8 +199,9 @@ function DeliveryRoomMasonryMedia({
         } group-hover:scale-105 transition-transform duration-500`}
         onLoad={(e) => {
           const img = e.currentTarget;
-          if (img && img.naturalWidth && img.naturalHeight) {
-            setNaturalAspect(img.naturalWidth / img.naturalHeight);
+          if (img && img.naturalWidth && img.naturalHeight && !aspectRatio) {
+            const detected = detectAspectRatioFromDimensions(img.naturalWidth, img.naturalHeight);
+            setResolvedRatio(detected.cssRatio);
           }
         }}
       />
@@ -767,10 +779,12 @@ export function DeliveryRoomClient({
           <AmbientBackground variant="subtle" showNoise={false} accentColor={workspace?.accentColor || undefined} />
 
         {/* 🔒 PASSCODE VERIFICATION MODAL DIALOG */}
-        <Dialog open={isLocked} onOpenChange={() => {}}>
-          <DialogContent
+        <UniversalDialogRoot open={isLocked} onOpenChange={() => {}}>
+          <UniversalDialogContent
+            size="md"
             showCloseButton={false}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-[#121216]/95 backdrop-blur-2xl border border-white/20 text-[#f6f3ec] rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl space-y-6"
+            overlayClassName="bg-black/90 backdrop-blur-md"
+            className="p-6 sm:p-8 w-full max-w-md space-y-6"
           >
             <div className="w-16 h-16 rounded-2xl bg-primary/15 text-primary mx-auto flex items-center justify-center shadow-inner">
               <KeyRound className="size-8" />
@@ -847,8 +861,8 @@ export function DeliveryRoomClient({
             <p className="text-[11px] text-[#5e5e64] font-mono text-center">
               Delivery Token: {delivery.shareToken.slice(0, 8)}...
             </p>
-          </DialogContent>
-        </Dialog>
+          </UniversalDialogContent>
+        </UniversalDialogRoot>
 
       {/* Main Review Room Content (blurred when locked) */}
       <div className={`relative z-10 ${isLocked ? "filter blur-lg pointer-events-none select-none opacity-30 transition-all duration-500" : ""}`}>
@@ -1148,14 +1162,7 @@ export function DeliveryRoomClient({
                         : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
                     } gap-5 pt-1`;
 
-                const numericRatio =
-                  aspectRatioSetting === "16:9"
-                    ? 16 / 9
-                    : aspectRatioSetting === "1:1"
-                    ? 1
-                    : aspectRatioSetting === "9:16"
-                    ? 9 / 16
-                    : 16 / 10;
+                const numericRatio = parseAspectRatio(aspectRatioSetting).numeric;
 
                 return (
                   <div className={containerClasses}>
@@ -1274,6 +1281,7 @@ export function DeliveryRoomClient({
                               src={poster}
                               alt={asset.title}
                               type={isPhoto ? "photo" : "video"}
+                              aspectRatio={asset.aspectRatio}
                               thumbnailScale={thumbnailScale}
                             >
                               {mediaBadges}
@@ -1374,9 +1382,15 @@ export function DeliveryRoomClient({
         </div>
 
       {/* 📹 3. INTERACTIVE VIDEO REVIEW LIGHTBOX MODAL */}
-      {activeAsset && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-2.5 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-[#111115] rounded-2xl sm:rounded-3xl w-full max-w-5xl max-h-[96vh] sm:max-h-[92vh] overflow-y-auto p-4 sm:p-8 space-y-4 sm:space-y-6 text-[#f6f3ec] shadow-2xl relative border border-white/15">
+      <UniversalDialogRoot open={Boolean(activeAsset)} onOpenChange={(open) => !open && setActiveAssetId(null)}>
+        <UniversalDialogContent
+          size="5xl"
+          showCloseButton={false}
+          overlayClassName="bg-black/90 backdrop-blur-xl"
+          className="bg-[#111115] rounded-2xl sm:rounded-3xl w-full max-w-5xl max-h-[96vh] sm:max-h-[92vh] overflow-y-auto p-4 sm:p-8 space-y-4 sm:space-y-6 text-[#f6f3ec] shadow-2xl relative border border-white/15"
+        >
+          {activeAsset && (
+            <div>
             {/* Modal Top Bar */}
             <div className="flex items-center justify-between border-b border-white/10 pb-3 sm:pb-4">
               <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -1386,7 +1400,14 @@ export function DeliveryRoomClient({
                     {activeAsset.title}
                   </TypographyH3>
                   <TypographyMuted className="text-[11px] sm:text-xs text-[#aeaeb4] font-mono truncate">
-                    Aspect: {activeAsset.aspectRatio || "16:9"} · {activeFeedback.length} timecoded notes
+                    Aspect:{" "}
+                    {typeof activeAsset.aspectRatio === "object" && activeAsset.aspectRatio !== null
+                      ? (activeAsset.aspectRatio as any)?.shortLabel ||
+                        (activeAsset.aspectRatio as any)?.id ||
+                        (activeAsset.aspectRatio as any)?.cssRatio ||
+                        "16:9"
+                      : activeAsset.aspectRatio || "16:9"}{" "}
+                    · {activeFeedback.length} timecoded notes
                   </TypographyMuted>
                 </div>
               </div>
@@ -1809,8 +1830,9 @@ export function DeliveryRoomClient({
               })()}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </UniversalDialogContent>
+    </UniversalDialogRoot>
 
       {/* 📦 Master Deliverables Package Modal */}
       <DownloadPackageModal
@@ -1856,6 +1878,7 @@ export function DeliveryRoomClient({
               resolveMediaUrl(
                 activeVer?.downloadUrl || activeVer?.rawFileUrl
               ) || (isPhoto ? thumbUrl : ""),
+            proxyDownloadUrl: (activeVer as any)?.proxyDownloadUrl || null,
             isApproved: a.isApproved,
           };
         })}

@@ -31,6 +31,7 @@ export async function requestAssetUploadAction(input: RequestUploadInput) {
       filename: validated.data.filename,
       fileSizeBytes: validated.data.fileSizeBytes,
       assetType: validated.data.assetType,
+      aspectRatio: validated.data.aspectRatio,
       maxDurationSeconds: validated.data.maxDurationSeconds,
       category: validated.data.category,
       metadata: validated.data.metadata,

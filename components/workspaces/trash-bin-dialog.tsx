@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { UniversalDialog } from "@/components/ui/universal-dialog";
 import { Button } from "@/components/ui/button";
+import { TypographyH4, TypographyMuted, TypographySmall } from "@/components/ui/typography";
 import { toast } from "sonner";
 import {
   listTrashAssetsAction,
@@ -222,10 +223,10 @@ export function TrashBinDialog({
                   <Archive className="size-6" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-zinc-300">Trash is empty</p>
-                  <p className="text-xs text-zinc-500 mt-1 max-w-sm">
+                  <TypographySmall className="text-sm font-semibold text-zinc-300">Trash is empty</TypographySmall>
+                  <TypographyMuted className="text-xs text-zinc-500 mt-1 max-w-sm">
                     When you delete assets from deliveries or portfolio, they will appear here for 30 days before permanent removal.
-                  </p>
+                  </TypographyMuted>
                 </div>
               </div>
             ) : (
@@ -262,9 +263,9 @@ export function TrashBinDialog({
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-semibold text-white truncate max-w-[220px] sm:max-w-xs">
+                          <TypographyH4 className="text-sm font-semibold text-white truncate max-w-[220px] sm:max-w-xs font-heading">
                             {asset.title}
-                          </h4>
+                          </TypographyH4>
                           <span
                             className={`text-[10px] font-mono px-2 py-0.5 rounded-full border shrink-0 ${
                               asset.daysRemaining <= 5

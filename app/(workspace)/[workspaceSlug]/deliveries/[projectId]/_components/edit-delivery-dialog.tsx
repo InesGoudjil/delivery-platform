@@ -10,6 +10,7 @@ import {
   ImageCropResult,
 } from "@/components/ui/image-crop-editor-dialog";
 import { createUploadProgressToast } from "@/lib/upload-toast";
+import { TypographyMuted } from "@/components/ui/typography";
 import type { GalleryItem } from "./types";
 
 interface EditDeliveryDialogProps {
@@ -196,9 +197,9 @@ export function EditDeliveryDialog({
                 </div>
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <TypographyMuted className="text-[11px] text-muted-foreground">
               Shown at the top of the delivery page. Upload and crop to 16:9 or 3:1 banner ratio.
-            </p>
+            </TypographyMuted>
           </div>
 
           {/* ASSETS */}

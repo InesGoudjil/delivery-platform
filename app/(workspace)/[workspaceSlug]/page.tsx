@@ -2,6 +2,15 @@ import { redirect } from "next/navigation";
 import { getServerServices } from "@/core/server";
 import Link from "next/link";
 import { Plus, Film, ArrowRight } from "lucide-react";
+import {
+  TypographyH1,
+  TypographyH2,
+  TypographyH3,
+  TypographyLead,
+  TypographyMuted,
+  TypographyKicker,
+  Typography,
+} from "@/components/ui/typography";
 
 export default async function WorkspaceDashboardPage({
   params,
@@ -26,12 +35,12 @@ export default async function WorkspaceDashboardPage({
   return (
     <div className="w-full space-y-8">
       <div className="pb-6 border-b border-line">
-        <h1 className="font-display text-3xl font-bold">
+        <TypographyH1 className="text-3xl font-bold font-heading">
           Welcome back, {workspace.brandName}
-        </h1>
-        <p className="text-sm text-dim mt-1">
+        </TypographyH1>
+        <TypographyLead className="text-sm text-dim mt-1">
           Manage your projects, portfolio, and client deliveries
-        </p>
+        </TypographyLead>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -42,7 +51,9 @@ export default async function WorkspaceDashboardPage({
 
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-xl font-bold">Recent Deliveries</h2>
+          <TypographyH2 className="text-xl font-bold font-heading border-none pb-0">
+            Recent Deliveries
+          </TypographyH2>
           <Link
             href={`/${workspaceSlug}/deliveries`}
             className="text-xs font-semibold text-orange hover:underline flex items-center gap-1"
@@ -54,7 +65,7 @@ export default async function WorkspaceDashboardPage({
         {projects.length === 0 ? (
           <div className="bg-bg2 border border-line rounded-2xl p-12 text-center">
             <Film className="w-10 h-10 text-dim mx-auto mb-3" />
-            <p className="text-dim text-sm">No projects yet.</p>
+            <TypographyMuted className="text-dim text-sm">No projects yet.</TypographyMuted>
             <Link
               href={`/${workspaceSlug}/deliveries`}
               className="btn px-5 py-2.5 rounded-full text-sm font-bold mt-4 inline-flex items-center gap-2"
@@ -71,8 +82,10 @@ export default async function WorkspaceDashboardPage({
                 className="bg-bg2 border border-line rounded-2xl p-5 hover:border-orange/40 transition flex items-center justify-between"
               >
                 <div>
-                  <h3 className="font-display font-bold text-sm">{project.title}</h3>
-                  <p className="text-xs text-dim mt-1">
+                  <TypographyH3 className="font-heading font-bold text-sm">
+                    {project.title}
+                  </TypographyH3>
+                  <TypographyMuted className="text-xs text-dim mt-1">
                     {project.status === "draft"
                       ? "Draft"
                       : project.status === "in_review"
@@ -80,7 +93,7 @@ export default async function WorkspaceDashboardPage({
                       : project.status === "approved"
                       ? "Approved"
                       : "Archived"}
-                  </p>
+                  </TypographyMuted>
                 </div>
                 <ArrowRight className="w-4 h-4 text-dim" />
               </Link>
@@ -103,10 +116,10 @@ function StatCard({
 }) {
   return (
     <div className="bg-bg2 border border-line rounded-2xl p-5">
-      <p className="text-xs text-dim uppercase tracking-wider font-semibold mb-1">
+      <TypographyKicker className="text-xs text-dim uppercase tracking-wider font-semibold mb-1 block">
         {label}
-      </p>
-      <p className={`font-display text-3xl font-bold ${color}`}>{count}</p>
+      </TypographyKicker>
+      <Typography className={`text-3xl font-bold font-heading ${color}`}>{count}</Typography>
     </div>
   );
 }

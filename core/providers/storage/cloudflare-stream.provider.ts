@@ -93,6 +93,63 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
   }
 
   /**
+   * Ingests a video from a publicly-accessible or presigned URL into Cloudflare Stream via the Copy API.
+   * Allows Cloudflare Stream to pull master video files stored in Cloudflare R2 and generate HLS/DASH streaming renditions.
+   */
+  async copyFromUrl(
+    sourceUrl: string,
+    metadata?: {
+      name?: string;
+      creator?: string;
+      allowedOrigins?: string[];
+      meta?: Record<string, string>;
+    }
+  ): Promise<{ uid: string; status?: string }> {
+    const endpoint = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/stream/copy`;
+
+    const body: Record<string, any> = {
+      url: sourceUrl,
+      meta: {
+        name: metadata?.name || "Video Cut",
+        ...(metadata?.meta || {}),
+      },
+      requireSignedURLs: false,
+    };
+    if (metadata?.creator) {
+      body.creator = metadata.creator;
+    }
+    if (metadata?.allowedOrigins && metadata.allowedOrigins.length > 0) {
+      body.allowedOrigins = metadata.allowedOrigins;
+    }
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.apiToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Cloudflare Stream copy API failed (${response.status}): ${errorText}`);
+    }
+
+    const json = await response.json();
+    if (!json.success || !json.result) {
+      throw new Error(
+        `Cloudflare Stream copy API error: ${JSON.stringify(json.errors || "Unknown error")}`
+      );
+    }
+
+    const uid = json.result.uid;
+    const status = json.result.status?.state || "processing";
+
+    return { uid, status };
+  }
+
+  /**
    * Ensures MP4 downloads are enabled on Cloudflare Stream for a given video UID.
    * By default, Cloudflare Stream disables `/downloads/default.mp4` (returning 404 Not Found)
    * until `POST /accounts/{account_id}/stream/{identifier}/downloads` is called.

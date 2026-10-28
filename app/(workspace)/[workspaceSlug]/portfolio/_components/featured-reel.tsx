@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { TypographyH4 } from "@/components/ui/typography";
 import { toggleFeaturedItemAction } from "@/app/actions/portfolio";
 import { PortfolioItem } from "../portfolio-client";
 
@@ -84,8 +85,10 @@ export function FeaturedReel({
       }}
     >
       <CardHeader className="flex-row items-center justify-between pb-0">
-        <CardTitle className="text-sm font-bold text-white font-heading tracking-wide">
-          Featured on your Work page
+        <CardTitle className="p-0 border-none">
+          <TypographyH4 className="text-sm font-bold text-white font-heading tracking-wide">
+            Featured on your Work page
+          </TypographyH4>
         </CardTitle>
         <CardAction>
           <Badge variant="outline" className="text-[11px] text-zinc-400 font-mono border-white/10 bg-white/5">
@@ -143,8 +146,10 @@ export function FeaturedReel({
               )}
 
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex items-end p-2.5 pointer-events-none">
-                <CardTitle className="text-xs font-bold text-white truncate max-w-full font-heading leading-tight">
-                  {item.title}
+                <CardTitle className="p-0 border-none w-full">
+                  <TypographyH4 className="text-xs font-bold text-white truncate max-w-full font-heading leading-tight">
+                    {item.title}
+                  </TypographyH4>
                 </CardTitle>
               </div>
             </Card>

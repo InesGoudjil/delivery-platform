@@ -119,7 +119,7 @@ export function PortfolioHero({
         )}
 
         {/* Center play icon (if interactive click-to-play video or still) */}
-        {(!isAmbientVideo || videoBehavior === "click_to_play") && (
+        {/*{(!isAmbientVideo || videoBehavior === "click_to_play") && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="size-16 sm:size-20 rounded-full bg-white/10 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-2xl group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-all duration-300">
               {isCoverStill ? (
@@ -129,7 +129,7 @@ export function PortfolioHero({
               )}
             </div>
           </div>
-        )}
+        )}*/}
 
         {/* Minimal Hero Information - Title Only */}
         <div className="absolute bottom-6 left-6 right-6 sm:bottom-10 sm:left-10 sm:right-10 z-10 pointer-events-none">

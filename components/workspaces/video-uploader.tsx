@@ -11,11 +11,13 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
 import {
   requestAssetUploadAction,
   confirmUploadCompletedAction,
 } from "@/app/actions/upload";
 import { createUploadProgressToast } from "@/lib/upload-toast";
+import { inspectMediaFile } from "@/lib/media-inspector";
 import {
   Attachment,
   AttachmentContent,
@@ -33,6 +35,7 @@ export interface DirectUploadParams {
   title?: string;
   assetType?: "video" | "photo_gallery";
   assetId?: string | null;
+  aspectRatio?: string;
   onProgress?: (percent: number, loaded: number, total: number) => void;
   onStatusChange?: (statusText: string) => void;
   onXhrCreated?: (xhr: XMLHttpRequest) => void;
@@ -58,6 +61,7 @@ export async function directUploadMediaFile({
   title,
   assetType,
   assetId,
+  aspectRatio,
   onProgress,
   onStatusChange,
   onXhrCreated,
@@ -65,6 +69,22 @@ export async function directUploadMediaFile({
   const resolvedType =
     assetType || (file.type.startsWith("image/") ? "photo_gallery" : "video");
   const resolvedTitle = title || file.name.replace(/\.[^/.]+$/, "");
+
+  // Auto-detect filmmaker aspect ratio from media file if not explicitly supplied
+  let resolvedAspectRatio = aspectRatio;
+  if (!resolvedAspectRatio) {
+    try {
+      const inspected = await inspectMediaFile(file);
+      if (inspected?.aspectRatio?.id) {
+        resolvedAspectRatio =
+          inspected.aspectRatio.id === "custom"
+            ? inspected.aspectRatio.cssRatio
+            : inspected.aspectRatio.id;
+      }
+    } catch {
+      resolvedAspectRatio = "16:9";
+    }
+  }
 
   onStatusChange?.("Requesting direct upload token...");
 
@@ -77,6 +97,7 @@ export async function directUploadMediaFile({
     filename: file.name,
     fileSizeBytes: file.size,
     assetType: resolvedType,
+    aspectRatio: resolvedAspectRatio,
   });
 
   if (!initRes.success || !initRes.directUpload || !initRes.assetVersion) {
@@ -322,12 +343,12 @@ export function VideoUploader({
             {assetType === "photo_gallery" ? <ImageIcon className="size-5" /> : <Film className="size-5" />}
           </div>
           <div>
-            <h3 className="font-heading text-base font-bold text-card-foreground">
+            <TypographyH3 className="font-heading text-base font-bold text-card-foreground">
               Direct Media Upload
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Direct video stream & high-res image gallery upload up to 5GB
-            </p>
+            </TypographyH3>
+            <TypographyMuted className="text-xs text-muted-foreground">
+              Direct video stream &amp; high-res image gallery upload up to 5GB
+            </TypographyMuted>
           </div>
         </div>
 
@@ -358,11 +379,11 @@ export function VideoUploader({
             <CheckCircle2 className="size-5" />
             <span>Master Asset Uploaded Successfully!</span>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <TypographyMuted className="text-xs text-muted-foreground">
             {assetType === "video"
               ? "Your cut is being encoded into adaptive multi-bitrate streams across global edge nodes."
               : "Your photo gallery asset is now optimized and served globally via high-speed CDN."}
-          </p>
+          </TypographyMuted>
           <div className="flex items-center gap-3 pt-2">
             <Button
               onClick={resetForm}
@@ -404,9 +425,9 @@ export function VideoUploader({
             <div className="text-sm font-bold text-card-foreground">
               Click to select or drag and drop your video cut or photo asset
             </div>
-            <p className="text-xs text-muted-foreground">
+            <TypographyMuted className="text-xs text-muted-foreground">
               Supports ProRes 422/4444, MP4, MOV, PNG, JPG, WEBP up to 5.0 GB
-            </p>
+            </TypographyMuted>
           </div>
         </div>
       )}

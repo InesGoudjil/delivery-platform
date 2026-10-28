@@ -5,6 +5,7 @@ import { Check, Loader2, Sparkles, ArrowRight, Minus } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
 
 export interface PlanItem {
   id: string;
@@ -40,16 +41,16 @@ export function PlanComparisonGrid({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-xl font-bold font-heading text-foreground">
+            <TypographyH3 className="text-xl font-bold font-heading text-foreground">
               Available Workspace Tiers
-            </h3>
+            </TypographyH3>
             <Badge variant="secondary" className="text-[10px] font-mono uppercase tracking-wider">
               Instant Quota Upgrade
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <TypographyMuted className="text-xs text-muted-foreground">
             Upgrade or change your studio plan anytime. Prorated adjustments applied automatically.
-          </p>
+          </TypographyMuted>
         </div>
 
         {/* Billing interval switch */}
@@ -197,8 +198,10 @@ export function PlanComparisonGrid({
 
               <CardHeader className="pb-4 pt-6">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl font-bold font-heading text-foreground">
-                    {plan.name}
+                  <CardTitle className="p-0 border-none">
+                    <TypographyH3 className="text-xl font-bold font-heading text-foreground">
+                      {plan.name}
+                    </TypographyH3>
                   </CardTitle>
                   {isCurrent && (
                     <Badge variant="default" className="text-[10px] font-mono px-2 py-0.5">

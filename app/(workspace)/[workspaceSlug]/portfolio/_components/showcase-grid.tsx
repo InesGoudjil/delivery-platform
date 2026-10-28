@@ -220,8 +220,10 @@ export function ShowcaseGrid({
     >
       <CardHeader className="flex-col sm:flex-row sm:items-center justify-between gap-4 pb-0">
         <div className="space-y-3">
-          <CardTitle className="text-sm font-bold text-white font-heading tracking-wide">
-            Portfolio work — shown to visitors
+          <CardTitle className="p-0 border-none">
+            <TypographyH4 className="text-sm font-bold text-white font-heading tracking-wide">
+              Portfolio work — shown to visitors
+            </TypographyH4>
           </CardTitle>
 
           {/* Filter Pills: Films | Stills | Projects */}
@@ -470,9 +472,9 @@ export function ShowcaseGrid({
                 </div>
               )}
             </Button>
-            <p className="text-[11px] font-mono text-zinc-400">
+            <TypographyMuted className="text-[11px] font-mono text-zinc-400">
               Showing {visibleProjects.length} of {filteredProjects.length} {activeTab}
-            </p>
+            </TypographyMuted>
           </div>
         )}
 

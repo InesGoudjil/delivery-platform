@@ -3,18 +3,18 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, AlertTriangle } from "lucide-react";
+import { Plus, AlertTriangle, FolderPlus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { UniversalDialog } from "@/components/ui/universal-dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+  TypographyH1,
+  TypographyLead,
+  TypographyMuted,
+  TypographyKicker,
+} from "@/components/ui/typography";
 import { createDeliveryAction } from "@/app/actions/deliveries";
 import { toast } from "sonner";
 
@@ -82,8 +82,8 @@ export function DeliveriesHeader({
 
   return (
     <>
-      {/* Create Delivery Project Modal using shadcn Dialog */}
-      <Dialog
+      {/* Create Delivery Project Modal using UniversalDialog */}
+      <UniversalDialog
         open={showCreateModal}
         onOpenChange={(open) => {
           setShowCreateModal(open);
@@ -95,154 +95,160 @@ export function DeliveriesHeader({
             setErrorMessage(null);
           }
         }}
+        size="md"
+        icon={<FolderPlus className="size-5 text-primary" />}
+        badge={
+          <Badge variant="orange" className="font-mono text-[11px] w-fit">
+            NEW REVIEW ROOM
+          </Badge>
+        }
+        title="Create Delivery Workspace"
+        description="Set up a dedicated review workspace for your client."
+        showCloseButton={!creating}
+        bodyClassName="space-y-4"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={creating}
+              onClick={() => setShowCreateModal(false)}
+              className="rounded-full text-xs border-white/10 hover:bg-white/5 text-[#aeaeb4] hover:text-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="create-delivery-form"
+              disabled={creating || isAtLimit}
+              size="sm"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-full shadow-md disabled:opacity-50 cursor-pointer"
+            >
+              {creating ? (
+                <>
+                  <Loader2 className="size-3.5 mr-1.5 animate-spin" /> Creating...
+                </>
+              ) : isAtLimit ? (
+                "Plan Limit Reached"
+              ) : (
+                "Create & Upload Cut"
+              )}
+            </Button>
+          </>
+        }
       >
-        <DialogContent className="sm:max-w-md bg-card border-border">
-          <DialogHeader>
+        {isAtLimit && (
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-2">
+            <div className="flex items-center gap-2 font-bold text-amber-400">
+              <AlertTriangle className="size-4 shrink-0" />
+              <span>
+                Delivery Link Limit Reached ({activeCount} / {clientLinksLimit} Active)
+              </span>
+            </div>
+            <TypographyMuted className="text-muted-foreground text-[11px] leading-relaxed">
+              Your current plan allows up to {clientLinksLimit} active project delivery link{clientLinksLimit > 1 ? "s" : ""}. To create more review rooms, archive an existing project or upgrade your plan.
+            </TypographyMuted>
+            <div className="pt-1">
+              <Button
+                asChild
+                size="sm"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs h-8 rounded-full"
+              >
+                <Link href={`/${workspace.slug}/subscription`}>
+                  Upgrade Plan (Unlimited Links)
+                </Link>
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="p-3 rounded-2xl bg-destructive/15 border border-destructive/30 text-destructive text-xs font-semibold">
+            {errorMessage}
+          </div>
+        )}
+
+        <form id="create-delivery-form" onSubmit={handleCreateProject} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
+              Project Title <span className="text-primary">*</span>
+            </Label>
+            <Input
+              type="text"
+              required
+              disabled={isAtLimit || creating}
+              placeholder="e.g. Omakase Counter Launch Film"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              className="text-xs bg-white/[0.04] border-white/10 focus-visible:border-primary/50 text-[#f6f3ec]"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
+              Client / Brand Name
+            </Label>
+            <Input
+              type="text"
+              disabled={isAtLimit || creating}
+              placeholder="e.g. Lost in Tokyo Group"
+              value={newClient}
+              onChange={(e) => setNewClient(e.target.value)}
+              className="text-xs bg-white/[0.04] border-white/10 focus-visible:border-primary/50 text-[#f6f3ec]"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Badge variant="orange" className="font-mono text-[11px] w-fit">
-                NEW REVIEW ROOM
-              </Badge>
-              <DialogTitle className="text-xl font-bold font-display text-card-foreground">
-                Create Delivery Workspace
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground font-sans">
-                Set up a dedicated review workspace for your client.
-              </DialogDescription>
-            </div>
-          </DialogHeader>
-
-          {isAtLimit && (
-            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-2">
-              <div className="flex items-center gap-2 font-bold text-amber-400">
-                <AlertTriangle className="size-4 shrink-0" />
-                <span>
-                  Delivery Link Limit Reached ({activeCount} / {clientLinksLimit} Active)
-                </span>
+              <div className="flex items-center justify-between">
+                <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
+                  Client Email
+                </Label>
+                <span className="text-[10px] text-muted-foreground/60 font-mono">Optional</span>
               </div>
-              <p className="text-muted-foreground text-[11px] leading-relaxed">
-                Your current plan allows up to {clientLinksLimit} active project delivery link{clientLinksLimit > 1 ? "s" : ""}. To create more review rooms, archive an existing project or upgrade your plan.
-              </p>
-              <div className="pt-1">
-                <Button
-                  asChild
-                  size="sm"
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs h-8 rounded-full"
-                >
-                  <Link href={`/${workspace.slug}/subscription`}>
-                    Upgrade Plan (Unlimited Links)
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {errorMessage && (
-            <div className="p-3 rounded-xl bg-destructive/15 border border-destructive/30 text-destructive text-xs font-semibold">
-              {errorMessage}
-            </div>
-          )}
-
-          <form onSubmit={handleCreateProject} className="space-y-4 pt-1">
-            <div className="space-y-1.5">
-              <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
-                Project Title <span className="text-primary">*</span>
-              </Label>
               <Input
-                type="text"
-                required
-                disabled={isAtLimit}
-                placeholder="e.g. Omakase Counter Launch Film"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                className="text-xs"
+                type="email"
+                disabled={isAtLimit || creating}
+                placeholder="client@example.com"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                className="text-xs bg-white/[0.04] border-white/10 focus-visible:border-primary/50 text-[#f6f3ec]"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
-                Client / Brand Name
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
+                  Phone / WhatsApp
+                </Label>
+                <span className="text-[10px] text-muted-foreground/60 font-mono">Optional</span>
+              </div>
               <Input
-                type="text"
-                disabled={isAtLimit}
-                placeholder="e.g. Lost in Tokyo Group"
-                value={newClient}
-                onChange={(e) => setNewClient(e.target.value)}
-                className="text-xs"
+                type="tel"
+                disabled={isAtLimit || creating}
+                placeholder="+1 555 123 4567"
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
+                className="text-xs bg-white/[0.04] border-white/10 focus-visible:border-primary/50 text-[#f6f3ec]"
               />
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
-                    Client Email
-                  </Label>
-                  <span className="text-[10px] text-muted-foreground/60 font-mono">Optional</span>
-                </div>
-                <Input
-                  type="email"
-                  disabled={isAtLimit}
-                  placeholder="client@example.com"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  className="text-xs"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
-                    Phone / WhatsApp
-                  </Label>
-                  <span className="text-[10px] text-muted-foreground/60 font-mono">Optional</span>
-                </div>
-                <Input
-                  type="tel"
-                  disabled={isAtLimit}
-                  placeholder="+1 555 123 4567"
-                  value={newPhone}
-                  onChange={(e) => setNewPhone(e.target.value)}
-                  className="text-xs"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowCreateModal(false)}
-                className="rounded-full text-xs"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={creating || isAtLimit}
-                size="sm"
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-full shadow-md disabled:opacity-50"
-              >
-                {creating ? "Creating..." : isAtLimit ? "Plan Limit Reached" : "Create & Upload Cut"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </form>
+      </UniversalDialog>
 
       {/* Workspace Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
         <div>
-          <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1 font-semibold">
+          <TypographyKicker className="text-xs font-mono text-primary uppercase tracking-wider mb-1 font-semibold block">
             WORKSPACE DASHBOARD
-          </div>
-          <h1 className="text-3xl font-bold font-display text-foreground">
+          </TypographyKicker>
+          <TypographyH1 className="text-3xl font-bold font-heading text-foreground">
             Client Deliveries
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1 font-sans">
+          </TypographyH1>
+          <TypographyLead className="text-sm text-muted-foreground mt-1 font-sans">
             Your projects and client review links with video streaming, timecoded feedback, and WhatsApp delivery.
-          </p>
+          </TypographyLead>
         </div>
 
         <div className="flex items-center gap-3">

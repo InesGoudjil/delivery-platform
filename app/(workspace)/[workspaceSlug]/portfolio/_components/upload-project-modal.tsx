@@ -19,6 +19,7 @@ import {
   Info,
 } from "lucide-react";
 import { UniversalDialog } from "@/components/ui/universal-dialog";
+import { TypographyMuted } from "@/components/ui/typography";
 import {
   createShowcaseProjectAction,
   attachAssetsToShowcaseProjectAction,
@@ -753,9 +754,9 @@ export function UploadProjectModal({
                   <div className="text-sm font-bold text-white">
                     Drop project media here, or click to browse
                   </div>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
+                  <TypographyMuted className="text-xs text-zinc-400 leading-relaxed">
                     Select multiple videos and stills at once. Supports MP4, MOV, PNG, JPG, WEBP up to 5GB each.
-                  </p>
+                  </TypographyMuted>
                 </div>
 
                 <Button
@@ -863,9 +864,9 @@ export function UploadProjectModal({
                                 placeholder="Asset Title"
                                 className="bg-transparent text-xs font-bold text-white border-b border-transparent hover:border-white/20 focus:border-primary focus:outline-none px-0.5 py-0.5 w-full max-w-sm truncate"
                               />
-                              <p className="text-[10px] font-mono text-zinc-400">
+                              <TypographyMuted className="text-[10px] font-mono text-zinc-400">
                                 {formatBytes(item.file.size)} · {item.file.name}
-                              </p>
+                              </TypographyMuted>
                             </div>
                           </div>
 
@@ -949,7 +950,7 @@ export function UploadProjectModal({
 
           {/* Modal Action Buttons Footer */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-white/10">
-            <p className="text-xs text-zinc-400">
+            <TypographyMuted className="text-xs text-zinc-400">
               {completedCount === totalCount && totalCount > 0 ? (
                 <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
                   <CheckCircle2 className="size-4" /> All {totalCount} items uploaded successfully!
@@ -959,7 +960,7 @@ export function UploadProjectModal({
                   {queuedCount} {queuedCount === 1 ? "asset" : "assets"} queued for this showcase project
                 </span>
               )}
-            </p>
+            </TypographyMuted>
 
             <div className="flex items-center gap-2.5 justify-end">
               {uploading ? (

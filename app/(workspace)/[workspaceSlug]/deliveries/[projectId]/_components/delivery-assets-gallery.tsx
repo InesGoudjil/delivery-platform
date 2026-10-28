@@ -16,6 +16,12 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { AppImage } from "@/components/ui/app-image";
 import { TiltCard } from "@/components/ui/motion";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import {
+  TypographyH2,
+  TypographyH4,
+  TypographyKicker,
+  TypographyMuted,
+} from "@/components/ui/typography";
 import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
 import { WatermarkOverlay } from "@/components/ui/watermark-overlay";
 import type { GalleryItem, AppearanceSettings } from "./types";
@@ -125,12 +131,12 @@ export function DeliveryAssetsGallery({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <span className="text-xs font-bold text-primary uppercase tracking-widest block">
+          <TypographyKicker className="text-xs font-bold text-primary uppercase tracking-widest block">
             Deliverables
-          </span>
-          <h2 className="text-3xl font-black font-heading tracking-tight text-foreground uppercase">
+          </TypographyKicker>
+          <TypographyH2 className="text-3xl font-black font-heading tracking-tight text-foreground uppercase border-none pb-0">
             PROJECT ASSETS
-          </h2>
+          </TypographyH2>
         </div>
 
         <div className="flex items-center gap-3">
@@ -392,11 +398,21 @@ export function DeliveryAssetsGallery({
 
                 {showCardInfo && (
                   <CardFooter className="p-3.5 border-t border-border/40 flex-col items-start gap-1">
-                    <CardTitle className="text-xs font-bold text-card-foreground truncate w-full">
-                      {item.title}
+                    <CardTitle className="p-0 border-none w-full">
+                      <TypographyH4 className="text-xs font-bold text-card-foreground truncate w-full font-heading">
+                        {item.title}
+                      </TypographyH4>
                     </CardTitle>
                     <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground w-full">
-                      <span>Aspect: {item.aspectRatio}</span>
+                      <span>
+                        Aspect:{" "}
+                        {typeof item.aspectRatio === "object" && item.aspectRatio !== null
+                          ? (item.aspectRatio as any)?.shortLabel ||
+                            (item.aspectRatio as any)?.id ||
+                            (item.aspectRatio as any)?.cssRatio ||
+                            "16:9"
+                          : item.aspectRatio || "16:9"}
+                      </span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {onToggleApproval ? (
                           <Button
@@ -507,9 +523,9 @@ export function DeliveryAssetsGallery({
             )}
           </Button>
           {totalCount !== undefined && totalCount > 0 && (
-            <p className="text-[11px] font-mono text-muted-foreground">
+            <TypographyMuted className="text-[11px] font-mono text-muted-foreground">
               Showing {filteredItems.length} of {totalCount} total assets
-            </p>
+            </TypographyMuted>
           )}
         </div>
       )}
