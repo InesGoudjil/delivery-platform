@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
+import { TypographyH3, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 
 export interface LightboxHeaderProps {
   title: string;
@@ -90,7 +90,7 @@ export function LightboxHeader({
                   className="rounded-full bg-white/5 hover:bg-white/15 text-white text-xs font-semibold h-8 px-2.5 flex items-center gap-1.5 transition-colors cursor-pointer border border-white/10 shrink-0"
                 >
                   <ArrowLeft className="size-3.5" />
-                  <span className="hidden sm:inline">Back</span>
+                  <TypographySpan className="hidden sm:inline">Back</TypographySpan>
                 </Button>
               }
             />
@@ -123,17 +123,17 @@ export function LightboxHeader({
             )}
           </div>
           <TypographyMuted className="text-xs text-muted-foreground font-mono truncate flex items-center gap-1.5 mt-0.5">
-            <span>Aspect: {displayAspectRatio}</span>
-            <span>·</span>
+            <TypographySpan>Aspect: {displayAspectRatio}</TypographySpan>
+            <TypographySpan>·</TypographySpan>
             {timecode && (
               <>
-                <span>{timecode}</span>
-                <span>·</span>
+                <TypographySpan>{timecode}</TypographySpan>
+                <TypographySpan>·</TypographySpan>
               </>
             )}
-            <span className="text-zinc-400">
+            <TypographySpan className="text-zinc-400">
               {isStill ? "Hi-Res Still" : "ProRes / Master Stream"}
-            </span>
+            </TypographySpan>
           </TypographyMuted>
         </div>
       </div>
@@ -161,12 +161,12 @@ export function LightboxHeader({
                   {isApproved ? (
                     <>
                       <CheckCircle2 className="size-3.5 text-emerald-400" />
-                      <span>Approved</span>
+                      <TypographySpan>Approved</TypographySpan>
                     </>
                   ) : (
                     <>
                       <Check className="size-3.5" />
-                      <span>Mark Approved</span>
+                      <TypographySpan>Mark Approved</TypographySpan>
                     </>
                   )}
                 </Button>
@@ -196,9 +196,9 @@ export function LightboxHeader({
                   }`}
                 >
                   <UploadCloud className="size-3.5 text-primary" />
-                  <span className="hidden md:inline">
+                  <TypographySpan className="hidden md:inline">
                     {showUploadZone ? "Close Upload" : `Upload V${nextVersionNumber || activeVersionNumber + 1}`}
-                  </span>
+                  </TypographySpan>
                 </Button>
               }
             />
@@ -221,7 +221,7 @@ export function LightboxHeader({
                   className="rounded-full border-white/20 text-white bg-white/5 hover:bg-white/15 text-xs font-bold px-3 py-1.5 cursor-pointer flex items-center gap-1.5 h-8 transition-colors"
                 >
                   <Download className="size-3.5 text-primary" />
-                  <span className="hidden lg:inline">Download</span>
+                  <TypographySpan className="hidden lg:inline">Download</TypographySpan>
                 </Button>
               }
             />

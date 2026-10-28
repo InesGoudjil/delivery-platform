@@ -18,7 +18,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TypographyH1, TypographyKicker } from "@/components/ui/typography";
+import { TypographyH1, TypographyKicker, TypographySpan } from "@/components/ui/typography";
 import { cn } from "@/lib/utils";
 
 interface DeliveryHeroBannerProps {
@@ -84,9 +84,9 @@ export function DeliveryHeroBanner({
           {/* Status Category Prefix */}
           <div className="flex items-center gap-2 text-xs font-bold text-primary tracking-wide uppercase">
             <span className="size-2 rounded-full bg-primary animate-pulse" />
-            <TypographyKicker as="span" className="text-primary font-bold">
+            <TypographySpan variant="kicker" className="text-primary font-bold">
               Editing · {projectTitle}
-            </TypographyKicker>
+            </TypographySpan>
           </div>
 
           {/* Giant Uppercase Title */}
@@ -98,9 +98,9 @@ export function DeliveryHeroBanner({
         {/* Stats Bar (STATUS, ASSETS, CLIENT APPROVED) */}
         <div className="flex flex-wrap items-center gap-8 pt-2 border-t border-border/40">
           <div>
-            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+            <TypographySpan className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
               STATUS
-            </span>
+            </TypographySpan>
             <div className="flex items-center gap-1.5 mt-1.5">
               <Badge
                 variant={projectStatus === "approved" ? "sage" : "orange"}
@@ -112,21 +112,21 @@ export function DeliveryHeroBanner({
           </div>
 
           <div>
-            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+            <TypographySpan className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
               ASSETS
-            </span>
-            <span className="text-base font-extrabold text-foreground mt-0.5 block">
+            </TypographySpan>
+            <TypographySpan className="text-base font-extrabold text-foreground mt-0.5 block">
               {totalAssetsCount}
-            </span>
+            </TypographySpan>
           </div>
 
           <div>
-            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+            <TypographySpan className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
               CLIENT APPROVED
-            </span>
-            <span className="text-base font-extrabold text-primary mt-0.5 block">
+            </TypographySpan>
+            <TypographySpan className="text-base font-extrabold text-primary mt-0.5 block">
               {approvedCount}/{totalAssetsCount}
-            </span>
+            </TypographySpan>
           </div>
         </div>
 
@@ -138,7 +138,7 @@ export function DeliveryHeroBanner({
             className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs px-5 py-2.5 shadow-lg shadow-primary/20 transition-all cursor-pointer flex items-center gap-2"
           >
             <Share2 className="size-3.5" />
-            <span>SHARE A LINK</span>
+            <TypographySpan>SHARE A LINK</TypographySpan>
           </Button>
 
           {/* SEND TO CLIENT Button */}
@@ -159,7 +159,7 @@ export function DeliveryHeroBanner({
               rel="noreferrer"
             >
               <MessageCircle className="size-3.5 text-emerald-400" />
-              <span>{clientPhone ? "WHATSAPP CLIENT" : "SEND TO CLIENT"}</span>
+              <TypographySpan>{clientPhone ? "WHATSAPP CLIENT" : "SEND TO CLIENT"}</TypographySpan>
             </a>
           </Button>
 
@@ -170,7 +170,7 @@ export function DeliveryHeroBanner({
             className="rounded-full border-border/60 bg-background/50 backdrop-blur-md hover:bg-muted text-foreground font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
           >
             <Pencil className="size-3.5" />
-            <span>EDIT DELIVERY</span>
+            <TypographySpan>EDIT DELIVERY</TypographySpan>
           </Button>
 
           {/* THE SILO — AWS S3 Glacier Deep Archive Button & Status */}
@@ -181,7 +181,7 @@ export function DeliveryHeroBanner({
                 className="rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 font-extrabold text-xs px-5 py-2.5 flex items-center gap-2 cursor-wait"
               >
                 <Loader2 className="size-3.5 animate-spin text-blue-400" />
-                <span>THAWING IN SILO ({siloTier || "Bulk"} Tier · 12–48h)</span>
+                <TypographySpan>THAWING IN SILO ({siloTier || "Bulk"} Tier · 12–48h)</TypographySpan>
               </Button>
               {onCheckSiloStatus && (
                 <Button
@@ -198,7 +198,7 @@ export function DeliveryHeroBanner({
           ) : siloStatus === "restored" ? (
             <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-xs px-3 py-1 font-semibold flex items-center gap-1.5 rounded-full">
               <CheckCircle2 className="size-3.5 text-emerald-400" />
-              <span>THAWED FROM SILO (ACTIVE)</span>
+              <TypographySpan>THAWED FROM SILO (ACTIVE)</TypographySpan>
             </Badge>
           ) : projectStatus === "archived" || siloStatus === "archived" ? (
             <Button
@@ -208,7 +208,7 @@ export function DeliveryHeroBanner({
               className="rounded-full border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
             >
               <ArchiveRestore className="size-3.5 text-blue-400" />
-              <span>RESTORE FROM THE SILO</span>
+              <TypographySpan>RESTORE FROM THE SILO</TypographySpan>
             </Button>
           ) : (
             <Button
@@ -218,7 +218,7 @@ export function DeliveryHeroBanner({
               className="rounded-full border-border/60 bg-background/50 backdrop-blur-md hover:bg-muted text-foreground font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
             >
               <Lock className="size-3.5 text-muted-foreground" />
-              <span>ARCHIVE TO THE SILO</span>
+              <TypographySpan>ARCHIVE TO THE SILO</TypographySpan>
             </Button>
           )}
 
@@ -229,7 +229,7 @@ export function DeliveryHeroBanner({
             className="rounded-full border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
           >
             <Sparkles className="size-3.5" />
-            <span>PUBLISH TO PORTFOLIO</span>
+            <TypographySpan>PUBLISH TO PORTFOLIO</TypographySpan>
           </Button>
 
           {/* DOWNLOAD ALL Button -> Opens Download Package Modal */}
@@ -240,7 +240,7 @@ export function DeliveryHeroBanner({
               className="rounded-full border-border/60 bg-background/50 backdrop-blur-md hover:bg-muted text-foreground font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
             >
               <Download className="size-3.5 text-primary" />
-              <span>DOWNLOAD ALL</span>
+              <TypographySpan>DOWNLOAD ALL</TypographySpan>
             </Button>
           )}
 

@@ -29,6 +29,7 @@ import {
   TypographyLead,
   TypographyMuted,
   TypographyKicker,
+  TypographySpan,
 } from "@/components/ui/typography";
 import {
   Avatar,
@@ -183,9 +184,9 @@ export function MembersClient({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
         <div>
           <TypographyKicker className="flex items-center gap-2 text-xs font-mono text-primary uppercase tracking-wider mb-1">
-            <span>{workspace.brandName}</span>
-            <span>•</span>
-            <span>{isPersonalWorkspace ? "Personal Workspace" : "Studio Team Workspace"}</span>
+            <TypographySpan>{workspace.brandName}</TypographySpan>
+            <TypographySpan>•</TypographySpan>
+            <TypographySpan>{isPersonalWorkspace ? "Personal Workspace" : "Studio Team Workspace"}</TypographySpan>
           </TypographyKicker>
           <TypographyH1 className="text-2xl sm:text-3xl font-bold font-heading text-foreground">
             Team Collaborators
@@ -201,9 +202,9 @@ export function MembersClient({
           {/* Seat Capacity Badge */}
           <div className="text-xs font-mono text-muted-foreground bg-muted px-3.5 py-2 rounded-full border border-border flex items-center gap-2">
             <Users className="size-3.5 text-primary" />
-            <span>
+            <TypographySpan>
               <strong className="text-foreground">{seatStats.usedSeats}</strong> of {seatStats.maxSeats} seats used
-            </span>
+            </TypographySpan>
           </div>
 
           {!isPersonalWorkspace && canManage && (
@@ -213,7 +214,7 @@ export function MembersClient({
               className="rounded-full bg-primary text-black font-bold hover:bg-primary/90 shadow-md shadow-primary/20 text-xs cursor-pointer disabled:opacity-50"
             >
               <UserPlus className="size-3.5 mr-1.5" />
-              <span>Invite Collaborator</span>
+              <TypographySpan>Invite Collaborator</TypographySpan>
             </Button>
           )}
         </div>
@@ -226,7 +227,7 @@ export function MembersClient({
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs font-bold text-foreground">
                 <Sparkles className="size-4 text-primary" />
-                <span>Collaborate with Team Members</span>
+                <TypographySpan>Collaborate with Team Members</TypographySpan>
               </div>
               <TypographyMuted className="text-xs text-muted-foreground max-w-xl">
                 Personal workspaces are designed for individual creators.
@@ -241,7 +242,7 @@ export function MembersClient({
             >
               <Link href="/new-workspace">
                 <Building2 className="size-3.5 mr-1.5" />
-                <span>Create Team Workspace</span>
+                <TypographySpan>Create Team Workspace</TypographySpan>
               </Link>
             </Button>
           </CardContent>
@@ -255,9 +256,9 @@ export function MembersClient({
         size="md"
         title="Invite Team Collaborator"
         badge={
-          <span className="text-[11px] font-mono text-muted-foreground">
+          <TypographySpan className="text-[11px] font-mono text-muted-foreground">
             {seatStats.remainingSeats} seat{seatStats.remainingSeats > 1 ? "s" : ""} left
-          </span>
+          </TypographySpan>
         }
         description="Collaborators can upload cuts, reply to client notes, and manage deliveries."
         footer={
@@ -358,18 +359,18 @@ export function MembersClient({
 
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-card-foreground">
+                      <TypographySpan className="font-bold text-sm text-card-foreground">
                         {mem.name}
-                      </span>
+                      </TypographySpan>
                       {isCurrentCaller && (
-                        <span className="text-[10px] font-mono px-2 py-0.2 rounded-full bg-muted text-muted-foreground border border-border">
+                        <TypographySpan className="text-[10px] font-mono px-2 py-0.2 rounded-full bg-muted text-muted-foreground border border-border">
                           You
-                        </span>
+                        </TypographySpan>
                       )}
                       {isWorkspaceOwner && (
-                        <span className="text-[10px] font-mono font-semibold px-2 py-0.2 rounded-full bg-primary/15 text-primary border border-primary/30">
+                        <TypographySpan className="text-[10px] font-mono font-semibold px-2 py-0.2 rounded-full bg-primary/15 text-primary border border-primary/30">
                           Workspace Owner
-                        </span>
+                        </TypographySpan>
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground font-mono">
@@ -392,9 +393,9 @@ export function MembersClient({
                       <option value="viewer">Viewer</option>
                     </select>
                   ) : (
-                    <span className="px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-muted text-muted-foreground capitalize border border-border">
+                    <TypographySpan className="px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-muted text-muted-foreground capitalize border border-border">
                       {mem.role}
-                    </span>
+                    </TypographySpan>
                   )}
 
                   {/* Remove Member Button */}
@@ -447,12 +448,12 @@ export function MembersClient({
 
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm text-card-foreground">
+                        <TypographySpan className="font-semibold text-sm text-card-foreground">
                           {invite.email}
-                        </span>
-                        <span className="flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                        </TypographySpan>
+                        <TypographySpan className="flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
                           <Clock className="size-2.5" /> Invited
-                        </span>
+                        </TypographySpan>
                       </div>
                       <div className="text-xs text-muted-foreground font-mono">
                         Expires {new Date(invite.expiresAt).toLocaleDateString()}
@@ -461,9 +462,9 @@ export function MembersClient({
                   </div>
 
                   <div className="flex items-center gap-2.5 self-end sm:self-auto">
-                    <span className="px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-muted text-muted-foreground capitalize border border-border">
+                    <TypographySpan className="px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-muted text-muted-foreground capitalize border border-border">
                       {invite.role}
-                    </span>
+                    </TypographySpan>
 
                     {/* Copy Invite Link */}
                     <Button
@@ -476,12 +477,12 @@ export function MembersClient({
                       {copiedToken === invite.token ? (
                         <>
                           <CheckCheck className="size-3.5 text-primary" />
-                          <span className="text-primary font-bold">Copied</span>
+                          <TypographySpan className="text-primary font-bold">Copied</TypographySpan>
                         </>
                       ) : (
                         <>
                           <Copy className="size-3.5" />
-                          <span>Copy Link</span>
+                          <TypographySpan>Copy Link</TypographySpan>
                         </>
                       )}
                     </Button>

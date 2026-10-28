@@ -11,7 +11,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TypographyH4, TypographyMuted } from "@/components/ui/typography";
+import { TypographyH4, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 
 export interface LightboxVersionUploadProps {
   nextVersionNumber: number;
@@ -117,7 +117,7 @@ export function LightboxVersionUpload({
       {uploadError && (
         <div className="mt-3 p-3 rounded-xl bg-destructive/15 border border-destructive/30 text-destructive text-xs font-semibold flex items-start gap-2 animate-in fade-in">
           <AlertCircle className="size-4 shrink-0 mt-0.5" />
-          <span>{uploadError}</span>
+          <TypographySpan>{uploadError}</TypographySpan>
         </div>
       )}
 
@@ -125,11 +125,11 @@ export function LightboxVersionUpload({
       {isUploading ? (
         <div className="pt-4 space-y-3">
           <div className="flex items-center justify-between text-xs font-mono">
-            <span className="text-white/90 flex items-center gap-2">
+            <TypographySpan className="text-white/90 flex items-center gap-2">
               <Loader2 className="size-3.5 animate-spin text-primary" />
               {uploadStatusText || `Uploading V${nextVersionNumber}...`}
-            </span>
-            <span className="font-bold text-primary">{uploadProgress}%</span>
+            </TypographySpan>
+            <TypographySpan className="font-bold text-primary">{uploadProgress}%</TypographySpan>
           </div>
 
           <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
@@ -181,7 +181,7 @@ export function LightboxVersionUpload({
               className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 px-4 py-1.5 h-8 cursor-pointer flex items-center gap-1.5 shadow-md shadow-primary/20"
             >
               <Upload className="size-3.5" />
-              <span>Select File for V{nextVersionNumber}</span>
+              <TypographySpan>Select File for V{nextVersionNumber}</TypographySpan>
             </Button>
           </div>
         </div>

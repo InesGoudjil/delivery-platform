@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PortfolioAsset, PortfolioProject } from "@/lib/portfolio-data";
+import { TypographySpan } from "@/components/ui/typography";
 import { usePortfolioModal } from "./portfolio-context";
 import { Button } from "@/components/ui/button";
 import { submitPortfolioInquiryAction } from "@/app/actions/inquiries";
@@ -195,7 +196,7 @@ export function PortfolioModals() {
         footerExtra={
           activeStill ? (
             <div className="w-full flex items-center justify-between text-xs font-mono text-zinc-400">
-              <span className="truncate max-w-sm sm:max-w-md">{activeStill.desc}</span>
+              <TypographySpan className="truncate max-w-sm sm:max-w-md">{activeStill.desc}</TypographySpan>
               <Button
                 variant="link"
                 size="xs"
@@ -263,7 +264,7 @@ export function PortfolioModals() {
                 className="px-5 py-2 h-auto rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer shadow-lg shadow-primary/25"
               >
                 <MessageCircle className="size-4" />
-                <span>Inquire About Similar Film</span>
+                <TypographySpan>Inquire About Similar Film</TypographySpan>
               </Button>
             </div>
           ) : null
@@ -304,12 +305,12 @@ export function PortfolioModals() {
 
               <div className="absolute bottom-6 left-6 right-6 z-10 space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 rounded-full bg-primary text-primary-foreground text-[11px] font-bold uppercase tracking-wider">
+                  <TypographySpan className="px-3 py-1 rounded-full bg-primary text-primary-foreground text-[11px] font-bold uppercase tracking-wider">
                     {selectedProject.client}
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-black/60 border border-white/15 text-zinc-300 text-[11px] font-mono">
+                  </TypographySpan>
+                  <TypographySpan className="px-3 py-1 rounded-full bg-black/60 border border-white/15 text-zinc-300 text-[11px] font-mono">
                     {selectedProject.tc}
-                  </span>
+                  </TypographySpan>
                 </div>
                 <h2 className="font-heading font-black text-2xl sm:text-4xl text-white uppercase tracking-tight">
                   {selectedProject.title}
@@ -326,9 +327,9 @@ export function PortfolioModals() {
                 <h3 className="font-heading font-bold text-sm text-white uppercase tracking-wider">
                   Project Gallery
                 </h3>
-                <span className="text-xs text-zinc-400 font-mono">
+                <TypographySpan className="text-xs text-zinc-400 font-mono">
                   {selectedProject.assetIds.length} Assets
-                </span>
+                </TypographySpan>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -380,9 +381,9 @@ export function PortfolioModals() {
 
             {/* Modal Bottom Inquire */}
             <div className="p-4 bg-[#0a0a0b] border-t border-white/10 flex items-center justify-between">
-              <span className="text-xs text-zinc-400 font-mono">
+              <TypographySpan className="text-xs text-zinc-400 font-mono">
                 Location: {selectedProject.location}
-              </span>
+              </TypographySpan>
               <Button
                 onClick={() =>
                   handleWhatsAppChat(
@@ -392,7 +393,7 @@ export function PortfolioModals() {
                 className="px-5 py-2 h-auto rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-primary/25"
               >
                 <MessageCircle className="size-3.5" />
-                <span>Inquire About Project</span>
+                <TypographySpan>Inquire About Project</TypographySpan>
               </Button>
             </div>
           </div>
@@ -448,7 +449,7 @@ export function PortfolioModals() {
                     className="px-6 py-2.5 h-auto rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 mx-auto cursor-pointer shadow-lg shadow-primary/25"
                   >
                     <MessageCircle className="size-4" />
-                    <span>Open WhatsApp Chat Directly</span>
+                    <TypographySpan>Open WhatsApp Chat Directly</TypographySpan>
                   </Button>
                 </div>
               </div>
@@ -477,7 +478,7 @@ export function PortfolioModals() {
 
                 <div className="flex items-center gap-3 text-zinc-500 text-[11px] font-mono">
                   <span className="flex-1 h-px bg-white/10" />
-                  <span>OR SEND DETAILS</span>
+                  <TypographySpan>OR SEND DETAILS</TypographySpan>
                   <span className="flex-1 h-px bg-white/10" />
                 </div>
 

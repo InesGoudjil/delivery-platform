@@ -4,7 +4,7 @@ import React from "react";
 import { Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import { UniversalDialog } from "@/components/ui/universal-dialog";
 import { Button } from "@/components/ui/button";
-import { TypographyMuted } from "@/components/ui/typography";
+import { TypographyMuted, TypographySpan } from "@/components/ui/typography";
 
 interface DeleteConfirmDialogProps {
   isOpen: boolean;
@@ -81,12 +81,12 @@ export function DeleteConfirmDialog({
             {isDeleting ? (
               <>
                 <Loader2 className="size-3.5 animate-spin" />
-                <span>{isPermanent ? "Deleting..." : "Moving..."}</span>
+                <TypographySpan>{isPermanent ? "Deleting..." : "Moving..."}</TypographySpan>
               </>
             ) : (
               <>
                 <Trash2 className="size-3.5" />
-                <span>{displayConfirmText}</span>
+                <TypographySpan>{displayConfirmText}</TypographySpan>
               </>
             )}
           </Button>

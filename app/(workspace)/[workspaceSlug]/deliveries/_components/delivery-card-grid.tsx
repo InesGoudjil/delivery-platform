@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
+import { TypographyH3, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import { toast } from "sonner";
 import { DeliveryProjectItem } from "../deliveries-client";
 
@@ -115,7 +115,7 @@ export function DeliveryCardGrid({
                 <Link href={`/${workspaceSlug}/deliveries/${item.id}`} className="block group/link">
                   <CardTitle className="p-0 border-none">
                     <TypographyH3 className="text-xl font-bold font-heading text-card-foreground group-hover/link:text-primary transition-colors flex items-center justify-between">
-                      <span>{item.title}</span>
+                      <TypographySpan>{item.title}</TypographySpan>
                       <ArrowRight className="size-4 text-muted-foreground group-hover/link:text-primary opacity-0 group-hover/link:opacity-100 transition-all transform group-hover/link:translate-x-1" />
                     </TypographyH3>
                   </CardTitle>
@@ -182,12 +182,12 @@ export function DeliveryCardGrid({
                   {isCopied ? (
                     <>
                       <Check className="size-3.5 text-emerald-500" />
-                      <span className="text-emerald-500 font-semibold">Copied</span>
+                      <TypographySpan className="text-emerald-500 font-semibold">Copied</TypographySpan>
                     </>
                   ) : (
                     <>
                       <Copy className="size-3.5 text-muted-foreground" />
-                      <span>Copy Link</span>
+                      <TypographySpan>Copy Link</TypographySpan>
                     </>
                   )}
                 </Button>*/}

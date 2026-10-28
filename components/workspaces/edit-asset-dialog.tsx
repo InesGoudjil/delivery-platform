@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { UploadCloud, Loader2, Image as ImageIcon, Link as LinkIcon, Crop } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TypographyMuted } from "@/components/ui/typography";
+import { TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import { UniversalDialog } from "@/components/ui/universal-dialog";
 import { requestAssetUploadAction } from "@/app/actions/upload";
 import { createUploadProgressToast } from "@/lib/upload-toast";
@@ -356,16 +356,16 @@ export function EditAssetDialog({
                 <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
                   ASPECT RATIO
                 </label>
-                <span className="text-[10px] font-mono text-primary font-semibold">
+                <TypographySpan className="text-[10px] font-mono text-primary font-semibold">
                   {ASPECT_RATIO_BY_ID[aspectRatio as AspectRatioId]?.label || aspectRatio}
-                </span>
+                </TypographySpan>
               </div>
 
               <div className="space-y-2">
                 <div>
-                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground/70 block mb-1">
+                  <TypographySpan className="text-[9px] uppercase tracking-wider text-muted-foreground/70 block mb-1">
                     Desktop & Broadcast
-                  </span>
+                  </TypographySpan>
                   <div className="grid grid-cols-2 gap-1.5">
                     {["16:9", "16:10"].map((ratio) => (
                       <Button
@@ -387,9 +387,9 @@ export function EditAssetDialog({
                 </div>
 
                 <div>
-                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground/70 block mb-1">
+                  <TypographySpan className="text-[9px] uppercase tracking-wider text-muted-foreground/70 block mb-1">
                     Mobile & Social
-                  </span>
+                  </TypographySpan>
                   <div className="grid grid-cols-3 gap-1.5">
                     {["1:1", "4:5", "9:16"].map((ratio) => (
                       <Button
@@ -411,9 +411,9 @@ export function EditAssetDialog({
                 </div>
 
                 <div>
-                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground/70 block mb-1">
+                  <TypographySpan className="text-[9px] uppercase tracking-wider text-muted-foreground/70 block mb-1">
                     Cinema Widescreen
-                  </span>
+                  </TypographySpan>
                   <div className="grid grid-cols-3 gap-1.5">
                     {["2.39:1", "2:1", "1.85:1"].map((ratio) => (
                       <Button
@@ -435,9 +435,9 @@ export function EditAssetDialog({
                 </div>
 
                 <div>
-                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground/70 block mb-1">
+                  <TypographySpan className="text-[9px] uppercase tracking-wider text-muted-foreground/70 block mb-1">
                     Photography & Classic Film
-                  </span>
+                  </TypographySpan>
                   <div className="grid grid-cols-2 gap-1.5">
                     {["3:2", "4:3"].map((ratio) => (
                       <Button

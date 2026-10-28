@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { UniversalDialog } from "@/components/ui/universal-dialog";
-import { TypographyMuted } from "@/components/ui/typography";
+import { TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import Link from "next/link";
 import {
   updateDeliverySecurityAction,
@@ -320,9 +320,9 @@ export function ShareLinkDialog({
       onOpenChange={onOpenChange}
       size="md"
       badge={
-        <span className="text-[11px] font-bold text-primary uppercase tracking-wider block">
+        <TypographySpan className="text-[11px] font-bold text-primary uppercase tracking-wider block">
           Client link
-        </span>
+        </TypographySpan>
       }
       title="SHARE A LINK"
       bodyClassName="space-y-6"
@@ -331,9 +331,9 @@ export function ShareLinkDialog({
         <div className="flex items-center justify-between bg-black/60 border border-white/10 rounded-2xl px-4 py-3 text-xs gap-3">
           <div className="flex items-center gap-2 text-muted-foreground truncate min-w-0 flex-1">
             <Link2 className="size-4 shrink-0 text-primary" />
-            <span className="font-mono text-white truncate text-[11px]">
+            <TypographySpan className="font-mono text-white truncate text-[11px]">
               {typeof window !== "undefined" ? window.location.host : "cinespace.film"}{shareUrl}
-            </span>
+            </TypographySpan>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Button
@@ -348,13 +348,13 @@ export function ShareLinkDialog({
               <RefreshCw className={`size-3.5 ${isRegeneratingToken ? "animate-spin text-primary" : ""}`} />
             </Button>
             {sharePassphrase && isPasscodeSaved ? (
-              <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1 font-mono">
+              <TypographySpan className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1 font-mono">
                 <Lock className="size-3 text-amber-400" /> Protected
-              </span>
+              </TypographySpan>
             ) : (
-              <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
+              <TypographySpan className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
                 Public Link
-              </span>
+              </TypographySpan>
             )}
           </div>
         </div>
@@ -364,9 +364,9 @@ export function ShareLinkDialog({
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+                <TypographySpan className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
                   SECURITY
-                </span>
+                </TypographySpan>
                 <Badge variant="orange" className="text-[9px] px-1.5 py-0 font-bold">
                   PRO
                 </Badge>
@@ -395,17 +395,17 @@ export function ShareLinkDialog({
           {sharePassphrase && (
             <div className="p-3.5 bg-black/50 border border-primary/30 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono uppercase font-bold text-primary flex items-center gap-1.5">
+                <TypographySpan className="text-[10px] font-mono uppercase font-bold text-primary flex items-center gap-1.5">
                   <Key className="size-3" /> Client Passphrase
-                </span>
+                </TypographySpan>
                 {isPasscodeSaved ? (
-                  <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1 font-bold">
+                  <TypographySpan className="text-[10px] font-mono text-emerald-400 flex items-center gap-1 font-bold">
                     <ShieldCheck className="size-3" /> Secured
-                  </span>
+                  </TypographySpan>
                 ) : (
-                  <span className="text-[10px] font-mono text-amber-400 flex items-center gap-1">
+                  <TypographySpan className="text-[10px] font-mono text-amber-400 flex items-center gap-1">
                     <ShieldAlert className="size-3" /> Unsaved changes
-                  </span>
+                  </TypographySpan>
                 )}
               </div>
 
@@ -471,7 +471,7 @@ export function ShareLinkDialog({
                   ) : (
                     <ShieldAlert className="size-3.5 shrink-0" />
                   )}
-                  <span className="truncate">{verificationMsg}</span>
+                  <TypographySpan className="truncate">{verificationMsg}</TypographySpan>
                 </div>
               )}
 
@@ -517,14 +517,14 @@ export function ShareLinkDialog({
 
         {/* PERMISSIONS */}
         <div className="space-y-3">
-          <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+          <TypographySpan className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
             PERMISSIONS
-          </span>
+          </TypographySpan>
           <div className="space-y-2.5 text-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5 text-white">
                 <MessageCircle className="size-4 text-muted-foreground" />
-                <span>Comments</span>
+                <TypographySpan>Comments</TypographySpan>
               </div>
               <Switch
                 checked={shareComments}
@@ -536,7 +536,7 @@ export function ShareLinkDialog({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5 text-white">
                 <Download className="size-4 text-muted-foreground" />
-                <span>Downloads</span>
+                <TypographySpan>Downloads</TypographySpan>
               </div>
               <Switch
                 checked={shareDownloads}
@@ -550,13 +550,13 @@ export function ShareLinkDialog({
         {/* LINK EXPIRES */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+            <TypographySpan className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
               LINK EXPIRES
-            </span>
+            </TypographySpan>
             {isUpdatingExpiry && (
-              <span className="text-[10px] font-mono text-primary flex items-center gap-1">
+              <TypographySpan className="text-[10px] font-mono text-primary flex items-center gap-1">
                 <RefreshCw className="size-2.5 animate-spin" /> Updating...
-              </span>
+              </TypographySpan>
             )}
           </div>
 
@@ -565,27 +565,27 @@ export function ShareLinkDialog({
             new Date(expiresAtState).getTime() < Date.now() ? (
               <div className="flex items-center gap-2 text-[11px] text-amber-300 font-mono bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-xl">
                 <Clock className="size-3.5 text-amber-400 shrink-0" />
-                <span>
+                <TypographySpan>
                   <strong>Expired on {new Date(expiresAtState).toLocaleDateString()}</strong> · Clients cannot view this cut
-                </span>
+                </TypographySpan>
               </div>
             ) : (
               <div className="flex items-center gap-2 text-[11px] text-emerald-300 font-mono bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl">
                 <Clock className="size-3.5 text-emerald-400 shrink-0" />
-                <span>
+                <TypographySpan>
                   Active · Expires in{" "}
                   {Math.max(
                     1,
                     Math.ceil((new Date(expiresAtState).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
                   )}{" "}
                   days ({new Date(expiresAtState).toLocaleDateString()})
-                </span>
+                </TypographySpan>
               </div>
             )
           ) : (
             <div className="flex items-center gap-2 text-[11px] text-neutral-300 font-mono bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl">
               <Check className="size-3.5 text-emerald-400 shrink-0" />
-              <span>Active · Link never expires</span>
+              <TypographySpan>Active · Link never expires</TypographySpan>
             </div>
           )}
 
@@ -612,14 +612,14 @@ export function ShareLinkDialog({
 
         {/* NOTIFY ME WHEN THE CLIENT... */}
         <div className="space-y-3">
-          <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+          <TypographySpan className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
             NOTIFY ME WHEN THE CLIENT...
-          </span>
+          </TypographySpan>
           <div className="space-y-2.5 text-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5 text-white">
                 <MessageCircle className="size-4 text-muted-foreground" />
-                <span>Leaves a comment</span>
+                <TypographySpan>Leaves a comment</TypographySpan>
               </div>
               <Switch
                 checked={notifyComments}
@@ -632,7 +632,7 @@ export function ShareLinkDialog({
               <div className="flex items-center gap-2.5 text-white">
                 <Download className="size-4 text-muted-foreground" />
                 <div className="flex items-center gap-1.5">
-                  <span>Downloads files</span>
+                  <TypographySpan>Downloads files</TypographySpan>
                   <Badge variant="orange" className="text-[9px] px-1.5 py-0 font-bold">
                     PRO
                   </Badge>
@@ -657,10 +657,10 @@ export function ShareLinkDialog({
         {/* Email Direct Share */}
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="flex items-center gap-1.5 font-bold text-white">
+            <TypographySpan className="flex items-center gap-1.5 font-bold text-white">
               <Mail className="size-3.5 text-primary" />
               Email Review Link to Client
-            </span>
+            </TypographySpan>
             <Button
               type="button"
               variant="link"

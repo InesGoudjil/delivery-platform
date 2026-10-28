@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getServerServices } from "@/core/server";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 import { PortfolioClient, PortfolioItem } from "./portfolio-client";
+import { DEMO_PORTFOLIO_ASSETS } from "@/lib/demo-portfolio";
+import { SelectableCoverAsset } from "@/lib/portfolio-data";
 
 export default async function PortfolioPage({
   params,
@@ -148,13 +150,65 @@ export default async function PortfolioPage({
     allPortfolioItems.some((item) => item.id === id)
   );
 
+  // Build selectable cover assets for the Cover Banner & Showcase Hero stage
+  const availableAssets: SelectableCoverAsset[] = [];
+
+  for (const item of allPortfolioItems) {
+    if (item.type === "project" && item.projectAssets && item.projectAssets.length > 0) {
+      for (const asset of item.projectAssets) {
+        availableAssets.push({
+          id: asset.id,
+          title: asset.title,
+          type: asset.type === "still" ? "still" : "video",
+          url: asset.url,
+          thumbnailUrl: asset.thumbnailUrl,
+          aspectRatio: asset.aspectRatio || "16:9",
+          duration: asset.duration,
+          category: asset.category,
+          projectName: item.title,
+        });
+      }
+    } else {
+      availableAssets.push({
+        id: item.id,
+        title: item.title,
+        type: item.type === "still" ? "still" : "video",
+        url: item.mediaUrl || item.thumbnailUrl,
+        thumbnailUrl: item.thumbnailUrl,
+        aspectRatio: item.aspectRatio || "16:9",
+        category: item.category,
+      });
+    }
+  }
+
+  const finalAvailableAssets: SelectableCoverAsset[] =
+    availableAssets.length > 0
+      ? availableAssets
+      : DEMO_PORTFOLIO_ASSETS.map((demo) => ({
+          id: String(demo.id),
+          title: demo.title,
+          type: demo.kind === "still" ? "still" : "video",
+          url: demo.videoUrl || demo.image,
+          thumbnailUrl: demo.image,
+          aspectRatio: "16:9",
+          duration: demo.tc,
+          category: demo.cat,
+        }));
+
   return (
     <PortfolioClient
-      workspace={workspace}
+      workspace={{
+        id: workspace.id,
+        brandName: workspace.brandName,
+        slug: workspace.slug,
+        logoUrl: workspace.logoUrl,
+        accentColor: workspace.accentColor,
+      }}
       portfolio={portfolio}
       initialProjects={allPortfolioItems}
       initialFeaturedIds={initialFeaturedIds}
       features={features}
+      availableAssets={finalAvailableAssets}
     />
   );
 }

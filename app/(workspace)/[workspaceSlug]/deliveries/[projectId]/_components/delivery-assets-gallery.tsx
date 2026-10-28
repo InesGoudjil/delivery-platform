@@ -21,6 +21,7 @@ import {
   TypographyH4,
   TypographyKicker,
   TypographyMuted,
+  TypographySpan,
 } from "@/components/ui/typography";
 import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
 import { WatermarkOverlay } from "@/components/ui/watermark-overlay";
@@ -171,7 +172,7 @@ export function DeliveryAssetsGallery({
               title="Open Workspace Trash"
             >
               <Trash2 className="size-3.5 text-amber-400" />
-              <span>Trash</span>
+              <TypographySpan>Trash</TypographySpan>
             </Button>
           )}
 
@@ -182,7 +183,7 @@ export function DeliveryAssetsGallery({
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold shadow-lg animate-in fade-in duration-200"
             >
               <Check className="size-3.5 stroke-[3]" />
-              <span>Asset added</span>
+              <TypographySpan>Asset added</TypographySpan>
             </Badge>
           )}
         </div>
@@ -224,9 +225,9 @@ export function DeliveryAssetsGallery({
                 <div className="px-2 h-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-[10px] font-mono font-bold text-white tracking-wider">
                   V{item.versionNumber || 1}
                   {item.totalVersions && item.totalVersions > 1 && (
-                    <span className="text-[9px] text-primary ml-1">
+                    <TypographySpan className="text-[9px] text-primary ml-1">
                       ({item.totalVersions})
-                    </span>
+                    </TypographySpan>
                   )}
                 </div>
               </div>
@@ -404,7 +405,7 @@ export function DeliveryAssetsGallery({
                       </TypographyH4>
                     </CardTitle>
                     <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground w-full">
-                      <span>
+                      <TypographySpan>
                         Aspect:{" "}
                         {typeof item.aspectRatio === "object" && item.aspectRatio !== null
                           ? (item.aspectRatio as any)?.shortLabel ||
@@ -412,7 +413,7 @@ export function DeliveryAssetsGallery({
                             (item.aspectRatio as any)?.cssRatio ||
                             "16:9"
                           : item.aspectRatio || "16:9"}
-                      </span>
+                      </TypographySpan>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {onToggleApproval ? (
                           <Button
@@ -506,11 +507,11 @@ export function DeliveryAssetsGallery({
             {isLoadingMore ? (
               <div className="flex items-center gap-2.5">
                 <Loader2 className="size-4 animate-spin text-primary" />
-                <span>Loading assets...</span>
+                <TypographySpan>Loading assets...</TypographySpan>
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <span>Load More Assets</span>
+                <TypographySpan>Load More Assets</TypographySpan>
                 {totalCount !== undefined && totalCount > items.length && (
                   <Badge
                     variant="secondary"
@@ -533,7 +534,7 @@ export function DeliveryAssetsGallery({
       {!hasMore && items.length > 12 && (
         <div className="text-center pt-6 pb-2 text-[11px] font-mono text-muted-foreground/60 flex items-center justify-center gap-2">
           <CheckCircle2 className="size-3.5 text-sage-400" />
-          <span>All deliverables loaded ({totalCount || items.length} total)</span>
+          <TypographySpan>All deliverables loaded ({totalCount || items.length} total)</TypographySpan>
         </div>
       )}
 

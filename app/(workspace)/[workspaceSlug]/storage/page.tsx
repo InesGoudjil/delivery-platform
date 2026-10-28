@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/tooltip";
 import { TiltCard } from "@/components/ui/motion";
 import {
+  Typography,
+  TypographySpan,
   TypographyH1,
   TypographyH3,
   TypographyH4,
@@ -204,9 +206,9 @@ export default async function StoragePage({
               </div>
 
               <CardAction className="text-left sm:text-right self-start sm:self-auto">
-                <div className="text-2xl font-bold font-mono text-foreground">
-                  {usedDisplay} <span className="text-sm font-normal text-muted-foreground">/ {quotaDisplay}</span>
-                </div>
+                <Typography as="div" variant="h3" className="text-2xl font-bold font-mono text-foreground">
+                  {usedDisplay} <TypographySpan variant="muted" className="text-sm font-normal text-muted-foreground">/ {quotaDisplay}</TypographySpan>
+                </Typography>
                 <div className="flex items-center sm:justify-end gap-1.5 mt-0.5">
                   <Tooltip>
                     <TooltipTrigger
@@ -243,9 +245,9 @@ export default async function StoragePage({
                         />
                       </div>
                       <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground">
-                        <span>0 GB</span>
-                        <span className="text-foreground font-semibold">{remainingDisplay} remaining</span>
-                        <span>{quotaDisplay}</span>
+                        <TypographySpan>0 GB</TypographySpan>
+                        <TypographySpan className="text-foreground font-semibold">{remainingDisplay} remaining</TypographySpan>
+                        <TypographySpan>{quotaDisplay}</TypographySpan>
                       </div>
                     </div>
                   }
@@ -387,15 +389,15 @@ export default async function StoragePage({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-muted-foreground">
                 <Card className="flex flex-row items-center gap-2.5 p-3 rounded-xl bg-muted/40 border border-border hover:translate-y-0 shadow-none">
                   <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
-                  <span>
+                  <TypographySpan>
                     {canSiloArchive
                       ? `${quotaDisplay} cold storage included in your ${currentPlan?.name || "Studio"} Plan`
                       : "Cold storage archive requires Studio or Enterprise plan"}
-                  </span>
+                  </TypographySpan>
                 </Card>
                 <Card className="flex flex-row items-center gap-2.5 p-3 rounded-xl bg-muted/40 border border-border hover:translate-y-0 shadow-none">
                   <Shield className="size-4 text-blue-500 shrink-0" />
-                  <span>Encrypted triple-redundancy storage</span>
+                  <TypographySpan>Encrypted triple-redundancy storage</TypographySpan>
                 </Card>
               </div>
             </CardContent>

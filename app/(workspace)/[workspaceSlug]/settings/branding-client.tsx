@@ -8,11 +8,12 @@ import { PortfolioAppearance, PortfolioExperience, PortfolioHeroCover, Portfolio
 import { UserProfile } from "@/core/entities/user-profile";
 import { SelectableCoverAsset } from "@/lib/portfolio-data";
 import { BrandingHeader } from "./_components/branding-header";
-import { CoverBannerSection } from "./_components/cover-banner-section";
 import { StorefrontIdentitySection } from "./_components/storefront-identity-section";
 import { BioSection } from "./_components/bio-section";
-import { ExperienceCredentialsSection } from "./_components/experience-credentials-section";
+// Preserved for client credentials feature logic
+// import { ExperienceCredentialsSection } from "./_components/experience-credentials-section";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { TypographySpan } from "@/components/ui/typography";
 import { useAccentTheme } from "@/components/theme/accent-theme-provider";
 import { toast } from "sonner";
 import { createUploadProgressToast } from "@/lib/upload-toast";
@@ -41,7 +42,7 @@ interface BrandingClientProps {
   };
   features?: any;
   userProfile?: UserProfile | null;
-  availableAssets: SelectableCoverAsset[];
+  availableAssets?: SelectableCoverAsset[];
 }
 
 export function BrandingClient({
@@ -49,7 +50,6 @@ export function BrandingClient({
   portfolio,
   features,
   userProfile,
-  availableAssets,
 }: BrandingClientProps) {
   const [isPending, startTransition] = useTransition();
   const { setAccent: setLiveAccent } = useAccentTheme();
@@ -78,20 +78,8 @@ export function BrandingClient({
     userProfile?.avatarUrl || null
   );
 
-  // 3. Hero Cover Asset Configuration
-  const initialHeroCover: PortfolioHeroCover = portfolio.appearance?.heroCover || {
-    assetId: availableAssets[0]?.id || null,
-    type: availableAssets[0]?.type || "video",
-    mediaUrl: portfolio.coverAssetUrl || availableAssets[0]?.url || "",
-    thumbnailUrl: portfolio.coverAssetUrl || availableAssets[0]?.thumbnailUrl || "",
-    title: portfolio.title || workspace.brandName,
-    category: availableAssets[0]?.category || "Featured Film",
-    aspectRatio: "21:9",
-    overlayOpacity: 50,
-    videoBehavior: "ambient_loop",
-  };
-
-  const [heroCover, setHeroCover] = useState<PortfolioHeroCover>(initialHeroCover);
+  // 3. Hero Cover is now curated under Portfolio screen
+  const currentHeroCover = portfolio.appearance?.heroCover;
 
   // Showcase Stats
   const [stats, setStats] = useState<PortfolioStats>(
@@ -113,10 +101,52 @@ export function BrandingClient({
       "Directing high-impact commercial campaigns, brand documentaries, and luxury wedding films across Dubai, Abu Dhabi, and the Gulf region. Full end-to-end digital production."
   );
 
+  // Baseline Saved State for Unsaved Changes (Dirty Tracking)
+  const [savedState, setSavedState] = useState({
+    brandName: workspace.brandName || "Pedro Concreato",
+    handle: workspace.slug,
+    accent: workspace.accentColor || "#F5551D",
+    whatsapp: portfolio.whatsappNumber || "+971501234567",
+    bio:
+      portfolio.bio ||
+      "Directing high-impact commercial campaigns, brand documentaries, and luxury wedding films across Dubai, Abu Dhabi, and the Gulf region. Full end-to-end digital production.",
+    stats: portfolio.stats || {
+      projects: "",
+      years: "",
+      location: "",
+    },
+  });
+
+  const isDirty = React.useMemo(() => {
+    if (brandName !== savedState.brandName) return true;
+    if (handle !== savedState.handle) return true;
+    if (accent !== savedState.accent) return true;
+    if (whatsapp !== savedState.whatsapp) return true;
+    if (bio !== savedState.bio) return true;
+    if (
+      stats.projects !== savedState.stats.projects ||
+      stats.years !== savedState.stats.years ||
+      stats.location !== savedState.stats.location
+    )
+      return true;
+    return false;
+  }, [brandName, handle, accent, whatsapp, bio, stats, savedState]);
+
+  const handleResetChanges = () => {
+    setBrandName(savedState.brandName);
+    setHandle(savedState.handle);
+    setAccent(savedState.accent);
+    handleAccentChange(savedState.accent);
+    setWhatsapp(savedState.whatsapp);
+    setBio(savedState.bio);
+    setStats({ ...savedState.stats });
+    toast.info("Unsaved changes discarded.");
+  };
+
   // Interactive Image Crop / Edit Dialog State
   const [cropEditor, setCropEditor] = useState<{
     isOpen: boolean;
-    mode: "logo" | "avatar" | "cover";
+    mode: "logo" | "avatar";
     imageSrc: string | null;
     fileName: string;
   }>({
@@ -224,39 +254,6 @@ export function BrandingClient({
     });
   };
 
-  // --- DIRECT COVER UPLOAD HANDLER ---
-  const handleCustomCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    const file = files[0];
-    e.target.value = "";
-
-    const objectUrl = URL.createObjectURL(file);
-    const isVid = file.type.startsWith("video/");
-
-    if (isVid) {
-      // Videos don't need image cropper
-      const updatedCover: PortfolioHeroCover = {
-        ...heroCover,
-        assetId: null,
-        type: "video",
-        mediaUrl: objectUrl,
-        thumbnailUrl: objectUrl,
-        title: file.name.replace(/\.[^/.]+$/, ""),
-        category: "Featured Film",
-      };
-      setHeroCover(updatedCover);
-      toast.success("Video preview loaded as cover!");
-    } else {
-      setCropEditor({
-        isOpen: true,
-        mode: "cover",
-        imageSrc: objectUrl,
-        fileName: file.name,
-      });
-    }
-  };
-
   // --- CROP CONFIRMATION HANDLER ---
   const handleApplyCropResult = async (result: ImageCropResult) => {
     if (cropEditor.mode === "logo") {
@@ -289,69 +286,86 @@ export function BrandingClient({
       } else {
         uploadToast.error(res.error || "Failed to save photo.");
       }
-    } else {
-      // Cover crop
-      const updated: PortfolioHeroCover = {
-        ...heroCover,
-        assetId: null,
-        type: "still",
-        mediaUrl: result.dataUrl,
-        thumbnailUrl: result.dataUrl,
-      };
-      setHeroCover(updated);
-      toast.success("Cover banner updated!");
     }
   };
 
   // --- SAVE ALL BRANDING HANDLER ---
-  const handleSaveAll = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    startTransition(async () => {
-      const res = await updateBrandingAction(workspace.id, portfolio.id, {
-        brandName,
-        accentColor: canBranding ? accent : undefined,
-        logoUrl: canBranding ? logoUrl : undefined,
-        avatarUrl,
-        bio,
-        heroCover,
-        coverAssetUrl: heroCover.thumbnailUrl || heroCover.mediaUrl,
-        whatsappNumber: whatsapp,
-        experience: experiences,
-        stats,
-        slug: workspace.slug,
-      });
+  const handleSaveAll = React.useCallback(
+    (e?: React.FormEvent) => {
+      if (e) e.preventDefault();
+      startTransition(async () => {
+        const res = await updateBrandingAction(workspace.id, portfolio.id, {
+          brandName,
+          accentColor: canBranding ? accent : undefined,
+          logoUrl: canBranding ? logoUrl : undefined,
+          avatarUrl,
+          bio,
+          heroCover: currentHeroCover,
+          coverAssetUrl: portfolio.coverAssetUrl,
+          whatsappNumber: whatsapp,
+          experience: experiences,
+          stats,
+          slug: workspace.slug,
+        });
 
-      if (res.success) {
-        toast.success("Brand logo, profile photo, cover hero, credentials & bio saved!");
-      } else {
-        toast.error(res.error || "Failed to update branding settings.");
+        if (res.success) {
+          setSavedState({
+            brandName,
+            handle,
+            accent,
+            whatsapp,
+            bio,
+            stats: { ...stats },
+          });
+          toast.success("Brand identity & bio settings saved!");
+        } else {
+          toast.error(res.error || "Failed to update branding settings.");
+        }
+      });
+    },
+    [
+      workspace.id,
+      workspace.slug,
+      portfolio.id,
+      portfolio.coverAssetUrl,
+      currentHeroCover,
+      brandName,
+      accent,
+      canBranding,
+      logoUrl,
+      avatarUrl,
+      bio,
+      whatsapp,
+      experiences,
+      stats,
+      handle,
+    ]
+  );
+
+  // Keyboard shortcut: Cmd/Ctrl + S to save
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        handleSaveAll();
       }
-    });
-  };
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleSaveAll]);
 
   return (
     <TooltipProvider delay={150}>
-      <div className="w-full space-y-10 animate-in fade-in duration-200 pb-16">
+      <div className="w-full space-y-8 animate-in fade-in duration-200 pb-20">
         {/* Page Header */}
         <BrandingHeader
           workspaceSlug={workspace.slug}
           isPending={isPending}
+          isDirty={isDirty}
           onSave={handleSaveAll}
         />
 
-        {/* 1. Asset-Driven Cover Banner & Showcase Hero */}
-        <CoverBannerSection
-          heroCover={heroCover}
-          onHeroCoverChange={setHeroCover}
-          availableAssets={availableAssets}
-          brandName={brandName}
-          handle={handle}
-          accent={accent}
-          logoUrl={logoUrl}
-          onCustomUpload={handleCustomCoverUpload}
-        />
-
-        {/* 2. Brand & Storefront Identity (with distinct Logo & Profile Avatar) */}
+        {/* 1. Brand & Storefront Identity (with distinct Logo & Profile Avatar) */}
         <StorefrontIdentitySection
           brandName={brandName}
           onBrandNameChange={setBrandName}
@@ -376,67 +390,84 @@ export function BrandingClient({
           workspaceSlug={workspace.slug}
         />
 
-        {/* 3. Bio & About Description */}
+        {/* 2. Bio & About Description */}
         <BioSection bio={bio} onBioChange={setBio} />
 
-        {/* 4. Experience & Credentials */}
+        {/* 3. Experience & Credentials - Hidden visually per client request (logic & schema preserved) */}
+        {/*
         <ExperienceCredentialsSection
           portfolioId={portfolio.id}
           initialExperiences={experiences}
           showFlash={showFlash}
           onExperiencesChange={setExperiences}
         />
+        */}
 
-        {/* Bottom Save Action */}
-        <div className="flex justify-end pt-4">
-          <Tooltip>
-            <TooltipTrigger
-              render={
+        {/* Floating Unsaved Changes Action Dock (Replaces awkward static bottom button) */}
+        {isDirty && (
+          <div className="fixed bottom-6 inset-x-0 mx-auto w-fit max-w-[92vw] z-50 animate-in fade-in slide-in-from-bottom-4 duration-200">
+            <div className="bg-zinc-950/95 border border-primary/40 backdrop-blur-xl shadow-2xl rounded-full px-4 sm:px-6 py-2.5 flex items-center gap-3 sm:gap-5 text-white ring-1 ring-white/10">
+              <div className="flex items-center gap-2 text-xs font-semibold">
+                <span className="size-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                <TypographySpan className="text-zinc-200 font-sans hidden sm:inline">
+                  Unsaved brand changes
+                </TypographySpan>
+                <TypographySpan className="text-zinc-200 font-sans sm:hidden">
+                  Unsaved changes
+                </TypographySpan>
+              </div>
+              <div className="h-4 w-px bg-white/20 shrink-0" />
+              <div className="flex items-center gap-2">
                 <Button
-                  onClick={handleSaveAll}
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleResetChanges}
                   disabled={isPending}
-                  className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs px-8 py-3 shadow-xl shadow-primary/25 transition-all uppercase tracking-wider h-auto cursor-pointer"
+                  className="text-xs text-zinc-400 hover:text-white h-8 px-3 rounded-full hover:bg-white/10 cursor-pointer"
                 >
-                  <Sparkles className="size-4 mr-1.5" />
-                  <span>{isPending ? "Saving changes..." : "SAVE ALL BRAND SETTINGS"}</span>
+                  <TypographySpan>Discard</TypographySpan>
                 </Button>
-              }
-            />
-            <TooltipContent side="top">
-              Publishes your logo, profile photo, hero cover, bio, and credentials live
-            </TooltipContent>
-          </Tooltip>
-        </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={(e) => handleSaveAll(e)}
+                  disabled={isPending}
+                  className="text-xs font-extrabold rounded-full bg-primary hover:bg-primary/90 text-primary-foreground h-8 px-4 shadow-lg shadow-primary/25 flex items-center gap-1.5 cursor-pointer uppercase tracking-wider"
+                >
+                  {isPending ? (
+                    <>
+                      <Sparkles className="size-3.5 animate-spin" />
+                      <TypographySpan>Saving...</TypographySpan>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="size-3.5" />
+                      <TypographySpan>Save Changes</TypographySpan>
+                      <kbd className="hidden md:inline-block ml-1 font-mono text-[10px] bg-black/40 px-1 py-0.5 rounded text-white/90">
+                        ⌘S
+                      </kbd>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Interactive Image Crop & Edit Modal */}
         <ImageCropEditorDialog
           isOpen={cropEditor.isOpen}
           onClose={() => setCropEditor((prev) => ({ ...prev, isOpen: false }))}
           imageSrc={cropEditor.imageSrc}
-          title={
-            cropEditor.mode === "logo"
-              ? "EDIT BRAND LOGO"
-              : cropEditor.mode === "avatar"
-              ? "EDIT PROFILE PHOTO"
-              : "EDIT & CROP COVER BANNER"
-          }
+          title={cropEditor.mode === "logo" ? "EDIT BRAND LOGO" : "EDIT PROFILE PHOTO"}
           subtitle={
             cropEditor.mode === "logo"
               ? "Frame your studio insignia or brand mark."
-              : cropEditor.mode === "avatar"
-              ? "Frame your director portrait inside the circular safe zone."
-              : "Adjust cover banner framing and aspect ratio."
+              : "Frame your director portrait inside the circular safe zone."
           }
-          defaultAspectRatio={
-            cropEditor.mode === "avatar" ? "1:1" : cropEditor.mode === "logo" ? "1:1" : "16:9"
-          }
-          aspectRatioOptions={
-            cropEditor.mode === "avatar"
-              ? ["1:1"]
-              : cropEditor.mode === "logo"
-              ? ["1:1", "16:9"]
-              : ["16:9", "3:1"]
-          }
+          defaultAspectRatio="1:1"
+          aspectRatioOptions={cropEditor.mode === "logo" ? ["1:1", "16:9"] : ["1:1"]}
           lockAspectRatio={cropEditor.mode === "avatar"}
           circularGuide={cropEditor.mode === "avatar"}
           outputFileName={cropEditor.fileName}

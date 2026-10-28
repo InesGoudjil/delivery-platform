@@ -2,7 +2,7 @@ import React from "react";
 import { Download, FileText, Receipt, CheckCircle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TypographyH3, TypographyMuted, TypographySmall } from "@/components/ui/typography";
+import { TypographyH3, TypographyMuted, TypographySmall, TypographySpan } from "@/components/ui/typography";
 import { Invoice } from "@/core/entities/invoice";
 
 interface InvoicesHistoryCardProps {
@@ -68,22 +68,22 @@ export function InvoicesHistoryCard({ invoices }: InvoicesHistoryCardProps) {
                 >
                   <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-foreground">
+                      <TypographySpan className="text-xs font-bold text-foreground">
                         {inv.description}
-                      </span>
-                      <span className="text-[11px] font-mono text-muted-foreground">
+                      </TypographySpan>
+                      <TypographySpan className="text-[11px] font-mono text-muted-foreground">
                         {inv.invoiceNumber}
-                      </span>
+                      </TypographySpan>
                     </div>
-                    <span className="text-[11px] text-muted-foreground">
+                    <TypographySpan className="text-[11px] text-muted-foreground">
                       {formattedDate}
-                    </span>
+                    </TypographySpan>
                   </div>
 
                   <div className="flex items-center justify-between sm:justify-end gap-4">
-                    <span className="font-mono text-sm font-bold text-foreground">
+                    <TypographySpan className="font-mono text-sm font-bold text-foreground">
                       {amountFormatted}
-                    </span>
+                    </TypographySpan>
 
                     {inv.pdfUrl || inv.hostedInvoiceUrl ? (
                       <a
@@ -93,7 +93,7 @@ export function InvoicesHistoryCard({ invoices }: InvoicesHistoryCardProps) {
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
                       >
                         <Download data-icon="inline-start" className="size-3.5" />
-                        <span>PDF Receipt</span>
+                        <TypographySpan>PDF Receipt</TypographySpan>
                       </a>
                     ) : (
                       <Badge variant="outline" className="text-xs capitalize font-mono border-emerald-500/30 text-emerald-500 bg-emerald-500/10">

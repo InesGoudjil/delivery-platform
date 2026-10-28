@@ -3,7 +3,7 @@
 import { UploadCloud, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { TypographyH4, TypographyMuted } from "@/components/ui/typography";
+import { TypographyH4, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import type { UploadProgressState } from "./types";
 
 interface FloatingUploadProgressProps {
@@ -36,9 +36,9 @@ export function FloatingUploadProgress({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs font-bold font-mono text-foreground">
+            <TypographySpan className="text-xs font-bold font-mono text-foreground">
               {progress.percentage}%
-            </span>
+            </TypographySpan>
             <Button
               type="button"
               variant="ghost"

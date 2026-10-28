@@ -3,7 +3,7 @@
 import React from "react";
 import { ShieldCheck, RefreshCw, Zap, HelpCircle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
+import { TypographyH3, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import {
   Accordion,
   AccordionItem,
@@ -21,7 +21,7 @@ export function SubscriptionFaq() {
             <ShieldCheck className="size-5" />
           </div>
           <div className="flex flex-col gap-0.5">
-            <span className="text-xs font-bold text-foreground">Stripe 256-Bit Encryption</span>
+            <TypographySpan className="text-xs font-bold text-foreground">Stripe 256-Bit Encryption</TypographySpan>
             <TypographyMuted className="text-[11px] text-muted-foreground leading-relaxed">
               Certified PCI Service Provider Level 1. Your credit card data never touches our servers.
             </TypographyMuted>
@@ -33,7 +33,7 @@ export function SubscriptionFaq() {
             <RefreshCw className="size-5" />
           </div>
           <div className="flex flex-col gap-0.5">
-            <span className="text-xs font-bold text-foreground">Cancel or Change Anytime</span>
+            <TypographySpan className="text-xs font-bold text-foreground">Cancel or Change Anytime</TypographySpan>
             <TypographyMuted className="text-[11px] text-muted-foreground leading-relaxed">
               No locked contracts. Switch tiers, upgrade storage, or cancel seamlessly with one click.
             </TypographyMuted>
@@ -45,7 +45,7 @@ export function SubscriptionFaq() {
             <Zap className="size-5" />
           </div>
           <div className="flex flex-col gap-0.5">
-            <span className="text-xs font-bold text-foreground">Instant Quota Activation</span>
+            <TypographySpan className="text-xs font-bold text-foreground">Instant Quota Activation</TypographySpan>
             <TypographyMuted className="text-[11px] text-muted-foreground leading-relaxed">
               Upgraded cloud storage and delivery links are unlocked immediately upon successful checkout.
             </TypographyMuted>

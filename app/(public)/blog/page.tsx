@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TypographySpan } from "@/components/ui/typography";
 import { HeaderSection } from "@/components/landing/HeaderSection";
 import { FooterSection } from "@/components/landing/FooterSection";
 import { getAllPosts } from "@/lib/blog-data";
@@ -74,9 +75,9 @@ export default async function BlogPage() {
                   </Link>
 
                   <div className="flex items-center gap-2 text-xs text-[#aeaeb4]">
-                    <span>{post.category}</span>
-                    <span>·</span>
-                    <span>{post.readTime}</span>
+                    <TypographySpan>{post.category}</TypographySpan>
+                    <TypographySpan>·</TypographySpan>
+                    <TypographySpan>{post.readTime}</TypographySpan>
                   </div>
 
                   <div className="pt-1">
@@ -85,7 +86,7 @@ export default async function BlogPage() {
                       className="inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-5 py-2.5 h-auto text-xs font-bold uppercase tracking-wider shadow-lg shadow-primary/25 transition-all hover:scale-[1.03] hover:bg-primary/90 hover:shadow-primary/40"
                     >
                       <Link href={`/blog/${post.slug}`}>
-                        <span>READ BLOG</span>
+                        <TypographySpan>READ BLOG</TypographySpan>
                         <ArrowRight className="size-3.5" />
                       </Link>
                     </Button>

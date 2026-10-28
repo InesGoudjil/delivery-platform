@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { TypographySpan } from "@/components/ui/typography";
 import { ActiveSubscriptionCard } from "./active-subscription-card";
 import { PlanComparisonGrid, PlanItem } from "./plan-comparison-grid";
 import { InvoicesHistoryCard } from "./invoices-history-card";
@@ -178,7 +179,7 @@ export function SubscriptionClient({
             ) : toast.type === "error" ? (
               <AlertCircle className="size-4 shrink-0" />
             ) : null}
-            <span>{toast.message}</span>
+            <TypographySpan>{toast.message}</TypographySpan>
           </div>
         )}
 
@@ -187,9 +188,9 @@ export function SubscriptionClient({
           <div className="flex items-center justify-between p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-sm">
             <div className="flex items-center gap-2.5">
               <CheckCircle2 className="size-5 shrink-0 text-emerald-500" />
-              <span>
+              <TypographySpan>
                 <strong>Success!</strong> Your subscription has been successfully synchronized and upgraded.
-              </span>
+              </TypographySpan>
             </div>
             <Button
               variant="link"

@@ -19,6 +19,7 @@ import {
   TypographyP,
   TypographySmall,
   TypographyMuted,
+  TypographySpan,
 } from "@/components/ui/typography";
 import { formatTimecode } from "@/lib/timecode";
 import { FeedbackItem, FeedbackReplyItem } from "./types";
@@ -77,10 +78,10 @@ export function LightboxFeedbackDrawer({
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#18181d] shrink-0">
         <TypographyH4 className="font-heading font-bold text-xs sm:text-sm flex items-center gap-2 text-white">
           <MessageCircle className="size-4 text-primary" />
-          <span>{isStill ? "Still Photo Notes" : "Timecoded Notes"}</span>
-          <span className="text-zinc-500 font-mono text-xs">
+          <TypographySpan>{isStill ? "Still Photo Notes" : "Timecoded Notes"}</TypographySpan>
+          <TypographySpan className="text-zinc-500 font-mono text-xs">
             (V{activeVersionNumber}: {feedbackList.length})
-          </span>
+          </TypographySpan>
         </TypographyH4>
 
         {isStill ? (
@@ -90,7 +91,7 @@ export function LightboxFeedbackDrawer({
         ) : (
           <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-[11px] font-mono text-primary font-bold">
             <span className="size-1.5 rounded-full bg-primary animate-pulse" />
-            <span>{currentCutTimecode}</span>
+            <TypographySpan>{currentCutTimecode}</TypographySpan>
           </div>
         )}
       </div>
@@ -152,9 +153,9 @@ export function LightboxFeedbackDrawer({
                         {f.authorName ? f.authorName.slice(0, 2).toUpperCase() : "U"}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="font-semibold text-white truncate max-w-[120px]">
+                    <TypographySpan className="font-semibold text-white truncate max-w-[120px]">
                       {f.authorName}
-                    </span>
+                    </TypographySpan>
                   </div>
 
                   <Tooltip>
@@ -165,7 +166,7 @@ export function LightboxFeedbackDrawer({
                           className="text-[10px] font-mono py-0 h-4 flex items-center gap-1 cursor-pointer hover:opacity-80"
                         >
                           {isTimecoded && <Play className="size-2 fill-current" />}
-                          <span>{tcDisplay}</span>
+                          <TypographySpan>{tcDisplay}</TypographySpan>
                         </Badge>
                       }
                     />
@@ -197,7 +198,7 @@ export function LightboxFeedbackDrawer({
                       className="text-[10px] text-muted-foreground hover:text-white flex items-center gap-1 font-mono transition-colors cursor-pointer"
                     >
                       <CornerDownRight className="size-3" />
-                      <span>{replyingToId === f.id ? "Cancel Reply" : "Reply"}</span>
+                      <TypographySpan>{replyingToId === f.id ? "Cancel Reply" : "Reply"}</TypographySpan>
                     </button>
                   </div>
                 )}
@@ -216,9 +217,9 @@ export function LightboxFeedbackDrawer({
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <span className="font-semibold text-white/90 text-[10px] block font-mono">
+                          <TypographySpan className="font-semibold text-white/90 text-[10px] block font-mono">
                             {r.authorName}
-                          </span>
+                          </TypographySpan>
                           <TypographyP className="text-white/80 leading-snug text-xs">
                             {r.commentText}
                           </TypographyP>
@@ -272,10 +273,10 @@ export function LightboxFeedbackDrawer({
           className="p-3 border-t border-white/10 bg-[#18181d] flex flex-col gap-2 shrink-0"
         >
           <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground px-1">
-            <span className="flex items-center gap-1">
+            <TypographySpan className="flex items-center gap-1">
               <Clock className="size-3 text-primary" />
-              <span>{isStill ? "Note on Still:" : "Tagging at Timecode:"}</span>
-            </span>
+              <TypographySpan>{isStill ? "Note on Still:" : "Tagging at Timecode:"}</TypographySpan>
+            </TypographySpan>
             <Badge
               variant={isStill ? "sage" : "orange"}
               className="text-[10px] font-mono py-0 h-4"

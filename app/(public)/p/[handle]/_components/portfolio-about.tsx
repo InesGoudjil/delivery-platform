@@ -2,6 +2,7 @@ import React from "react";
 import Image from "next/image";
 import { Film, Briefcase, MapPin } from "lucide-react";
 import { FilmmakerProfile } from "@/lib/portfolio-data";
+import { TypographySpan } from "@/components/ui/typography";
 import { ContactButton } from "./portfolio-buttons";
 
 interface PortfolioAboutProps {
@@ -61,9 +62,9 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
         {/* Right details & bio */}
         <div className="lg:col-span-7 space-y-6">
           <div className="space-y-2">
-            <span className="text-xs font-mono font-bold uppercase tracking-wider text-primary">
+            <TypographySpan className="text-xs font-mono font-bold uppercase tracking-wider text-primary">
               About
-            </span>
+            </TypographySpan>
             <h2 className="font-heading font-black text-3xl sm:text-4xl text-white tracking-tight uppercase">
               {profile.name}
             </h2>
@@ -125,19 +126,19 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
                 >
                   <div className="space-y-0.5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-bold text-white font-sans">
+                      <TypographySpan className="font-bold text-white font-sans">
                         {exp.role}
-                      </span>
+                      </TypographySpan>
                       {exp.category && (
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-medium">
+                        <TypographySpan className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-medium">
                           {exp.category}
-                        </span>
+                        </TypographySpan>
                       )}
                     </div>
                     <div className="text-zinc-400 font-sans flex items-center gap-1.5">
-                      <span>{exp.company}</span>
+                      <TypographySpan>{exp.company}</TypographySpan>
                       {exp.location && (
-                        <span className="text-zinc-500">· {exp.location}</span>
+                        <TypographySpan className="text-zinc-500">· {exp.location}</TypographySpan>
                       )}
                     </div>
                     {exp.description && (
@@ -146,9 +147,9 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
                       </p>
                     )}
                   </div>
-                  <span className="text-zinc-500 font-mono shrink-0">
+                  <TypographySpan className="text-zinc-500 font-mono shrink-0">
                     {exp.period}
-                  </span>
+                  </TypographySpan>
                 </div>
               ))}
             </div>

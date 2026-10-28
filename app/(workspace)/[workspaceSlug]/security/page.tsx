@@ -24,6 +24,7 @@ import {
   TypographyMuted,
   TypographyKicker,
   TypographySmall,
+  TypographySpan,
 } from "@/components/ui/typography";
 import { changePasswordAction } from "@/app/actions/auth";
 
@@ -156,12 +157,12 @@ export default function SecurityPage() {
         {/* Dynamic Watermark */}
         <div className="p-6 flex items-center justify-between gap-4">
           <div className="space-y-0.5">
-            <div className="text-sm font-bold font-heading text-card-foreground">
+            <TypographySmall className="text-sm font-bold font-heading text-card-foreground">
               Dynamic Anti-Leak Watermark
-            </div>
-            <div className="text-xs text-muted-foreground">
+            </TypographySmall>
+            <TypographyMuted className="text-xs text-muted-foreground">
               Overlay subtle client email &amp; timestamp watermark across review cuts.
-            </div>
+            </TypographyMuted>
           </div>
           <Switch
             checked={watermarkPreviews}
@@ -194,7 +195,7 @@ export default function SecurityPage() {
           {formError && (
             <div className="flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive animate-in fade-in-50">
               <AlertCircle className="size-4 shrink-0 mt-0.5" />
-              <span className="leading-snug">{formError}</span>
+              <TypographySpan className="leading-snug">{formError}</TypographySpan>
             </div>
           )}
 

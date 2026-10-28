@@ -39,6 +39,13 @@ import { signOutAction } from "@/app/actions/auth";
 
 import { WorkspaceHeaderSwitcher, WorkspaceHeaderItem } from "./workspace-header-switcher";
 import { BrandLogo } from "@/components/ui/brand-logo";
+import {
+  Typography,
+  TypographySpan,
+  TypographySmall,
+  TypographyMuted,
+  TypographyKicker,
+} from "@/components/ui/typography";
 
 export interface WorkspaceHeaderProps {
   workspace: {
@@ -121,7 +128,7 @@ export function WorkspaceHeader({
 
         <BrandLogo href={`/${workspaceSlug}`} size="sm" />
 
-        <span className="text-muted-foreground/30 font-mono text-sm hidden sm:inline">/</span>
+        <TypographySpan className="text-muted-foreground/30 font-mono text-sm hidden sm:inline">/</TypographySpan>
 
         {/* Top Header Workspace Switcher Dropdown */}
         <WorkspaceHeaderSwitcher
@@ -139,7 +146,9 @@ export function WorkspaceHeader({
         >
           <Link href={`/p/${workspaceSlug}`} target="_blank" rel="noreferrer">
             <Play className="size-3 fill-current" />
-            <span>LIVE PREVIEW</span>
+            <TypographySpan variant="kicker" className="text-xs font-bold tracking-wider text-primary-foreground">
+              LIVE PREVIEW
+            </TypographySpan>
           </Link>
         </Button>
 
@@ -177,16 +186,19 @@ export function WorkspaceHeader({
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col flex-1 truncate leading-tight">
-                  <span className="font-bold text-sm text-foreground truncate">
+                  <TypographySpan variant="small" className="font-bold text-sm text-foreground truncate">
                     {userName}
-                  </span>
-                  <span className="text-xs text-muted-foreground font-mono truncate">
+                  </TypographySpan>
+                  <TypographySpan variant="muted" className="text-xs font-mono truncate">
                     {userEmail}
-                  </span>
+                  </TypographySpan>
                   <div className="mt-1">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-primary/15 text-primary border border-primary/30">
+                    <TypographySpan
+                      variant="kicker"
+                      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-primary/15 text-primary border border-primary/30 normal-case tracking-normal"
+                    >
                       {planName} plan
-                    </span>
+                    </TypographySpan>
                   </div>
                 </div>
               </div>
@@ -202,7 +214,7 @@ export function WorkspaceHeader({
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors"
                 >
                   <Pencil className="size-4 text-primary" />
-                  <span>Profile &amp; Bio</span>
+                  <TypographySpan variant="small" className="text-xs font-medium">Profile &amp; Bio</TypographySpan>
                 </Link>
               </DropdownMenuItem>
 
@@ -212,7 +224,7 @@ export function WorkspaceHeader({
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors"
                 >
                   <Palette className="size-4 text-amber-500" />
-                  <span>Brand &amp; Logo</span>
+                  <TypographySpan variant="small" className="text-xs font-medium">Brand &amp; Logo</TypographySpan>
                 </Link>
               </DropdownMenuItem>
 
@@ -222,7 +234,7 @@ export function WorkspaceHeader({
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors"
                 >
                   <Users className="size-4 text-sky-500" />
-                  <span>Team Collaborators</span>
+                  <TypographySpan variant="small" className="text-xs font-medium">Team Collaborators</TypographySpan>
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -237,7 +249,7 @@ export function WorkspaceHeader({
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors"
                 >
                   <Star className="size-4 text-amber-400" />
-                  <span>Subscription &amp; Billing</span>
+                  <TypographySpan variant="small" className="text-xs font-medium">Subscription &amp; Billing</TypographySpan>
                 </Link>
               </DropdownMenuItem>
 
@@ -247,7 +259,7 @@ export function WorkspaceHeader({
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors"
                 >
                   <Lock className="size-4 text-blue-500" />
-                  <span>Security &amp; Passcodes</span>
+                  <TypographySpan variant="small" className="text-xs font-medium">Security &amp; Passcodes</TypographySpan>
                 </Link>
               </DropdownMenuItem>
 
@@ -257,7 +269,7 @@ export function WorkspaceHeader({
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors"
                 >
                   <Bell className="size-4 text-purple-400" />
-                  <span>WhatsApp &amp; Alerts</span>
+                  <TypographySpan variant="small" className="text-xs font-medium">WhatsApp &amp; Alerts</TypographySpan>
                 </Link>
               </DropdownMenuItem>
 
@@ -267,7 +279,7 @@ export function WorkspaceHeader({
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors"
                 >
                   <HardDrive className="size-4 text-slate-400" />
-                  <span>Storage &amp; Usage</span>
+                  <TypographySpan variant="small" className="text-xs font-medium">Storage &amp; Usage</TypographySpan>
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -285,9 +297,9 @@ export function WorkspaceHeader({
                 >
                   <div className="flex items-center gap-2.5">
                     <ExternalLink className="size-4 text-primary" />
-                    <span>View Public Portfolio</span>
+                    <TypographySpan variant="small" className="text-xs font-medium">View Public Portfolio</TypographySpan>
                   </div>
-                  <span className="text-[10px] font-mono text-muted-foreground">Live</span>
+                  <TypographySpan variant="muted" className="text-[10px] font-mono">Live</TypographySpan>
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -301,7 +313,9 @@ export function WorkspaceHeader({
               className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer transition-colors"
             >
               <ArrowRight className="size-4 text-destructive" />
-              <span>{isPending ? "Logging out..." : "Log out"}</span>
+              <TypographySpan variant="small" className="text-xs font-semibold text-destructive">
+                {isPending ? "Logging out..." : "Log out"}
+              </TypographySpan>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

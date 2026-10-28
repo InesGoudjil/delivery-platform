@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Share2, Check, MessageCircle } from "lucide-react";
 import { usePortfolioModal } from "./portfolio-context";
 import { Button } from "@/components/ui/button";
+import { TypographySpan } from "@/components/ui/typography";
 
 interface ContactButtonProps {
   label?: string;
@@ -25,7 +26,7 @@ export function ContactButton({
       className={className}
     >
       {icon && <MessageCircle className="size-4 mr-2 inline-block" />}
-      <span>{label}</span>
+      <TypographySpan>{label}</TypographySpan>
     </Button>
   );
 }
@@ -58,12 +59,12 @@ export function ShareButton({
       {copied ? (
         <>
           <Check className="size-3.5 text-emerald-400" />
-          <span className="text-emerald-400">Copied!</span>
+          <TypographySpan className="text-emerald-400">Copied!</TypographySpan>
         </>
       ) : (
         <>
           <Share2 className="size-3.5 text-zinc-400" />
-          <span>Share</span>
+          <TypographySpan>Share</TypographySpan>
         </>
       )}
     </Button>

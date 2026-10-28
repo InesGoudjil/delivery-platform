@@ -5,7 +5,7 @@ import { Check, Loader2, Sparkles, ArrowRight, Minus } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
+import { Typography, TypographyH3, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 
 export interface PlanItem {
   id: string;
@@ -80,7 +80,7 @@ export function PlanComparisonGrid({
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <span>Annual</span>
+            <TypographySpan>Annual</TypographySpan>
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-bold">
               Save 20%
             </Badge>
@@ -92,11 +92,11 @@ export function PlanComparisonGrid({
         <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 text-xs text-foreground flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-primary shrink-0" />
-            <span>
+            <TypographySpan>
               <strong>Annual Discount Active:</strong> Save 20% across all paid tiers when billed annually.
-            </span>
+            </TypographySpan>
           </div>
-          <span className="text-[11px] font-mono text-muted-foreground">2 months free</span>
+          <TypographySpan className="text-[11px] font-mono text-muted-foreground">2 months free</TypographySpan>
         </div>
       )}
 
@@ -191,7 +191,7 @@ export function PlanComparisonGrid({
                     className="text-[10px] font-bold tracking-wider uppercase px-3 py-1 shadow-md bg-primary text-primary-foreground flex items-center gap-1"
                   >
                     <Sparkles className="size-3" />
-                    <span>Most Popular</span>
+                    <TypographySpan>Most Popular</TypographySpan>
                   </Badge>
                 </div>
               )}
@@ -212,18 +212,18 @@ export function PlanComparisonGrid({
 
                 <div className="flex flex-col pt-3">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-extrabold font-mono text-foreground tracking-tight">
+                    <TypographySpan variant="h2" className="text-3xl font-extrabold font-mono text-foreground tracking-tight">
                       ${displayPrice}
-                    </span>
-                    <span className="text-xs font-medium text-muted-foreground">/month</span>
+                    </TypographySpan>
+                    <TypographySpan variant="muted" className="text-xs font-medium text-muted-foreground">/month</TypographySpan>
                   </div>
-                  <span className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                  <TypographySpan variant="muted" className="text-[11px] text-muted-foreground font-mono mt-0.5">
                     {basePrice === 0
                       ? "Free forever"
                       : billingInterval === "year"
                       ? "Billed annually"
                       : "Billed monthly"}
-                  </span>
+                  </TypographySpan>
                 </div>
               </CardHeader>
 
@@ -236,7 +236,7 @@ export function PlanComparisonGrid({
                     ) : (
                       <Minus className="size-3.5 text-muted-foreground/35 shrink-0 mt-0.5" />
                     )}
-                    <span
+                    <TypographySpan
                       className={`leading-snug ${
                         row.included
                           ? "text-foreground/90 font-medium"
@@ -244,7 +244,7 @@ export function PlanComparisonGrid({
                       }`}
                     >
                       {row.label}
-                    </span>
+                    </TypographySpan>
                   </div>
                 ))}
               </CardContent>
@@ -293,7 +293,7 @@ export function PlanComparisonGrid({
                       </>
                     ) : (
                       <>
-                        <span>Upgrade to {plan.name}</span>
+                        <TypographySpan>Upgrade to {plan.name}</TypographySpan>
                         <ArrowRight className="size-3.5" />
                       </>
                     )}

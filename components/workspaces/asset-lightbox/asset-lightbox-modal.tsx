@@ -119,20 +119,67 @@ export function AssetLightboxModal({
 
   if (!activeItem) return null;
 
-  const isStill = Boolean(
+  const allVersions: AssetVersionItem[] = activeItem.versions || [];
+  const currentVersion =
+    (selectedVersionId && allVersions.find((v) => v.id === selectedVersionId)) ||
+    (activeItem.versionId && allVersions.find((v) => v.id === activeItem.versionId)) ||
+    allVersions.find((v) => v.isActiveVersion) ||
+    allVersions[allVersions.length - 1] ||
+    allVersions[0] ||
+    null;
+
+  const rawUrl =
+    currentVersion?.rawFileUrl ||
+    activeItem.image ||
+    activeItem.mediaUrl ||
+    activeItem.url ||
+    activeItem.rawUrl ||
+    activeItem.src ||
+    "";
+
+  // Check if asset is explicitly video or film
+  const isExplicitVideo =
+    activeItem.type === "video" ||
+    activeItem.type === "film" ||
+    activeItem.kind === "film";
+
+  // Check if asset is explicitly still or photo
+  const isExplicitStill =
     activeItem.type === "photo" ||
-      activeItem.type === "still" ||
-      activeItem.type === "photo_gallery" ||
-      activeItem.type === "image" ||
-      activeItem.kind === "still" ||
-      activeItem.duration === "STILL" ||
-      (activeItem.src && isImageSource(activeItem.src)) ||
-      (activeItem.url && isImageSource(activeItem.url)) ||
-      (!activeItem.videoUrl &&
-        !activeItem.hlsUrl &&
-        !activeItem.mediaUrl &&
-        Boolean(activeItem.image || activeItem.src))
+    activeItem.type === "still" ||
+    activeItem.type === "photo_gallery" ||
+    activeItem.type === "image" ||
+    activeItem.kind === "still" ||
+    activeItem.duration === "STILL";
+
+  // Check if any video stream/manifest or raw video file extension exists
+  const cleanRaw = rawUrl.toLowerCase().split("?")[0];
+  const hasRawVideoExtension =
+    cleanRaw.endsWith(".mp4") ||
+    cleanRaw.endsWith(".mov") ||
+    cleanRaw.endsWith(".webm") ||
+    cleanRaw.endsWith(".m4v") ||
+    cleanRaw.endsWith(".m3u8") ||
+    cleanRaw.endsWith(".ts");
+
+  const hasVideoSource = Boolean(
+    activeItem.hlsUrl ||
+      activeItem.videoUrl ||
+      currentVersion?.hlsManifestUrl ||
+      hasRawVideoExtension
   );
+
+  // Still assets only when explicitly classified as photo or when non-video with image source
+  const isStill = isExplicitStill
+    ? true
+    : isExplicitVideo
+    ? false
+    : hasVideoSource
+    ? false
+    : Boolean(
+        (rawUrl && isImageSource(rawUrl)) ||
+          (!hasVideoSource && Boolean(activeItem.image || activeItem.src))
+      );
 
   // Robust aspect ratio resolution
   const parsedRatio: ParsedAspectRatio = parseAspectRatio(
@@ -150,15 +197,6 @@ export function AssetLightboxModal({
     parsedRatio.id === "custom" ? parsedRatio.cssRatio : parsedRatio.id;
   const displayAspectRatio: string =
     parsedRatio.matchedPreset?.shortLabel || parsedRatio.id || "16:9";
-
-  const allVersions: AssetVersionItem[] = activeItem.versions || [];
-  const currentVersion =
-    (selectedVersionId && allVersions.find((v) => v.id === selectedVersionId)) ||
-    (activeItem.versionId && allVersions.find((v) => v.id === activeItem.versionId)) ||
-    allVersions.find((v) => v.isActiveVersion) ||
-    allVersions[allVersions.length - 1] ||
-    allVersions[0] ||
-    null;
 
   const activeVersionNumber =
     currentVersion?.versionNumber || activeItem.versionNumber || 1;
@@ -189,15 +227,6 @@ export function AssetLightboxModal({
       ? Math.max(...allVersions.map((v) => v.versionNumber)) + 1
       : (activeVersionNumber || 1) + 1;
 
-  const rawUrl =
-    currentVersion?.rawFileUrl ||
-    activeItem.image ||
-    activeItem.mediaUrl ||
-    activeItem.url ||
-    activeItem.rawUrl ||
-    activeItem.src ||
-    "";
-
   const videoOrPhotoSrc = isStill
     ? resolveMediaUrl(rawUrl) ||
       resolveThumbnailUrl(
@@ -206,13 +235,13 @@ export function AssetLightboxModal({
         true
       )
     : resolveMediaUrl(currentVersion?.hlsManifestUrl) ||
-      resolveMediaUrl(currentVersion?.rawFileUrl) ||
       resolveMediaUrl(activeItem.hlsUrl) ||
       resolveMediaUrl(activeItem.videoUrl) ||
+      resolveMediaUrl(currentVersion?.rawFileUrl) ||
+      resolveMediaUrl(activeItem.rawUrl) ||
       resolveMediaUrl(activeItem.playbackUrl) ||
       resolveMediaUrl(activeItem.mediaUrl) ||
       resolveMediaUrl(activeItem.url) ||
-      resolveMediaUrl(activeItem.rawUrl) ||
       "https://files.vidstack.io/sprite-fight/hls/stream.m3u8";
 
   const posterUrl = resolveThumbnailUrl(

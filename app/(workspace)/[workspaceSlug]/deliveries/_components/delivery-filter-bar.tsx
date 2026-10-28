@@ -3,6 +3,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { TypographySpan } from "@/components/ui/typography";
 
 interface DeliveryFilterBarProps {
   totalCount: number;
@@ -41,7 +42,7 @@ export function DeliveryFilterBar({
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
             }`}
           >
-            <span>{tab.label}</span>
+            <TypographySpan>{tab.label}</TypographySpan>
             <Badge
               variant={isActive ? "secondary" : "outline"}
               className={`text-[10px] px-1.5 py-0 rounded-full font-mono ${

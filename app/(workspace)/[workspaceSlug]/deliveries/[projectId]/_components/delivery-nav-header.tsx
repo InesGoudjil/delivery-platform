@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { TypographySpan } from "@/components/ui/typography";
 
 interface DeliveryNavHeaderProps {
   workspaceSlug: string;
@@ -14,15 +15,8 @@ export function DeliveryNavHeader({ workspaceSlug, shareToken }: DeliveryNavHead
         className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors group"
       >
         <ArrowLeft className="size-4 group-hover:-translate-x-1 transition-transform" />
-        <span>Projects</span>
+        <TypographySpan variant="small" className="font-bold">Projects</TypographySpan>
       </Link>
-
-      {/*<div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
-        <span>Share Token:</span>
-        <span className="bg-muted px-2 py-0.5 rounded text-foreground font-semibold">
-          {shareToken}
-        </span>
-      </div>*/}
     </div>
   );
 }

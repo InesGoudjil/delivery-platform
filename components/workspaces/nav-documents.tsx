@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
+import { TypographySpan, TypographyKicker } from "@/components/ui/typography";
 
 export function NavDocuments({
   title,
@@ -32,8 +33,14 @@ export function NavDocuments({
   return (
     <SidebarGroup className="p-0">
       {title && (
-        <SidebarGroupLabel className="text-[10px] font-mono font-semibold uppercase tracking-widest text-muted-foreground/70 px-3 mb-1.5 h-auto group-data-[collapsible=icon]:hidden">
-          {title}
+        <SidebarGroupLabel asChild className="px-3 mb-1.5 h-auto group-data-[collapsible=icon]:hidden">
+          <TypographyKicker
+            as="div"
+            variant="kicker"
+            className="text-[10px] font-mono font-semibold uppercase tracking-widest text-muted-foreground/70"
+          >
+            {title}
+          </TypographyKicker>
         </SidebarGroupLabel>
       )}
       <SidebarMenu className="space-y-0.5">
@@ -64,7 +71,12 @@ export function NavDocuments({
                       )}
                     />
                   )}
-                  <span className="truncate group-data-[collapsible=icon]:hidden">{item.name}</span>
+                  <TypographySpan
+                    variant="small"
+                    className="truncate group-data-[collapsible=icon]:hidden text-xs font-medium"
+                  >
+                    {item.name}
+                  </TypographySpan>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

@@ -10,7 +10,7 @@ import {
   ImageCropResult,
 } from "@/components/ui/image-crop-editor-dialog";
 import { createUploadProgressToast } from "@/lib/upload-toast";
-import { TypographyMuted } from "@/components/ui/typography";
+import { TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import type { GalleryItem } from "./types";
 
 interface EditDeliveryDialogProps {
@@ -121,9 +121,9 @@ export function EditDeliveryDialog({
           {/* COVER THUMBNAIL */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+              <TypographySpan className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
                 COVER THUMBNAIL
-              </span>
+              </TypographySpan>
               <Button
                 type="button"
                 variant="ghost"
@@ -205,9 +205,9 @@ export function EditDeliveryDialog({
           {/* ASSETS */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+              <TypographySpan className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
                 ASSETS
-              </span>
+              </TypographySpan>
               <Badge variant="outline" className="text-[10px] font-mono">
                 {items.length} items
               </Badge>

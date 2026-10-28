@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { FilmmakerProfile } from "@/lib/portfolio-data";
+import { TypographySpan } from "@/components/ui/typography";
 
 interface PortfolioFooterProps {
   profile: FilmmakerProfile;
@@ -17,7 +18,7 @@ export function PortfolioFooter({ profile, whiteLabel = false }: PortfolioFooter
             href="/"
             className="inline-flex items-center gap-1.5 text-zinc-500 hover:text-zinc-300 transition-colors"
           >
-            <span>Made with</span>
+            <TypographySpan>Made with</TypographySpan>
             <img
               src="/images/logo.svg"
               alt="CineSpace"

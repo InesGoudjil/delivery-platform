@@ -16,7 +16,7 @@ export interface PortfolioHeroCover {
   title?: string;
   category?: string;
   description?: string;
-  aspectRatio?: "21:9" | "16:9" | "3:1" | "full";
+  aspectRatio?: "21:9" | "16:9" | "3:1" | "full" | "asset" | "original";
   overlayOpacity?: number; // 0 to 100
   videoBehavior?: "ambient_loop" | "click_to_play";
   autoPlay?: boolean;

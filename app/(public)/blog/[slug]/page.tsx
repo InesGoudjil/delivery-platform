@@ -4,6 +4,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TypographySpan } from "@/components/ui/typography";
 import { HeaderSection } from "@/components/landing/HeaderSection";
 import { FooterSection } from "@/components/landing/FooterSection";
 import { getPostBySlug, getAllPosts } from "@/lib/blog-data";
@@ -70,7 +71,7 @@ export default async function BlogPostPage(props: BlogPostPageProps) {
             className="inline-flex items-center gap-2 text-xs font-medium text-[#aeaeb4] hover:text-white transition-colors"
           >
             <ArrowLeft className="size-3.5" />
-            <span>All posts</span>
+            <TypographySpan>All posts</TypographySpan>
           </Link>
 
           {/* Title */}
@@ -135,7 +136,7 @@ export default async function BlogPostPage(props: BlogPostPageProps) {
                 className="inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-8 py-4 h-auto text-xs font-bold uppercase tracking-wider shadow-xl shadow-primary/30 transition-all hover:scale-[1.03] hover:bg-primary/90 hover:shadow-primary/50"
               >
                 <Link href="/signup">
-                  <span>TRY CINESPACE FOR FREE</span>
+                  <TypographySpan>TRY CINESPACE FOR FREE</TypographySpan>
                   <ArrowRight className="size-4" />
                 </Link>
               </Button>

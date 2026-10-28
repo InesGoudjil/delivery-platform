@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import { Lock, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TypographySpan } from "@/components/ui/typography";
 
 export default function DeliverRoomError({
   error,
@@ -22,9 +23,9 @@ export default function DeliverRoomError({
           <Lock className="size-7" />
         </div>
         <div className="space-y-1">
-          <span className="text-[11px] font-mono text-primary uppercase tracking-widest font-semibold block">
+          <TypographySpan className="text-[11px] font-mono text-primary uppercase tracking-widest font-semibold block">
             CLIENT REVIEW ROOM
-          </span>
+          </TypographySpan>
           <h3 className="text-xl font-bold font-heading text-[#f6f3ec]">
             Unable to Access Delivery Cut
           </h3>
