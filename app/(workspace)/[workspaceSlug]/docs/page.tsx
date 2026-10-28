@@ -14,6 +14,14 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  TypographyH1,
+  TypographyH2,
+  TypographyH3,
+  TypographyLead,
+  TypographyMuted,
+  TypographyKicker,
+} from "@/components/ui/typography";
 
 export default async function DocsPage({
   params,
@@ -87,15 +95,15 @@ export default async function DocsPage({
     <div className="max-w-4xl mx-auto space-y-10">
       {/* Header */}
       <div className="pb-6 border-b border-border">
-        <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1">
+        <TypographyKicker className="text-xs font-mono text-primary uppercase tracking-wider mb-1 block">
           Studio Guide &amp; Architecture
-        </div>
-        <h1 className="text-3xl font-bold font-heading text-foreground">
+        </TypographyKicker>
+        <TypographyH1 className="text-3xl font-bold font-heading text-foreground">
           CineSpace Platform Documentation
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        </TypographyH1>
+        <TypographyLead className="text-sm text-muted-foreground mt-1">
           A filmmaker-first guide to client delivery pipelines, review rooms, security controls, and portfolio showcases.
-        </p>
+        </TypographyLead>
       </div>
 
       {/* Delivery Lifecycle Pipeline */}
@@ -103,9 +111,9 @@ export default async function DocsPage({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Film className="size-5 text-primary" />
-            <h2 className="text-xl font-bold font-heading text-foreground">
+            <TypographyH2 className="text-xl font-bold font-heading text-foreground border-none pb-0">
               The CineSpace Delivery Pipeline
-            </h2>
+            </TypographyH2>
           </div>
           <Button
             variant="outline"
@@ -119,9 +127,9 @@ export default async function DocsPage({
             </Link>
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <TypographyMuted className="text-xs text-muted-foreground">
           How video assets progress from initial upload to client review, revision feedback, and final master sign-off.
-        </p>
+        </TypographyMuted>
 
         <div className="grid grid-cols-1 gap-4">
           {phases.map((phase) => {
@@ -141,13 +149,13 @@ export default async function DocsPage({
                     <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground">
                       Step {phase.step}
                     </span>
-                    <h3 className="text-base font-bold font-heading text-card-foreground">
+                    <TypographyH3 className="text-base font-bold font-heading text-card-foreground">
                       {phase.title}
-                    </h3>
+                    </TypographyH3>
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
+                  <TypographyMuted className="text-xs text-muted-foreground leading-relaxed">
                     {phase.desc}
-                  </p>
+                  </TypographyMuted>
                 </div>
               </div>
             );
@@ -159,13 +167,13 @@ export default async function DocsPage({
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Shield className="size-5 text-[#86b98f]" />
-          <h2 className="text-xl font-bold font-heading text-foreground">
+          <TypographyH2 className="text-xl font-bold font-heading text-foreground border-none pb-0">
             Security &amp; Asset Protection
-          </h2>
+          </TypographyH2>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <TypographyMuted className="text-xs text-muted-foreground">
           Engineered to give directors and production studios absolute control over their pre-release footage.
-        </p>
+        </TypographyMuted>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {securityFeatures.map((sec, idx) => (
@@ -177,12 +185,12 @@ export default async function DocsPage({
                 <div className="size-8 rounded-xl bg-muted text-foreground flex items-center justify-center mb-2">
                   <Lock className="size-4 text-primary" />
                 </div>
-                <h3 className="text-sm font-bold font-heading text-card-foreground">
+                <TypographyH3 className="text-sm font-bold font-heading text-card-foreground">
                   {sec.title}
-                </h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
+                </TypographyH3>
+                <TypographyMuted className="text-xs text-muted-foreground leading-relaxed">
                   {sec.detail}
-                </p>
+                </TypographyMuted>
               </div>
             </div>
           ))}
@@ -192,12 +200,12 @@ export default async function DocsPage({
       {/* Quick Access Links Footer */}
       <div className="p-6 rounded-2xl bg-gradient-to-br from-card to-muted/40 border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
         <div className="space-y-1">
-          <h3 className="text-base font-bold font-heading text-foreground">
+          <TypographyH3 className="text-base font-bold font-heading text-foreground">
             Have questions during client review?
-          </h3>
-          <p className="text-xs text-muted-foreground">
+          </TypographyH3>
+          <TypographyMuted className="text-xs text-muted-foreground">
             Check the Filmmaker Help Center for player shortcuts and quick troubleshooting tips.
-          </p>
+          </TypographyMuted>
         </div>
         <Button
           asChild

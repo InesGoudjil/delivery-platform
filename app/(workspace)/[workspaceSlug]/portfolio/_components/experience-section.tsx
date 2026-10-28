@@ -14,12 +14,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { UniversalDialog } from "@/components/ui/universal-dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  TypographyH4,
+  TypographyMuted,
+  TypographySmall,
+} from "@/components/ui/typography";
 import { updatePortfolioAction } from "@/app/actions/portfolio";
 import { PortfolioExperience } from "@/core/entities/portfolio";
 
@@ -155,25 +155,18 @@ export function ExperienceSection({
 
   return (
     <Card className="rounded-2xl bg-[#141416]/90 border border-white/[0.08] p-5 md:p-6 shadow-sm space-y-4 hover:translate-y-0 hover:shadow-sm">
-      {/* Add / Edit Experience Modal via shadcn Dialog */}
-      <Dialog
+      {/* Add / Edit Experience Modal via UniversalDialog */}
+      <UniversalDialog
         open={showExperienceModal}
         onOpenChange={(open) => {
           setShowExperienceModal(open);
           if (!open) resetForm();
         }}
+        size="lg"
+        icon={<Briefcase className="size-5 text-primary" />}
+        title={editingExpId ? "Edit Experience / Credential" : "Add Experience / Credential"}
+        description="Showcase commercial campaigns, studio roles, or agency projects."
       >
-        <DialogContent className="sm:max-w-lg bg-card border-border">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold text-card-foreground flex items-center gap-2">
-              <Briefcase className="size-4 text-primary" />
-              <span>
-                {editingExpId
-                  ? "Edit Experience / Credential"
-                  : "Add Experience / Credential"}
-              </span>
-            </DialogTitle>
-          </DialogHeader>
 
           <form onSubmit={handleSaveExperience} className="space-y-3.5 text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -299,14 +292,15 @@ export function ExperienceSection({
               </Button>
             </div>
           </form>
-        </DialogContent>
-      </Dialog>
+      </UniversalDialog>
 
       {/* Section Header using CardHeader, CardTitle, and CardAction */}
       <CardHeader className="border-b border-border pb-3 flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2 text-xs font-bold text-foreground font-heading">
-          <Briefcase className="size-4 text-primary" />
-          <span>Experience &amp; Client Track Record</span>
+        <CardTitle className="p-0 border-none">
+          <TypographyH4 className="flex items-center gap-2 text-xs font-bold text-foreground font-heading">
+            <Briefcase className="size-4 text-primary" />
+            <span>Experience &amp; Client Track Record</span>
+          </TypographyH4>
         </CardTitle>
         <CardAction>
           <Button
@@ -324,10 +318,10 @@ export function ExperienceSection({
         {experiences.length === 0 ? (
           <div className="text-center py-8 px-4 border border-dashed border-white/10 rounded-xl space-y-2">
             <Briefcase className="size-6 text-zinc-600 mx-auto" />
-            <p className="text-xs text-zinc-400 font-medium">No experience credentials added yet.</p>
-            <p className="text-[11px] text-zinc-600 max-w-sm mx-auto">
+            <TypographySmall className="text-xs text-zinc-400 font-medium">No experience credentials added yet.</TypographySmall>
+            <TypographyMuted className="text-[11px] text-zinc-600 max-w-sm mx-auto">
               Add commercial campaigns, studio roles, or agency projects to showcase your industry credibility to prospective clients.
-            </p>
+            </TypographyMuted>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -338,16 +332,18 @@ export function ExperienceSection({
                 className="bg-[#0c0c0e] border border-white/10 relative group hover:border-white/20 transition-all shadow-sm"
               >
                 <CardHeader className="pb-1">
-                  <CardTitle className="flex flex-wrap items-center gap-2 text-xs font-bold text-white">
-                    <span>{exp.role}</span>
-                    {exp.category && (
-                      <Badge variant="orange" className="text-[10px] font-mono px-2 py-0.5 rounded-full font-medium">
-                        {exp.category}
-                      </Badge>
-                    )}
+                  <CardTitle className="p-0 border-none">
+                    <TypographyH4 className="flex flex-wrap items-center gap-2 text-xs font-bold text-white font-heading">
+                      <span>{exp.role}</span>
+                      {exp.category && (
+                        <Badge variant="orange" className="text-[10px] font-mono px-2 py-0.5 rounded-full font-medium">
+                          {exp.category}
+                        </Badge>
+                      )}
+                    </TypographyH4>
                   </CardTitle>
 
-                  <CardDescription className="text-[11px] text-zinc-300 font-medium flex flex-wrap items-center gap-1.5">
+                  <TypographyMuted className="text-[11px] text-zinc-300 font-medium flex flex-wrap items-center gap-1.5">
                     <span>{exp.company}</span>
                     {exp.location && (
                       <span className="text-zinc-500 flex items-center gap-0.5">
@@ -355,7 +351,7 @@ export function ExperienceSection({
                         {exp.location}
                       </span>
                     )}
-                  </CardDescription>
+                  </TypographyMuted>
 
                   {/* Action Buttons: Edit and Delete in CardAction */}
                   <CardAction className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
@@ -388,9 +384,9 @@ export function ExperienceSection({
                   </div>
 
                   {exp.description && (
-                    <p className="text-[11px] text-zinc-400 pt-1 leading-relaxed border-t border-white/5">
+                    <TypographyMuted className="text-[11px] text-zinc-400 pt-1 leading-relaxed border-t border-white/5">
                       {exp.description}
-                    </p>
+                    </TypographyMuted>
                   )}
                 </CardContent>
               </Card>

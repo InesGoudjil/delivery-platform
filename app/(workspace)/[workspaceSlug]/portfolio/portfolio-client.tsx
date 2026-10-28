@@ -15,8 +15,7 @@ import { PortfolioHero } from "./_components/portfolio-hero";
 import { AppearanceToolbar } from "./_components/appearance-toolbar";
 import { ShowcaseGrid } from "./_components/showcase-grid";
 import {
-  StillLightboxModal,
-  FilmPlayerModal,
+  AssetLightboxModal,
   ProjectExplorerModal,
 } from "./_components/portfolio-modals";
 import { ExperienceSection } from "./_components/experience-section";
@@ -393,45 +392,27 @@ export function PortfolioClient({
         onOpenTrash={() => setIsTrashOpen(true)}
       />
 
-      {/* 6. Still Lightbox Modal */}
-      {selectedStill && (
-        <StillLightboxModal
-          item={selectedStill}
+      {/* 6. Universal Asset Lightbox Modal (Stills & Films) */}
+      {(selectedStill || selectedFilm) && (
+        <AssetLightboxModal
+          activeItem={selectedStill || selectedFilm}
           onClose={() => {
             setSelectedStill(null);
-            setActiveParentProject(null);
-          }}
-          onBack={
-            activeParentProject
-              ? () => {
-                  setSelectedStill(null);
-                  setSelectedProject(activeParentProject);
-                }
-              : undefined
-          }
-          onDelete={handleDeleteItem}
-          onEdit={handleOpenEdit}
-        />
-      )}
-
-      {/* 6. Film Video Player Modal */}
-      {selectedFilm && (
-        <FilmPlayerModal
-          item={selectedFilm}
-          onClose={() => {
             setSelectedFilm(null);
             setActiveParentProject(null);
           }}
           onBack={
             activeParentProject
               ? () => {
+                  setSelectedStill(null);
                   setSelectedFilm(null);
                   setSelectedProject(activeParentProject);
                 }
               : undefined
           }
-          onDelete={handleDeleteItem}
-          onEdit={handleOpenEdit}
+          onDeleteAsset={handleDeleteItem}
+          onEditAsset={handleOpenEdit}
+          showFeedback={false}
         />
       )}
 

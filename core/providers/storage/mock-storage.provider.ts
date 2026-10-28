@@ -75,6 +75,19 @@ export class MockStorageProvider implements IStorageProvider {
     return `/api/media/${providerUid}?download=true&filename=${encodeURIComponent(filename)}`;
   }
 
+  async copyFromUrl(
+    sourceUrl: string,
+    metadata?: {
+      name?: string;
+      creator?: string;
+      allowedOrigins?: string[];
+      meta?: Record<string, string>;
+    }
+  ): Promise<{ uid: string; status?: string }> {
+    const uid = `mock_stream_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    return { uid, status: "ready" };
+  }
+
   verifyWebhookSignature(): boolean {
     return true;
   }

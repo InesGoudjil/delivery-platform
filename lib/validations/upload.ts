@@ -29,6 +29,7 @@ export const requestUploadSchema = z.object({
     .number()
     .nonnegative("File size cannot be negative"),
   assetType: assetTypeSchema.default("video"),
+  aspectRatio: z.string().trim().max(32).optional(),
   maxDurationSeconds: z.number().positive().optional(),
   category: z.string().trim().max(100).optional(),
   metadata: z.record(z.string(), z.string()).optional(),

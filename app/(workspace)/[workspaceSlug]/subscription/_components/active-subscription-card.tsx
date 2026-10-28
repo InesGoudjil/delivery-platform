@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { TypographyH2, TypographyMuted } from "@/components/ui/typography";
 import { WorkspaceFeatureConfig } from "@/core/entities/workspace";
 
 interface ActiveSubscriptionCardProps {
@@ -102,14 +103,16 @@ export function ActiveSubscriptionCard({
                 </span>
               ) : null}
             </div>
-            <CardTitle className="text-2xl font-bold font-heading capitalize text-foreground">
-              {currentPlanName} Plan
+            <CardTitle className="p-0 border-none">
+              <TypographyH2 className="text-2xl font-bold font-heading capitalize text-foreground border-none pb-0">
+                {currentPlanName} Plan
+              </TypographyH2>
             </CardTitle>
-            <CardDescription className="text-xs text-muted-foreground max-w-xl">
+            <TypographyMuted className="text-xs text-muted-foreground max-w-xl">
               {isStarter
                 ? "Your workspace is currently running on the complimentary Starter quota. Upgrade to unlock expanded cloud storage and client delivery features."
                 : "Active production subscription for your workspace with assigned cloud storage and client delivery features."}
-            </CardDescription>
+            </TypographyMuted>
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto">

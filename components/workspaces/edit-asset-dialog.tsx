@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { UploadCloud, Loader2, Image as ImageIcon, Link as LinkIcon, Crop } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TypographyMuted } from "@/components/ui/typography";
 import { UniversalDialog } from "@/components/ui/universal-dialog";
 import { requestAssetUploadAction } from "@/app/actions/upload";
 import { createUploadProgressToast } from "@/lib/upload-toast";
@@ -11,6 +12,12 @@ import {
   ImageCropResult,
   CropAspectRatioPreset,
 } from "@/components/ui/image-crop-editor-dialog";
+import {
+  ASPECT_RATIO_PRESETS,
+  ASPECT_RATIO_BY_ID,
+  parseAspectRatio,
+  type AspectRatioId,
+} from "@/lib/media-ratios";
 
 export interface EditableAssetItem {
   id: string;
@@ -39,7 +46,7 @@ interface EditAssetDialogProps {
   dialogTitle?: string;
 }
 
-const ASPECT_RATIOS = ["16:9", "9:16", "1:1", "4:3"];
+const ASPECT_RATIO_IDS: string[] = ASPECT_RATIO_PRESETS.map((p) => p.id);
 
 export function EditAssetDialog({
   isOpen,
@@ -107,7 +114,7 @@ export function EditAssetDialog({
 
   const handleApplyThumbnailCrop = async (result: ImageCropResult) => {
     const { file, dataUrl, aspectRatio: chosenRatio } = result;
-    const nextRatio = ASPECT_RATIOS.includes(chosenRatio) ? chosenRatio : aspectRatio;
+    const nextRatio = ASPECT_RATIO_IDS.includes(chosenRatio) ? chosenRatio : aspectRatio;
     setAspectRatio(nextRatio);
     setThumbnailUrl(dataUrl);
 
@@ -305,9 +312,9 @@ export function EditAssetDialog({
                         </Button>
                       )}
                     </div>
-                    <p className="text-[10px] text-muted-foreground">
+                    <TypographyMuted className="text-[10px] text-muted-foreground">
                       PNG, JPG, WebP supported. Crop &amp; adjust before saving.
-                    </p>
+                    </TypographyMuted>
                   </div>
                 )}
               </div>
@@ -344,27 +351,112 @@ export function EditAssetDialog({
             </div>
 
             {/* ASPECT RATIO */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
-                ASPECT RATIO
-              </label>
-              <div className="grid grid-cols-4 gap-1">
-                {ASPECT_RATIOS.map((ratio) => (
-                  <Button
-                    key={ratio}
-                    type="button"
-                    variant={aspectRatio === ratio ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setAspectRatio(ratio)}
-                    className={`py-1.5 text-xs font-mono rounded-lg border transition-colors cursor-pointer text-center h-auto ${
-                      aspectRatio === ratio
-                        ? "bg-primary text-primary-foreground font-bold border-primary hover:bg-primary/90"
-                        : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:bg-white/10"
-                    }`}
-                  >
-                    {ratio}
-                  </Button>
-                ))}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+                  ASPECT RATIO
+                </label>
+                <span className="text-[10px] font-mono text-primary font-semibold">
+                  {ASPECT_RATIO_BY_ID[aspectRatio as AspectRatioId]?.label || aspectRatio}
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <div>
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground/70 block mb-1">
+                    Desktop & Broadcast
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {["16:9", "16:10"].map((ratio) => (
+                      <Button
+                        key={ratio}
+                        type="button"
+                        variant={aspectRatio === ratio ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setAspectRatio(ratio)}
+                        className={`py-1.5 text-xs font-mono rounded-lg border transition-colors cursor-pointer text-center h-auto ${
+                          aspectRatio === ratio
+                            ? "bg-primary text-primary-foreground font-bold border-primary hover:bg-primary/90"
+                            : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:bg-white/10"
+                        }`}
+                      >
+                        {ratio}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground/70 block mb-1">
+                    Mobile & Social
+                  </span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {["1:1", "4:5", "9:16"].map((ratio) => (
+                      <Button
+                        key={ratio}
+                        type="button"
+                        variant={aspectRatio === ratio ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setAspectRatio(ratio)}
+                        className={`py-1.5 text-xs font-mono rounded-lg border transition-colors cursor-pointer text-center h-auto ${
+                          aspectRatio === ratio
+                            ? "bg-primary text-primary-foreground font-bold border-primary hover:bg-primary/90"
+                            : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:bg-white/10"
+                        }`}
+                      >
+                        {ratio}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground/70 block mb-1">
+                    Cinema Widescreen
+                  </span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {["2.39:1", "2:1", "1.85:1"].map((ratio) => (
+                      <Button
+                        key={ratio}
+                        type="button"
+                        variant={aspectRatio === ratio ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setAspectRatio(ratio)}
+                        className={`py-1.5 text-[11px] font-mono rounded-lg border transition-colors cursor-pointer text-center h-auto ${
+                          aspectRatio === ratio
+                            ? "bg-primary text-primary-foreground font-bold border-primary hover:bg-primary/90"
+                            : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:bg-white/10"
+                        }`}
+                      >
+                        {ratio}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground/70 block mb-1">
+                    Photography & Classic Film
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {["3:2", "4:3"].map((ratio) => (
+                      <Button
+                        key={ratio}
+                        type="button"
+                        variant={aspectRatio === ratio ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setAspectRatio(ratio)}
+                        className={`py-1.5 text-xs font-mono rounded-lg border transition-colors cursor-pointer text-center h-auto ${
+                          aspectRatio === ratio
+                            ? "bg-primary text-primary-foreground font-bold border-primary hover:bg-primary/90"
+                            : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:bg-white/10"
+                        }`}
+                      >
+                        {ratio}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -403,8 +495,12 @@ export function EditAssetDialog({
         imageSrc={cropState.imageSrc}
         title="EDIT & CROP ASSET THUMBNAIL"
         subtitle="Frame, zoom, rotate, or adjust tone for this asset's thumbnail cover."
-        defaultAspectRatio={(ASPECT_RATIOS.includes(aspectRatio) ? aspectRatio : "16:9") as CropAspectRatioPreset}
-        aspectRatioOptions={["16:9", "9:16", "1:1", "4:3"]}
+        defaultAspectRatio={
+          (["16:9", "16:10", "4:5", "9:16", "1:1", "4:3", "2.39:1", "3:1"].includes(aspectRatio)
+            ? aspectRatio
+            : "16:9") as CropAspectRatioPreset
+        }
+        aspectRatioOptions={["16:9", "16:10", "4:5", "9:16", "1:1", "4:3", "2.39:1", "3:1"]}
         outputFileName={cropState.fileName}
         onApply={handleApplyThumbnailCrop}
       />

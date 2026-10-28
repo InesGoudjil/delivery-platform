@@ -110,4 +110,18 @@ export interface IStorageProvider {
     contentType?: string,
     contentLength?: number
   ): Promise<void>;
+
+  /**
+   * Ingests a video from a publicly-accessible or presigned URL into the streaming pipeline.
+   * Enables Cloudflare Stream to pull master video files stored in Cloudflare R2 and generate HLS/DASH streaming renditions.
+   */
+  copyFromUrl?(
+    sourceUrl: string,
+    metadata?: {
+      name?: string;
+      creator?: string;
+      allowedOrigins?: string[];
+      meta?: Record<string, string>;
+    }
+  ): Promise<{ uid: string; status?: string }>;
 }

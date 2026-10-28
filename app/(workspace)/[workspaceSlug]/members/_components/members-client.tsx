@@ -24,6 +24,13 @@ import { Button } from "@/components/ui/button";
 import { UniversalDialog } from "@/components/ui/universal-dialog";
 import { toast } from "sonner";
 import {
+  TypographyH1,
+  TypographyH2,
+  TypographyLead,
+  TypographyMuted,
+  TypographyKicker,
+} from "@/components/ui/typography";
+import {
   Avatar,
   AvatarFallback,
   AvatarImage,
@@ -175,19 +182,19 @@ export function MembersClient({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-primary uppercase tracking-wider mb-1">
+          <TypographyKicker className="flex items-center gap-2 text-xs font-mono text-primary uppercase tracking-wider mb-1">
             <span>{workspace.brandName}</span>
             <span>•</span>
             <span>{isPersonalWorkspace ? "Personal Workspace" : "Studio Team Workspace"}</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-foreground">
+          </TypographyKicker>
+          <TypographyH1 className="text-2xl sm:text-3xl font-bold font-heading text-foreground">
             Team Collaborators
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          </TypographyH1>
+          <TypographyLead className="text-sm text-muted-foreground mt-1">
             {isPersonalWorkspace
               ? "This is your personal solo workspace (1 seat). Switch to or create a Studio Workspace to invite team members."
               : "Invite assistant editors, colorists, and post producers to manage cuts and client deliveries."}
-          </p>
+          </TypographyLead>
         </div>
 
         <div className="flex items-center gap-3">
@@ -221,10 +228,10 @@ export function MembersClient({
                 <Sparkles className="size-4 text-primary" />
                 <span>Collaborate with Team Members</span>
               </div>
-              <p className="text-xs text-muted-foreground max-w-xl">
+              <TypographyMuted className="text-xs text-muted-foreground max-w-xl">
                 Personal workspaces are designed for individual creators.
                 If you have a <strong>Studio Plan</strong>, you can create a dedicated <strong>Team Workspace</strong> with up to 5 seats to collaborate seamlessly alongside your personal workspace.
-              </p>
+              </TypographyMuted>
             </div>
 
             <Button
@@ -318,9 +325,9 @@ export function MembersClient({
       {/* Active Members Section */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground font-mono">
+          <TypographyH2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground font-mono border-none pb-0">
             Active Members ({members.length})
-          </h2>
+          </TypographyH2>
         </div>
 
         <div className="rounded-2xl bg-card border border-border divide-y divide-border shadow-sm overflow-hidden">
@@ -418,9 +425,9 @@ export function MembersClient({
       {pendingInvitations.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground font-mono">
+            <TypographyH2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground font-mono border-none pb-0">
               Pending Invitations ({pendingInvitations.length})
-            </h2>
+            </TypographyH2>
           </div>
 
           <div className="rounded-2xl bg-card border border-border divide-y divide-border shadow-sm overflow-hidden">

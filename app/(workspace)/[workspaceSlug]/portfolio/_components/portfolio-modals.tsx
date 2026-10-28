@@ -22,14 +22,23 @@ import { Button } from "@/components/ui/button";
 import { AppImage } from "@/components/ui/app-image";
 import { CutReviewPlayer } from "@/components/video/cut-review-player";
 import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
+import { TypographyH2, TypographyLead, TypographyH4 } from "@/components/ui/typography";
 import { PortfolioItem, ProjectAsset } from "../portfolio-client";
 import { getProjectAssetsAction } from "@/app/actions/portfolio";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 
+import { AssetLightboxModal } from "@/components/workspaces/asset-lightbox-modal";
+import {
+  UniversalDialogRoot,
+  UniversalDialogContent,
+} from "@/components/ui/universal-dialog";
+
+export { AssetLightboxModal };
+
 // ==========================================
-// 1. STILL LIGHTBOX MODAL (Image Full View)
+// 1. STILL LIGHTBOX MODAL (Delegates to centralized AssetLightboxModal with UniversalDialog)
 // ==========================================
-interface StillLightboxModalProps {
+export interface StillLightboxModalProps {
   item: PortfolioItem | ProjectAsset | null;
   onClose: () => void;
   onBack?: () => void;
@@ -44,212 +53,22 @@ export function StillLightboxModal({
   onDelete,
   onEdit,
 }: StillLightboxModalProps) {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (onBack) onBack();
-        else onClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, onBack]);
-
-  if (!item) return null;
-
-  // const fallbackUnsplash = "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1600&q=80";
-  const rawUrl =
-    ("mediaUrl" in item && item.mediaUrl ? item.mediaUrl : null) ||
-    ("url" in item && item.url ? item.url : null) ||
-    item.thumbnailUrl ||
-    "";
-  const primaryUrl = resolveMediaUrl(rawUrl) || "";
-
-  const [currentSrc, setCurrentSrc] = useState(primaryUrl);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    setCurrentSrc(primaryUrl);
-    setIsLoading(true);
-    setHasError(false);
-  }, [primaryUrl]);
-
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-between p-4 sm:p-6 animate-in fade-in duration-200"
-      onClick={onClose}
-    >
-      {/* Top Bar */}
-      <div
-        className="w-full max-w-6xl flex items-center justify-between z-10 py-2 border-b border-white/10"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-3">
-          {onBack && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onBack}
-              className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer h-auto"
-              title="Return to project"
-            >
-              <ArrowLeft className="size-3.5" />
-              <span className="hidden sm:inline">Back to Project</span>
-            </Button>
-          )}
-
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/10 border border-white/15 text-[10px] font-mono font-bold text-white uppercase tracking-wider">
-            <ImageIcon className="size-3 text-zinc-300" />
-            <span>STILL</span>
-          </span>
-
-          <div className="space-y-0.5">
-            <h3 className="text-sm sm:text-base font-bold text-white font-heading truncate max-w-xs sm:max-w-md">
-              {item.title}
-            </h3>
-            <p className="text-[11px] text-zinc-400 font-mono">
-              {"category" in item && item.category ? item.category : "Photo Still"}
-            </p>
-          </div>
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex items-center gap-2">
-          {onEdit && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => onEdit(item)}
-              className="size-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer p-0"
-              title="Edit still"
-            >
-              <Pencil className="size-4" />
-            </Button>
-          )}
-
-          {onDelete && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowDeleteConfirm(true)}
-              className="size-9 rounded-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 hover:text-red-300 flex items-center justify-center transition-colors cursor-pointer p-0"
-              title="Delete still"
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          )}
-
-          {currentSrc && (
-            <a
-              href={currentSrc}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="size-9 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-              title="Open full resolution in new tab"
-            >
-              <ExternalLink className="size-4" />
-            </a>
-          )}
-
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="size-9 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer p-0"
-            title="Close image view"
-          >
-            <X className="size-5" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Main Image Stage */}
-      <div
-        className="flex-1 w-full max-w-6xl flex items-center justify-center p-2 sm:p-6 overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="relative max-h-[82vh] max-w-full flex items-center justify-center rounded-2xl overflow-hidden shadow-2xl border border-white/15 bg-black/60 min-w-[280px] min-h-[200px]">
-          {isLoading && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 z-10">
-              <Loader2 className="size-8 animate-spin text-primary" />
-              <span className="text-[11px] font-mono text-zinc-400">Loading high-resolution still...</span>
-            </div>
-          )}
-
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={currentSrc}
-            alt={item.title}
-            onLoad={() => setIsLoading(false)}
-            onError={() => {
-              const fallbackThumb = resolveThumbnailUrl(item.thumbnailUrl, rawUrl, true);
-              if (currentSrc !== fallbackThumb && fallbackThumb) {
-                setCurrentSrc(fallbackThumb);
-              } else {
-                setHasError(true);
-                setIsLoading(false);
-              }
-            }}
-            className={`max-h-[82vh] max-w-full object-contain rounded-2xl select-none transition-opacity duration-200 ${
-              isLoading ? "opacity-0" : "opacity-100"
-            }`}
-          />
-
-          {hasError && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center text-zinc-400">
-              <ImageIcon className="size-10 text-zinc-600" />
-              <span className="text-xs">Unable to load image file.</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-
-      {/* Bottom Information Footer */}
-      <div
-        className="w-full max-w-6xl flex items-center justify-between text-xs text-zinc-500 font-mono py-2 border-t border-white/10 z-10"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <span>CUT High-Res Still Showcase</span>
-        <span>Press ESC to exit</span>
-      </div>
-
-      <DeleteConfirmDialog
-        isOpen={showDeleteConfirm}
-        onOpenChange={setShowDeleteConfirm}
-        isPermanent={false}
-        title="Move to Trash"
-        itemName={item.title}
-        description="This photo still will be moved to your workspace Trash and safely retained for 30 days before permanent deletion."
-        confirmText="Move to Trash"
-        isDeleting={isDeleting}
-        onConfirm={async () => {
-          if (!onDelete) return;
-          setIsDeleting(true);
-          try {
-            await onDelete(item);
-            setShowDeleteConfirm(false);
-            onClose();
-          } finally {
-            setIsDeleting(false);
-          }
-        }}
-      />
-    </div>
+    <AssetLightboxModal
+      activeItem={item}
+      onClose={onClose}
+      onBack={onBack}
+      onDeleteAsset={onDelete}
+      onEditAsset={onEdit}
+      showFeedback={false}
+    />
   );
 }
 
 // ==========================================
-// 2. FILM PLAYER MODAL (Video Playback Dialog)
+// 2. FILM PLAYER MODAL (Delegates to centralized AssetLightboxModal with UniversalDialog)
 // ==========================================
-interface FilmPlayerModalProps {
+export interface FilmPlayerModalProps {
   item: PortfolioItem | ProjectAsset | null;
   onClose: () => void;
   onBack?: () => void;
@@ -264,159 +83,15 @@ export function FilmPlayerModal({
   onDelete,
   onEdit,
 }: FilmPlayerModalProps) {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (onBack) onBack();
-        else onClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, onBack]);
-
-  if (!item) return null;
-
-  const rawUrl =
-    ("url" in item && item.url ? item.url : null) ||
-    ("mediaUrl" in item && item.mediaUrl ? item.mediaUrl : null) ||
-    "";
-  const videoUrl =
-    resolveMediaUrl(rawUrl) ||
-    (item.thumbnailUrl && /^[a-f0-9]{32}$/i.test(item.thumbnailUrl.trim())
-      ? resolveMediaUrl(item.thumbnailUrl)
-      : "") ||
-    "https://files.vidstack.io/sprite-fight/hls/stream.m3u8";
-  const posterUrl = resolveThumbnailUrl(item.thumbnailUrl, rawUrl);
-
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-5xl bg-[#121215]/95 border border-white/15 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-5 text-white relative"
-        style={{
-          boxShadow:
-            "0 25px 50px -12px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.12)",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-4">
-          <div className="flex items-center gap-3">
-            {onBack && (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={onBack}
-                className="rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold h-auto px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer border-0"
-                title="Return to project"
-              >
-                <ArrowLeft className="size-3.5" />
-                <span className="hidden sm:inline">Back to Project</span>
-              </Button>
-            )}
-
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/20 border border-primary/40 text-[10px] font-mono font-bold text-primary uppercase tracking-wider">
-              <Film className="size-3" />
-              <span>FILM</span>
-            </span>
-
-            <div>
-              <h3 className="text-base sm:text-lg font-bold text-white font-heading">
-                {item.title}
-              </h3>
-              <p className="text-xs text-zinc-400 font-mono">
-                {"category" in item && item.category ? item.category : "Film Cut"} · Video Cut
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {onEdit && (
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => onEdit(item)}
-                className="size-9 rounded-full bg-white/10 hover:bg-white/20 border-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-                title="Edit film"
-              >
-                <Pencil className="size-4" />
-              </Button>
-            )}
-
-            {onDelete && (
-              <Button
-                type="button"
-                variant="destructive"
-                size="icon"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="size-9 rounded-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 hover:text-red-300 flex items-center justify-center transition-colors cursor-pointer"
-                title="Delete film"
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            )}
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="size-9 rounded-full bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-              title="Close video player"
-            >
-              <X className="size-5" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Video Stage */}
-        <div className="w-full rounded-2xl bg-black overflow-hidden relative border border-white/10 shadow-2xl flex items-center justify-center">
-          <CutReviewPlayer
-            src={videoUrl}
-            poster={posterUrl}
-            title={item.title}
-            aspectRatio="16:9"
-            autoPlay
-            className="w-full h-full border-0"
-          />
-        </div>
-
-        {/* Footer Details */}
-        <div className="flex items-center justify-between pt-1 text-xs text-zinc-400 font-mono">
-          <span>Secure Edge Delivery · CUT Player</span>
-          <span>Press ESC to close</span>
-        </div>
-      </div>
-
-      <DeleteConfirmDialog
-        isOpen={showDeleteConfirm}
-        onOpenChange={setShowDeleteConfirm}
-        isPermanent={false}
-        title="Move to Trash"
-        itemName={item.title}
-        description="This film cut will be moved to your workspace Trash and safely retained for 30 days before permanent deletion."
-        confirmText="Move to Trash"
-        isDeleting={isDeleting}
-        onConfirm={async () => {
-          if (!onDelete) return;
-          setIsDeleting(true);
-          try {
-            await onDelete(item);
-            setShowDeleteConfirm(false);
-            onClose();
-          } finally {
-            setIsDeleting(false);
-          }
-        }}
-      />
-    </div>
+    <AssetLightboxModal
+      activeItem={item}
+      onClose={onClose}
+      onBack={onBack}
+      onDeleteAsset={onDelete}
+      onEditAsset={onEdit}
+      showFeedback={false}
+    />
   );
 }
 
@@ -498,18 +173,17 @@ export function ProjectExplorerModal({
   });
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-5xl bg-[#121215]/95 border border-white/15 rounded-3xl p-5 sm:p-8 shadow-2xl space-y-6 text-white relative max-h-[92vh] overflow-y-auto"
-        style={{
-          boxShadow:
-            "0 25px 50px -12px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.12)",
-        }}
-        onClick={(e) => e.stopPropagation()}
+    <>
+      <UniversalDialogRoot
+        open={Boolean(project)}
+        onOpenChange={(open) => !open && onClose()}
       >
+        <UniversalDialogContent
+          size="5xl"
+          showCloseButton={false}
+          overlayClassName="bg-black/90 backdrop-blur-xl"
+          className="w-full max-w-5xl bg-[#121215]/95 border border-white/15 rounded-3xl p-5 sm:p-8 shadow-2xl space-y-6 text-white relative max-h-[92vh] overflow-y-auto"
+        >
         {/* Close Button */}
         <Button
           type="button"
@@ -549,14 +223,14 @@ export function ProjectExplorerModal({
             )}
           </div>
 
-          <h2 className="text-2xl sm:text-3xl font-black text-white font-heading tracking-tight">
+          <TypographyH2 className="text-2xl sm:text-3xl font-black text-white font-heading tracking-tight border-none pb-0">
             {project.title}
-          </h2>
+          </TypographyH2>
 
           {project.description && (
-            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed max-w-2xl font-sans">
+            <TypographyLead className="text-xs sm:text-sm text-zinc-400 leading-relaxed max-w-2xl font-sans">
               {project.description}
-            </p>
+            </TypographyLead>
           )}
         </div>
 
@@ -686,9 +360,9 @@ export function ProjectExplorerModal({
 
                   {/* Bottom Title Bar */}
                   <div className="p-3 bg-[#0c0c0e] border-t border-white/5 space-y-0.5">
-                    <h4 className="text-xs font-bold text-white truncate font-heading group-hover:text-primary transition-colors">
+                    <TypographyH4 className="text-xs font-bold text-white truncate font-heading group-hover:text-primary transition-colors">
                       {asset.title}
-                    </h4>
+                    </TypographyH4>
                     <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400">
                       <span>{isVideo ? "Video Stream" : "Photo Still"}</span>
                       {asset.duration && <span>{asset.duration}</span>}
@@ -703,8 +377,10 @@ export function ProjectExplorerModal({
             No {activeFilter === "all" ? "assets" : activeFilter} found inside this project container.
           </div>
         )}
-      </div>
+        </UniversalDialogContent>
+      </UniversalDialogRoot>
 
+      {/* Move to Trash Confirm Dialog */}
       <DeleteConfirmDialog
         isOpen={Boolean(assetToDelete)}
         onOpenChange={(open) => !open && setAssetToDelete(null)}
@@ -726,6 +402,6 @@ export function ProjectExplorerModal({
           }
         }}
       />
-    </div>
+    </>
   );
 }

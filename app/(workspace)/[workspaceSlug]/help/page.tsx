@@ -15,6 +15,14 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  TypographyH1,
+  TypographyH2,
+  TypographyH3,
+  TypographyLead,
+  TypographyMuted,
+  TypographyKicker,
+} from "@/components/ui/typography";
 
 export default async function HelpPage({
   params,
@@ -65,15 +73,15 @@ export default async function HelpPage({
     <div className="max-w-4xl mx-auto space-y-10">
       {/* Header */}
       <div className="pb-6 border-b border-border">
-        <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1">
+        <TypographyKicker className="text-xs font-mono text-primary uppercase tracking-wider mb-1 block">
           Support &amp; Resources
-        </div>
-        <h1 className="text-3xl font-bold font-heading text-foreground">
+        </TypographyKicker>
+        <TypographyH1 className="text-3xl font-bold font-heading text-foreground">
           Filmmaker Help &amp; Shortcuts
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        </TypographyH1>
+        <TypographyLead className="text-sm text-muted-foreground mt-1">
           Keyboard shortcuts for frame-accurate review, answers to common workflow questions, and direct support.
-        </p>
+        </TypographyLead>
       </div>
 
       {/* Quick navigation cards */}
@@ -85,12 +93,12 @@ export default async function HelpPage({
           <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3">
             <Film className="size-5" />
           </div>
-          <h3 className="text-sm font-bold font-heading text-card-foreground group-hover:text-primary transition-colors">
+          <TypographyH3 className="text-sm font-bold font-heading text-card-foreground group-hover:text-primary transition-colors">
             Studio Documentation
-          </h3>
-          <p className="text-xs text-muted-foreground mt-1">
+          </TypographyH3>
+          <TypographyMuted className="text-xs text-muted-foreground mt-1">
             Complete guide to delivery workflows, versioning, security, and portfolio management.
-          </p>
+          </TypographyMuted>
         </Link>
 
         <Link
@@ -100,12 +108,12 @@ export default async function HelpPage({
           <div className="size-9 rounded-xl bg-[#86b98f]/10 text-[#86b98f] flex items-center justify-center mb-3">
             <Share2 className="size-5" />
           </div>
-          <h3 className="text-sm font-bold font-heading text-card-foreground group-hover:text-[#86b98f] transition-colors">
+          <TypographyH3 className="text-sm font-bold font-heading text-card-foreground group-hover:text-[#86b98f] transition-colors">
             Manage Deliveries
-          </h3>
-          <p className="text-xs text-muted-foreground mt-1">
+          </TypographyH3>
+          <TypographyMuted className="text-xs text-muted-foreground mt-1">
             Create new delivery rooms, update passcodes, manage cut versions, and view client approvals.
-          </p>
+          </TypographyMuted>
         </Link>
 
         <Link
@@ -115,12 +123,12 @@ export default async function HelpPage({
           <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3">
             <ShieldCheck className="size-5" />
           </div>
-          <h3 className="text-sm font-bold font-heading text-card-foreground group-hover:text-primary transition-colors">
+          <TypographyH3 className="text-sm font-bold font-heading text-card-foreground group-hover:text-primary transition-colors">
             Security &amp; Passcodes
-          </h3>
-          <p className="text-xs text-muted-foreground mt-1">
+          </TypographyH3>
+          <TypographyMuted className="text-xs text-muted-foreground mt-1">
             Update your account password, manage default review security, and configure download locks.
-          </p>
+          </TypographyMuted>
         </Link>
       </div>
 
@@ -128,13 +136,13 @@ export default async function HelpPage({
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Keyboard className="size-5 text-primary" />
-          <h2 className="text-xl font-bold font-heading text-foreground">
+          <TypographyH2 className="text-xl font-bold font-heading text-foreground border-none pb-0">
             Review Player Keyboard Shortcuts
-          </h2>
+          </TypographyH2>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <TypographyMuted className="text-xs text-muted-foreground">
           Industry-standard NLE playback shortcuts available both in your filmmaker studio and in client delivery rooms.
-        </p>
+        </TypographyMuted>
 
         <div className="rounded-2xl bg-card border border-border overflow-hidden shadow-sm">
           <div className="grid grid-cols-1 divide-y divide-border">
@@ -164,9 +172,9 @@ export default async function HelpPage({
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <HelpCircle className="size-5 text-[#86b98f]" />
-          <h2 className="text-xl font-bold font-heading text-foreground">
+          <TypographyH2 className="text-xl font-bold font-heading text-foreground border-none pb-0">
             Frequently Asked Questions
-          </h2>
+          </TypographyH2>
         </div>
 
         <div className="grid grid-cols-1 gap-3">
@@ -179,9 +187,9 @@ export default async function HelpPage({
                 <CheckCircle2 className="size-4 text-[#86b98f] shrink-0" />
                 <span>{faq.question}</span>
               </div>
-              <p className="text-xs text-muted-foreground leading-relaxed pl-6">
+              <TypographyMuted className="text-xs text-muted-foreground leading-relaxed pl-6">
                 {faq.answer}
-              </p>
+              </TypographyMuted>
             </div>
           ))}
         </div>
@@ -191,12 +199,12 @@ export default async function HelpPage({
       <div className="p-6 rounded-2xl bg-gradient-to-br from-card to-muted/50 border border-border space-y-4 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <h3 className="text-base font-bold font-heading text-foreground">
+            <TypographyH3 className="text-base font-bold font-heading text-foreground">
               Need personalized assistance?
-            </h3>
-            <p className="text-xs text-muted-foreground max-w-xl leading-relaxed">
+            </TypographyH3>
+            <TypographyMuted className="text-xs text-muted-foreground max-w-xl leading-relaxed">
               Our video engineering team is available to help with high-volume uploads, custom branding domains, or review player troubleshooting.
-            </p>
+            </TypographyMuted>
           </div>
           <div className="size-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
             <Mail className="size-5" />

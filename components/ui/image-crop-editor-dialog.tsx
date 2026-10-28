@@ -17,10 +17,21 @@ import {
   Move,
   Sparkles,
 } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  UniversalDialogRoot,
+  UniversalDialogContent,
+} from "@/components/ui/universal-dialog";
 import { Button } from "@/components/ui/button";
 
-export type CropAspectRatioPreset = "1:1" | "3:1" | "16:9" | "4:3" | "9:16";
+export type CropAspectRatioPreset =
+  | "1:1"
+  | "3:1"
+  | "16:9"
+  | "16:10"
+  | "4:3"
+  | "4:5"
+  | "9:16"
+  | "2.39:1";
 
 export interface ImageCropResult {
   file: File;
@@ -50,8 +61,11 @@ const ASPECT_RATIO_CONFIG: Record<
   "1:1": { label: "1:1 Square", numeric: 1, outputWidth: 800, outputHeight: 800 },
   "3:1": { label: "3:1 Banner", numeric: 3, outputWidth: 1920, outputHeight: 640 },
   "16:9": { label: "16:9 Wide", numeric: 16 / 9, outputWidth: 1920, outputHeight: 1080 },
+  "16:10": { label: "16:10 Laptop", numeric: 16 / 10, outputWidth: 1920, outputHeight: 1200 },
   "4:3": { label: "4:3 Standard", numeric: 4 / 3, outputWidth: 1440, outputHeight: 1080 },
+  "4:5": { label: "4:5 Portrait", numeric: 4 / 5, outputWidth: 1080, outputHeight: 1350 },
   "9:16": { label: "9:16 Vertical", numeric: 9 / 16, outputWidth: 1080, outputHeight: 1920 },
+  "2.39:1": { label: "2.39:1 Scope", numeric: 2.3869, outputWidth: 1920, outputHeight: 804 },
 };
 
 export function ImageCropEditorDialog({
@@ -360,10 +374,12 @@ export function ImageCropEditorDialog({
   const showAspectSwitcher = !lockAspectRatio && aspectRatioOptions.length > 1;
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent
+    <UniversalDialogRoot open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <UniversalDialogContent
+        size="xl"
         showCloseButton={false}
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] bg-[#121216]/98 backdrop-blur-2xl border border-white/15 text-white rounded-3xl p-5 sm:p-6 w-full max-w-xl shadow-2xl space-y-4"
+        overlayClassName="z-[60]"
+        className="z-[60] p-5 sm:p-6 w-full max-w-xl space-y-4"
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
@@ -713,7 +729,7 @@ export function ImageCropEditorDialog({
             </Button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </UniversalDialogContent>
+    </UniversalDialogRoot>
   );
 }

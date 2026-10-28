@@ -19,6 +19,7 @@ import {
   Info,
 } from "lucide-react";
 import { UniversalDialog } from "@/components/ui/universal-dialog";
+import { TypographyMuted } from "@/components/ui/typography";
 import { updateAssetAction } from "@/app/actions/assets";
 import { PortfolioItem } from "../portfolio-client";
 import { createUploadProgressToast } from "@/lib/upload-toast";
@@ -556,9 +557,9 @@ export function UploadFilmModal({
               <div className="text-sm font-bold text-white">
                 Drop your films & photo stills here, or click to browse
               </div>
-              <p className="text-xs text-zinc-400 leading-relaxed">
+              <TypographyMuted className="text-xs text-zinc-400 leading-relaxed">
                 Select single or multiple files at once. Supports MP4, MOV, ProRes, PNG, JPG, WEBP up to 5GB each.
-              </p>
+              </TypographyMuted>
             </div>
 
             <Button
@@ -604,9 +605,9 @@ export function UploadFilmModal({
                         <div className="text-xs font-bold text-white truncate">
                           {item.file.name}
                         </div>
-                        <p className="text-[11px] font-mono text-zinc-400">
+                        <TypographyMuted className="text-[11px] font-mono text-zinc-400">
                           {formatBytes(item.file.size)} · Ready to upload
-                        </p>
+                        </TypographyMuted>
                       </div>
                     </div>
 
@@ -842,9 +843,9 @@ export function UploadFilmModal({
                             placeholder="Asset Title"
                             className="bg-transparent text-xs font-bold text-white border-b border-transparent hover:border-white/20 focus:border-primary focus:outline-none px-0.5 py-0.5 w-full max-w-sm truncate"
                           />
-                          <p className="text-[10px] font-mono text-zinc-400">
+                          <TypographyMuted className="text-[10px] font-mono text-zinc-400">
                             {formatBytes(item.file.size)} · {item.file.name}
-                          </p>
+                          </TypographyMuted>
                         </div>
                       </div>
 
@@ -930,7 +931,7 @@ export function UploadFilmModal({
         {/* Modal Action Buttons Footer */}
         {totalCount > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-white/10">
-            <p className="text-xs text-zinc-400">
+            <TypographyMuted className="text-xs text-zinc-400">
               {completedCount === totalCount && totalCount > 0 ? (
                 <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
                   <CheckCircle2 className="size-4" /> All {totalCount} items uploaded successfully!
@@ -940,7 +941,7 @@ export function UploadFilmModal({
                   {queuedCount} {queuedCount === 1 ? "file" : "files"} ready for upload
                 </span>
               )}
-            </p>
+            </TypographyMuted>
 
             <div className="flex items-center gap-2.5 justify-end">
               {uploading ? (

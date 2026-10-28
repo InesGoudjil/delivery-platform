@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
 import { toast } from "sonner";
 
 interface DeliveryProjectDetailsCardProps {
@@ -75,12 +76,14 @@ export function DeliveryProjectDetailsCard({
     <Card className="rounded-2xl border border-border shadow-xl hover:translate-y-0 hover:shadow-xl">
       <CardHeader className="border-b border-border/50 pb-4">
         <div>
-          <CardTitle className="text-base font-bold font-heading text-card-foreground">
-            Project details
+          <CardTitle className="p-0 border-none">
+            <TypographyH3 className="text-base font-bold font-heading text-card-foreground">
+              Project details
+            </TypographyH3>
           </CardTitle>
-          <CardDescription className="text-xs text-muted-foreground mt-0.5">
+          <TypographyMuted className="text-xs text-muted-foreground mt-0.5">
             Configure key information for this client review room
-          </CardDescription>
+          </TypographyMuted>
         </div>
         <CardAction>
           <Button

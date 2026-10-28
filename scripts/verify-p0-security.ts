@@ -18,13 +18,13 @@ async function runVerification() {
   const mockUploadModule = await import("../app/api/mock-upload/[uid]/route");
   
   // Test production 404
-  process.env.NODE_ENV = "production";
+  (process.env as Record<string, string | undefined>).NODE_ENV = "production";
   const mockReq = { headers: new Headers(), nextUrl: new URL("http://localhost/api/mock-upload/valid_uid_12345678") } as any;
   const prodRes = await mockUploadModule.GET(mockReq, { params: Promise.resolve({ uid: "valid_uid_12345678" }) });
   assert.strictEqual(prodRes.status, 404, "FAILED: Mock upload GET did not return 404 in production!");
 
   // Test invalid UID traversal
-  process.env.NODE_ENV = "development";
+  (process.env as Record<string, string | undefined>).NODE_ENV = "development";
   const badUidRes = await mockUploadModule.GET(mockReq, { params: Promise.resolve({ uid: "../../etc/passwd" }) });
   assert.strictEqual(badUidRes.status, 400, "FAILED: Mock upload allowed path traversal character in UID!");
   console.log("   ✓ PASS: Mock upload returns 404 in production and rejects path traversal.");

@@ -14,6 +14,7 @@ import {
   Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
 import { createUploadProgressToast } from "@/lib/upload-toast";
 import {
   VideoUploader,
@@ -394,16 +395,16 @@ export function AssetMultiUploader({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-heading text-lg font-bold text-white tracking-tight">
+              <TypographyH3 className="font-heading text-lg font-bold text-white tracking-tight">
                 Media Asset Uploader
-              </h3>
+              </TypographyH3>
               <span className="text-[10px] font-mono uppercase bg-white/10 text-white/90 px-2 py-0.5 rounded-full">
-                Video Cuts & Stills
+                Video Cuts &amp; Stills
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <TypographyMuted className="text-xs text-muted-foreground">
               Upload standalone stills, high-res photos, or video cuts with automatic versioning.
-            </p>
+            </TypographyMuted>
           </div>
         </div>
 
@@ -507,11 +508,11 @@ export function AssetMultiUploader({
 
               <div className="space-y-1.5 max-w-md">
                 <div className="text-base font-bold text-white">
-                  Drop your videos & photo stills here, or click to browse
+                  Drop your videos &amp; photo stills here, or click to browse
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
+                <TypographyMuted className="text-xs text-muted-foreground leading-relaxed">
                   Select as many files as you want at once. Supports ProRes 422/4444, MP4, MOV, PNG, JPG, WEBP up to 5GB each.
-                </p>
+                </TypographyMuted>
               </div>
 
               <div className="flex items-center gap-3 pt-2">
@@ -623,9 +624,9 @@ export function AssetMultiUploader({
                                 className="bg-transparent text-xs font-bold text-white border-b border-transparent hover:border-white/20 focus:border-primary focus:outline-none px-0.5 py-0.5 w-full max-w-sm truncate"
                               />
                             </div>
-                            <p className="text-[11px] font-mono text-muted-foreground">
+                            <TypographyMuted className="text-[11px] font-mono text-muted-foreground">
                               {formatBytes(item.file.size)} · {item.file.name}
-                            </p>
+                            </TypographyMuted>
                           </div>
                         </div>
 
@@ -707,9 +708,9 @@ export function AssetMultiUploader({
 
                       {/* Error text */}
                       {item.status === "error" && item.errorMessage && (
-                        <p className="text-[11px] text-destructive font-mono pt-1">
+                        <TypographyMuted className="text-[11px] text-destructive font-mono pt-1">
                           {item.errorMessage}
-                        </p>
+                        </TypographyMuted>
                       )}
                     </div>
                   );
@@ -718,7 +719,7 @@ export function AssetMultiUploader({
 
               {/* Batch Actions Footer */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-white/10">
-                <p className="text-xs text-muted-foreground">
+                <TypographyMuted className="text-xs text-muted-foreground">
                   {completedCount === totalCount && totalCount > 0 ? (
                     <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
                       <CheckCircle2 className="size-4" /> All {totalCount} assets uploaded successfully!
@@ -728,7 +729,7 @@ export function AssetMultiUploader({
                       {queuedCount} {queuedCount === 1 ? "asset" : "assets"} ready for direct upload
                     </span>
                   )}
-                </p>
+                </TypographyMuted>
 
                 <div className="flex items-center gap-3 justify-end">
                   {isProcessing ? (

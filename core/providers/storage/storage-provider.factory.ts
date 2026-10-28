@@ -32,6 +32,11 @@ class CompositeStorageProvider implements IStorageProvider {
   ) {}
 
   private getProviderForAsset(assetType: string): IStorageProvider {
+    // If Cloudflare R2 is configured, route master uploads (videos, images, raw files) to R2
+    // so the pristine uncompressed original file is preserved for downloads.
+    if (this.r2Provider.providerName === "cloudflare_r2") {
+      return this.r2Provider;
+    }
     if (assetType === "image" || assetType === "photo_gallery") {
       return this.r2Provider;
     }
@@ -194,6 +199,21 @@ class CompositeStorageProvider implements IStorageProvider {
       return this.r2Provider.putObjectStream(providerUid, body, contentType, contentLength);
     }
     throw new Error("putObjectStream not implemented on current storage provider");
+  }
+
+  async copyFromUrl(
+    sourceUrl: string,
+    metadata?: {
+      name?: string;
+      creator?: string;
+      allowedOrigins?: string[];
+      meta?: Record<string, string>;
+    }
+  ): Promise<{ uid: string; status?: string }> {
+    if (typeof this.streamProvider.copyFromUrl === "function") {
+      return this.streamProvider.copyFromUrl(sourceUrl, metadata);
+    }
+    throw new Error("copyFromUrl not implemented on current storage provider");
   }
 }
 

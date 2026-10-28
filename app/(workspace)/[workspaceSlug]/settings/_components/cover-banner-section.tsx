@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { AppImage } from "@/components/ui/app-image";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { TypographyH2, TypographyMuted } from "@/components/ui/typography";
+import { TypographyH2, TypographyH4, TypographyMuted } from "@/components/ui/typography";
 import { TiltCard } from "@/components/ui/motion";
 import { PortfolioHeroCover } from "@/core/entities/portfolio";
 import { SelectableCoverAsset } from "@/lib/portfolio-data";
@@ -208,9 +208,9 @@ export function CoverBannerSection({
           <div className="p-4 sm:p-5 rounded-2xl bg-muted/40 border border-border space-y-5">
             <div className="flex items-center gap-2 pb-1 border-b border-border/70">
               <Sliders className="size-4 text-primary" />
-              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider font-mono">
+              <TypographyH4 className="text-xs font-bold text-foreground uppercase tracking-wider font-mono">
                 Hero Display Controls &amp; Properties
-              </h3>
+              </TypographyH4>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -533,9 +533,9 @@ export function CoverBannerSection({
               {filteredAssets.length === 0 && (
                 <div className="col-span-full py-10 text-center space-y-2 rounded-xl border border-dashed border-border bg-muted/20">
                   <Film className="size-8 text-muted-foreground mx-auto opacity-50" />
-                  <p className="text-xs text-muted-foreground font-mono">
+                  <TypographyMuted className="text-xs text-muted-foreground font-mono">
                     No matching portfolio assets found.
-                  </p>
+                  </TypographyMuted>
                 </div>
               )}
             </div>

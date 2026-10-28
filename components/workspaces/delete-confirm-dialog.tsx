@@ -4,6 +4,7 @@ import React from "react";
 import { Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import { UniversalDialog } from "@/components/ui/universal-dialog";
 import { Button } from "@/components/ui/button";
+import { TypographyMuted } from "@/components/ui/typography";
 
 interface DeleteConfirmDialogProps {
   isOpen: boolean;
@@ -92,9 +93,9 @@ export function DeleteConfirmDialog({
         </>
       }
     >
-      <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-sans">
+      <TypographyMuted className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-sans">
         {displayDescription}
-      </p>
+      </TypographyMuted>
     </UniversalDialog>
   );
 }

@@ -5248,7 +5248,7 @@ button.on .ar-mix {
   z-index: 80;
   padding: 20px;
 }
-.modal {
+.overlay > .modal {
   width: 100%;
   max-width: 400px;
   background: var(--bg2);
@@ -5256,7 +5256,7 @@ button.on .ar-mix {
   border-radius: 20px;
   padding: 24px;
 }
-.modal h3 {
+.overlay > .modal h3 {
   font-family: var(--font-satoshi), "Satoshi", sans-serif;
   font-weight: 700;
   font-size: 18px;

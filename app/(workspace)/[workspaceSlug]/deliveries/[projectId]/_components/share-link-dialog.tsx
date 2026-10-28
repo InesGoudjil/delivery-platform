@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { UniversalDialog } from "@/components/ui/universal-dialog";
+import { TypographyMuted } from "@/components/ui/typography";
 import Link from "next/link";
 import {
   updateDeliverySecurityAction,
@@ -370,9 +371,9 @@ export function ShareLinkDialog({
                   PRO
                 </Badge>
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <TypographyMuted className="text-[11px] text-muted-foreground">
                 Protect review room with a client access passphrase
-              </p>
+              </TypographyMuted>
               {!canPasswordProtect && (
                 <Link
                   href={workspaceSlug ? `/${workspaceSlug}/subscription` : "#"}
@@ -507,9 +508,9 @@ export function ShareLinkDialog({
                 </Button>
               </div>
 
-              <p className="text-[10px] text-muted-foreground font-sans leading-relaxed">
+              <TypographyMuted className="text-[10px] text-muted-foreground font-sans leading-relaxed">
                 Passphrases are cryptographically hashed (SHA-256) and verified against the delivery share token before client access is granted.
-              </p>
+              </TypographyMuted>
             </div>
           )}
         </div>

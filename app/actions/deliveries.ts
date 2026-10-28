@@ -1091,6 +1091,7 @@ export async function getDeliveryDownloadManifestAction(params: {
         thumbnailUrl:
           resolveThumbnailUrl(activeVer?.thumbnailUrl, activeVer?.rawFileUrl, isPhoto) || "",
         downloadUrl: resolveMediaUrl(activeVer?.downloadUrl || activeVer?.rawFileUrl),
+        proxyDownloadUrl: (activeVer as any)?.proxyDownloadUrl || null,
         isApproved: Boolean(a.isApproved),
       };
     });

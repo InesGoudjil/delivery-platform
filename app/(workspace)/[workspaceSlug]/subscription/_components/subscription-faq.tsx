@@ -3,6 +3,7 @@
 import React from "react";
 import { ShieldCheck, RefreshCw, Zap, HelpCircle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
 import {
   Accordion,
   AccordionItem,
@@ -21,9 +22,9 @@ export function SubscriptionFaq() {
           </div>
           <div className="flex flex-col gap-0.5">
             <span className="text-xs font-bold text-foreground">Stripe 256-Bit Encryption</span>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
+            <TypographyMuted className="text-[11px] text-muted-foreground leading-relaxed">
               Certified PCI Service Provider Level 1. Your credit card data never touches our servers.
-            </p>
+            </TypographyMuted>
           </div>
         </div>
 
@@ -33,9 +34,9 @@ export function SubscriptionFaq() {
           </div>
           <div className="flex flex-col gap-0.5">
             <span className="text-xs font-bold text-foreground">Cancel or Change Anytime</span>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
+            <TypographyMuted className="text-[11px] text-muted-foreground leading-relaxed">
               No locked contracts. Switch tiers, upgrade storage, or cancel seamlessly with one click.
-            </p>
+            </TypographyMuted>
           </div>
         </div>
 
@@ -45,9 +46,9 @@ export function SubscriptionFaq() {
           </div>
           <div className="flex flex-col gap-0.5">
             <span className="text-xs font-bold text-foreground">Instant Quota Activation</span>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
+            <TypographyMuted className="text-[11px] text-muted-foreground leading-relaxed">
               Upgraded cloud storage and delivery links are unlocked immediately upon successful checkout.
-            </p>
+            </TypographyMuted>
           </div>
         </div>
       </div>
@@ -60,12 +61,14 @@ export function SubscriptionFaq() {
               <HelpCircle className="size-4 text-primary" />
             </div>
             <div className="flex flex-col gap-0.5">
-              <CardTitle className="text-base font-bold font-heading text-foreground">
-                Frequently Asked Billing Questions
+              <CardTitle className="p-0 border-none">
+                <TypographyH3 className="text-base font-bold font-heading text-foreground">
+                  Frequently Asked Billing Questions
+                </TypographyH3>
               </CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">
+              <TypographyMuted className="text-xs text-muted-foreground">
                 Everything you need to know about plans, quotas, and cancellations.
-              </CardDescription>
+              </TypographyMuted>
             </div>
           </div>
         </CardHeader>

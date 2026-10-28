@@ -36,6 +36,11 @@ import {
 } from "lucide-react";
 import { formatTimecode, stepByFrames } from "@/lib/timecode";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
+import {
+  getMediaBoundingStyles,
+  detectAspectRatioFromDimensions,
+  parseAspectRatio,
+} from "@/lib/media-ratios";
 import { WatermarkOverlay } from "@/components/ui/watermark-overlay";
 import { Button } from "@/components/ui/button";
 
@@ -150,6 +155,14 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
     const [isDraggingScrubber, setIsDraggingScrubber] = useState(false);
     const [mediaError, setMediaError] = useState<string | null>(null);
     const [isEncoding, setIsEncoding] = useState(false);
+    const [detectedRatio, setDetectedRatio] = useState<string | null>(null);
+
+    const activeRatio = detectedRatio || aspectRatio || "16:9";
+    const bounding = getMediaBoundingStyles(activeRatio);
+
+    useEffect(() => {
+      setDetectedRatio(null);
+    }, [aspectRatio, src]);
 
     // Imperative Handle for parent components (seeking, stepping, etc.)
     useImperativeHandle(ref, () => ({
@@ -314,13 +327,8 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
       >
         {/* Video or Photo Display Core */}
         <div
-          className={`relative w-full overflow-hidden bg-black flex items-center justify-center ${
-            aspectRatio === "9:16"
-              ? "aspect-[9/16] max-h-[72vh] mx-auto"
-              : aspectRatio === "1:1"
-              ? "aspect-square max-h-[72vh] mx-auto"
-              : "aspect-video"
-          }`}
+          style={bounding.style}
+          className={`relative overflow-hidden bg-black flex items-center justify-center ${bounding.className}`}
         >
           {isImageCut ? (
             /* Dedicated High-Res Photo Still Review */
@@ -339,6 +347,15 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                   e.currentTarget.onerror = null;
                   e.currentTarget.src = "/api/media/placeholder.svg";
                 }}
+                onLoad={(e) => {
+                  const img = e.currentTarget;
+                  if (img.naturalWidth && img.naturalHeight && (!aspectRatio || aspectRatio === "16:9")) {
+                    const detected = detectAspectRatioFromDimensions(img.naturalWidth, img.naturalHeight);
+                    if (detected.id !== "16:9") {
+                      setDetectedRatio(detected.id === "custom" ? detected.cssRatio : detected.id);
+                    }
+                  }
+                }}
                 style={{
                   transform: `scale(${zoomLevel})`,
                   transition: "transform 200ms ease-out",
@@ -354,7 +371,9 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                   STILL ASSET
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono text-muted-foreground bg-black/60 border border-white/10 backdrop-blur-md">
-                  {aspectRatio}
+                  {(bounding.parsed as any)?.shortLabel ||
+                    (bounding.parsed as any)?.label ||
+                    (typeof activeRatio === "string" ? activeRatio : bounding.parsed?.id || "16:9")}
                 </span>
               </div>
             </div>
@@ -578,7 +597,10 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                   Still Photography Cut
                 </span>
                 <span className="text-muted-foreground text-[11px] font-mono">
-                  {aspectRatio} High-Resolution Asset
+                  {(bounding.parsed as any)?.shortLabel ||
+                    (bounding.parsed as any)?.label ||
+                    (typeof activeRatio === "string" ? activeRatio : bounding.parsed?.id || "16:9")}{" "}
+                  High-Resolution Asset
                 </span>
               </div>
               <div className="flex items-center gap-2">

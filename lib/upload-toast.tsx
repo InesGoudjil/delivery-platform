@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 export const formatUploadBytes = (bytes: number): string => {
   if (!bytes || bytes <= 0) return "0 B";
@@ -25,7 +25,7 @@ export interface UploadToastProgressPayload {
   subtitle?: string;
 }
 
-function renderUploadProgressDescription({
+export function renderUploadProgressDescription({
   title,
   fileName,
   percentage,
@@ -53,7 +53,7 @@ function renderUploadProgressDescription({
       : null;
 
   return (
-    <div className="w-full space-y-2 pt-1">
+    <div className="w-full space-y-2 pt-1.5">
       <div className="flex items-center justify-between gap-2 text-[11px] font-mono text-muted-foreground">
         <span className="truncate max-w-[200px] text-foreground/90 font-medium">
           {displayFileName}
@@ -61,7 +61,7 @@ function renderUploadProgressDescription({
         <span className="font-bold text-foreground shrink-0">{clampedPct}%</span>
       </div>
 
-      <div className="w-full h-1.5 bg-muted/80 rounded-full overflow-hidden border border-border/30">
+      <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden border border-white/10">
         <div
           className="h-full bg-primary transition-all duration-200 rounded-full"
           style={{ width: `${clampedPct}%` }}
@@ -108,6 +108,7 @@ export function createUploadProgressToast(customId?: string) {
         id: toastId,
         duration: Infinity,
         description: renderUploadProgressDescription(payload),
+        className: "liquid-glass",
       });
       return toastId;
     },
@@ -123,6 +124,7 @@ export function createUploadProgressToast(customId?: string) {
         id: toastId,
         duration: Infinity,
         description: renderUploadProgressDescription(payload),
+        className: "liquid-glass",
       });
     },
 
@@ -131,6 +133,7 @@ export function createUploadProgressToast(customId?: string) {
         id: toastId,
         duration: 4000,
         description: description || undefined,
+        className: "liquid-glass",
       });
     },
 
@@ -139,6 +142,7 @@ export function createUploadProgressToast(customId?: string) {
         id: toastId,
         duration: 5000,
         description: description || undefined,
+        className: "liquid-glass",
       });
     },
 
@@ -147,6 +151,7 @@ export function createUploadProgressToast(customId?: string) {
         id: toastId,
         duration: 3500,
         description: description || undefined,
+        className: "liquid-glass",
       });
     },
 

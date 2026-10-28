@@ -1,18 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import {
   Play,
-  Pause,
-  Film,
-  Image as ImageIcon,
   MessageCircle,
   X,
-  Volume2,
-  VolumeX,
   ArrowRight,
-  ArrowLeft,
-  Share2,
   Send,
   Check,
   Loader2,
@@ -22,6 +15,12 @@ import { PortfolioAsset, PortfolioProject } from "@/lib/portfolio-data";
 import { usePortfolioModal } from "./portfolio-context";
 import { Button } from "@/components/ui/button";
 import { submitPortfolioInquiryAction } from "@/app/actions/inquiries";
+import { AssetLightboxModal } from "@/components/workspaces/asset-lightbox-modal";
+import { detectAspectRatioFromDimensions } from "@/lib/media-ratios";
+import {
+  UniversalDialogRoot,
+  UniversalDialogContent,
+} from "@/components/ui/universal-dialog";
 
 export function PortfolioModals() {
   const {
@@ -77,22 +76,8 @@ export function PortfolioModals() {
     }
   };
 
-  // Video player state
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
-  };
-
   // Still navigation (next / prev)
-  const handleNextStill = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
+  const handleNextStill = () => {
     if (!activeStill) return;
     const stills = assets.filter((a) => a.kind === "still");
     const currentList = selectedProject
@@ -100,6 +85,7 @@ export function PortfolioModals() {
           (a) => selectedProject.assetIds.includes(a.id) && a.kind === "still"
         )
       : stills;
+    if (currentList.length <= 1) return;
     const currentIndex = currentList.findIndex((s) => s.id === activeStill.id);
     if (currentIndex < currentList.length - 1) {
       setActiveStill(currentList[currentIndex + 1]);
@@ -108,8 +94,7 @@ export function PortfolioModals() {
     }
   };
 
-  const handlePrevStill = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
+  const handlePrevStill = () => {
     if (!activeStill) return;
     const stills = assets.filter((a) => a.kind === "still");
     const currentList = selectedProject
@@ -117,6 +102,7 @@ export function PortfolioModals() {
           (a) => selectedProject.assetIds.includes(a.id) && a.kind === "still"
         )
       : stills;
+    if (currentList.length <= 1) return;
     const currentIndex = currentList.findIndex((s) => s.id === activeStill.id);
     if (currentIndex > 0) {
       setActiveStill(currentList[currentIndex - 1]);
@@ -125,291 +111,179 @@ export function PortfolioModals() {
     }
   };
 
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setActiveStill(null);
-        setActiveFilm(null);
-        setSelectedProject(null);
-        setIsContactOpen(false);
-      }
-      if (activeStill) {
-        if (e.key === "ArrowRight") handleNextStill();
-        if (e.key === "ArrowLeft") handlePrevStill();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeStill, selectedProject]);
+  // Film navigation (next / prev)
+  const handleNextFilm = () => {
+    if (!activeFilm) return;
+    const films = assets.filter((a) => a.kind === "film");
+    const currentList = selectedProject
+      ? assets.filter(
+          (a) => selectedProject.assetIds.includes(a.id) && a.kind === "film"
+        )
+      : films;
+    if (currentList.length <= 1) return;
+    const currentIndex = currentList.findIndex((f) => f.id === activeFilm.id);
+    if (currentIndex < currentList.length - 1) {
+      setActiveFilm(currentList[currentIndex + 1]);
+    } else {
+      setActiveFilm(currentList[0]);
+    }
+  };
+
+  const handlePrevFilm = () => {
+    if (!activeFilm) return;
+    const films = assets.filter((a) => a.kind === "film");
+    const currentList = selectedProject
+      ? assets.filter(
+          (a) => selectedProject.assetIds.includes(a.id) && a.kind === "film"
+        )
+      : films;
+    if (currentList.length <= 1) return;
+    const currentIndex = currentList.findIndex((f) => f.id === activeFilm.id);
+    if (currentIndex > 0) {
+      setActiveFilm(currentList[currentIndex - 1]);
+    } else {
+      setActiveFilm(currentList[currentList.length - 1]);
+    }
+  };
+
+  const hasMultipleStills =
+    assets.filter((a) => (selectedProject ? selectedProject.assetIds.includes(a.id) : true) && a.kind === "still")
+      .length > 1;
+
+  const hasMultipleFilms =
+    assets.filter((a) => (selectedProject ? selectedProject.assetIds.includes(a.id) : true) && a.kind === "film")
+      .length > 1;
 
   return (
     <>
-      {/* 🖼️ MODAL 1: STILL LIGHTBOX MODAL */}
-      {activeStill && (
-        <div
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-between p-4 sm:p-6 animate-in fade-in duration-200"
-          onClick={() => setActiveStill(null)}
-        >
-          {/* Top Bar */}
-          <div
-            className="w-full max-w-6xl flex items-center justify-between z-10 py-2 border-b border-white/10"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/10 border border-white/15 text-[10px] font-mono font-bold text-white uppercase tracking-wider">
-                <ImageIcon className="size-3 text-zinc-300" />
-                <span>STILL</span>
-              </span>
-              <h3 className="text-sm sm:text-base font-bold text-white font-heading truncate max-w-xs sm:max-w-md">
-                {activeStill.title}
-              </h3>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => {
-                  if (typeof window !== "undefined") {
-                    navigator.clipboard.writeText(window.location.href);
-                  }
-                }}
-                className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"
-                title="Share link"
-              >
-                <Share2 className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => setActiveStill(null)}
-                className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"
-                title="Close (Esc)"
-              >
-                <X className="size-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Center Image with Next / Prev buttons */}
-          <div
-            className="relative w-full max-w-5xl flex-1 flex items-center justify-center my-4 overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handlePrevStill}
-              className="absolute left-2 sm:left-4 z-20 size-11 rounded-full bg-black/50 hover:bg-primary text-white hover:text-primary-foreground transition-all cursor-pointer backdrop-blur-md"
-              title="Previous (Left Arrow)"
-            >
-              <ArrowLeft className="size-5" />
-            </Button>
-
-            <img
-              src={activeStill.image}
-              alt={activeStill.title}
-              className="max-h-[75vh] w-auto max-w-full object-contain rounded-xl shadow-2xl"
-            />
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleNextStill}
-              className="absolute right-2 sm:right-4 z-20 size-11 rounded-full bg-black/50 hover:bg-primary text-white hover:text-primary-foreground transition-all cursor-pointer backdrop-blur-md"
-              title="Next (Right Arrow)"
-            >
-              <ArrowRight className="size-5" />
-            </Button>
-          </div>
-
-          {/* Bottom Bar Details */}
-          <div
-            className="w-full max-w-6xl flex items-center justify-between z-10 py-2 border-t border-white/10 text-xs font-mono text-zinc-400"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <span>{activeStill.desc}</span>
-            <Button
-              variant="link"
-              size="xs"
-              onClick={() =>
-                handleWhatsAppChat(
-                  `Hi ${profile.name}, I love your still "${activeStill.title}". I would like to inquire about a shoot.`
-                )
+      {/* 🖼️ STILL LIGHTBOX MODAL */}
+      <AssetLightboxModal
+        activeItem={
+          activeStill
+            ? {
+                ...activeStill,
+                id: String(activeStill.id),
+                type: "still",
+                kind: "still",
+                src: activeStill.image,
+                image: activeStill.image,
+                aspectRatio:
+                  typeof activeStill.ar === "number" && activeStill.ar > 0
+                    ? (() => {
+                        const detected = detectAspectRatioFromDimensions(activeStill.ar * 1000, 1000);
+                        return detected.id === "custom" ? detected.cssRatio : detected.id;
+                      })()
+                    : undefined,
               }
-              className="h-auto p-0 text-primary hover:underline font-bold cursor-pointer"
-            >
-              Inquire About Shoot →
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* 📹 MODAL 2: FILM VIDEO PLAYER MODAL */}
-      {activeFilm && (
-        <div
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
-          onClick={() => setActiveFilm(null)}
-        >
-          <div
-            className="relative w-full max-w-5xl rounded-3xl overflow-hidden border border-white/15 bg-[#121214] shadow-2xl flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10 bg-[#121214]">
-              <div className="flex items-center gap-3">
-                <div className="size-9 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
-                  <Film className="size-4" />
-                </div>
-                <div>
-                  <h3 className="font-heading font-bold text-base sm:text-lg text-white">
-                    {activeFilm.title}
-                  </h3>
-                  <p className="text-xs text-zinc-400 font-mono">
-                    {activeFilm.resolution || "HD 60fps"} · {activeFilm.tc}
-                  </p>
-                </div>
-              </div>
-
+            : null
+        }
+        onClose={() => setActiveStill(null)}
+        onBack={
+          selectedProject
+            ? () => {
+                setActiveStill(null);
+                setActiveFilm(null);
+              }
+            : undefined
+        }
+        onNext={hasMultipleStills ? handleNextStill : undefined}
+        onPrev={hasMultipleStills ? handlePrevStill : undefined}
+        showFeedback={false}
+        showVersions={false}
+        showDownload={false}
+        showShareLink={true}
+        footerExtra={
+          activeStill ? (
+            <div className="w-full flex items-center justify-between text-xs font-mono text-zinc-400">
+              <span className="truncate max-w-sm sm:max-w-md">{activeStill.desc}</span>
               <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => setActiveFilm(null)}
-                className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+                variant="link"
+                size="xs"
+                onClick={() =>
+                  handleWhatsAppChat(
+                    `Hi ${profile.name}, I love your still "${activeStill.title}". I would like to inquire about a shoot.`
+                  )
+                }
+                className="h-auto p-0 text-primary hover:underline font-bold cursor-pointer shrink-0 ml-4"
               >
-                <X className="size-4" />
+                Inquire About Shoot →
               </Button>
             </div>
+          ) : null
+        }
+      />
 
-            {/* Video Stage */}
-            <div className="relative aspect-video w-full bg-black flex items-center justify-center">
-              <video
-                ref={videoRef}
-                src={activeFilm.videoUrl}
-                poster={activeFilm.image}
-                autoPlay
-                playsInline
-                muted={isMuted}
-                onTimeUpdate={() => {
-                  if (videoRef.current) {
-                    setCurrentTime(videoRef.current.currentTime);
-                    setDuration(videoRef.current.duration || 0);
-                  }
-                }}
-                onEnded={() => setIsPlaying(false)}
-                className="w-full h-full object-contain"
-              />
-
-              {/* Play/Pause center overlay click */}
-              <div
-                onClick={() => {
-                  if (videoRef.current) {
-                    if (isPlaying) videoRef.current.pause();
-                    else videoRef.current.play();
-                    setIsPlaying(!isPlaying);
-                  }
-                }}
-                className="absolute inset-0 flex items-center justify-center cursor-pointer group"
-              >
-                {!isPlaying && (
-                  <div className="size-16 rounded-full bg-black/60 border border-white/25 backdrop-blur-md flex items-center justify-center text-white shadow-2xl">
-                    <Play className="size-8 fill-current ml-1" />
-                  </div>
-                )}
-              </div>
-
-              {/* Custom Video Controls Bar */}
-              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 flex items-center gap-4 text-white z-20">
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => {
-                    if (videoRef.current) {
-                      if (isPlaying) videoRef.current.pause();
-                      else videoRef.current.play();
-                      setIsPlaying(!isPlaying);
-                    }
-                  }}
-                  className="size-8 p-1 text-white hover:text-primary hover:bg-white/10 cursor-pointer"
-                >
-                  {isPlaying ? (
-                    <Pause className="size-5" />
-                  ) : (
-                    <Play className="size-5 fill-current" />
-                  )}
-                </Button>
-
-                {/* Progress bar */}
-                <input
-                  type="range"
-                  min={0}
-                  max={duration || 100}
-                  value={currentTime}
-                  onChange={(e) => {
-                    const newTime = Number(e.target.value);
-                    setCurrentTime(newTime);
-                    if (videoRef.current) videoRef.current.currentTime = newTime;
-                  }}
-                  className="flex-1 accent-primary h-1.5 rounded-full cursor-pointer bg-white/20"
-                />
-
-                <span className="text-xs font-mono text-zinc-300 shrink-0">
-                  {formatTime(currentTime)} / {formatTime(duration)}
-                </span>
-
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => {
-                    if (videoRef.current) {
-                      videoRef.current.muted = !isMuted;
-                      setIsMuted(!isMuted);
-                    }
-                  }}
-                  className="size-8 p-1 text-white hover:text-primary hover:bg-white/10 cursor-pointer"
-                >
-                  {isMuted ? (
-                    <VolumeX className="size-5" />
-                  ) : (
-                    <Volume2 className="size-5" />
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            {/* Footer / Inquiry Action */}
-            <div className="p-4 sm:p-6 bg-[#121214] border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <p className="text-xs text-zinc-300 font-sans max-w-lg">
-                {activeFilm.desc}
-              </p>
-
+      {/* 📹 FILM LIGHTBOX MODAL */}
+      <AssetLightboxModal
+        activeItem={
+          activeFilm
+            ? {
+                ...activeFilm,
+                id: String(activeFilm.id),
+                type: "film",
+                kind: "film",
+                videoUrl: activeFilm.videoUrl,
+                poster: activeFilm.image,
+                image: activeFilm.image,
+                aspectRatio:
+                  typeof activeFilm.ar === "number" && activeFilm.ar > 0
+                    ? (() => {
+                        const detected = detectAspectRatioFromDimensions(activeFilm.ar * 1000, 1000);
+                        return detected.id === "custom" ? detected.cssRatio : detected.id;
+                      })()
+                    : undefined,
+              }
+            : null
+        }
+        onClose={() => setActiveFilm(null)}
+        onBack={
+          selectedProject
+            ? () => {
+                setActiveStill(null);
+                setActiveFilm(null);
+              }
+            : undefined
+        }
+        onNext={hasMultipleFilms ? handleNextFilm : undefined}
+        onPrev={hasMultipleFilms ? handlePrevFilm : undefined}
+        showFeedback={false}
+        showVersions={false}
+        showDownload={false}
+        showShareLink={true}
+        footerExtra={
+          activeFilm ? (
+            <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-sans text-zinc-300">
+              <p className="line-clamp-2 max-w-xl">{activeFilm.desc}</p>
               <Button
                 onClick={() =>
                   handleWhatsAppChat(
                     `Hi ${profile.name}! I watched "${activeFilm.title}" on your portfolio and would like to inquire about a similar production.`
                   )
                 }
-                className="px-5 py-2.5 h-auto rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer shadow-lg shadow-primary/25"
+                className="px-5 py-2 h-auto rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer shadow-lg shadow-primary/25"
               >
                 <MessageCircle className="size-4" />
                 <span>Inquire About Similar Film</span>
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          ) : null
+        }
+      />
 
       {/* 📁 MODAL 3: PROJECT DETAILS & ASSETS MODAL */}
-      {selectedProject && (
-        <div
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
-          onClick={() => setSelectedProject(null)}
+      <UniversalDialogRoot
+        open={Boolean(selectedProject)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedProject(null);
+        }}
+      >
+        <UniversalDialogContent
+          size="5xl"
+          showCloseButton={false}
+          className="max-w-6xl max-h-[90vh] p-0 overflow-hidden bg-[#121214] border-white/15 rounded-3xl"
         >
-          <div
-            className="relative w-full max-w-6xl max-h-[90vh] rounded-3xl overflow-hidden border border-white/15 bg-[#121214] shadow-2xl flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
+          {selectedProject && (
+            <div className="relative w-full flex flex-col max-h-[90vh] overflow-hidden">
             {/* Top Close Button */}
             <Button
               variant="ghost"
@@ -522,19 +396,22 @@ export function PortfolioModals() {
               </Button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </UniversalDialogContent>
+      </UniversalDialogRoot>
 
       {/* 💬 MODAL 4: CONTACT & INQUIRY DRAWER */}
-      {isContactOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setIsContactOpen(false)}
+      <UniversalDialogRoot
+        open={isContactOpen}
+        onOpenChange={(open) => {
+          if (!open) setIsContactOpen(false);
+        }}
+      >
+        <UniversalDialogContent
+          size="lg"
+          showCloseButton={false}
+          className="max-w-lg p-6 sm:p-8 bg-[#141416] border-white/15 rounded-3xl"
         >
-          <div
-            className="relative w-full max-w-lg rounded-3xl border border-white/15 bg-[#141416] p-6 sm:p-8 space-y-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="space-y-0.5">
                 <h3 className="font-heading font-extrabold text-xl text-white">
@@ -666,9 +543,8 @@ export function PortfolioModals() {
                 </form>
               </div>
             )}
-          </div>
-        </div>
-      )}
+        </UniversalDialogContent>
+      </UniversalDialogRoot>
     </>
   );
 }
