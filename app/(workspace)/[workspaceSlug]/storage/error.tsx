@@ -36,7 +36,7 @@ export default function StorageError({
                 <AlertCircle className="size-7" />
               </div>
               <div className="space-y-2">
-                <Badge variant="destructive" className="font-mono text-xs uppercase tracking-wider">
+                <Badge variant="destructive" className="font-sans text-[10px] uppercase tracking-wider font-semibold">
                   Service Interruption
                 </Badge>
                 <TypographyH2 className="text-xl font-bold font-heading text-foreground">

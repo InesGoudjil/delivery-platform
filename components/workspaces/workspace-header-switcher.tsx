@@ -88,7 +88,7 @@ export function WorkspaceHeaderSwitcher({
         sideOffset={8}
       >
         <DropdownMenuLabel className="px-2.5 py-1">
-          <TypographySpan variant="kicker" className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+          <TypographySpan variant="kicker" className="text-[10px]  text-muted-foreground uppercase tracking-wider">
             Workspaces ({workspaces.length})
           </TypographySpan>
         </DropdownMenuLabel>
@@ -127,7 +127,7 @@ export function WorkspaceHeaderSwitcher({
                       </TypographySpan>
                     )}
                   </div>
-                  <TypographySpan variant="muted" className="truncate text-[10px] font-mono">
+                  <TypographySpan variant="muted" className="truncate text-[10px] ">
                     {ws.plan || (ws.accountType === "studio" ? "Studio • 5 Seats" : "Personal")}
                   </TypographySpan>
                 </div>

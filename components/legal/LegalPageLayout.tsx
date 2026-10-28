@@ -44,7 +44,7 @@ export function LegalPageLayout({
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white font-display uppercase">
               {title}
             </h1>
-            <p className="text-xs text-[#71717a] font-mono tracking-wider pt-1">
+            <p className="text-xs text-[#71717a]  tracking-wider pt-1">
               {lastUpdated}
             </p>
           </div>

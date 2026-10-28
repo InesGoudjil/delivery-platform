@@ -174,7 +174,7 @@ export function TrashBinDialog({
         icon={<Trash2 className="size-5" />}
         title="Workspace Trash"
         badge={
-          <TypographySpan className="text-xs font-mono px-2 py-0.5 rounded-full bg-white/10 text-zinc-300">
+          <TypographySpan className="text-xs  px-2 py-0.5 rounded-full bg-white/10 text-zinc-300">
             {assets.length} {assets.length === 1 ? "item" : "items"}
           </TypographySpan>
         }
@@ -215,7 +215,7 @@ export function TrashBinDialog({
             {isLoading ? (
               <div className="flex flex-col items-center justify-center h-48 gap-3 text-zinc-400">
                 <Loader2 className="size-6 animate-spin text-primary" />
-                <TypographySpan className="text-xs font-mono">Loading trashed items...</TypographySpan>
+                <TypographySpan className="text-xs ">Loading trashed items...</TypographySpan>
               </div>
             ) : assets.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-52 gap-3 text-center px-4">
@@ -267,7 +267,7 @@ export function TrashBinDialog({
                             {asset.title}
                           </TypographyH4>
                           <TypographySpan
-                            className={`text-[10px] font-mono px-2 py-0.5 rounded-full border shrink-0 ${
+                            className={`text-[10px]  px-2 py-0.5 rounded-full border shrink-0 ${
                               asset.daysRemaining <= 5
                                 ? "bg-red-500/10 border-red-500/30 text-red-400"
                                 : "bg-amber-500/10 border-amber-500/30 text-amber-300"
@@ -280,7 +280,7 @@ export function TrashBinDialog({
                           </TypographySpan>
                         </div>
 
-                        <div className="flex items-center gap-3 mt-1 text-[11px] text-zinc-400 font-mono">
+                        <div className="flex items-center gap-3 mt-1 text-[11px] text-zinc-400 ">
                           <TypographySpan>{isFilm ? "Film Cut" : "Photo Still"}</TypographySpan>
                           {asset.fileSizeBytes > 0 && (
                             <>

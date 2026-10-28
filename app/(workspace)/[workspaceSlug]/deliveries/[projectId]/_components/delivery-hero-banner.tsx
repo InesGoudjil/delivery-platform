@@ -98,13 +98,13 @@ export function DeliveryHeroBanner({
         {/* Stats Bar (STATUS, ASSETS, CLIENT APPROVED) */}
         <div className="flex flex-wrap items-center gap-8 pt-2 border-t border-border/40">
           <div>
-            <TypographySpan className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+            <TypographySpan className="text-[10px]  text-muted-foreground uppercase tracking-widest block">
               STATUS
             </TypographySpan>
             <div className="flex items-center gap-1.5 mt-1.5">
               <Badge
                 variant={projectStatus === "approved" ? "sage" : "orange"}
-                className="font-mono text-xs uppercase tracking-wider font-extrabold"
+                className=" text-xs uppercase tracking-wider font-extrabold"
               >
                 {projectStatus === "approved" ? "APPROVED" : "DRAFT"}
               </Badge>
@@ -112,7 +112,7 @@ export function DeliveryHeroBanner({
           </div>
 
           <div>
-            <TypographySpan className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+            <TypographySpan className="text-[10px]  text-muted-foreground uppercase tracking-widest block">
               ASSETS
             </TypographySpan>
             <TypographySpan className="text-base font-extrabold text-foreground mt-0.5 block">
@@ -121,7 +121,7 @@ export function DeliveryHeroBanner({
           </div>
 
           <div>
-            <TypographySpan className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+            <TypographySpan className="text-[10px]  text-muted-foreground uppercase tracking-widest block">
               CLIENT APPROVED
             </TypographySpan>
             <TypographySpan className="text-base font-extrabold text-primary mt-0.5 block">

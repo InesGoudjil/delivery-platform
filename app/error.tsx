@@ -24,7 +24,7 @@ export default function RootError({
         </div>
 
         <div className="space-y-2">
-          <span className="text-[11px] font-mono text-primary uppercase tracking-widest font-semibold block">
+          <span className="text-[11px] text-primary uppercase tracking-widest font-semibold block">
             System Alert
           </span>
           <h2 className="text-2xl font-bold font-heading text-[#f6f3ec]">

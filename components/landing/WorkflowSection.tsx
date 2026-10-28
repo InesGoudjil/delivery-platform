@@ -51,7 +51,7 @@ export function WorkflowSection() {
       {/* Section Header */}
       <div className="space-y-3 max-w-3xl mx-auto">
         <div className="flex justify-center">
-          <Badge variant="orange" className="text-xs font-mono uppercase tracking-widest font-semibold px-3.5 py-1">
+          <Badge variant="kicker" className="px-3.5 py-1">
             Three simple steps
           </Badge>
         </div>
@@ -81,7 +81,7 @@ export function WorkflowSection() {
                   className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform"
                 />
                 {/* <div className="relative z-10 flex justify-between items-start">
-                  <span className="bg-primary text-primary-foreground text-[10px] font-extrabold px-2 py-0.5 rounded shadow font-mono">
+                  <span className="bg-primary text-primary-foreground text-[10px] font-extrabold px-2 py-0.5 rounded shadow ">
                     {item.badgeText}
                   </span>
                 </div> */}
@@ -95,7 +95,7 @@ export function WorkflowSection() {
 
             {/* Bottom Content */}
             <div className="pt-6 pb-2 space-y-2">
-              <span className="text-sm font-extrabold text-primary font-mono block">
+              <span className="text-sm font-extrabold text-primary  block">
                 {item.step}
               </span>
               <h3 className="text-xl font-bold text-white font-display">

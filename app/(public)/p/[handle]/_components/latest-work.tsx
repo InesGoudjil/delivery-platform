@@ -155,7 +155,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
 
                       {/* Top-right asset count badge */}
                       <div className="absolute top-3 right-3 z-10">
-                        <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[11px] font-mono text-zinc-200">
+                        <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[11px]  text-zinc-200">
                           {proj.tc}
                         </Badge>
                       </div>
@@ -166,7 +166,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                           {proj.title}
                         </TypographyH3>
                         {showClient && (
-                          <TypographyMuted className="text-xs text-zinc-400 font-mono truncate">
+                          <TypographyMuted className="text-xs text-zinc-400  truncate">
                             {proj.client}
                           </TypographyMuted>
                         )}
@@ -199,7 +199,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                       {projects.length - visibleProjects.length > 0 && (
                         <Badge
                           variant="secondary"
-                          className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
+                          className="text-[10px]  px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
                         >
                           +{projects.length - visibleProjects.length} more
                         </Badge>
@@ -207,14 +207,14 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                     </div>
                   )}
                 </Button>
-                <p className="text-[11px] font-mono text-zinc-400">
+                <p className="text-[11px]  text-zinc-400">
                   Showing {visibleProjects.length} of {projects.length} projects
                 </p>
               </div>
             )}
 
             {projects.length <= visibleProjects.length && projects.length > PAGE_SIZE && (
-              <div className="text-center pt-2 pb-2 text-[11px] font-mono text-zinc-500 flex items-center justify-center gap-2">
+              <div className="text-center pt-2 pb-2 text-[11px]  text-zinc-500 flex items-center justify-center gap-2">
                 <CheckCircle2 className="size-3.5 text-emerald-400" />
                 <TypographySpan>All {projects.length} projects displayed</TypographySpan>
               </div>
@@ -259,14 +259,14 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
 
                           {/* Top-right duration */}
                           <div className="absolute top-3 right-3 z-10">
-                            <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[11px] font-mono text-white">
+                            <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[11px]  text-white">
                               {film.tc}
                             </Badge>
                           </div>
 
                           {/* Top-left resolution */}
                           <div className="absolute top-3 left-3 z-10">
-                            <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[10px] font-mono font-bold text-white uppercase gap-1.5">
+                            <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[10px]  font-bold text-white uppercase gap-1.5">
                               <Film className="size-3 text-primary" />
                               <TypographySpan>{film.resolution || "HD 60fps"}</TypographySpan>
                             </Badge>
@@ -320,7 +320,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                       {films.length - visibleFilms.length > 0 && (
                         <Badge
                           variant="secondary"
-                          className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
+                          className="text-[10px]  px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
                         >
                           +{films.length - visibleFilms.length} more
                         </Badge>
@@ -328,14 +328,14 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                     </div>
                   )}
                 </Button>
-                <p className="text-[11px] font-mono text-zinc-400">
+                <p className="text-[11px]  text-zinc-400">
                   Showing {visibleFilms.length} of {films.length} films
                 </p>
               </div>
             )}
 
             {films.length <= visibleFilms.length && films.length > PAGE_SIZE && (
-              <div className="text-center pt-2 pb-2 text-[11px] font-mono text-zinc-500 flex items-center justify-center gap-2">
+              <div className="text-center pt-2 pb-2 text-[11px]  text-zinc-500 flex items-center justify-center gap-2">
                 <CheckCircle2 className="size-3.5 text-emerald-400" />
                 <TypographySpan>All {films.length} films displayed</TypographySpan>
               </div>
@@ -375,7 +375,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                       />
 
                       {/* Top-left STILL badge */}
-                      <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/15 text-[10px] font-mono font-bold text-white uppercase tracking-wider">
+                      <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/15 text-[10px]  font-bold text-white uppercase tracking-wider">
                         <ImageIcon className="size-3 text-zinc-300" />
                         <TypographySpan>STILL</TypographySpan>
                       </div>
@@ -387,7 +387,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                             {still.title}
                           </p>
                           {showClient && (
-                            <p className="text-xs text-zinc-400 font-mono capitalize">
+                            <p className="text-xs text-zinc-400  capitalize">
                               {still.cat}
                             </p>
                           )}
@@ -409,7 +409,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                         </AspectRatio>
 
                         {/* Top-left STILL badge */}
-                        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/15 text-[10px] font-mono font-bold text-white uppercase tracking-wider">
+                        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/15 text-[10px]  font-bold text-white uppercase tracking-wider">
                           <ImageIcon className="size-3 text-zinc-300" />
                           <TypographySpan>STILL</TypographySpan>
                         </div>
@@ -421,7 +421,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                               {still.title}
                             </p>
                             {showClient && (
-                              <p className="text-xs text-zinc-400 font-mono capitalize">
+                              <p className="text-xs text-zinc-400  capitalize">
                                 {still.cat}
                               </p>
                             )}
@@ -456,7 +456,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                       {stills.length - visibleStills.length > 0 && (
                         <Badge
                           variant="secondary"
-                          className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
+                          className="text-[10px]  px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
                         >
                           +{stills.length - visibleStills.length} more
                         </Badge>
@@ -464,14 +464,14 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                     </div>
                   )}
                 </Button>
-                <p className="text-[11px] font-mono text-zinc-400">
+                <p className="text-[11px]  text-zinc-400">
                   Showing {visibleStills.length} of {stills.length} stills
                 </p>
               </div>
             )}
 
             {stills.length <= visibleStills.length && stills.length > PAGE_SIZE && (
-              <div className="text-center pt-2 pb-2 text-[11px] font-mono text-zinc-500 flex items-center justify-center gap-2">
+              <div className="text-center pt-2 pb-2 text-[11px]  text-zinc-500 flex items-center justify-center gap-2">
                 <CheckCircle2 className="size-3.5 text-emerald-400" />
                 <TypographySpan>All {stills.length} stills displayed</TypographySpan>
               </div>

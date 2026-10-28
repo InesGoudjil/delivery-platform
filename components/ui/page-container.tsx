@@ -65,10 +65,7 @@ export function PageHeader({
     >
       <div className="space-y-1.5">
         {badge && (
-          <Badge
-            variant="outline"
-            className="mb-1 text-xs font-mono font-semibold tracking-wider text-primary border-primary/30 bg-primary/10 uppercase rounded-full"
-          >
+          <Badge variant="kicker" className="mb-1">
             {badge}
           </Badge>
         )}

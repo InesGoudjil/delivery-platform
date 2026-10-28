@@ -107,7 +107,7 @@ export function StorefrontIdentitySection({
     <section id="branding" className="space-y-4">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <Badge variant="orange" className="font-mono text-[10px] tracking-wider uppercase">
+          <Badge variant="kicker">
             Storefront Identity
           </Badge>
         </div>
@@ -175,7 +175,7 @@ export function StorefrontIdentitySection({
                     ) : (
                       <div className="w-full h-full rounded-xl bg-zinc-900 border border-white/5 flex flex-col items-center justify-center text-zinc-500">
                         <Building2 className="size-5 text-primary mb-0.5" />
-                        <TypographySpan className="text-[9px] font-mono font-bold uppercase">LOGO</TypographySpan>
+                        <TypographySpan className="text-[9px]  font-bold uppercase">LOGO</TypographySpan>
                       </div>
                     )}
                     <div className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity rounded-2xl">
@@ -198,7 +198,7 @@ export function StorefrontIdentitySection({
                 <TypographyH4 className="text-xs font-bold text-foreground uppercase tracking-wider truncate font-heading">
                   Brand Logo
                 </TypographyH4>
-                <Badge variant="outline" className="text-[9px] font-mono uppercase px-1.5 py-0 border-white/10">
+                <Badge variant="outline" className="text-[9px]  uppercase px-1.5 py-0 border-white/10">
                   Header &amp; Rooms
                 </Badge>
               </div>
@@ -327,7 +327,7 @@ export function StorefrontIdentitySection({
                 <TypographyH4 className="text-xs font-bold text-foreground uppercase tracking-wider truncate font-heading">
                   Profile Picture
                 </TypographyH4>
-                <Badge variant="outline" className="text-[9px] font-mono uppercase px-1.5 py-0 border-white/10">
+                <Badge variant="outline" className="text-[9px]  uppercase px-1.5 py-0 border-white/10">
                   About Bio
                 </Badge>
               </div>
@@ -426,7 +426,7 @@ export function StorefrontIdentitySection({
                     <button
                       type="button"
                       onClick={handleCopyLink}
-                      className="text-[11px] font-mono text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
+                      className="text-[11px]  text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
                     >
                       {copied ? (
                         <>
@@ -446,13 +446,13 @@ export function StorefrontIdentitySection({
               </Tooltip>
             </div>
             <div className="flex items-center bg-muted/50 border border-border rounded-xl px-4 h-10 text-sm text-muted-foreground focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 transition-colors">
-              <TypographySpan className="font-mono text-xs select-none">cinespace.film/p/</TypographySpan>
+              <TypographySpan className=" text-xs select-none">cinespace.film/p/</TypographySpan>
               <input
                 type="text"
                 required
                 value={handle}
                 onChange={(e) => onHandleChange(e.target.value)}
-                className="bg-transparent text-foreground focus:outline-none ml-1 font-bold w-full text-sm font-mono"
+                className="bg-transparent text-foreground focus:outline-none ml-1 font-bold w-full text-sm "
               />
             </div>
           </div>
@@ -467,7 +467,7 @@ export function StorefrontIdentitySection({
                 WhatsApp Direct Booking Number
               </label>
               {!canWhatsapp && (
-                <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[9px] font-mono font-bold">
+                <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[9px]  font-bold">
                   BASIC+
                 </Badge>
               )}
@@ -478,7 +478,7 @@ export function StorefrontIdentitySection({
               value={whatsapp}
               onChange={(e) => onWhatsappChange(e.target.value)}
               placeholder="+971501234567"
-              className="h-10 rounded-xl bg-muted/50 border-border text-foreground text-sm font-mono px-4 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-10 rounded-xl bg-muted/50 border-border text-foreground text-sm  px-4 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <TypographyMuted className="text-[11px] text-muted-foreground">
               {!canWhatsapp
@@ -495,13 +495,13 @@ export function StorefrontIdentitySection({
                   Player &amp; Button Accent Color
                 </label>
                 {!canBranding && (
-                  <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[9px] font-mono font-bold">
+                  <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[9px]  font-bold">
                     PRO+
                   </Badge>
                 )}
               </div>
               <div
-                className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono tracking-wider shadow-xs border border-white/10 select-none transition-all"
+                className="px-2 py-0.5 rounded-full text-[10px] font-bold  tracking-wider shadow-xs border border-white/10 select-none transition-all"
                 style={{
                   backgroundColor: accent,
                   color: getContrastForeground(accent),
@@ -562,7 +562,7 @@ export function StorefrontIdentitySection({
                   />
                   <TooltipContent side="top">Custom color picker</TooltipContent>
                 </Tooltip>
-                <div className="flex items-center bg-muted/60 border border-border rounded-xl px-2.5 h-8 text-xs font-mono text-muted-foreground focus-within:border-ring">
+                <div className="flex items-center bg-muted/60 border border-border rounded-xl px-2.5 h-8 text-xs  text-muted-foreground focus-within:border-ring">
                   <TypographySpan className="select-none font-bold text-muted-foreground mr-0.5">#</TypographySpan>
                   <input
                     type="text"
@@ -574,7 +574,7 @@ export function StorefrontIdentitySection({
                       onAccentChange("#" + v);
                     }}
                     placeholder="F5551D"
-                    className="bg-transparent text-foreground uppercase focus:outline-none w-14 font-mono font-bold text-xs"
+                    className="bg-transparent text-foreground uppercase focus:outline-none w-14  font-bold text-xs"
                   />
                 </div>
               </div>
@@ -605,7 +605,7 @@ export function StorefrontIdentitySection({
                 value={stats.projects || "80+"}
                 onChange={(e) => onStatsChange({ ...stats, projects: e.target.value })}
                 placeholder="e.g. 80+"
-                className="h-9 rounded-xl bg-muted/50 border-border text-xs text-foreground font-mono px-3.5"
+                className="h-9 rounded-xl bg-muted/50 border-border text-xs text-foreground  px-3.5"
               />
             </div>
 
@@ -653,7 +653,7 @@ export function StorefrontIdentitySection({
                 value={stats.years || "6 Years"}
                 onChange={(e) => onStatsChange({ ...stats, years: e.target.value })}
                 placeholder="e.g. 6 Years or 8 Months"
-                className="h-9 rounded-xl bg-muted/50 border-border text-xs text-foreground font-mono px-3.5"
+                className="h-9 rounded-xl bg-muted/50 border-border text-xs text-foreground  px-3.5"
               />
             </div>
 
@@ -667,7 +667,7 @@ export function StorefrontIdentitySection({
                 value={stats.location || "UAE"}
                 onChange={(e) => onStatsChange({ ...stats, location: e.target.value })}
                 placeholder="e.g. Dubai, UAE"
-                className="h-9 rounded-xl bg-muted/50 border-border text-xs text-foreground font-mono px-3.5"
+                className="h-9 rounded-xl bg-muted/50 border-border text-xs text-foreground  px-3.5"
               />
             </div>
           </div>

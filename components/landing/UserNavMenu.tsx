@@ -96,7 +96,7 @@ export function UserNavMenu({ user, workspace }: UserNavMenuProps) {
             <span className="text-xs font-bold text-[#f6f3ec] group-hover:text-white transition-colors leading-tight">
               {workspace?.brandName || fullName}
             </span>
-            <span className="text-[10px] text-[#9a9a9f] font-mono leading-tight truncate max-w-[120px]">
+            <span className="text-[10px] text-[#9a9a9f]  leading-tight truncate max-w-[120px]">
               {user.email}
             </span>
           </div>
@@ -117,7 +117,7 @@ export function UserNavMenu({ user, workspace }: UserNavMenuProps) {
             </span>
             <Badge
               variant="orange"
-              className="text-[10px] py-0 px-1.5 font-semibold font-mono uppercase"
+              className="text-[10px] py-0 px-1.5 font-semibold  uppercase"
             >
               PRO
             </Badge>
@@ -126,7 +126,7 @@ export function UserNavMenu({ user, workspace }: UserNavMenuProps) {
           {workspace && (
             <div className="mt-1.5 pt-1.5 border-t border-white/10 flex items-center justify-between text-[11px]">
               <span className="text-[#5e5e64]">Workspace:</span>
-              <span className="font-semibold text-primary font-mono">
+              <span className="font-semibold text-primary ">
                 {workspace.brandName}
               </span>
             </div>

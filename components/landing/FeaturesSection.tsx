@@ -146,7 +146,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
           {/* Section Header */}
           <div className="space-y-3 max-w-3xl mx-auto">
             <div className="flex justify-center">
-              <Badge variant="orange" className="text-xs font-mono uppercase tracking-widest font-semibold px-3.5 py-1">
+              <Badge variant="kicker" className="px-3.5 py-1">
                 Everything you send clients
               </Badge>
             </div>
@@ -195,7 +195,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
         {/* 2. Spotlight Feature 01: Portfolio That Sells */}
         <ScrollReveal className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-5 space-y-4 text-left">
-            <Badge variant="orange" className="text-xs uppercase tracking-widest font-mono">
+            <Badge variant="kicker">
               Feature 01
             </Badge>
             <TypographyH2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight font-display">
@@ -279,10 +279,10 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
               {/* Version Controls and Avatar Stacks */}
               <div className="flex items-center justify-between pt-2">
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="px-3.5 py-1 text-xs font-mono">
+                  <Badge variant="outline" className="px-3.5 py-1 text-xs ">
                     V1
                   </Badge>
-                  <Badge variant="outline" className="px-3.5 py-1 text-xs font-mono">
+                  <Badge variant="outline" className="px-3.5 py-1 text-xs ">
                     V2
                   </Badge>
                   <Badge variant="orange" className="px-4 py-1 text-xs font-bold">
@@ -323,7 +323,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
           </div>
 
           <div className="lg:col-span-5 space-y-4 text-left order-1 lg:order-2">
-            <Badge variant="orange" className="text-xs uppercase tracking-widest font-mono">
+            <Badge variant="kicker">
               Feature 02
             </Badge>
             <TypographyH2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight font-display">
@@ -340,7 +340,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
         {/* 4. Spotlight Feature 03: Deliver on WhatsApp */}
         <ScrollReveal className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-5 space-y-4 text-left">
-            <Badge variant="orange" className="text-xs uppercase tracking-widest font-mono">
+            <Badge variant="kicker">
               Feature 03
             </Badge>
             <TypographyH2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight font-display">
@@ -364,7 +364,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
                   <a
                     href="#"
                     onClick={(e) => e.preventDefault()}
-                    className="text-xs font-mono text-primary hover:underline block"
+                    className="text-xs  text-primary hover:underline block"
                   >
                     cinespace.film/aisha-omar
                   </a>
@@ -392,7 +392,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
         <ScrollReveal className="card rounded-[32px] border border-white/10 bg-gradient-to-r from-[#141419] to-[#1a1a24] p-8 sm:p-14 shadow-2xl">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-6 space-y-4 text-left">
-              <Badge variant="orange" className="text-xs uppercase tracking-widest font-mono">
+              <Badge variant="kicker">
                 The client experience
               </Badge>
               <TypographyH2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight font-display">
@@ -409,7 +409,7 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
               <div className="rounded-2xl p-6 bg-gradient-to-tr from-primary/80 to-primary/40 border border-white/20 shadow-2xl space-y-4">
                 <div className="rounded-xl bg-[#0d0d12] p-4 border border-white/10 space-y-3 text-left">
                   <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                    <span className="text-xs font-bold text-white font-mono flex items-center gap-2">
+                    <span className="text-xs font-bold text-white  flex items-center gap-2">
                       <Sparkles className="size-3 text-primary" /> CineSpace Screening Room
                     </span>
                     <Badge variant="sage" className="text-[10px] uppercase font-bold py-0.5">

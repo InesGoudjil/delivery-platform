@@ -70,7 +70,7 @@ export default function NotificationsPage() {
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Header */}
       <div className="pb-6 border-b border-border">
-        <TypographyKicker className="text-xs font-mono text-primary uppercase tracking-wider mb-1 block">
+        <TypographyKicker className="text-xs  text-primary uppercase tracking-wider mb-1 block">
           Account
         </TypographyKicker>
         <TypographyH1 className="text-3xl font-bold font-heading text-foreground">
@@ -184,7 +184,7 @@ export default function NotificationsPage() {
               type="text"
               value={whatsAppNumber}
               onChange={(e) => setWhatsAppNumber(e.target.value)}
-              className="bg-muted border border-border rounded-xl px-3 py-1.5 text-xs font-mono text-foreground focus:outline-none focus:border-primary w-44"
+              className="bg-muted border border-border rounded-xl px-3 py-1.5 text-xs  text-foreground focus:outline-none focus:border-primary w-44"
             />
             <Button
               onClick={() => toast.success("WhatsApp number verified")}
@@ -197,7 +197,7 @@ export default function NotificationsPage() {
 
         {/* WhatsApp Delivery Logs */}
         <div className="pt-4 border-t border-border space-y-3">
-          <div className="text-xs font-bold font-mono text-muted-foreground uppercase tracking-wider">
+          <div className="text-xs font-bold  text-muted-foreground uppercase tracking-wider">
             Recent WhatsApp Delivery Broadcasts
           </div>
 
@@ -206,9 +206,9 @@ export default function NotificationsPage() {
               <div key={log.id} className="py-2.5 flex items-center justify-between text-xs first:pt-0 last:pb-0">
                 <div className="space-y-0.5">
                   <div className="font-semibold text-foreground">{log.projectTitle}</div>
-                  <div className="text-[11px] font-mono text-muted-foreground">{log.recipient}</div>
+                  <div className="text-[11px]  text-muted-foreground">{log.recipient}</div>
                 </div>
-                <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+                <div className="flex items-center gap-2  text-[11px] text-muted-foreground">
                   <TypographySpan>{log.sentAt}</TypographySpan>
                   <TypographySpan className="flex items-center gap-1 text-emerald-400">
                     <CheckCheck className="size-3.5" />

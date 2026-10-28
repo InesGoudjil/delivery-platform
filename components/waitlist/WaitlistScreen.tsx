@@ -296,7 +296,7 @@ export function WaitlistScreen({
                           type="text"
                           readOnly
                           value={referralLink}
-                          className="flex-1 bg-black/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/90 font-mono select-all focus:outline-none"
+                          className="flex-1 bg-black/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white/90  select-all focus:outline-none"
                         />
                         <Button
                           type="button"

@@ -104,7 +104,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                 <TypographySpan variant="small" className="truncate font-bold text-[#f6f3ec]">
                   {user.name}
                 </TypographySpan>
-                <TypographySpan variant="muted" className="truncate text-xs text-[#71717a] font-mono">
+                <TypographySpan variant="muted" className="truncate text-xs text-[#71717a] ">
                   {user.email}
                 </TypographySpan>
               </div>
@@ -132,13 +132,13 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                   <TypographySpan variant="small" className="font-bold text-sm text-[#f6f3ec] truncate">
                     {user.name}
                   </TypographySpan>
-                  <TypographySpan variant="muted" className="text-xs text-[#9a9a9f] font-mono truncate">
+                  <TypographySpan variant="muted" className="text-xs text-[#9a9a9f]  truncate">
                     {user.email}
                   </TypographySpan>
                   <div className="mt-1">
                     <TypographySpan
                       variant="kicker"
-                      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-primary/15 text-primary border border-primary/30 normal-case tracking-normal"
+                      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px]  font-semibold bg-primary/15 text-primary border border-primary/30 normal-case tracking-normal"
                     >
                       {planPill}
                     </TypographySpan>
@@ -272,7 +272,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                     <ExternalLink className="size-4 text-primary" />
                     <TypographySpan variant="small" className="text-xs font-medium text-[#f6f3ec]">View Public Portfolio</TypographySpan>
                   </div>
-                  <TypographySpan variant="muted" className="text-[10px] font-mono text-[#71717a]">Live</TypographySpan>
+                  <TypographySpan variant="muted" className="text-[10px]  text-[#71717a]">Live</TypographySpan>
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>

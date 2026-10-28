@@ -13,7 +13,7 @@ export default function NotFound() {
         </div>
 
         <div className="space-y-2">
-          <span className="text-4xl font-extrabold font-mono text-primary">404</span>
+          <span className="text-4xl font-extrabold text-primary">404</span>
           <h2 className="text-xl font-bold font-heading text-[#f6f3ec]">
             Frame Not Found
           </h2>

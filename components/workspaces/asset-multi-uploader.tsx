@@ -398,7 +398,7 @@ export function AssetMultiUploader({
               <TypographyH3 className="font-heading text-lg font-bold text-white tracking-tight">
                 Media Asset Uploader
               </TypographyH3>
-              <TypographySpan className="text-[10px] font-mono uppercase bg-white/10 text-white/90 px-2 py-0.5 rounded-full">
+              <TypographySpan className="text-[10px]  uppercase bg-white/10 text-white/90 px-2 py-0.5 rounded-full">
                 Video Cuts &amp; Stills
               </TypographySpan>
             </div>
@@ -537,17 +537,17 @@ export function AssetMultiUploader({
                   </TypographySpan>
                   <TypographySpan className="text-muted-foreground">·</TypographySpan>
                   {videoCount > 0 && (
-                    <TypographySpan className="flex items-center gap-1 text-primary font-mono text-[11px]">
+                    <TypographySpan className="flex items-center gap-1 text-primary  text-[11px]">
                       <Film className="size-3.5" /> {videoCount} Video{videoCount > 1 ? "s" : ""}
                     </TypographySpan>
                   )}
                   {stillCount > 0 && (
-                    <TypographySpan className="flex items-center gap-1 text-sky-400 font-mono text-[11px]">
+                    <TypographySpan className="flex items-center gap-1 text-sky-400  text-[11px]">
                       <ImageIcon className="size-3.5" /> {stillCount} Still{stillCount > 1 ? "s" : ""}
                     </TypographySpan>
                   )}
                   {completedCount > 0 && (
-                    <TypographySpan className="flex items-center gap-1 text-emerald-400 font-mono text-[11px]">
+                    <TypographySpan className="flex items-center gap-1 text-emerald-400  text-[11px]">
                       <CheckCircle2 className="size-3.5" /> {completedCount} Uploaded
                     </TypographySpan>
                   )}
@@ -608,7 +608,7 @@ export function AssetMultiUploader({
                             ) : (
                               <Film className="size-5 text-primary" />
                             )}
-                            <div className="absolute bottom-1 right-1 bg-black/80 rounded px-1 py-0.2 text-[8px] font-mono text-white/80 uppercase">
+                            <div className="absolute bottom-1 right-1 bg-black/80 rounded px-1 py-0.2 text-[8px]  text-white/80 uppercase">
                               {isImage ? "STILL" : "CUT"}
                             </div>
                           </div>
@@ -624,7 +624,7 @@ export function AssetMultiUploader({
                                 className="bg-transparent text-xs font-bold text-white border-b border-transparent hover:border-white/20 focus:border-primary focus:outline-none px-0.5 py-0.5 w-full max-w-sm truncate"
                               />
                             </div>
-                            <TypographyMuted className="text-[11px] font-mono text-muted-foreground">
+                            <TypographyMuted className="text-[11px]  text-muted-foreground">
                               {formatBytes(item.file.size)} · {item.file.name}
                             </TypographyMuted>
                           </div>
@@ -634,7 +634,7 @@ export function AssetMultiUploader({
                         <div className="flex items-center gap-2.5 shrink-0">
                           {/* Version Target Selector */}
                           <div className="flex items-center gap-1.5">
-                            <TypographySpan className="text-[10px] text-muted-foreground uppercase font-mono hidden md:inline">
+                            <TypographySpan className="text-[10px] text-muted-foreground uppercase  hidden md:inline">
                               Target:
                             </TypographySpan>
                             <select
@@ -654,22 +654,22 @@ export function AssetMultiUploader({
 
                           {/* Status Badge */}
                           {item.status === "queued" && (
-                            <TypographySpan className="text-[10px] font-mono bg-white/10 text-white/80 px-2.5 py-1 rounded-full shrink-0">
+                            <TypographySpan className="text-[10px]  bg-white/10 text-white/80 px-2.5 py-1 rounded-full shrink-0">
                               Queued
                             </TypographySpan>
                           )}
                           {item.status === "uploading" && (
-                            <TypographySpan className="text-[10px] font-mono bg-primary/20 text-primary border border-primary/40 px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0">
+                            <TypographySpan className="text-[10px]  bg-primary/20 text-primary border border-primary/40 px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0">
                               <Loader2 className="size-3 animate-spin" /> {item.progress}%
                             </TypographySpan>
                           )}
                           {item.status === "completed" && (
-                            <TypographySpan className="text-[10px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0 font-bold">
+                            <TypographySpan className="text-[10px]  bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0 font-bold">
                               <CheckCircle2 className="size-3" /> Done
                             </TypographySpan>
                           )}
                           {item.status === "error" && (
-                            <TypographySpan className="text-[10px] font-mono bg-destructive/20 text-destructive border border-destructive/40 px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0 font-bold">
+                            <TypographySpan className="text-[10px]  bg-destructive/20 text-destructive border border-destructive/40 px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0 font-bold">
                               <AlertCircle className="size-3" /> Error
                             </TypographySpan>
                           )}
@@ -693,7 +693,7 @@ export function AssetMultiUploader({
                       {/* Item Upload Progress Bar */}
                       {item.status === "uploading" && (
                         <div className="space-y-1.5 pt-1 animate-in fade-in">
-                          <div className="flex items-center justify-between text-[11px] font-mono">
+                          <div className="flex items-center justify-between text-[11px] ">
                             <TypographySpan className="text-muted-foreground">{item.statusText}</TypographySpan>
                             <TypographySpan className="font-bold text-primary">{item.progress}%</TypographySpan>
                           </div>
@@ -708,7 +708,7 @@ export function AssetMultiUploader({
 
                       {/* Error text */}
                       {item.status === "error" && item.errorMessage && (
-                        <TypographyMuted className="text-[11px] text-destructive font-mono pt-1">
+                        <TypographyMuted className="text-[11px] text-destructive  pt-1">
                           {item.errorMessage}
                         </TypographyMuted>
                       )}

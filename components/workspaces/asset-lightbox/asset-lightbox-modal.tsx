@@ -614,7 +614,7 @@ export function AssetLightboxModal({
 
         {/* Optional Custom Footer / Inquiry CTAs */}
         {footerExtra && (
-          <div className="w-full pt-3 mt-2 border-t border-white/10 flex items-center justify-between text-xs font-mono text-zinc-400 shrink-0">
+          <div className="w-full pt-3 mt-2 border-t border-white/10 flex items-center justify-between text-xs  text-zinc-400 shrink-0">
             {footerExtra}
           </div>
         )}

@@ -112,17 +112,17 @@ export function LightboxHeader({
               {title}
             </TypographyH3>
             {hasVersions && (
-              <Badge variant="orange" className="text-[10px] font-mono font-bold px-2 py-0.5">
+              <Badge variant="orange" className="text-[10px]  font-bold px-2 py-0.5">
                 V{activeVersionNumber}
               </Badge>
             )}
             {category && (
-              <Badge variant="outline" className="text-[10px] font-mono text-zinc-400 border-white/15">
+              <Badge variant="outline" className="text-[10px]  text-zinc-400 border-white/15">
                 {category}
               </Badge>
             )}
           </div>
-          <TypographyMuted className="text-xs text-muted-foreground font-mono truncate flex items-center gap-1.5 mt-0.5">
+          <TypographyMuted className="text-xs text-muted-foreground  truncate flex items-center gap-1.5 mt-0.5">
             <TypographySpan>Aspect: {displayAspectRatio}</TypographySpan>
             <TypographySpan>·</TypographySpan>
             {timecode && (

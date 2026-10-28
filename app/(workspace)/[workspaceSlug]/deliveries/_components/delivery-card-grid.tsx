@@ -64,21 +64,21 @@ export function DeliveryCardGrid({
       case "in_review":
       case "draft":
         return (
-          <Badge variant="orange" className="font-mono text-[11px] flex items-center gap-1.5">
+          <Badge variant="orange" className=" text-[11px] flex items-center gap-1.5">
             <span className="size-1.5 rounded-full bg-primary animate-pulse" />
             In Review
           </Badge>
         );
       case "approved":
         return (
-          <Badge variant="sage" className="font-mono text-[11px] flex items-center gap-1">
+          <Badge variant="sage" className=" text-[11px] flex items-center gap-1">
             <Check className="size-3" />
             Approved
           </Badge>
         );
       case "archived":
         return (
-          <Badge variant="outline" className="font-mono text-[11px] text-zinc-400 border-zinc-500/30">
+          <Badge variant="outline" className=" text-[11px] text-zinc-400 border-zinc-500/30">
             Archived
           </Badge>
         );
@@ -103,7 +103,7 @@ export function DeliveryCardGrid({
               <CardHeader className="flex-row items-center justify-between gap-2 pb-2">
                 {getStatusBadge(item.status)}
                 {/*<CardAction>
-                  <Badge variant="outline" className="text-[11px] font-mono text-foreground bg-muted px-2.5 py-0.5 rounded-full border-border">
+                  <Badge variant="outline" className="text-[11px]  text-foreground bg-muted px-2.5 py-0.5 rounded-full border-border">
                     {item.version}
                   </Badge>
                 </CardAction>*/}
@@ -125,7 +125,7 @@ export function DeliveryCardGrid({
                 </TypographyMuted>
 
                 {/* Specs / Badges */}
-                <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono pt-1">
+                <div className="flex flex-wrap items-center gap-2 text-[11px]  pt-1">
                   <Badge variant="outline" className="flex items-center gap-1 bg-muted/50 text-foreground px-2.5 py-1 rounded-md border-border font-normal">
                     <Layers className="size-3 text-primary" />
                     {assetsCount === 0
@@ -164,7 +164,7 @@ export function DeliveryCardGrid({
                 variant="link"
                 size="sm"
                 asChild
-                className="p-0 h-auto text-xs font-semibold text-primary hover:underline font-mono"
+                className="p-0 h-auto text-xs font-semibold text-primary hover:underline "
               >
                 <Link href={`/${workspaceSlug}/deliveries/${item.id}`} className="flex items-center gap-1">
                   Manage Cut <ArrowRight className="size-3 ml-0.5" />

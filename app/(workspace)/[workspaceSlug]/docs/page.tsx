@@ -96,7 +96,7 @@ export default async function DocsPage({
     <div className="max-w-4xl mx-auto space-y-10">
       {/* Header */}
       <div className="pb-6 border-b border-border">
-        <TypographyKicker className="text-xs font-mono text-primary uppercase tracking-wider mb-1 block">
+        <TypographyKicker className="text-xs  text-primary uppercase tracking-wider mb-1 block">
           Studio Guide &amp; Architecture
         </TypographyKicker>
         <TypographyH1 className="text-3xl font-bold font-heading text-foreground">
@@ -141,13 +141,13 @@ export default async function DocsPage({
                 className="p-6 rounded-2xl bg-card border border-border flex items-start gap-4 shadow-sm"
               >
                 <div
-                  className={`size-11 rounded-2xl ${phase.bg} ${phase.color} flex items-center justify-center shrink-0 font-mono font-bold text-sm`}
+                  className={`size-11 rounded-2xl ${phase.bg} ${phase.color} flex items-center justify-center shrink-0  font-bold text-sm`}
                 >
                   <Icon className="size-5" />
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <TypographySpan className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground">
+                    <TypographySpan className="text-[10px]  font-bold uppercase tracking-wider text-muted-foreground">
                       Step {phase.step}
                     </TypographySpan>
                     <TypographyH3 className="text-base font-bold font-heading text-card-foreground">

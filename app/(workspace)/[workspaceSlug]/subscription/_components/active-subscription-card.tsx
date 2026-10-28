@@ -89,18 +89,18 @@ export function ActiveSubscriptionCard({
             <div className="flex items-center gap-2.5">
               <Badge
                 variant={isStarter ? "secondary" : isActive ? "default" : "outline"}
-                className="uppercase font-mono text-xs font-bold tracking-wider px-2.5 py-0.5"
+                className="uppercase  text-xs font-bold tracking-wider px-2.5 py-0.5"
               >
                 {isStarter ? "FREE TIER" : `${subStatus} PLAN`}
               </Badge>
               {periodEnd ? (
-                // <span className="text-xs text-muted-foreground font-mono">
+                // <span className="text-xs text-muted-foreground ">
                 // <TypographySmall>
                 //   Renews on {new Date(periodEnd).toLocaleDateString()}
                 // </TypographySmall>
                 <></>
               ) : isStarter ? (
-                <TypographySpan className="text-xs text-muted-foreground font-mono">
+                <TypographySpan className="text-xs text-muted-foreground ">
                   No renewal fees • Free forever
                 </TypographySpan>
               ) : null}
@@ -141,12 +141,12 @@ export function ActiveSubscriptionCard({
                   <TypographySpan className="font-semibold text-foreground">Workspace Cloud Storage</TypographySpan>
                 </div>
                 <div className="flex items-center gap-2">
-                  <TypographySpan className="font-mono text-muted-foreground text-xs">
+                  <TypographySpan className=" text-muted-foreground text-xs">
                     <strong className="text-foreground">{usedGb} GB</strong> of {totalGb} GB
                   </TypographySpan>
                   <Badge
                     variant={storagePercentage > 90 ? "destructive" : storagePercentage > 75 ? "orange" : "sage"}
-                    className="text-[10px] font-mono px-2 py-0.5 font-bold"
+                    className="text-[10px]  px-2 py-0.5 font-bold"
                   >
                     {storagePercentage}%
                   </Badge>
@@ -168,7 +168,7 @@ export function ActiveSubscriptionCard({
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-3 border-t border-border/40 mt-3 font-mono">
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-3 border-t border-border/40 mt-3 ">
               <TypographySpan>{remainingGb} GB remaining</TypographySpan>
               <TypographySpan>Need more space? Upgrade to Pro for 500 GB</TypographySpan>
             </div>
@@ -245,7 +245,7 @@ export function ActiveSubscriptionCard({
                 )}
                 <TypographySpan>{pill.label}</TypographySpan>
                 {!pill.enabled && pill.highlight && (
-                  <TypographySpan className="text-[10px] font-mono font-semibold px-1 py-0.2 rounded bg-muted text-muted-foreground">
+                  <TypographySpan className="text-[10px]  font-semibold px-1 py-0.2 rounded bg-muted text-muted-foreground">
                     {pill.highlight}
                   </TypographySpan>
                 )}

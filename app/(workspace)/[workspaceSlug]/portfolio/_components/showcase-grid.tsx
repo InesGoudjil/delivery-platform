@@ -317,7 +317,7 @@ export function ShowcaseGrid({
                 <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 flex-wrap">
                   <Badge
                     variant="outline"
-                    className="bg-black/60 backdrop-blur-md border border-white/15 text-[10px] font-mono font-bold text-white uppercase tracking-wider gap-1.5 px-2.5 py-1 rounded-md"
+                    className="bg-black/60 backdrop-blur-md border border-white/15 text-[10px]  font-bold text-white uppercase tracking-wider gap-1.5 px-2.5 py-1 rounded-md"
                   >
                     {item.type === "still" ? (
                       <>
@@ -338,7 +338,7 @@ export function ShowcaseGrid({
                   </Badge>
 
                   {isHero && (
-                    <Badge className="bg-primary text-primary-foreground font-mono text-[9px] uppercase font-extrabold px-2 py-1 rounded-md shadow-lg flex items-center gap-1 border-none">
+                    <Badge className="bg-primary text-primary-foreground  text-[9px] uppercase font-extrabold px-2 py-1 rounded-md shadow-lg flex items-center gap-1 border-none">
                       <Sparkles className="size-2.5 fill-current" />
                       <TypographySpan>HERO</TypographySpan>
                     </Badge>
@@ -467,7 +467,7 @@ export function ShowcaseGrid({
                     {item.title}
                   </TypographyH4>
                   {appearance.showClientInfo && (
-                    <TypographyMuted className="text-[10px] text-zinc-400 font-mono truncate">
+                    <TypographyMuted className="text-[10px] text-zinc-400  truncate">
                       {item.category}
                     </TypographyMuted>
                   )}
@@ -506,7 +506,7 @@ export function ShowcaseGrid({
                   {remainingCount > 0 && (
                     <Badge
                       variant="secondary"
-                      className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
+                      className="text-[10px]  px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
                     >
                       +{remainingCount} more
                     </Badge>
@@ -514,14 +514,14 @@ export function ShowcaseGrid({
                 </div>
               )}
             </Button>
-            <TypographyMuted className="text-[11px] font-mono text-zinc-400">
+            <TypographyMuted className="text-[11px]  text-zinc-400">
               Showing {visibleProjects.length} of {filteredProjects.length} {activeTab}
             </TypographyMuted>
           </div>
         )}
 
         {!hasMore && filteredProjects.length > PAGE_SIZE && (
-          <div className="col-span-full [column-span:all] text-center pt-6 pb-2 text-[11px] font-mono text-zinc-500 flex items-center justify-center gap-2">
+          <div className="col-span-full [column-span:all] text-center pt-6 pb-2 text-[11px]  text-zinc-500 flex items-center justify-center gap-2">
             <CheckCircle2 className="size-3.5 text-emerald-400" />
             <TypographySpan>All {filteredProjects.length} {activeTab} displayed</TypographySpan>
           </div>

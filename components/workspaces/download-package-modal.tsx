@@ -392,12 +392,12 @@ export function DownloadPackageModal({
       description={`${projectTitle} ${brandName ? `· ${brandName}` : ""}`}
       headerExtra={
         <div className="hidden sm:flex flex-col items-end gap-1 text-right">
-          <Badge variant="orange" className="font-mono text-xs font-bold py-0.5">
+          <Badge variant="orange" className=" text-xs font-bold py-0.5">
             {validItems.length}{" "}
             {validItems.length === 1 ? "Deliverable" : "Deliverables"}
           </Badge>
           {totalSizeBytes > 0 && (
-            <TypographySpan className="text-[11px] font-mono text-[#aeaeb4]">
+            <TypographySpan className="text-[11px]  text-[#aeaeb4]">
               {formatBytes(totalSizeBytes)} total
             </TypographySpan>
           )}
@@ -405,7 +405,7 @@ export function DownloadPackageModal({
       }
       bodyClassName="space-y-5"
       footer={
-        <div className="w-full flex flex-col sm:flex-row items-center justify-between text-[11px] text-[#71717a] font-mono gap-1">
+        <div className="w-full flex flex-col sm:flex-row items-center justify-between text-[11px] text-[#71717a]  gap-1">
           <TypographySpan>
             💡 Direct stream from cloud storage — zero browser memory limit
           </TypographySpan>
@@ -460,7 +460,7 @@ export function DownloadPackageModal({
                   size="sm"
                   disabled={selectedDownloadableItems.length === 0}
                   onClick={handleCopyLinks}
-                  className="rounded-full border-white/20 text-[#aeaeb4] hover:text-white hover:bg-white/10 text-xs font-mono h-8 px-3 cursor-pointer"
+                  className="rounded-full border-white/20 text-[#aeaeb4] hover:text-white hover:bg-white/10 text-xs  h-8 px-3 cursor-pointer"
                   title="Copy direct download URLs for selected items"
                 >
                   {hasCopiedLinks ? (
@@ -506,7 +506,7 @@ export function DownloadPackageModal({
             {/* Active Queue Progress Bar */}
             {isQueueRunning && queueProgress && (
               <div className="space-y-1.5 pt-2 border-t border-white/10">
-                <div className="flex items-center justify-between text-[11px] font-mono text-[#aeaeb4]">
+                <div className="flex items-center justify-between text-[11px]  text-[#aeaeb4]">
                   <TypographySpan>
                     Dispatching {queueProgress.current} of {queueProgress.total}:{" "}
                     <strong className="text-white">{queueProgress.title}</strong>
@@ -544,7 +544,7 @@ export function DownloadPackageModal({
                   variant={filterTab === tab ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setFilterTab(tab)}
-                  className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer h-auto ${
+                  className={`px-3 py-1 rounded-full text-[10px]  font-bold uppercase tracking-wider transition-all cursor-pointer h-auto ${
                     filterTab === tab
                       ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
                       : "text-[#aeaeb4] hover:text-white hover:bg-transparent"
@@ -557,7 +557,7 @@ export function DownloadPackageModal({
 
             <div className="flex items-center gap-3">
               {isLoadingManifest && (
-                <TypographySpan className="inline-flex items-center gap-1.5 text-[11px] font-mono text-primary">
+                <TypographySpan className="inline-flex items-center gap-1.5 text-[11px]  text-primary">
                   <Loader2 className="size-3 animate-spin" />
                   Syncing all deliverables...
                 </TypographySpan>
@@ -568,7 +568,7 @@ export function DownloadPackageModal({
                   variant="ghost"
                   size="sm"
                   onClick={handleToggleSelectAll}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#aeaeb4] hover:text-white transition-colors cursor-pointer h-auto p-0 hover:bg-transparent"
+                  className="inline-flex items-center gap-1.5 text-[11px]  text-[#aeaeb4] hover:text-white transition-colors cursor-pointer h-auto p-0 hover:bg-transparent"
                 >
                   {allFilteredSelected ? (
                     <CheckSquare className="size-3.5 text-primary" />
@@ -660,7 +660,7 @@ export function DownloadPackageModal({
                           {item.versionNumber && (
                             <Badge
                               variant="orange"
-                              className="text-[9px] font-mono font-bold py-0 h-4 shrink-0"
+                              className="text-[9px]  font-bold py-0 h-4 shrink-0"
                             >
                               V{item.versionNumber}
                             </Badge>
@@ -668,14 +668,14 @@ export function DownloadPackageModal({
                           {item.isApproved && (
                             <Badge
                               variant="outline"
-                              className="text-[9px] font-mono border-emerald-500/30 text-emerald-400 bg-emerald-500/10 py-0 h-4 hidden sm:inline-flex"
+                              className="text-[9px]  border-emerald-500/30 text-emerald-400 bg-emerald-500/10 py-0 h-4 hidden sm:inline-flex"
                             >
                               ✓ Approved
                             </Badge>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-2 text-[10px] sm:text-[11px] font-mono text-[#aeaeb4] truncate">
+                        <div className="flex items-center gap-2 text-[10px] sm:text-[11px]  text-[#aeaeb4] truncate">
                           <TypographySpan>{item.aspectRatio || "16:9"}</TypographySpan>
                           {item.duration && <TypographySpan>· {item.duration}</TypographySpan>}
                           {item.fileSizeBytes && item.fileSizeBytes > 0 ? (
@@ -726,7 +726,7 @@ export function DownloadPackageModal({
                                 size="sm"
                                 disabled={!canDownloadItem}
                                 onClick={() => handleDownloadProxy(item)}
-                                className="h-8 rounded-xl font-mono text-[10px] sm:text-xs font-semibold px-2 sm:px-2.5 text-[#aeaeb4] hover:text-white border-white/10 hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-40 shrink-0"
+                                className="h-8 rounded-xl  text-[10px] sm:text-xs font-semibold px-2 sm:px-2.5 text-[#aeaeb4] hover:text-white border-white/10 hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-40 shrink-0"
                               >
                                 Proxy
                               </Button>
@@ -741,7 +741,7 @@ export function DownloadPackageModal({
                         size="sm"
                         disabled={!canDownloadItem}
                         onClick={() => handleDownloadSingle(item)}
-                        className={`h-8 rounded-xl font-mono text-xs font-bold px-3 transition-all cursor-pointer flex items-center gap-1.5 ${
+                        className={`h-8 rounded-xl  text-xs font-bold px-3 transition-all cursor-pointer flex items-center gap-1.5 ${
                           isDownloaded
                             ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30"
                             : "bg-white/10 text-white hover:bg-white/20 border border-white/15"

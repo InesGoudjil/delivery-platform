@@ -583,7 +583,7 @@ export function UploadProjectModal({
             {/* Left 2 Cols: Title, Category, Description */}
             <div className="md:col-span-2 space-y-3">
               <div className="space-y-1">
-                <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
+                <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block ">
                   PROJECT NAME *
                 </Label>
                 <Input
@@ -599,7 +599,7 @@ export function UploadProjectModal({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
+                  <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block ">
                     CATEGORY / CLIENT
                   </Label>
                   <Input
@@ -613,7 +613,7 @@ export function UploadProjectModal({
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
+                  <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block ">
                     DESCRIPTION <TypographySpan className="normal-case text-zinc-500">(optional)</TypographySpan>
                   </Label>
                   <Input
@@ -630,7 +630,7 @@ export function UploadProjectModal({
 
             {/* Right 1 Col: Project Cover Thumbnail */}
             <div className="space-y-1.5 flex flex-col justify-between">
-              <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
+              <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block ">
                 COVER POSTER <TypographySpan className="normal-case text-zinc-500">(optional)</TypographySpan>
               </Label>
 
@@ -712,11 +712,11 @@ export function UploadProjectModal({
           {/* Section 2: Batch Asset Dropzone & Queue View */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono flex items-center gap-1.5">
+              <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block  flex items-center gap-1.5">
                 <Layers className="size-3.5 text-primary" />
                 PROJECT ASSETS & MEDIA ({totalCount})
               </Label>
-              <TypographySpan className="text-[10px] font-mono text-zinc-500">
+              <TypographySpan className="text-[10px]  text-zinc-500">
                 Videos, Cut versions & High-res stills
               </TypographySpan>
             </div>
@@ -779,17 +779,17 @@ export function UploadProjectModal({
                     </TypographySpan>
                     <TypographySpan className="text-zinc-500">·</TypographySpan>
                     {videoCount > 0 && (
-                      <TypographySpan className="flex items-center gap-1 text-primary font-mono text-[11px]">
+                      <TypographySpan className="flex items-center gap-1 text-primary  text-[11px]">
                         <Film className="size-3.5" /> {videoCount} Video{videoCount > 1 ? "s" : ""}
                       </TypographySpan>
                     )}
                     {stillCount > 0 && (
-                      <TypographySpan className="flex items-center gap-1 text-sky-400 font-mono text-[11px]">
+                      <TypographySpan className="flex items-center gap-1 text-sky-400  text-[11px]">
                         <ImageIcon className="size-3.5" /> {stillCount} Still{stillCount > 1 ? "s" : ""}
                       </TypographySpan>
                     )}
                     {completedCount > 0 && (
-                      <TypographySpan className="flex items-center gap-1 text-emerald-400 font-mono text-[11px]">
+                      <TypographySpan className="flex items-center gap-1 text-emerald-400  text-[11px]">
                         <CheckCircle2 className="size-3.5" /> {completedCount} Uploaded
                       </TypographySpan>
                     )}
@@ -850,7 +850,7 @@ export function UploadProjectModal({
                               ) : (
                                 <Film className="size-4 text-primary" />
                               )}
-                              <div className="absolute bottom-0.5 right-0.5 bg-black/80 rounded px-1 py-0.2 text-[7px] font-mono text-white/80 uppercase">
+                              <div className="absolute bottom-0.5 right-0.5 bg-black/80 rounded px-1 py-0.2 text-[7px]  text-white/80 uppercase">
                                 {isImage ? "STILL" : "CUT"}
                               </div>
                             </div>
@@ -864,7 +864,7 @@ export function UploadProjectModal({
                                 placeholder="Asset Title"
                                 className="bg-transparent text-xs font-bold text-white border-b border-transparent hover:border-white/20 focus:border-primary focus:outline-none px-0.5 py-0.5 w-full max-w-sm truncate"
                               />
-                              <TypographyMuted className="text-[10px] font-mono text-zinc-400">
+                              <TypographyMuted className="text-[10px]  text-zinc-400">
                                 {formatBytes(item.file.size)} · {item.file.name}
                               </TypographyMuted>
                             </div>
@@ -872,22 +872,22 @@ export function UploadProjectModal({
 
                           <div className="flex items-center gap-2 shrink-0">
                             {item.status === "queued" && (
-                              <TypographySpan className="text-[10px] font-mono bg-white/10 text-zinc-300 px-2.5 py-1 rounded-full">
+                              <TypographySpan className="text-[10px]  bg-white/10 text-zinc-300 px-2.5 py-1 rounded-full">
                                 Queued
                               </TypographySpan>
                             )}
                             {item.status === "uploading" && (
-                              <TypographySpan className="text-[10px] font-mono bg-primary/20 text-primary border border-primary/40 px-2.5 py-1 rounded-full flex items-center gap-1 font-bold">
+                              <TypographySpan className="text-[10px]  bg-primary/20 text-primary border border-primary/40 px-2.5 py-1 rounded-full flex items-center gap-1 font-bold">
                                 <Loader2 className="size-3 animate-spin" /> {item.progress}%
                               </TypographySpan>
                             )}
                             {item.status === "completed" && (
-                              <TypographySpan className="text-[10px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1 font-bold">
+                              <TypographySpan className="text-[10px]  bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1 font-bold">
                                 <CheckCircle2 className="size-3" /> Done
                               </TypographySpan>
                             )}
                             {item.status === "error" && (
-                              <TypographySpan className="text-[10px] font-mono bg-destructive/20 text-destructive border border-destructive/40 px-2.5 py-1 rounded-full flex items-center gap-1 font-bold">
+                              <TypographySpan className="text-[10px]  bg-destructive/20 text-destructive border border-destructive/40 px-2.5 py-1 rounded-full flex items-center gap-1 font-bold">
                                 <AlertCircle className="size-3" /> Error
                               </TypographySpan>
                             )}
@@ -909,7 +909,7 @@ export function UploadProjectModal({
 
                         {item.status === "uploading" && (
                           <div className="space-y-1 pt-1 animate-in fade-in">
-                            <div className="flex items-center justify-between text-[10px] font-mono">
+                            <div className="flex items-center justify-between text-[10px] ">
                               <TypographySpan className="text-zinc-400 truncate max-w-[280px]">{item.statusText}</TypographySpan>
                               <TypographySpan className="font-bold text-primary">{item.progress}%</TypographySpan>
                             </div>
@@ -932,7 +932,7 @@ export function UploadProjectModal({
           {/* Global Progress Bar when uploading */}
           {uploading && (
             <div className="space-y-1.5 pt-2 border-t border-white/10 animate-in fade-in">
-              <div className="flex items-center justify-between text-xs font-mono">
+              <div className="flex items-center justify-between text-xs ">
                 <TypographySpan className="text-zinc-400 flex items-center gap-1.5 truncate">
                   <Loader2 className="size-3.5 animate-spin text-primary" />
                   {statusText || "Processing upload..."}

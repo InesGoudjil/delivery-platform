@@ -99,7 +99,7 @@ export function DeliveryProjectDetailsCard({
 
       <CardContent className="space-y-5 pt-5">
         <Field orientation="vertical">
-          <FieldLabel htmlFor="project-title" className="text-muted-foreground font-mono text-xs">
+          <FieldLabel htmlFor="project-title" className="text-muted-foreground  text-xs">
             Title
           </FieldLabel>
           <Input
@@ -113,12 +113,12 @@ export function DeliveryProjectDetailsCard({
 
         {/* Client Information Section */}
         <div className="space-y-3 pt-1">
-          <TypographySpan className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+          <TypographySpan className="text-[10px] text-muted-foreground uppercase tracking-widest block">
             CLIENT CONTACT INFORMATION
           </TypographySpan>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Field orientation="vertical">
-              <FieldLabel htmlFor="project-client" className="text-muted-foreground font-mono text-xs flex items-center gap-1.5">
+              <FieldLabel htmlFor="project-client" className="text-muted-foreground  text-xs flex items-center gap-1.5">
                 <User className="size-3 text-muted-foreground/70" />
                 <TypographySpan>Client / Brand</TypographySpan>
               </FieldLabel>
@@ -133,7 +133,7 @@ export function DeliveryProjectDetailsCard({
             </Field>
 
             <Field orientation="vertical">
-              <FieldLabel htmlFor="project-client-email" className="text-muted-foreground font-mono text-xs flex items-center justify-between">
+              <FieldLabel htmlFor="project-client-email" className="text-muted-foreground  text-xs flex items-center justify-between">
                 <TypographySpan className="flex items-center gap-1.5">
                   <Mail className="size-3 text-muted-foreground/70" />
                   <TypographySpan>Email</TypographySpan>
@@ -151,7 +151,7 @@ export function DeliveryProjectDetailsCard({
             </Field>
 
             <Field orientation="vertical">
-              <FieldLabel htmlFor="project-client-phone" className="text-muted-foreground font-mono text-xs flex items-center justify-between">
+              <FieldLabel htmlFor="project-client-phone" className="text-muted-foreground  text-xs flex items-center justify-between">
                 <TypographySpan className="flex items-center gap-1.5">
                   <Phone className="size-3 text-muted-foreground/70" />
                   <TypographySpan>Phone / WhatsApp</TypographySpan>
@@ -171,7 +171,7 @@ export function DeliveryProjectDetailsCard({
         </div>
 
         <Field orientation="vertical">
-          <FieldLabel htmlFor="project-desc" className="text-muted-foreground font-mono text-xs">
+          <FieldLabel htmlFor="project-desc" className="text-muted-foreground  text-xs">
             Description (shows on your public page)
           </FieldLabel>
           <textarea

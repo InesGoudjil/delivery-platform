@@ -337,7 +337,7 @@ export function ExperienceSection({
                     <TypographyH4 className="flex flex-wrap items-center gap-2 text-xs font-bold text-white font-heading">
                       <TypographySpan>{exp.role}</TypographySpan>
                       {exp.category && (
-                        <Badge variant="orange" className="text-[10px] font-mono px-2 py-0.5 rounded-full font-medium">
+                        <Badge variant="orange" className="text-[10px]  px-2 py-0.5 rounded-full font-medium">
                           {exp.category}
                         </Badge>
                       )}
@@ -380,7 +380,7 @@ export function ExperienceSection({
                 </CardHeader>
 
                 <CardContent className="space-y-1.5 text-xs">
-                  <div className="text-[10px] font-mono text-primary font-semibold">
+                  <div className="text-[10px]  text-primary font-semibold">
                     {exp.years}
                   </div>
 

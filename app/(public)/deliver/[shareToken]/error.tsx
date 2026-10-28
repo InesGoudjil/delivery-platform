@@ -23,7 +23,7 @@ export default function DeliverRoomError({
           <Lock className="size-7" />
         </div>
         <div className="space-y-1">
-          <TypographySpan className="text-[11px] font-mono text-primary uppercase tracking-widest font-semibold block">
+          <TypographySpan className="text-[11px]  text-primary uppercase tracking-widest font-semibold block">
             CLIENT REVIEW ROOM
           </TypographySpan>
           <h3 className="text-xl font-bold font-heading text-[#f6f3ec]">

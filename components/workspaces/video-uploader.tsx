@@ -508,7 +508,7 @@ export function VideoUploader({
           {/* Progress Bar */}
           {uploading && (
             <div className="space-y-2 pt-2 animate-in fade-in">
-              <div className="flex items-center justify-between text-xs font-mono">
+              <div className="flex items-center justify-between text-xs ">
                 <TypographySpan className="text-muted-foreground">{statusText}</TypographySpan>
                 <TypographySpan className="font-bold text-primary">{progress}%</TypographySpan>
               </div>

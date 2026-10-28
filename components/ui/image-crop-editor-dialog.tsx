@@ -414,7 +414,7 @@ export function ImageCropEditorDialog({
           {isLoadingImg ? (
             <div className="flex flex-col items-center gap-2 text-zinc-400">
               <Loader2 className="size-6 animate-spin text-primary" />
-              <span className="text-xs font-mono">Loading image...</span>
+              <span className="text-xs ">Loading image...</span>
             </div>
           ) : loadedImg ? (
             <div
@@ -457,7 +457,7 @@ export function ImageCropEditorDialog({
               )}
 
               {/* Drag Hint Pill */}
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/15 text-[10px] font-mono text-white/90 flex items-center gap-1.5 pointer-events-none shadow-md">
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md border border-white/15 text-[10px]  text-white/90 flex items-center gap-1.5 pointer-events-none shadow-md">
                 <Move className="size-3 text-primary" />
                 <span>Drag to pan · Scroll to zoom</span>
               </div>
@@ -470,7 +470,7 @@ export function ImageCropEditorDialog({
         {/* Aspect Ratio Selector (when unlocked) */}
         {showAspectSwitcher && (
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400">
+            <span className="text-[10px]  uppercase tracking-widest text-zinc-400">
               Aspect Ratio
             </span>
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -483,7 +483,7 @@ export function ImageCropEditorDialog({
                     size="xs"
                     variant={isSelected ? "default" : "outline"}
                     onClick={() => setAspectRatio(preset)}
-                    className={`h-7 px-2.5 rounded-lg text-[11px] font-mono transition-all cursor-pointer border ${
+                    className={`h-7 px-2.5 rounded-lg text-[11px]  transition-all cursor-pointer border ${
                       isSelected
                         ? "bg-primary text-primary-foreground font-bold border-primary shadow-sm hover:bg-primary/90"
                         : "bg-white/5 text-zinc-400 border-white/10 hover:text-white hover:bg-white/10"
@@ -535,7 +535,7 @@ export function ImageCropEditorDialog({
             variant="ghost"
             size="xs"
             onClick={handleResetAll}
-            className="h-auto py-1 px-2 text-[11px] font-mono text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            className="h-auto py-1 px-2 text-[11px]  text-zinc-400 hover:text-white transition-colors cursor-pointer"
           >
             Reset All
           </Button>
@@ -566,7 +566,7 @@ export function ImageCropEditorDialog({
                   onChange={(e) => setZoom( parseFloat(e.target.value) )}
                   className="w-full accent-primary cursor-pointer h-1.5 bg-white/15 rounded-lg"
                 />
-                <span className="text-xs font-mono text-zinc-300 w-12 text-right">
+                <span className="text-xs  text-zinc-300 w-12 text-right">
                   {zoom.toFixed(1)}x
                 </span>
               </div>
@@ -638,7 +638,7 @@ export function ImageCropEditorDialog({
           <div className="space-y-2.5">
             {/* Brightness */}
             <div className="flex items-center gap-3">
-              <span className="text-[11px] font-mono text-zinc-400 w-20">Brightness</span>
+              <span className="text-[11px]  text-zinc-400 w-20">Brightness</span>
               <input
                 type="range"
                 min={50}
@@ -648,14 +648,14 @@ export function ImageCropEditorDialog({
                 onChange={(e) => setBrightness(parseInt(e.target.value, 10))}
                 className="flex-1 accent-primary cursor-pointer h-1.5 bg-white/15 rounded-lg"
               />
-              <span className="text-[11px] font-mono text-zinc-300 w-10 text-right">
+              <span className="text-[11px]  text-zinc-300 w-10 text-right">
                 {brightness}%
               </span>
             </div>
 
             {/* Contrast */}
             <div className="flex items-center gap-3">
-              <span className="text-[11px] font-mono text-zinc-400 w-20">Contrast</span>
+              <span className="text-[11px]  text-zinc-400 w-20">Contrast</span>
               <input
                 type="range"
                 min={50}
@@ -665,14 +665,14 @@ export function ImageCropEditorDialog({
                 onChange={(e) => setContrast(parseInt(e.target.value, 10))}
                 className="flex-1 accent-primary cursor-pointer h-1.5 bg-white/15 rounded-lg"
               />
-              <span className="text-[11px] font-mono text-zinc-300 w-10 text-right">
+              <span className="text-[11px]  text-zinc-300 w-10 text-right">
                 {contrast}%
               </span>
             </div>
 
             {/* Saturation */}
             <div className="flex items-center gap-3">
-              <span className="text-[11px] font-mono text-zinc-400 w-20">Saturation</span>
+              <span className="text-[11px]  text-zinc-400 w-20">Saturation</span>
               <input
                 type="range"
                 min={0}
@@ -682,7 +682,7 @@ export function ImageCropEditorDialog({
                 onChange={(e) => setSaturation(parseInt(e.target.value, 10))}
                 className="flex-1 accent-primary cursor-pointer h-1.5 bg-white/15 rounded-lg"
               />
-              <span className="text-[11px] font-mono text-zinc-300 w-10 text-right">
+              <span className="text-[11px]  text-zinc-300 w-10 text-right">
                 {saturation}%
               </span>
             </div>
@@ -691,7 +691,7 @@ export function ImageCropEditorDialog({
 
         {/* Footer Actions */}
         <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/10">
-          <div className="text-[10px] font-mono text-zinc-500 flex items-center gap-1.5">
+          <div className="text-[10px]  text-zinc-500 flex items-center gap-1.5">
             <Sparkles className="size-3 text-primary" />
             <span>
               Output: {ASPECT_RATIO_CONFIG[aspectRatio].outputWidth}×

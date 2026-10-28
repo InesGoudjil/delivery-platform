@@ -103,7 +103,7 @@ export function PortfolioHero({
               <Badge
                 variant="outline"
                 className={cn(
-                  "text-xs font-mono font-semibold",
+                  "text-xs  font-semibold",
                   isAtLimit
                     ? "border-amber-500/40 text-amber-400 bg-amber-500/10"
                     : "border-white/15 text-zinc-400"
@@ -119,7 +119,7 @@ export function PortfolioHero({
                   <Link
                     href={`/p/${workspace.slug}`}
                     target="_blank"
-                    className="text-xs text-zinc-400 hover:text-primary flex items-center gap-1.5 transition-colors font-mono"
+                    className="text-xs text-zinc-400 hover:text-primary flex items-center gap-1.5 transition-colors "
                   >
                     <TypographySpan>/p/{workspace.slug}</TypographySpan>
                     <ExternalLink className="size-3" />

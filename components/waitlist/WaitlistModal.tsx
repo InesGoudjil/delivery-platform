@@ -364,7 +364,7 @@ export function WaitlistModal({
                       type="text"
                       readOnly
                       value={referralLink}
-                      className="flex-1 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white/90 font-mono select-all focus:outline-none"
+                      className="flex-1 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white/90  select-all focus:outline-none"
                     />
                     <Button
                       type="button"

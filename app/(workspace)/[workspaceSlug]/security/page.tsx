@@ -81,7 +81,7 @@ export default function SecurityPage() {
 
       {/* Header */}
       <div className="pb-6 border-b border-border">
-        <TypographyKicker className="text-xs font-mono text-primary uppercase tracking-wider mb-1 block">
+        <TypographyKicker className="text-xs  text-primary uppercase tracking-wider mb-1 block">
           Account
         </TypographyKicker>
         <TypographyH1 className="text-3xl font-bold font-heading text-foreground">

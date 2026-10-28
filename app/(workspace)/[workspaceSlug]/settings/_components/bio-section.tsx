@@ -16,7 +16,7 @@ export function BioSection({ bio, onBioChange }: BioSectionProps) {
     <section className="space-y-4">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <Badge variant="orange" className="font-mono text-[10px] tracking-wider uppercase">
+          <Badge variant="kicker">
             Artist Statement
           </Badge>
         </div>
@@ -35,7 +35,7 @@ export function BioSection({ bio, onBioChange }: BioSectionProps) {
             <label className="text-xs font-semibold text-foreground uppercase tracking-wider">
               Filmmaker / Studio Biography
             </label>
-            <TypographySpan className="text-[11px] font-mono text-muted-foreground">
+            <TypographySpan className="text-[11px]  text-muted-foreground">
               {bio.length} characters
             </TypographySpan>
           </div>

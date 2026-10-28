@@ -26,17 +26,14 @@ export function BrandingHeader({
     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pt-2 border-b border-border pb-6">
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge
-            variant="orange"
-            className="text-xs font-mono uppercase tracking-wider font-semibold"
-          >
+          <Badge variant="kicker">
             Public Identity &amp; Storefront
           </Badge>
 
           {isDirty ? (
             <Badge
               variant="outline"
-              className="text-[10px] font-mono border-amber-500/40 text-amber-400 bg-amber-500/10 flex items-center gap-1.5 px-2 py-0.5"
+              className="text-[10px]  border-amber-500/40 text-amber-400 bg-amber-500/10 flex items-center gap-1.5 px-2 py-0.5"
             >
               <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
               <TypographySpan>Unsaved Changes</TypographySpan>
@@ -44,7 +41,7 @@ export function BrandingHeader({
           ) : (
             <Badge
               variant="outline"
-              className="text-[10px] font-mono border-emerald-500/30 text-emerald-400 bg-emerald-500/10 flex items-center gap-1 px-2 py-0.5"
+              className="text-[10px]  border-emerald-500/30 text-emerald-400 bg-emerald-500/10 flex items-center gap-1 px-2 py-0.5"
             >
               <Check className="size-2.5 text-emerald-400" />
               <TypographySpan>All Saved</TypographySpan>
@@ -57,9 +54,9 @@ export function BrandingHeader({
                 <Link
                   href={`/p/${workspaceSlug}`}
                   target="_blank"
-                  className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors font-mono"
+                  className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors "
                 >
-                  <Badge variant="outline" className="text-[10px] font-mono hover:border-primary/40 flex items-center gap-1 cursor-pointer">
+                  <Badge variant="outline" className="text-[10px]  hover:border-primary/40 flex items-center gap-1 cursor-pointer">
                     <TypographySpan>Live Preview</TypographySpan>
                     <ExternalLink className="size-2.5" />
                   </Badge>
@@ -99,7 +96,7 @@ export function BrandingHeader({
                 <>
                   <Sparkles className="size-4" />
                   <TypographySpan>Save Changes</TypographySpan>
-                  <kbd className="hidden sm:inline-block ml-1 font-mono text-[10px] bg-black/30 px-1 py-0.5 rounded text-white/90">
+                  <kbd className="hidden sm:inline-block ml-1  text-[10px] bg-black/30 px-1 py-0.5 rounded text-white/90">
                     ⌘S
                   </kbd>
                 </>

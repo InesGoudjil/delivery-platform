@@ -198,9 +198,9 @@ export function AppImage({
         <div className="absolute inset-0 flex flex-col items-center justify-center p-3 text-center bg-[#141416] border border-white/5 text-[#8e8e93] space-y-1.5 select-none">
           {renderFallbackIcon()}
           {fallbackText ? (
-            <span className="text-[10px] font-mono text-[#71717a] line-clamp-1">{fallbackText}</span>
+            <span className="text-[10px]  text-[#71717a] line-clamp-1">{fallbackText}</span>
           ) : (
-            <span className="text-[10px] font-mono text-[#71717a] uppercase tracking-wider">
+            <span className="text-[10px]  text-[#71717a] uppercase tracking-wider">
               {fallbackIcon === "film" ? "No Video Preview" : "No Image Preview"}
             </span>
           )}
@@ -212,7 +212,7 @@ export function AppImage({
                 e.stopPropagation();
                 setRetryAttempt((prev) => prev + 1);
               }}
-              className="mt-1 h-auto p-0 flex items-center gap-1 text-[9px] font-mono text-primary hover:underline cursor-pointer"
+              className="mt-1 h-auto p-0 flex items-center gap-1 text-[9px]  text-primary hover:underline cursor-pointer"
             >
               <RefreshCw className="size-2.5" />
               <span>Retry</span>

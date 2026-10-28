@@ -202,13 +202,13 @@ export function WaitlistClient({ metrics, entries: initialEntries }: WaitlistCli
                     <tr key={entry.id} className="hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3 font-medium">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-muted-foreground">#{idx + 1}</span>
+                          <span className=" text-muted-foreground">#{idx + 1}</span>
                           <span>{entry.email}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 font-mono">{entry.referralCode}</td>
+                      <td className="px-4 py-3 ">{entry.referralCode}</td>
                       <td className="px-4 py-3">
-                        <Badge variant="outline" className="font-mono">
+                        <Badge variant="outline" className="">
                           {entry.referralCount}
                         </Badge>
                       </td>

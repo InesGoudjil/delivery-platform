@@ -183,7 +183,7 @@ export function MembersClient({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
         <div>
-          <TypographyKicker className="flex items-center gap-2 text-xs font-mono text-primary uppercase tracking-wider mb-1">
+          <TypographyKicker className="flex items-center gap-2 text-xs  text-primary uppercase tracking-wider mb-1">
             <TypographySpan>{workspace.brandName}</TypographySpan>
             <TypographySpan>•</TypographySpan>
             <TypographySpan>{isPersonalWorkspace ? "Personal Workspace" : "Studio Team Workspace"}</TypographySpan>
@@ -200,7 +200,7 @@ export function MembersClient({
 
         <div className="flex items-center gap-3">
           {/* Seat Capacity Badge */}
-          <div className="text-xs font-mono text-muted-foreground bg-muted px-3.5 py-2 rounded-full border border-border flex items-center gap-2">
+          <div className="text-xs  text-muted-foreground bg-muted px-3.5 py-2 rounded-full border border-border flex items-center gap-2">
             <Users className="size-3.5 text-primary" />
             <TypographySpan>
               <strong className="text-foreground">{seatStats.usedSeats}</strong> of {seatStats.maxSeats} seats used
@@ -256,7 +256,7 @@ export function MembersClient({
         size="md"
         title="Invite Team Collaborator"
         badge={
-          <TypographySpan className="text-[11px] font-mono text-muted-foreground">
+          <TypographySpan className="text-[11px]  text-muted-foreground">
             {seatStats.remainingSeats} seat{seatStats.remainingSeats > 1 ? "s" : ""} left
           </TypographySpan>
         }
@@ -326,7 +326,7 @@ export function MembersClient({
       {/* Active Members Section */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <TypographyH2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground font-mono border-none pb-0">
+          <TypographyH2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground  border-none pb-0">
             Active Members ({members.length})
           </TypographyH2>
         </div>
@@ -363,17 +363,17 @@ export function MembersClient({
                         {mem.name}
                       </TypographySpan>
                       {isCurrentCaller && (
-                        <TypographySpan className="text-[10px] font-mono px-2 py-0.2 rounded-full bg-muted text-muted-foreground border border-border">
+                        <TypographySpan className="text-[10px]  px-2 py-0.2 rounded-full bg-muted text-muted-foreground border border-border">
                           You
                         </TypographySpan>
                       )}
                       {isWorkspaceOwner && (
-                        <TypographySpan className="text-[10px] font-mono font-semibold px-2 py-0.2 rounded-full bg-primary/15 text-primary border border-primary/30">
+                        <TypographySpan className="text-[10px]  font-semibold px-2 py-0.2 rounded-full bg-primary/15 text-primary border border-primary/30">
                           Workspace Owner
                         </TypographySpan>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground font-mono">
+                    <div className="text-xs text-muted-foreground ">
                       Joined {new Date(mem.joinedAt).toLocaleDateString()}
                     </div>
                   </div>
@@ -386,14 +386,14 @@ export function MembersClient({
                       value={mem.role}
                       disabled={isActionLoading}
                       onChange={(e) => handleRoleChange(mem.userId, e.target.value as WorkspaceRole)}
-                      className="bg-muted border border-border rounded-xl px-2.5 py-1 text-xs font-mono font-medium text-foreground focus:outline-none focus:border-primary cursor-pointer disabled:opacity-50"
+                      className="bg-muted border border-border rounded-xl px-2.5 py-1 text-xs  font-medium text-foreground focus:outline-none focus:border-primary cursor-pointer disabled:opacity-50"
                     >
                       <option value="editor">Editor</option>
                       <option value="admin">Admin</option>
                       <option value="viewer">Viewer</option>
                     </select>
                   ) : (
-                    <TypographySpan className="px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-muted text-muted-foreground capitalize border border-border">
+                    <TypographySpan className="px-2.5 py-1 rounded-full text-xs  font-semibold bg-muted text-muted-foreground capitalize border border-border">
                       {mem.role}
                     </TypographySpan>
                   )}
@@ -426,7 +426,7 @@ export function MembersClient({
       {pendingInvitations.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <TypographyH2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground font-mono border-none pb-0">
+            <TypographyH2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground  border-none pb-0">
               Pending Invitations ({pendingInvitations.length})
             </TypographyH2>
           </div>
@@ -451,18 +451,18 @@ export function MembersClient({
                         <TypographySpan className="font-semibold text-sm text-card-foreground">
                           {invite.email}
                         </TypographySpan>
-                        <TypographySpan className="flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                        <TypographySpan className="flex items-center gap-1 text-[10px]  font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
                           <Clock className="size-2.5" /> Invited
                         </TypographySpan>
                       </div>
-                      <div className="text-xs text-muted-foreground font-mono">
+                      <div className="text-xs text-muted-foreground ">
                         Expires {new Date(invite.expiresAt).toLocaleDateString()}
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2.5 self-end sm:self-auto">
-                    <TypographySpan className="px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-muted text-muted-foreground capitalize border border-border">
+                    <TypographySpan className="px-2.5 py-1 rounded-full text-xs  font-semibold bg-muted text-muted-foreground capitalize border border-border">
                       {invite.role}
                     </TypographySpan>
 
@@ -493,7 +493,7 @@ export function MembersClient({
                       size="sm"
                       disabled={isActionLoading}
                       onClick={() => handleSimulateAccept(invite.token, invite.email)}
-                      className="rounded-xl text-[11px] font-mono text-primary hover:bg-primary/10 cursor-pointer h-8 px-2"
+                      className="rounded-xl text-[11px]  text-primary hover:bg-primary/10 cursor-pointer h-8 px-2"
                       title="Quickly simulate invite acceptance in test mode"
                     >
                       {loadingActionId === `accept_${invite.token}` ? (

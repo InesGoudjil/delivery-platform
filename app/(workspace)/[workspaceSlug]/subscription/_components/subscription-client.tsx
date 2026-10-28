@@ -196,7 +196,7 @@ export function SubscriptionClient({
               variant="link"
               size="sm"
               onClick={() => setBillingBanner(null)}
-              className="text-xs font-mono font-semibold underline hover:opacity-80 cursor-pointer h-auto p-0 text-emerald-600 dark:text-emerald-400"
+              className="text-xs  font-semibold underline hover:opacity-80 cursor-pointer h-auto p-0 text-emerald-600 dark:text-emerald-400"
             >
               Dismiss
             </Button>

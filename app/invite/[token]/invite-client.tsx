@@ -78,7 +78,7 @@ export function InviteClient({
         <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-3 shadow-inner">
           <Users className="size-7" />
         </div>
-        <div className="text-xs font-mono text-primary uppercase tracking-wider font-semibold">
+        <div className="text-xs  text-primary uppercase tracking-wider font-semibold">
           Collaborator Invitation
         </div>
         <CardTitle className="text-xl sm:text-2xl font-bold font-heading text-card-foreground mt-1">
@@ -98,7 +98,7 @@ export function InviteClient({
           </div>
         )}
 
-        <div className="p-3.5 rounded-xl bg-muted/60 border border-border text-xs space-y-1.5 font-mono">
+        <div className="p-3.5 rounded-xl bg-muted/60 border border-border text-xs space-y-1.5 ">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Workspace:</span>
             <span className="font-bold text-foreground">{workspaceName}</span>

@@ -44,7 +44,7 @@ export function PlanComparisonGrid({
             <TypographyH3 className="text-xl font-bold font-heading text-foreground">
               Available Workspace Tiers
             </TypographyH3>
-            <Badge variant="secondary" className="text-[10px] font-mono uppercase tracking-wider">
+            <Badge variant="secondary" className="text-[10px] font-sans uppercase tracking-wider font-semibold">
               Instant Quota Upgrade
             </Badge>
           </div>
@@ -96,7 +96,7 @@ export function PlanComparisonGrid({
               <strong>Annual Discount Active:</strong> Save 20% across all paid tiers when billed annually.
             </TypographySpan>
           </div>
-          <TypographySpan className="text-[11px] font-mono text-muted-foreground">2 months free</TypographySpan>
+          <TypographySpan className="text-[11px]  text-muted-foreground">2 months free</TypographySpan>
         </div>
       )}
 
@@ -204,7 +204,7 @@ export function PlanComparisonGrid({
                     </TypographyH3>
                   </CardTitle>
                   {isCurrent && (
-                    <Badge variant="default" className="text-[10px] font-mono px-2 py-0.5">
+                    <Badge variant="default" className="text-[10px]  px-2 py-0.5">
                       Active Plan
                     </Badge>
                   )}
@@ -212,12 +212,12 @@ export function PlanComparisonGrid({
 
                 <div className="flex flex-col pt-3">
                   <div className="flex items-baseline gap-1">
-                    <TypographySpan variant="h2" className="text-3xl font-extrabold font-mono text-foreground tracking-tight">
+                    <TypographySpan variant="h2" className="text-3xl font-extrabold  text-foreground tracking-tight">
                       ${displayPrice}
                     </TypographySpan>
                     <TypographySpan variant="muted" className="text-xs font-medium text-muted-foreground">/month</TypographySpan>
                   </div>
-                  <TypographySpan variant="muted" className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                  <TypographySpan variant="muted" className="text-[11px] text-muted-foreground  mt-0.5">
                     {basePrice === 0
                       ? "Free forever"
                       : billingInterval === "year"

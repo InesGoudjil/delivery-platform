@@ -17,7 +17,7 @@ export default async function AdminWorkspaceDetailPage({
   if (!workspace) {
     return (
       <div className="max-w-4xl mx-auto py-20 text-center space-y-3">
-        <p className="text-muted-foreground text-lg font-mono">Workspace not found.</p>
+        <p className="text-muted-foreground text-lg ">Workspace not found.</p>
         <Link href="/admin/workspaces" className="text-primary text-xs font-bold hover:underline inline-block">
           &larr; Back to all workspaces
         </Link>
@@ -43,11 +43,11 @@ export default async function AdminWorkspaceDetailPage({
         <div>
           <div className="flex items-center gap-2">
             <h1 className="font-heading text-2xl font-black text-foreground">{workspace.brandName}</h1>
-            <Badge variant="outline" className="text-[10px] font-mono capitalize border-border">
+            <Badge variant="outline" className="text-[10px]  capitalize border-border">
               {plan?.name || "Starter"}
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground font-mono">
+          <p className="text-xs text-muted-foreground ">
             /{workspace.slug} · ID: {workspace.id}
           </p>
         </div>
@@ -57,7 +57,7 @@ export default async function AdminWorkspaceDetailPage({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-card border-border shadow-sm">
           <CardHeader className="pb-2">
-            <CardDescription className="text-xs uppercase font-mono">Storage Used</CardDescription>
+            <CardDescription className="text-xs uppercase ">Storage Used</CardDescription>
             <CardTitle className="text-xl font-bold font-heading">
               {usedGB.toFixed(1)} / {limitGB} GB
             </CardTitle>
@@ -66,7 +66,7 @@ export default async function AdminWorkspaceDetailPage({
 
         <Card className="bg-card border-border shadow-sm">
           <CardHeader className="pb-2">
-            <CardDescription className="text-xs uppercase font-mono font-semibold">Default Language</CardDescription>
+            <CardDescription className="text-xs uppercase  font-semibold">Default Language</CardDescription>
             <CardTitle className="text-xl font-bold font-heading uppercase">
               {workspace.defaultLanguage}
             </CardTitle>
@@ -75,7 +75,7 @@ export default async function AdminWorkspaceDetailPage({
 
         <Card className="bg-card border-border shadow-sm">
           <CardHeader className="pb-2">
-            <CardDescription className="text-xs uppercase font-mono font-semibold">Total Delivery Rooms</CardDescription>
+            <CardDescription className="text-xs uppercase  font-semibold">Total Delivery Rooms</CardDescription>
             <CardTitle className="text-xl font-bold font-heading">
               {projects.length}
             </CardTitle>
@@ -92,7 +92,7 @@ export default async function AdminWorkspaceDetailPage({
         </CardHeader>
         <CardContent>
           {subscription ? (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs ">
               <div>
                 <span className="text-muted-foreground block text-[10px] uppercase">Status</span>
                 <span className={`font-bold capitalize ${
@@ -119,7 +119,7 @@ export default async function AdminWorkspaceDetailPage({
               </div>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground font-mono">No subscription record provisioned yet.</p>
+            <p className="text-xs text-muted-foreground ">No subscription record provisioned yet.</p>
           )}
         </CardContent>
       </Card>
@@ -133,20 +133,20 @@ export default async function AdminWorkspaceDetailPage({
         </CardHeader>
         <CardContent>
           {projects.length === 0 ? (
-            <p className="text-xs text-muted-foreground font-mono">No projects created in this workspace yet.</p>
+            <p className="text-xs text-muted-foreground ">No projects created in this workspace yet.</p>
           ) : (
             <div className="divide-y divide-border/60">
               {projects.map((p) => (
                 <div key={p.id} className="flex items-center justify-between py-3">
                   <div>
                     <p className="text-xs font-bold text-foreground">{p.title}</p>
-                    <p className="text-[11px] text-muted-foreground font-mono">
+                    <p className="text-[11px] text-muted-foreground ">
                       Token: {p.shareToken} · Created {new Date(p.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                   <Badge
                     variant="outline"
-                    className={`text-[10px] font-mono capitalize ${
+                    className={`text-[10px]  capitalize ${
                       p.status === "approved" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" :
                       p.status === "in_review" ? "bg-primary/10 text-primary border-primary/30" :
                       "bg-muted text-muted-foreground border-border"

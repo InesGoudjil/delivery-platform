@@ -75,7 +75,7 @@ export default async function HelpPage({
     <div className="max-w-4xl mx-auto space-y-10">
       {/* Header */}
       <div className="pb-6 border-b border-border">
-        <TypographyKicker className="text-xs font-mono text-primary uppercase tracking-wider mb-1 block">
+        <TypographyKicker className="text-xs  text-primary uppercase tracking-wider mb-1 block">
           Support &amp; Resources
         </TypographyKicker>
         <TypographyH1 className="text-3xl font-bold font-heading text-foreground">
@@ -154,14 +154,14 @@ export default async function HelpPage({
                 className="flex items-center justify-between p-4 px-5 hover:bg-muted/20 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <TypographySpan className="text-xs font-mono font-semibold px-2.5 py-1 rounded-lg bg-muted text-foreground border border-border shadow-xs">
+                  <TypographySpan className="text-xs  font-semibold px-2.5 py-1 rounded-lg bg-muted text-foreground border border-border shadow-xs">
                     {sc.key}
                   </TypographySpan>
                   <TypographySpan className="text-sm text-card-foreground font-medium">
                     {sc.action}
                   </TypographySpan>
                 </div>
-                <TypographySpan className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+                <TypographySpan className="text-[11px]  uppercase tracking-wider text-muted-foreground">
                   {sc.category}
                 </TypographySpan>
               </div>

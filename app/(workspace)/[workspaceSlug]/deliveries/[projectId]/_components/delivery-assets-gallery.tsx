@@ -222,7 +222,7 @@ export function DeliveryAssetsGallery({
                     <ImageIcon className="size-3.5" />
                   )}
                 </div>
-                <div className="px-2 h-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-[10px] font-mono font-bold text-white tracking-wider">
+                <div className="px-2 h-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-[10px]  font-bold text-white tracking-wider">
                   V{item.versionNumber || 1}
                   {item.totalVersions && item.totalVersions > 1 && (
                     <TypographySpan className="text-[9px] text-primary ml-1">
@@ -352,7 +352,7 @@ export function DeliveryAssetsGallery({
 
               <Badge
                 variant="outline"
-                className="absolute bottom-3 right-3 z-10 text-[10px] font-mono bg-black/80 px-2 py-0.5 rounded text-white border-white/10"
+                className="absolute bottom-3 right-3 z-10 text-[10px]  bg-black/80 px-2 py-0.5 rounded text-white border-white/10"
               >
                 {item.duration}
               </Badge>
@@ -404,7 +404,7 @@ export function DeliveryAssetsGallery({
                         {item.title}
                       </TypographyH4>
                     </CardTitle>
-                    <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground w-full">
+                    <div className="flex items-center justify-between text-[11px]  text-muted-foreground w-full">
                       <TypographySpan>
                         Aspect:{" "}
                         {typeof item.aspectRatio === "object" && item.aspectRatio !== null
@@ -515,7 +515,7 @@ export function DeliveryAssetsGallery({
                 {totalCount !== undefined && totalCount > items.length && (
                   <Badge
                     variant="secondary"
-                    className="text-[10px] font-mono px-2 py-0.5 rounded-full ml-1 bg-primary/10 text-primary border border-primary/20"
+                    className="text-[10px]  px-2 py-0.5 rounded-full ml-1 bg-primary/10 text-primary border border-primary/20"
                   >
                     +{totalCount - items.length} more
                   </Badge>
@@ -524,7 +524,7 @@ export function DeliveryAssetsGallery({
             )}
           </Button>
           {totalCount !== undefined && totalCount > 0 && (
-            <TypographyMuted className="text-[11px] font-mono text-muted-foreground">
+            <TypographyMuted className="text-[11px]  text-muted-foreground">
               Showing {filteredItems.length} of {totalCount} total assets
             </TypographyMuted>
           )}
@@ -532,7 +532,7 @@ export function DeliveryAssetsGallery({
       )}
 
       {!hasMore && items.length > 12 && (
-        <div className="text-center pt-6 pb-2 text-[11px] font-mono text-muted-foreground/60 flex items-center justify-center gap-2">
+        <div className="text-center pt-6 pb-2 text-[11px]  text-muted-foreground/60 flex items-center justify-center gap-2">
           <CheckCircle2 className="size-3.5 text-sage-400" />
           <TypographySpan>All deliverables loaded ({totalCount || items.length} total)</TypographySpan>
         </div>

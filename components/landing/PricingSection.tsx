@@ -258,7 +258,7 @@ export function PricingSection({
       <ScrollReveal className="text-center">
         <div className="space-y-3 max-w-2xl mx-auto">
           <div className="flex justify-center">
-            <span className="text-xs font-semibold uppercase tracking-widest text-primary font-mono">
+            <span className="text-xs font-semibold uppercase tracking-widest text-primary ">
               PRICES THAT SUIT EVERY FILMMAKER
             </span>
           </div>
@@ -303,7 +303,7 @@ export function PricingSection({
                     : "text-[#aeaeb4] hover:text-white"
                 }`}
               >
-                Yearly <span className="text-[10px] opacity-90 font-mono ml-1">Save 25%</span>
+                Yearly <span className="text-[10px] opacity-90  ml-1">Save 25%</span>
                 {billing === "yearly" && (
                   <motion.div
                     layoutId="billingIndicator"
@@ -419,7 +419,7 @@ export function PricingSection({
       <ScrollReveal className="text-center">
         <div className="space-y-3 max-w-2xl mx-auto">
           <div className="flex justify-center">
-            <span className="text-xs font-semibold uppercase tracking-widest text-primary font-mono">
+            <span className="text-xs font-semibold uppercase tracking-widest text-primary ">
               FEATURE MATRIX
             </span>
           </div>

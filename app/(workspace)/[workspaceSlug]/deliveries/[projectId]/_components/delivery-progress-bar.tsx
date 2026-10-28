@@ -28,11 +28,11 @@ export function DeliveryProgressBar({
     <Card className="rounded-2xl border border-border p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg hover:translate-y-0 hover:shadow-lg">
       {/* Progress Info & Bar */}
       <CardContent className="p-0 flex-1 w-full space-y-2">
-        <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
-          <TypographySpan variant="muted" className="font-mono text-xs">
+        <div className="flex items-center justify-between text-xs  text-muted-foreground">
+          <TypographySpan variant="muted" className=" text-xs">
             {approvedCount} of {totalAssetsCount} approved by client
           </TypographySpan>
-          <TypographySpan variant="small" className="font-semibold text-foreground font-mono">{percentage}%</TypographySpan>
+          <TypographySpan variant="small" className="font-semibold text-foreground ">{percentage}%</TypographySpan>
         </div>
         <div className="w-full h-2 bg-muted/60 rounded-full overflow-hidden border border-border/20">
           <div

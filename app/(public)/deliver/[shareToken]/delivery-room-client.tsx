@@ -792,7 +792,7 @@ export function DeliveryRoomClient({
             </div>
 
             <div className="text-center space-y-2">
-              <Badge variant="outline" className="font-mono text-[11px] uppercase tracking-wider text-primary border-primary/30">
+              <Badge variant="outline" className=" text-[11px] uppercase tracking-wider text-primary border-primary/30">
                 Protected Review Room
               </Badge>
               <TypographyH2 className="text-2xl font-bold font-display text-[#f6f3ec]">
@@ -812,7 +812,7 @@ export function DeliveryRoomClient({
                     placeholder="Enter client passcode"
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 text-center text-sm rounded-xl py-6 px-10 focus-visible:border-primary text-white placeholder:text-neutral-500 font-mono tracking-wider"
+                    className="w-full bg-white/5 border border-white/10 text-center text-sm rounded-xl py-6 px-10 focus-visible:border-primary text-white placeholder:text-neutral-500  tracking-wider"
                     autoFocus
                     disabled={isVerifyingPasscode}
                   />
@@ -852,14 +852,14 @@ export function DeliveryRoomClient({
                   variant="link"
                   onClick={handleCreatorUnlock}
                   disabled={isVerifyingPasscode}
-                  className="text-[11px] font-mono text-primary hover:underline cursor-pointer transition-colors h-auto p-0"
+                  className="text-[11px]  text-primary hover:underline cursor-pointer transition-colors h-auto p-0"
                 >
                   Workspace Creator: Quick Unlock Preview
                 </Button>
               </div>
             )}
 
-            <p className="text-[11px] text-[#5e5e64] font-mono text-center">
+            <p className="text-[11px] text-[#5e5e64]  text-center">
               Delivery Token: {delivery.shareToken.slice(0, 8)}...
             </p>
           </UniversalDialogContent>
@@ -869,7 +869,7 @@ export function DeliveryRoomClient({
       <div className={`relative z-10 ${isLocked ? "filter blur-lg pointer-events-none select-none opacity-30 transition-all duration-500" : ""}`}>
         {/* Creator Preview Banner when link is expired */}
         {isExpired && isWorkspaceMember && (
-          <div className="bg-amber-500/10 border border-amber-500/20 px-4 sm:px-6 py-3 rounded-2xl text-xs text-amber-200 flex flex-wrap items-center justify-between gap-3 font-mono">
+          <div className="bg-amber-500/10 border border-amber-500/20 px-4 sm:px-6 py-3 rounded-2xl text-xs text-amber-200 flex flex-wrap items-center justify-between gap-3 ">
             <div className="flex items-center gap-2">
               <Clock className="size-4 text-amber-400 shrink-0" />
               <TypographySpan>
@@ -906,7 +906,7 @@ export function DeliveryRoomClient({
 
             <Badge
               variant="outline"
-              className={`rounded-full px-3.5 py-1.5 text-xs font-mono gap-2 font-normal ${
+              className={`rounded-full px-3.5 py-1.5 text-xs  gap-2 font-normal ${
                 isExpired
                   ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
                   : "border-white/15 bg-white/5 text-[#aeaeb4]"
@@ -940,7 +940,7 @@ export function DeliveryRoomClient({
               {/* 4 Metadata statistics */}
               <div className="flex flex-wrap items-center gap-8 sm:gap-14 mt-6 pt-5 border-t border-white/15">
                 <div className="flex flex-col gap-1">
-                  <TypographySpan className="font-mono text-[10px] uppercase tracking-widest text-[#aeaeb4]">
+                  <TypographySpan className=" text-[10px] uppercase tracking-widest text-[#aeaeb4]">
                     DELIVERED
                   </TypographySpan>
                   <TypographySpan className="font-heading font-bold text-sm sm:text-base text-[#f6f3ec]">
@@ -949,7 +949,7 @@ export function DeliveryRoomClient({
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <TypographySpan className="font-mono text-[10px] uppercase tracking-widest text-[#aeaeb4]">
+                  <TypographySpan className=" text-[10px] uppercase tracking-widest text-[#aeaeb4]">
                     LOCATION
                   </TypographySpan>
                   <TypographySpan className="font-heading font-bold text-sm sm:text-base text-[#f6f3ec]">
@@ -958,7 +958,7 @@ export function DeliveryRoomClient({
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <TypographySpan className="font-mono text-[10px] uppercase tracking-widest text-[#aeaeb4]">
+                  <TypographySpan className=" text-[10px] uppercase tracking-widest text-[#aeaeb4]">
                     TOTAL SIZE
                   </TypographySpan>
                   <TypographySpan className="font-heading font-bold text-sm sm:text-base text-primary">
@@ -967,7 +967,7 @@ export function DeliveryRoomClient({
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <TypographySpan className="font-mono text-[10px] uppercase tracking-widest text-[#aeaeb4]">
+                  <TypographySpan className=" text-[10px] uppercase tracking-widest text-[#aeaeb4]">
                     ASSETS
                   </TypographySpan>
                   <TypographySpan className="font-heading font-bold text-sm sm:text-base text-[#f6f3ec]">
@@ -1259,7 +1259,7 @@ export function DeliveryRoomClient({
 
                           {/* Bottom-Right: Duration timecode (videos only) */}
                           {!isPhoto && durationLabel && (
-                            <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[11px] font-mono font-semibold text-white border border-white/10 z-10">
+                            <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[11px]  font-semibold text-white border border-white/10 z-10">
                               {durationLabel}
                             </div>
                           )}
@@ -1367,7 +1367,7 @@ export function DeliveryRoomClient({
           </div>
 
           {/* 5. Studio Branding Footer */}
-          <footer className="border-t border-white/10 mt-16 sm:mt-24 py-8 flex items-center justify-between text-xs text-[#aeaeb4] font-mono">
+          <footer className="border-t border-white/10 mt-16 sm:mt-24 py-8 flex items-center justify-between text-xs text-[#aeaeb4] ">
             <div className="flex items-center gap-2">
               <img
                 src="/images/logo.svg"
@@ -1400,7 +1400,7 @@ export function DeliveryRoomClient({
                   <TypographyH3 className="font-display font-bold text-base sm:text-lg text-[#f6f3ec] truncate">
                     {activeAsset.title}
                   </TypographyH3>
-                  <TypographyMuted className="text-[11px] sm:text-xs text-[#aeaeb4] font-mono truncate">
+                  <TypographyMuted className="text-[11px] sm:text-xs text-[#aeaeb4]  truncate">
                     Aspect:{" "}
                     {typeof activeAsset.aspectRatio === "object" && activeAsset.aspectRatio !== null
                       ? (activeAsset.aspectRatio as any)?.shortLabel ||
@@ -1553,7 +1553,7 @@ export function DeliveryRoomClient({
                   <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
                     <div className="flex items-center gap-2">
                       <Layers className="size-3.5 text-primary" />
-                      <TypographySpan className="text-xs font-mono text-[#aeaeb4]">
+                      <TypographySpan className="text-xs  text-[#aeaeb4]">
                         Version:
                       </TypographySpan>
                     </div>
@@ -1567,7 +1567,7 @@ export function DeliveryRoomClient({
                             size="sm"
                             variant={isSelected ? "default" : "outline"}
                             onClick={() => setSelectedVersionId(v.id)}
-                            className={`px-3 py-1.5 h-7 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer flex items-center gap-1 ${
+                            className={`px-3 py-1.5 h-7 rounded-lg text-xs font-bold  transition-all cursor-pointer flex items-center gap-1 ${
                               isSelected
                                 ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md border-transparent"
                                 : "bg-white/5 border-white/10 text-[#aeaeb4] hover:text-[#f6f3ec] hover:bg-white/10"
@@ -1602,11 +1602,11 @@ export function DeliveryRoomClient({
                           Notes ({activeFeedback.length})
                         </TypographyH4>
                         {isStill ? (
-                          <Badge variant="sage" className="text-[10px] font-mono font-bold">
+                          <Badge variant="sage" className="text-[10px]  font-bold">
                             Still Photography
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-[10px] font-mono text-primary border-primary/30">
+                          <Badge variant="outline" className="text-[10px]  text-primary border-primary/30">
                             Playhead: {currentPlayheadTc}
                           </Badge>
                         )}
@@ -1649,21 +1649,21 @@ export function DeliveryRoomClient({
                                     : "bg-[#18181c] border-white/10 text-[#f6f3ec] hover:border-white/20"
                                 }`}
                               >
-                                <div className="flex items-center justify-between text-[10px] text-[#aeaeb4] font-mono">
+                                <div className="flex items-center justify-between text-[10px] text-[#aeaeb4] ">
                                   <div className="flex items-center gap-1.5">
                                     <Avatar className="size-5 text-[9px] shrink-0">
-                                      <AvatarFallback className="text-[9px] bg-white/10 text-white font-mono">
+                                      <AvatarFallback className="text-[9px] bg-white/10 text-white ">
                                         {c.authorName ? c.authorName.slice(0, 2).toUpperCase() : "U"}
                                       </AvatarFallback>
                                     </Avatar>
                                     <TypographySpan className="font-semibold text-white">{c.authorName}</TypographySpan>
                                   </div>
                                   {hasTimestamp ? (
-                                    <Badge variant="orange" className="text-[10px] font-mono font-bold py-0 h-4">
+                                    <Badge variant="orange" className="text-[10px]  font-bold py-0 h-4">
                                       {tcDisplay}
                                     </Badge>
                                   ) : (
-                                    <Badge variant="sage" className="text-[9px] font-mono py-0 h-4">
+                                    <Badge variant="sage" className="text-[9px]  py-0 h-4">
                                       Still Note
                                     </Badge>
                                   )}
@@ -1683,7 +1683,7 @@ export function DeliveryRoomClient({
                                         setReplyInputText("");
                                       }
                                     }}
-                                    className="text-[10px] text-[#aeaeb4] hover:text-white flex items-center gap-1 font-mono transition-colors cursor-pointer"
+                                    className="text-[10px] text-[#aeaeb4] hover:text-white flex items-center gap-1  transition-colors cursor-pointer"
                                   >
                                     <CornerDownRight className="size-3" />
                                     {replyingToId === c.id ? "Cancel" : "Reply"}
@@ -1695,7 +1695,7 @@ export function DeliveryRoomClient({
                                       e.stopPropagation();
                                       handleToggleResolve(c.id, c.isResolved);
                                     }}
-                                    className={`h-6 text-[10px] font-mono px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                                    className={`h-6 text-[10px]  px-2 py-0.5 rounded cursor-pointer transition-colors ${
                                       c.isResolved
                                         ? "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
                                         : "text-[#aeaeb4] hover:text-white hover:bg-white/10"
@@ -1714,12 +1714,12 @@ export function DeliveryRoomClient({
                                         className="flex items-start gap-2 pl-2 border-l-2 border-primary/40 text-[11px]"
                                       >
                                         <Avatar className="size-4 text-[8px] shrink-0 mt-0.5">
-                                          <AvatarFallback className="text-[8px] bg-white/10 text-white font-mono">
+                                          <AvatarFallback className="text-[8px] bg-white/10 text-white ">
                                             {r.authorName ? r.authorName.slice(0, 2).toUpperCase() : "U"}
                                           </AvatarFallback>
                                         </Avatar>
                                         <div className="flex-1 min-w-0">
-                                          <TypographySpan className="font-semibold text-white/90 text-[10px] block font-mono">
+                                          <TypographySpan className="font-semibold text-white/90 text-[10px] block ">
                                             {r.authorName}
                                           </TypographySpan>
                                           <p className="text-white/80 leading-snug">{r.commentText}</p>
@@ -1771,7 +1771,7 @@ export function DeliveryRoomClient({
                         onSubmit={handleAddComment}
                         className="pt-3 border-t border-white/10 flex flex-col gap-2 shrink-0"
                       >
-                        <div className="flex items-center justify-between text-[10px] font-mono text-[#aeaeb4]">
+                        <div className="flex items-center justify-between text-[10px]  text-[#aeaeb4]">
                           <div className="flex items-center gap-1.5">
                             <TypographySpan>As:</TypographySpan>
                             <Input
@@ -1783,11 +1783,11 @@ export function DeliveryRoomClient({
                             />
                           </div>
                           {isStill ? (
-                            <Badge variant="sage" className="text-[9px] font-mono font-bold py-0 h-4">
+                            <Badge variant="sage" className="text-[9px]  font-bold py-0 h-4">
                               Still Note
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-[10px] font-mono font-bold py-0 h-4 text-primary border-primary/30">
+                            <Badge variant="outline" className="text-[10px]  font-bold py-0 h-4 text-primary border-primary/30">
                               {currentPlayheadTc}
                             </Badge>
                           )}
