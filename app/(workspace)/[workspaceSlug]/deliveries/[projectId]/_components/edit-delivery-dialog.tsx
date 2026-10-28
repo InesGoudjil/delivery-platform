@@ -121,7 +121,7 @@ export function EditDeliveryDialog({
           {/* COVER THUMBNAIL */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <TypographySpan className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+              <TypographySpan className="text-[10px]  text-muted-foreground uppercase tracking-widest block">
                 COVER THUMBNAIL
               </TypographySpan>
               <Button
@@ -205,10 +205,10 @@ export function EditDeliveryDialog({
           {/* ASSETS */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <TypographySpan className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+              <TypographySpan className="text-[10px]  text-muted-foreground uppercase tracking-widest block">
                 ASSETS
               </TypographySpan>
-              <Badge variant="outline" className="text-[10px] font-mono">
+              <Badge variant="outline" className="text-[10px] ">
                 {items.length} items
               </Badge>
             </div>

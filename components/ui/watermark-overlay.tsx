@@ -116,7 +116,7 @@ export function WatermarkOverlay({
 
       {/* Optional Corner Security Pill */}
       {showBadge && (
-        <div className="absolute bottom-3 left-3 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono font-bold text-white/90 shadow-lg">
+        <div className="absolute bottom-3 left-3 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-md border border-white/15 text-[10px]  font-bold text-white/90 shadow-lg">
           <Shield className="size-3 text-primary" />
           <span>PREVIEW WATERMARK ACTIVE</span>
         </div>

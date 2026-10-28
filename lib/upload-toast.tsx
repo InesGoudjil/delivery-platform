@@ -54,7 +54,7 @@ export function renderUploadProgressDescription({
 
   return (
     <div className="w-full space-y-2 pt-1.5">
-      <div className="flex items-center justify-between gap-2 text-[11px] font-mono text-muted-foreground">
+      <div className="flex items-center justify-between gap-2 text-[11px]  text-muted-foreground">
         <span className="truncate max-w-[200px] text-foreground/90 font-medium">
           {displayFileName}
         </span>
@@ -68,7 +68,7 @@ export function renderUploadProgressDescription({
         />
       </div>
 
-      <div className="flex items-center justify-between gap-2 text-[10px] font-mono text-muted-foreground">
+      <div className="flex items-center justify-between gap-2 text-[10px]  text-muted-foreground">
         <span className="truncate">
           {displayStatus || (clampedPct < 100 ? "Uploading media..." : "Finalizing...")}
         </span>

@@ -91,7 +91,7 @@ export function FeaturedReel({
           </TypographyH4>
         </CardTitle>
         <CardAction>
-          <Badge variant="outline" className="text-[11px] text-zinc-400 font-mono border-white/10 bg-white/5">
+          <Badge variant="outline" className="text-[11px] text-zinc-400  border-white/10 bg-white/5">
             {featuredItems.length} featured
           </Badge>
         </CardAction>

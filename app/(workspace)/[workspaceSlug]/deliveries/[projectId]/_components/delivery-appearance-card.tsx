@@ -67,7 +67,7 @@ export function DeliveryAppearanceCard({
         </div>
 
         <CardAction>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground ">
             <Lock className="size-3.5" />
             <TypographySpan className="hidden sm:inline">
               How your client sees this gallery
@@ -220,7 +220,7 @@ export function DeliveryAppearanceCard({
             {!canWatermark && (
               <Link
                 href={workspaceSlug ? `/${workspaceSlug}/subscription` : "#"}
-                className="text-[10px] text-primary hover:underline font-mono"
+                className="text-[10px] text-primary hover:underline "
               >
                 Upgrade to Pro to enable watermarking
               </Link>

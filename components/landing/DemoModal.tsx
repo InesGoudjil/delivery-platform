@@ -85,7 +85,7 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
               <span className="font-heading font-black text-xl text-[#f6f3ec]">
                 Pedro Concreato<span className="text-primary">.</span>
               </span>
-              <Badge variant="sage" className="font-mono text-xs gap-1.5 py-1">
+              <Badge variant="sage" className=" text-xs gap-1.5 py-1">
                 <Lock className="size-3" /> Private Link · Active Review
               </Badge>
             </div>
@@ -122,7 +122,7 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
               ))}
             </div>
             <TypographyMuted
-              className="text-xs text-[#5e5e64] shrink-0 font-mono hidden sm:inline"
+              className="text-xs text-[#5e5e64] shrink-0  hidden sm:inline"
             >
               Simulated Client Experience
             </TypographyMuted>
@@ -142,7 +142,7 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
                 >
                   {activeProject.title}
                 </Typography>
-                <span className="text-xs font-mono bg-black/60 px-2.5 py-1 rounded-md text-primary">
+                <span className="text-xs  bg-black/60 px-2.5 py-1 rounded-md text-primary">
                   Version: {activeVersion}
                 </span>
               </div>
@@ -155,7 +155,7 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
                 <Play className="size-8 text-[#f6f3ec] group-hover:text-primary-foreground ml-1 transition-colors" />
               </Button>
 
-              <div className="flex items-center justify-between z-10 text-xs font-mono">
+              <div className="flex items-center justify-between z-10 text-xs ">
                 <span className="bg-black/60 px-2.5 py-1 rounded-md">
                   00:24 / {activeProject.tc}
                 </span>
@@ -176,7 +176,7 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
                   variant="ghost"
                   size="xs"
                   onClick={() => setActiveVersion(v)}
-                  className={`px-3 py-1 rounded-full text-xs font-mono font-bold transition-all cursor-pointer h-auto ${
+                  className={`px-3 py-1 rounded-full text-xs  font-bold transition-all cursor-pointer h-auto ${
                     activeVersion === v
                       ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
                       : "bg-white/5 text-[#9a9a9f] hover:bg-white/10"

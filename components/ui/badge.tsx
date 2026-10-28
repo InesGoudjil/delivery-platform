@@ -17,6 +17,8 @@ const badgeVariants = cva(
         orange: "border-primary/30 bg-primary/15 text-primary",
         brand: "border-primary/30 bg-primary/15 text-primary",
         sage: "border-[#86b98f]/40 bg-[#86b98f]/20 text-[#86b98f]",
+        kicker:
+          "border-primary/30 bg-primary/15 text-primary text-[10px] font-semibold tracking-wider uppercase font-sans",
       },
     },
     defaultVariants: {

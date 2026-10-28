@@ -111,7 +111,7 @@ export function NewWorkspaceClient({
       {/* Top Header Breadcrumb */}
       <div className="flex items-center justify-between border-b border-border pb-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">
+          <div className="flex items-center gap-2 text-xs  text-muted-foreground uppercase tracking-wider mb-1">
             <Link href={`/${primaryWorkspaceSlug}`} className="hover:text-foreground transition-colors">
               Workspaces
             </Link>
@@ -129,7 +129,7 @@ export function NewWorkspaceClient({
         </div>
 
         <div className="hidden sm:flex items-center gap-2">
-          <Badge variant={isEligible ? "default" : "outline"} className="px-3 py-1 font-mono text-xs">
+          <Badge variant={isEligible ? "default" : "outline"} className="px-3 py-1  text-xs">
             {isEligible ? "Studio Plan Active (5 Seats)" : `Current: ${currentPlanName} (Solo 1 Seat)`}
           </Badge>
         </div>
@@ -202,7 +202,7 @@ export function NewWorkspaceClient({
 
               {/* Plans Comparison Snapshot */}
               <div className="p-4 rounded-xl bg-background/80 border border-border space-y-3">
-                <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider font-semibold">
+                <div className="text-xs  text-muted-foreground uppercase tracking-wider font-semibold">
                   Plans Seat &amp; Team Comparison
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -227,12 +227,12 @@ export function NewWorkspaceClient({
                               </span>
                             )}
                           </div>
-                          <div className="text-sm font-mono font-bold text-foreground mt-1">
+                          <div className="text-sm  font-bold text-foreground mt-1">
                             ${(p.priceCents / 100).toFixed(0)}
                             <span className="text-[10px] text-muted-foreground font-normal"> /mo</span>
                           </div>
                         </div>
-                        <div className="mt-2 pt-2 border-t border-border/50 text-[11px] font-mono">
+                        <div className="mt-2 pt-2 border-t border-border/50 text-[11px] ">
                           <span className={isStudio ? "text-primary font-bold" : "text-muted-foreground"}>
                             {seats} {seats > 1 ? "Team Seats" : "Seat (Solo)"}
                           </span>
@@ -245,7 +245,7 @@ export function NewWorkspaceClient({
             </CardContent>
 
             <CardFooter className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-6 border-t border-border">
-              <div className="text-xs text-muted-foreground font-mono">
+              <div className="text-xs text-muted-foreground ">
                 Studio Plan: ${(studioPlan.priceCents / 100).toFixed(0)}/mo • Cancel anytime
               </div>
 
@@ -269,7 +269,7 @@ export function NewWorkspaceClient({
         <div className="space-y-6">
           <Card className="border border-border bg-card shadow-lg">
             <CardHeader>
-              <div className="flex items-center gap-2 text-xs font-mono text-primary font-semibold mb-1">
+              <div className="flex items-center gap-2 text-xs  text-primary font-semibold mb-1">
                 <ShieldCheck className="size-4" />
                 <span>Studio Tier Feature Unlocked</span>
               </div>
@@ -305,14 +305,14 @@ export function NewWorkspaceClient({
                     Workspace URL Slug
                   </label>
                   <div className="flex items-center rounded-xl border border-border bg-muted overflow-hidden px-3 py-2 text-xs">
-                    <span className="text-muted-foreground font-mono mr-1">app.cutgrid.com/</span>
+                    <span className="text-muted-foreground  mr-1">app.cutgrid.com/</span>
                     <input
                       type="text"
                       required
                       placeholder="my-team-studio"
                       value={slug}
                       onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                      className="bg-transparent border-none text-foreground font-mono focus:outline-none flex-1"
+                      className="bg-transparent border-none text-foreground  focus:outline-none flex-1"
                     />
                   </div>
                 </div>
@@ -333,7 +333,7 @@ export function NewWorkspaceClient({
                         type="text"
                         value={accentColor}
                         onChange={(e) => setAccentColor(e.target.value)}
-                        className="bg-muted border border-border rounded-lg px-2.5 py-1.5 text-xs font-mono text-foreground focus:outline-none flex-1"
+                        className="bg-muted border border-border rounded-lg px-2.5 py-1.5 text-xs  text-foreground focus:outline-none flex-1"
                       />
                     </div>
                   </div>

@@ -183,7 +183,7 @@ export function UsersClient({ users }: UsersClientProps) {
       {/* ======================= TOP HEADER ======================= */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
         <div>
-          <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1">
+          <div className="text-xs  text-primary uppercase tracking-wider mb-1">
             Platform Users &amp; Roles
           </div>
           <h1 className="text-3xl font-black font-heading text-foreground tracking-tight">
@@ -209,7 +209,7 @@ export function UsersClient({ users }: UsersClientProps) {
         <Card className="bg-card border-border shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardDescription className="text-xs font-mono uppercase">
+              <CardDescription className="text-xs  uppercase">
                 Total Registered Creators
               </CardDescription>
               <Users className="size-4 text-primary" />
@@ -219,7 +219,7 @@ export function UsersClient({ users }: UsersClientProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-muted-foreground font-mono">
+            <p className="text-xs text-muted-foreground ">
               {totalCreators} standard filmmakers
             </p>
           </CardContent>
@@ -228,7 +228,7 @@ export function UsersClient({ users }: UsersClientProps) {
         <Card className="bg-card border-border shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardDescription className="text-xs font-mono uppercase">
+              <CardDescription className="text-xs  uppercase">
                 Platform Super Admins
               </CardDescription>
               <Shield className="size-4 text-primary" />
@@ -238,7 +238,7 @@ export function UsersClient({ users }: UsersClientProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-primary font-mono font-medium">
+            <p className="text-xs text-primary  font-medium">
               Full control over subscriptions &amp; quotas
             </p>
           </CardContent>
@@ -247,7 +247,7 @@ export function UsersClient({ users }: UsersClientProps) {
         <Card className="bg-card border-border shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardDescription className="text-xs font-mono uppercase">
+              <CardDescription className="text-xs  uppercase">
                 Active Studio Workspaces
               </CardDescription>
               <Building2 className="size-4 text-emerald-400" />
@@ -257,7 +257,7 @@ export function UsersClient({ users }: UsersClientProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-emerald-400 font-mono font-medium">
+            <p className="text-xs text-emerald-400  font-medium">
               100% Onboarding Completion
             </p>
           </CardContent>
@@ -315,7 +315,7 @@ export function UsersClient({ users }: UsersClientProps) {
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-muted/40 border-b border-border text-muted-foreground font-mono uppercase text-[10px]">
+              <thead className="bg-muted/40 border-b border-border text-muted-foreground  uppercase text-[10px]">
                 <tr>
                   <th className="p-4 pl-6">Creator &amp; Email</th>
                   <th className="p-4">Studio Workspace</th>
@@ -341,7 +341,7 @@ export function UsersClient({ users }: UsersClientProps) {
                           <p className="font-bold text-foreground group-hover:text-primary transition-colors">
                             {u.fullName}
                           </p>
-                          <p className="text-[11px] text-muted-foreground font-mono">
+                          <p className="text-[11px] text-muted-foreground ">
                             {u.email}
                           </p>
                         </div>
@@ -360,7 +360,7 @@ export function UsersClient({ users }: UsersClientProps) {
                           <ExternalLink className="size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                         </Link>
                       ) : (
-                        <span className="text-muted-foreground font-mono">—</span>
+                        <span className="text-muted-foreground ">—</span>
                       )}
                     </td>
 
@@ -368,7 +368,7 @@ export function UsersClient({ users }: UsersClientProps) {
                     <td className="p-4">
                       <Badge
                         variant="outline"
-                        className="text-[10px] font-mono capitalize border-border"
+                        className="text-[10px]  capitalize border-border"
                       >
                         {u.planName || "Pro"}
                       </Badge>
@@ -378,7 +378,7 @@ export function UsersClient({ users }: UsersClientProps) {
                     <td className="p-4">
                       <Badge
                         variant="outline"
-                        className={`text-[10px] font-mono capitalize ${
+                        className={`text-[10px]  capitalize ${
                           u.platformRole === "admin"
                             ? "bg-primary/15 text-primary border-primary/30 font-bold"
                             : "bg-muted text-muted-foreground border-border"
@@ -389,7 +389,7 @@ export function UsersClient({ users }: UsersClientProps) {
                     </td>
 
                     {/* Last Login */}
-                    <td className="p-4 text-[11px] text-muted-foreground font-mono">
+                    <td className="p-4 text-[11px] text-muted-foreground ">
                       {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : "Active recently"}
                     </td>
 
@@ -406,7 +406,7 @@ export function UsersClient({ users }: UsersClientProps) {
                           </Button>
                         } />
                         <DropdownMenuContent align="end" className="w-48 bg-popover border-border">
-                          <DropdownMenuLabel className="text-[10px] font-mono uppercase text-muted-foreground">
+                          <DropdownMenuLabel className="text-[10px]  uppercase text-muted-foreground">
                             User Operations
                           </DropdownMenuLabel>
                           <DropdownMenuItem
@@ -606,11 +606,11 @@ export function UsersClient({ users }: UsersClientProps) {
                 </Avatar>
                 <div>
                   <p className="font-bold text-foreground text-sm">{selectedUser.fullName}</p>
-                  <p className="text-[11px] text-muted-foreground font-mono">{selectedUser.email}</p>
+                  <p className="text-[11px] text-muted-foreground ">{selectedUser.email}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-muted-foreground font-mono">
+              <div className="grid grid-cols-2 gap-3 text-muted-foreground ">
                 <div className="p-3 bg-muted/40 rounded-xl border border-border">
                   <p className="text-[10px] uppercase text-muted-foreground">User ID</p>
                   <p className="font-bold text-foreground text-xs truncate mt-0.5">{selectedUser.id}</p>

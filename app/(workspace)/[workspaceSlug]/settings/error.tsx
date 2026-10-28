@@ -28,7 +28,7 @@ export default function SettingsError({
           className="rounded-3xl bg-card border border-destructive/30 p-8 text-center space-y-5 shadow-2xl"
         >
           <div className="flex justify-center">
-            <Badge variant="destructive" className="font-mono text-[10px] tracking-wider uppercase gap-1.5">
+            <Badge variant="destructive" className="font-sans text-[10px] tracking-wider uppercase gap-1.5">
               <AlertCircle className="size-3.5" />
               Settings Error
             </Badge>

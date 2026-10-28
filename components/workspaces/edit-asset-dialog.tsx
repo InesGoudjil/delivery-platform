@@ -198,7 +198,7 @@ export function EditAssetDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* TITLE */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+            <label className="text-[10px]  text-muted-foreground uppercase tracking-widest block">
               TITLE *
             </label>
             <input
@@ -214,7 +214,7 @@ export function EditAssetDialog({
           {/* THUMBNAIL COVER */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
+              <label className="text-[10px]  text-muted-foreground uppercase tracking-widest">
                 THUMBNAIL COVER
               </label>
               <Button
@@ -323,7 +323,7 @@ export function EditAssetDialog({
 
           {/* DESCRIPTION */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+            <label className="text-[10px]  text-muted-foreground uppercase tracking-widest block">
               DESCRIPTION / NOTES
             </label>
             <textarea
@@ -338,7 +338,7 @@ export function EditAssetDialog({
           <div className="grid grid-cols-2 gap-3">
             {/* CATEGORY */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+              <label className="text-[10px]  text-muted-foreground uppercase tracking-widest block">
                 CATEGORY
               </label>
               <input
@@ -353,10 +353,10 @@ export function EditAssetDialog({
             {/* ASPECT RATIO */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+                <label className="text-[10px]  text-muted-foreground uppercase tracking-widest block">
                   ASPECT RATIO
                 </label>
-                <TypographySpan className="text-[10px] font-mono text-primary font-semibold">
+                <TypographySpan className="text-[10px]  text-primary font-semibold">
                   {ASPECT_RATIO_BY_ID[aspectRatio as AspectRatioId]?.label || aspectRatio}
                 </TypographySpan>
               </div>
@@ -374,7 +374,7 @@ export function EditAssetDialog({
                         variant={aspectRatio === ratio ? "default" : "ghost"}
                         size="sm"
                         onClick={() => setAspectRatio(ratio)}
-                        className={`py-1.5 text-xs font-mono rounded-lg border transition-colors cursor-pointer text-center h-auto ${
+                        className={`py-1.5 text-xs  rounded-lg border transition-colors cursor-pointer text-center h-auto ${
                           aspectRatio === ratio
                             ? "bg-primary text-primary-foreground font-bold border-primary hover:bg-primary/90"
                             : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:bg-white/10"
@@ -398,7 +398,7 @@ export function EditAssetDialog({
                         variant={aspectRatio === ratio ? "default" : "ghost"}
                         size="sm"
                         onClick={() => setAspectRatio(ratio)}
-                        className={`py-1.5 text-xs font-mono rounded-lg border transition-colors cursor-pointer text-center h-auto ${
+                        className={`py-1.5 text-xs  rounded-lg border transition-colors cursor-pointer text-center h-auto ${
                           aspectRatio === ratio
                             ? "bg-primary text-primary-foreground font-bold border-primary hover:bg-primary/90"
                             : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:bg-white/10"
@@ -422,7 +422,7 @@ export function EditAssetDialog({
                         variant={aspectRatio === ratio ? "default" : "ghost"}
                         size="sm"
                         onClick={() => setAspectRatio(ratio)}
-                        className={`py-1.5 text-[11px] font-mono rounded-lg border transition-colors cursor-pointer text-center h-auto ${
+                        className={`py-1.5 text-[11px]  rounded-lg border transition-colors cursor-pointer text-center h-auto ${
                           aspectRatio === ratio
                             ? "bg-primary text-primary-foreground font-bold border-primary hover:bg-primary/90"
                             : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:bg-white/10"
@@ -446,7 +446,7 @@ export function EditAssetDialog({
                         variant={aspectRatio === ratio ? "default" : "ghost"}
                         size="sm"
                         onClick={() => setAspectRatio(ratio)}
-                        className={`py-1.5 text-xs font-mono rounded-lg border transition-colors cursor-pointer text-center h-auto ${
+                        className={`py-1.5 text-xs  rounded-lg border transition-colors cursor-pointer text-center h-auto ${
                           aspectRatio === ratio
                             ? "bg-primary text-primary-foreground font-bold border-primary hover:bg-primary/90"
                             : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:bg-white/10"

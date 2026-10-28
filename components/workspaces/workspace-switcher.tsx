@@ -107,7 +107,7 @@ export function WorkspaceSwitcher({
                 <TypographySpan variant="small" className="truncate font-bold text-sidebar-foreground">
                   {activeWorkspace.name}
                 </TypographySpan>
-                <TypographySpan variant="muted" className="truncate text-xs font-mono">
+                <TypographySpan variant="muted" className="truncate text-xs ">
                   {activeWorkspace.plan || "Studio"}
                 </TypographySpan>
               </div>
@@ -122,7 +122,7 @@ export function WorkspaceSwitcher({
             sideOffset={8}
           >
             <DropdownMenuLabel className="px-2 py-1">
-              <TypographySpan variant="kicker" className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
+              <TypographySpan variant="kicker" className="text-xs text-muted-foreground  uppercase tracking-wider">
                 Workspaces
               </TypographySpan>
             </DropdownMenuLabel>
@@ -161,7 +161,7 @@ export function WorkspaceSwitcher({
                     </TypographySpan>
                   </div>
                   {isCurrent && <Check className="size-3.5 text-primary ml-auto" />}
-                  <DropdownMenuShortcut className="text-[10px] font-mono text-muted-foreground">
+                  <DropdownMenuShortcut className="text-[10px]  text-muted-foreground">
                     ⌘{index + 1}
                   </DropdownMenuShortcut>
                 </DropdownMenuItem>

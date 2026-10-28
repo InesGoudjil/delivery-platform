@@ -99,7 +99,7 @@ export function DeliveriesHeader({
         size="md"
         icon={<FolderPlus className="size-5 text-primary" />}
         badge={
-          <Badge variant="orange" className="font-mono text-[11px] w-fit">
+          <Badge variant="kicker" className="w-fit">
             NEW REVIEW ROOM
           </Badge>
         }
@@ -172,7 +172,7 @@ export function DeliveriesHeader({
 
         <form id="create-delivery-form" onSubmit={handleCreateProject} className="space-y-4">
           <div className="space-y-1.5">
-            <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
+            <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider ">
               Project Title <TypographySpan className="text-primary">*</TypographySpan>
             </Label>
             <Input
@@ -187,7 +187,7 @@ export function DeliveriesHeader({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
+            <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider ">
               Client / Brand Name
             </Label>
             <Input
@@ -203,10 +203,10 @@ export function DeliveriesHeader({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
+                <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider ">
                   Client Email
                 </Label>
-                <TypographySpan className="text-[10px] text-muted-foreground/60 font-mono">Optional</TypographySpan>
+                <TypographySpan className="text-[10px] text-muted-foreground/60 ">Optional</TypographySpan>
               </div>
               <Input
                 type="email"
@@ -220,10 +220,10 @@ export function DeliveriesHeader({
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
+                <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider ">
                   Phone / WhatsApp
                 </Label>
-                <TypographySpan className="text-[10px] text-muted-foreground/60 font-mono">Optional</TypographySpan>
+                <TypographySpan className="text-[10px] text-muted-foreground/60 ">Optional</TypographySpan>
               </div>
               <Input
                 type="tel"
@@ -241,7 +241,7 @@ export function DeliveriesHeader({
       {/* Workspace Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
         <div>
-          <TypographyKicker className="text-xs font-mono text-primary uppercase tracking-wider mb-1 font-semibold block">
+          <TypographyKicker className="text-xs  text-primary uppercase tracking-wider mb-1 font-semibold block">
             WORKSPACE DASHBOARD
           </TypographyKicker>
           <TypographyH1 className="text-3xl font-bold font-heading text-foreground">
@@ -254,7 +254,7 @@ export function DeliveriesHeader({
 
         <div className="flex items-center gap-3">
           {!isUnlimited && (
-            <TypographySpan className="text-xs font-mono text-muted-foreground hidden sm:inline px-3 py-1.5 rounded-full border border-border bg-card/60">
+            <TypographySpan className="text-xs  text-muted-foreground hidden sm:inline px-3 py-1.5 rounded-full border border-border bg-card/60">
               {activeCount} / {clientLinksLimit} active links
             </TypographySpan>
           )}

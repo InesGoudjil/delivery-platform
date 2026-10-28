@@ -147,13 +147,10 @@ export default async function StoragePage({
         {/* Header */}
         <div className="pb-6 border-b border-border space-y-2">
           <div className="flex items-center gap-2">
-            <Badge
-              variant="orange"
-              className="text-xs font-mono uppercase tracking-wider font-semibold"
-            >
+            <Badge variant="kicker">
               WORKSPACE DASHBOARD
             </Badge>
-            <Badge variant="outline" className="text-xs font-mono">
+            <Badge variant="outline" className="text-xs ">
               Cloud Storage &amp; Streaming
             </Badge>
           </div>
@@ -206,14 +203,14 @@ export default async function StoragePage({
               </div>
 
               <CardAction className="text-left sm:text-right self-start sm:self-auto">
-                <Typography as="div" variant="h3" className="text-2xl font-bold font-mono text-foreground">
+                <Typography as="div" variant="h3" className="text-2xl font-bold  text-foreground">
                   {usedDisplay} <TypographySpan variant="muted" className="text-sm font-normal text-muted-foreground">/ {quotaDisplay}</TypographySpan>
                 </Typography>
                 <div className="flex items-center sm:justify-end gap-1.5 mt-0.5">
                   <Tooltip>
                     <TooltipTrigger
                       render={
-                        <Badge variant={badgeVariant} className="text-xs font-mono font-semibold cursor-help">
+                        <Badge variant={badgeVariant} className="text-xs  font-semibold cursor-help">
                           {percentage}% allocated
                         </Badge>
                       }
@@ -244,7 +241,7 @@ export default async function StoragePage({
                           style={{ width: `${Math.max(percentage, 2)}%` }}
                         />
                       </div>
-                      <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+                      <div className="flex items-center justify-between text-[11px]  text-muted-foreground">
                         <TypographySpan>0 GB</TypographySpan>
                         <TypographySpan className="text-foreground font-semibold">{remainingDisplay} remaining</TypographySpan>
                         <TypographySpan>{quotaDisplay}</TypographySpan>
@@ -270,7 +267,7 @@ export default async function StoragePage({
                                 <Film className="size-3.5 text-primary" />
                                 Video Masters &amp; Cuts
                               </div>
-                              <div className="text-sm font-mono font-bold text-foreground">
+                              <div className="text-sm  font-bold text-foreground">
                                 {formatSize(totalVideoBytes)}
                               </div>
                               <TypographyMuted className="text-[10px] text-muted-foreground">
@@ -298,7 +295,7 @@ export default async function StoragePage({
                                 <Layers className="size-3.5 text-primary" />
                                 Adaptive Video Streams
                               </div>
-                              <div className="text-sm font-mono font-bold text-foreground">
+                              <div className="text-sm  font-bold text-foreground">
                                 {formatSize(totalStreamBytes)}
                               </div>
                               <TypographyMuted className="text-[10px] text-muted-foreground">
@@ -326,7 +323,7 @@ export default async function StoragePage({
                                 <Camera className="size-3.5 text-[#86b98f]" />
                                 Stills &amp; Deliverables
                               </div>
-                              <div className="text-sm font-mono font-bold text-foreground">
+                              <div className="text-sm  font-bold text-foreground">
                                 {formatSize(totalStillBytes)}
                               </div>
                               <TypographyMuted className="text-[10px] text-muted-foreground">
@@ -370,7 +367,7 @@ export default async function StoragePage({
                         The Silo — Deep Cold Archive
                       </TypographyH3>
                     </CardTitle>
-                    <Badge variant="outline" className="text-[10px] font-mono font-semibold bg-blue-500/15 text-blue-400 border-blue-500/30">
+                    <Badge variant="outline" className="text-[10px]  font-semibold bg-blue-500/15 text-blue-400 border-blue-500/30">
                       Secure Archival
                     </Badge>
                   </div>

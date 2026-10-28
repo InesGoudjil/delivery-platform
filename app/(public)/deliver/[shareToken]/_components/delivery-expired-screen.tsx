@@ -61,13 +61,13 @@ export function DeliveryExpiredScreen({
               {workspace.brandName.slice(0, 1).toUpperCase()}
             </div>
           )}
-          <TypographySpan className="text-xs font-mono tracking-widest uppercase font-semibold text-white/90">
+          <TypographySpan className="text-xs  tracking-widest uppercase font-semibold text-white/90">
             {workspace.brandName}
           </TypographySpan>
         </div>
 
         <div className="flex items-center gap-2">
-          <TypographySpan className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
+          <TypographySpan className="text-[10px]  uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
             <Clock className="size-3" />
             Expired Link
           </TypographySpan>
@@ -82,7 +82,7 @@ export function DeliveryExpiredScreen({
           </div>
 
           <div className="space-y-2">
-            <TypographySpan className="text-[10px] font-mono text-primary uppercase tracking-widest font-semibold block">
+            <TypographySpan className="text-[10px]  text-primary uppercase tracking-widest font-semibold block">
               CLIENT REVIEW ROOM
             </TypographySpan>
             <h1 className="text-2xl font-bold font-heading text-white tracking-tight">
@@ -123,7 +123,7 @@ export function DeliveryExpiredScreen({
             <Button
               asChild
               variant="ghost"
-              className="w-full rounded-xl text-neutral-400 hover:text-white hover:bg-white/5 font-mono text-[11px] h-9"
+              className="w-full rounded-xl text-neutral-400 hover:text-white hover:bg-white/5  text-[11px] h-9"
             >
               <Link href={`/login?redirect=/${workspace.slug}`}>
                 Workspace Member? Sign in to manage <ArrowRight className="size-3 ml-1.5" />
@@ -134,7 +134,7 @@ export function DeliveryExpiredScreen({
       </main>
 
       {/* Footer */}
-      <footer className="w-full px-6 py-4 border-t border-white/5 text-center text-[11px] font-mono text-neutral-600 relative z-10">
+      <footer className="w-full px-6 py-4 border-t border-white/5 text-center text-[11px]  text-neutral-600 relative z-10">
         Powered by CineSpace · Secure Master Deliveries
       </footer>
     </div>

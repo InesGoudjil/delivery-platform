@@ -366,11 +366,11 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                 <WatermarkOverlay text={watermarkText} variant="player" showBadge />
               )}
               <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-black/80 text-emerald-400 border border-emerald-500/30 backdrop-blur-md shadow-lg flex items-center gap-1.5">
+                <span className="px-3 py-1 rounded-full text-xs  font-bold bg-black/80 text-emerald-400 border border-emerald-500/30 backdrop-blur-md shadow-lg flex items-center gap-1.5">
                   <ImageIcon className="size-3.5" />
                   STILL ASSET
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono text-muted-foreground bg-black/60 border border-white/10 backdrop-blur-md">
+                <span className="px-2 py-0.5 rounded-full text-[10px]  text-muted-foreground bg-black/60 border border-white/10 backdrop-blur-md">
                   {(bounding.parsed as any)?.shortLabel ||
                     (bounding.parsed as any)?.label ||
                     (typeof activeRatio === "string" ? activeRatio : bounding.parsed?.id || "16:9")}
@@ -471,7 +471,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                       <p className="text-xs text-zinc-400">
                         Transcoding video cut & generating adaptive streaming tiers...
                       </p>
-                      <p className="text-[11px] font-mono text-zinc-500">
+                      <p className="text-[11px]  text-zinc-500">
                         Checking stream readiness (Attempt {retryCount + 1} of 8)
                       </p>
                     </div>
@@ -567,11 +567,11 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
 
               {/* Floating Timecode Pill (Top Left) */}
               <div className="absolute top-4 left-4 z-20 flex items-center gap-2 pointer-events-none">
-                <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-black/80 text-white border border-white/15 backdrop-blur-md shadow-lg flex items-center gap-1.5">
+                <span className="px-3 py-1 rounded-full text-xs  font-bold bg-black/80 text-white border border-white/15 backdrop-blur-md shadow-lg flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                   {formatTimecode(currentTime, fps)}
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono text-muted-foreground bg-black/60 border border-white/10 backdrop-blur-md">
+                <span className="px-2 py-0.5 rounded-full text-[10px]  text-muted-foreground bg-black/60 border border-white/10 backdrop-blur-md">
                   {fps} FPS
                 </span>
               </div>
@@ -581,7 +581,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
 
           {/* Floating Title (Top Right) */}
           <div className="absolute top-4 right-4 z-20 pointer-events-none">
-            <span className="px-2.5 py-1 rounded-full text-[11px] font-mono font-medium text-white/80 bg-black/80 border border-white/10 backdrop-blur-md">
+            <span className="px-2.5 py-1 rounded-full text-[11px]  font-medium text-white/80 bg-black/80 border border-white/10 backdrop-blur-md">
               {title || "Cut Preview"}
             </span>
           </div>
@@ -592,11 +592,11 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
           {isImageCut ? (
             <div className="flex items-center justify-between text-xs py-1">
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-mono text-[11px] flex items-center gap-1.5 font-bold">
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30  text-[11px] flex items-center gap-1.5 font-bold">
                   <ImageIcon className="size-3.5" />
                   Still Photography Cut
                 </span>
-                <span className="text-muted-foreground text-[11px] font-mono">
+                <span className="text-muted-foreground text-[11px] ">
                   {(bounding.parsed as any)?.shortLabel ||
                     (bounding.parsed as any)?.label ||
                     (typeof activeRatio === "string" ? activeRatio : bounding.parsed?.id || "16:9")}{" "}
@@ -617,7 +617,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                   >
                     <ZoomOut className="size-3.5" />
                   </Button>
-                  <span className="px-2 text-[10px] font-mono text-white font-bold min-w-[38px] text-center">
+                  <span className="px-2 text-[10px]  text-white font-bold min-w-[38px] text-center">
                     {Math.round(zoomLevel * 100)}%
                   </span>
                   <Button
@@ -639,7 +639,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                     variant="outline"
                     size="sm"
                     onClick={() => setZoomLevel(1)}
-                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-mono text-white cursor-pointer h-auto border-white/10"
+                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[10px]  text-white cursor-pointer h-auto border-white/10"
                   >
                     Reset Fit
                   </Button>
@@ -733,7 +733,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                 {hoveredComment && hoveredComment.timestampSeconds !== null && hoveredComment.timestampSeconds !== undefined && (
                   <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 bg-black/90 border border-white/20 px-3 py-1.5 rounded-xl text-xs backdrop-blur-md shadow-2xl flex items-center gap-2 pointer-events-none animate-in fade-in">
                     <MessageSquare className="size-3 text-primary" />
-                    <span className="font-mono font-bold text-primary">
+                    <span className=" font-bold text-primary">
                       [{formatTimecode(hoveredComment.timestampSeconds, fps)}]
                     </span>
                     <span className="font-semibold text-white truncate max-w-[200px]">
@@ -745,7 +745,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                   </div>
                 )}
                 {!hoveredComment && hoverTime !== null && (
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 bg-black/85 border border-white/15 px-2 py-0.5 rounded text-[11px] font-mono text-white pointer-events-none">
+                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 bg-black/85 border border-white/15 px-2 py-0.5 rounded text-[11px]  text-white pointer-events-none">
                     {formatTimecode(hoverTime, fps)}
                   </div>
                 )}
@@ -776,7 +776,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                       variant="ghost"
                       size="xs"
                       onClick={() => handleStepFrame(-1)}
-                      className="px-2 py-1 rounded text-[11px] font-mono text-white/80 hover:text-white hover:bg-white/10 flex items-center gap-0.5 transition-colors cursor-pointer h-auto"
+                      className="px-2 py-1 rounded text-[11px]  text-white/80 hover:text-white hover:bg-white/10 flex items-center gap-0.5 transition-colors cursor-pointer h-auto"
                       title="Step -1 Frame (←)"
                     >
                       <ChevronLeft className="size-3" />
@@ -788,7 +788,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                       variant="ghost"
                       size="xs"
                       onClick={() => handleStepFrame(1)}
-                      className="px-2 py-1 rounded text-[11px] font-mono text-white/80 hover:text-white hover:bg-white/10 flex items-center gap-0.5 transition-colors cursor-pointer h-auto"
+                      className="px-2 py-1 rounded text-[11px]  text-white/80 hover:text-white hover:bg-white/10 flex items-center gap-0.5 transition-colors cursor-pointer h-auto"
                       title="Step +1 Frame (→)"
                     >
                       <span>+1F</span>
@@ -797,7 +797,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                   </div>
 
                   {/* Timecode Readout */}
-                  <div className="font-mono text-xs text-white/90 px-2 py-1 bg-black/40 rounded-lg border border-white/5 flex items-center gap-1.5">
+                  <div className=" text-xs text-white/90 px-2 py-1 bg-black/40 rounded-lg border border-white/5 flex items-center gap-1.5">
                     <span className="text-primary font-bold">
                       {formatTimecode(currentTime, fps)}
                     </span>
@@ -807,7 +807,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                 </div>
 
                 {/* Right Group: Speed, Volume, Fullscreen */}
-                <div className="flex items-center gap-2 font-mono">
+                <div className="flex items-center gap-2 ">
                   {/* Playback Rate Selector */}
                   <div className="flex items-center bg-black/60 border border-white/10 rounded-lg p-0.5 text-[10px]">
                     {([0.5, 1, 1.5, 2] as const).map((rate) => (

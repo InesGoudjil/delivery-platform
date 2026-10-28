@@ -36,7 +36,7 @@ export function LanguageToggle({ allowedLanguages, workspaceSlug }: LanguageTogg
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className="size-8 p-0 rounded-full text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer flex items-center justify-center font-mono text-xs outline-none"
+        className="size-8 p-0 rounded-full text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer flex items-center justify-center  text-xs outline-none"
         title="Switch Language / تغيير اللغة"
       >
         <Globe className="size-4" />
@@ -70,7 +70,7 @@ export function LanguageToggle({ allowedLanguages, workspaceSlug }: LanguageTogg
             {!canArabic && (
               <Badge
                 variant="outline"
-                className="text-[9px] bg-amber-500/10 text-amber-400 border-amber-500/30 font-mono font-bold px-1 py-0 h-4 leading-none"
+                className="text-[9px] bg-amber-500/10 text-amber-400 border-amber-500/30  font-bold px-1 py-0 h-4 leading-none"
               >
                 PRO+
               </Badge>

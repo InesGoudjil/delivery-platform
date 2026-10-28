@@ -150,7 +150,7 @@ export function WorkspacesClient({ workspaces: initialWorkspaces, plans }: Works
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
         <div>
-          <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1">
+          <div className="text-xs  text-primary uppercase tracking-wider mb-1">
             Studio Workspaces
           </div>
           <h1 className="text-3xl font-black font-heading text-foreground tracking-tight">
@@ -193,7 +193,7 @@ export function WorkspacesClient({ workspaces: initialWorkspaces, plans }: Works
                         {ws.brandName}
                       </Link>
                     </CardTitle>
-                    <p className="text-[11px] text-muted-foreground font-mono">
+                    <p className="text-[11px] text-muted-foreground ">
                       /{ws.slug}
                     </p>
                   </div>
@@ -202,7 +202,7 @@ export function WorkspacesClient({ workspaces: initialWorkspaces, plans }: Works
                 <div className="flex items-center gap-2">
                   <Badge
                     variant="outline"
-                    className={`text-[10px] font-mono capitalize ${
+                    className={`text-[10px]  capitalize ${
                       ws.planName === "Studio"
                         ? "bg-purple-500/10 text-purple-400 border-purple-500/30 font-bold"
                         : ws.planName === "Pro"
@@ -222,7 +222,7 @@ export function WorkspacesClient({ workspaces: initialWorkspaces, plans }: Works
                       </Button>
                     } />
                     <DropdownMenuContent align="end" className="w-48 bg-popover border-border">
-                      <DropdownMenuLabel className="text-[10px] font-mono uppercase text-muted-foreground">
+                      <DropdownMenuLabel className="text-[10px]  uppercase text-muted-foreground">
                         Admin Options
                       </DropdownMenuLabel>
                       <DropdownMenuItem onClick={() => handleOpenPlanModal(ws)} className="cursor-pointer text-xs gap-2">
@@ -249,7 +249,7 @@ export function WorkspacesClient({ workspaces: initialWorkspaces, plans }: Works
 
               <CardContent className="space-y-4 text-xs">
                 <div className="space-y-1.5">
-                  <div className="flex justify-between text-[11px] font-mono text-muted-foreground">
+                  <div className="flex justify-between text-[11px]  text-muted-foreground">
                     <span>Storage Consumed</span>
                     <span className={pct > 80 ? "text-red-400 font-bold" : ""}>
                       {ws.storageUsedGB.toFixed(1)} / {ws.storageLimitGB} GB ({pct}%)
@@ -263,7 +263,7 @@ export function WorkspacesClient({ workspaces: initialWorkspaces, plans }: Works
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono pt-2 border-t border-border/60">
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground  pt-2 border-t border-border/60">
                   <span className="flex items-center gap-1">
                     <Film className="size-3.5 text-muted-foreground" /> {ws.projectsCount} Projects
                   </span>
@@ -304,9 +304,9 @@ export function WorkspacesClient({ workspaces: initialWorkspaces, plans }: Works
                 >
                   <div>
                     <p className="text-xs font-bold">{p.name}</p>
-                    <p className="text-[10px] font-mono text-muted-foreground font-normal">slug: {p.slug}</p>
+                    <p className="text-[10px]  text-muted-foreground font-normal">slug: {p.slug}</p>
                   </div>
-                  <span className="font-mono text-xs font-bold text-primary">
+                  <span className=" text-xs font-bold text-primary">
                     ${(p.priceCents / 100).toFixed(0)}/mo
                   </span>
                 </Button>
@@ -358,7 +358,7 @@ export function WorkspacesClient({ workspaces: initialWorkspaces, plans }: Works
                 max={10000}
                 value={overrideStorageGB}
                 onChange={(e) => setOverrideStorageGB(Number(e.target.value))}
-                className="bg-muted border-border text-xs font-mono"
+                className="bg-muted border-border text-xs "
               />
             </div>
 

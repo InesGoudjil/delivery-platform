@@ -62,7 +62,7 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
         {/* Right details & bio */}
         <div className="lg:col-span-7 space-y-6">
           <div className="space-y-2">
-            <TypographySpan className="text-xs font-mono font-bold uppercase tracking-wider text-primary">
+            <TypographySpan className="text-xs  font-bold uppercase tracking-wider text-primary">
               About
             </TypographySpan>
             <h2 className="font-heading font-black text-3xl sm:text-4xl text-white tracking-tight uppercase">
@@ -83,7 +83,7 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
               <div className="font-heading font-black text-xl sm:text-2xl text-white">
                 {profile.stats.filmsDelivered}
               </div>
-              <div className="text-[11px] text-zinc-400 font-mono">
+              <div className="text-[11px] text-zinc-400 ">
                 Films delivered
               </div>
             </div>
@@ -95,7 +95,7 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
               <div className="font-heading font-black text-xl sm:text-2xl text-white">
                 {formatExperienceDisplay(profile.stats.experienceYears)}
               </div>
-              <div className="text-[11px] text-zinc-400 font-mono">
+              <div className="text-[11px] text-zinc-400 ">
                 Industry Experience
               </div>
             </div>
@@ -107,7 +107,7 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
               <div className="font-heading font-black text-xl sm:text-2xl text-white">
                 {profile.stats.based}
               </div>
-              <div className="text-[11px] text-zinc-400 font-mono">
+              <div className="text-[11px] text-zinc-400 ">
                 Based
               </div>
             </div>
@@ -115,7 +115,7 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
 
           {/* Experience Highlights */}
           <div className="pt-2 border-t border-white/10 space-y-3">
-            <div className="text-xs font-mono font-bold text-zinc-400 uppercase tracking-wider">
+            <div className="text-xs  font-bold text-zinc-400 uppercase tracking-wider">
               Career Highlights &amp; Credentials
             </div>
             <div className="space-y-3">
@@ -130,7 +130,7 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
                         {exp.role}
                       </TypographySpan>
                       {exp.category && (
-                        <TypographySpan className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-medium">
+                        <TypographySpan className="text-[10px]  px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-medium">
                           {exp.category}
                         </TypographySpan>
                       )}
@@ -147,7 +147,7 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
                       </p>
                     )}
                   </div>
-                  <TypographySpan className="text-zinc-500 font-mono shrink-0">
+                  <TypographySpan className="text-zinc-500  shrink-0">
                     {exp.period}
                   </TypographySpan>
                 </div>

@@ -30,7 +30,7 @@ export default function ForgotPasswordPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
         <div className="relative z-10 flex h-full flex-col justify-between p-10 text-white">
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-black/50 backdrop-blur-md px-3 py-1 text-xs font-mono uppercase tracking-wider text-[#ff8a45] border border-white/10">
+            <span className="rounded-full bg-black/50 backdrop-blur-md px-3 py-1 text-xs  uppercase tracking-wider text-[#ff8a45] border border-white/10">
               Account Security
             </span>
           </div>
@@ -38,7 +38,7 @@ export default function ForgotPasswordPage() {
             <p className="text-xl font-medium text-white/95 leading-snug">
               Protecting your creative studio, deliverables, and client communications.
             </p>
-            <p className="text-sm text-white/60 font-mono">
+            <p className="text-sm text-white/60 ">
               CineSpace Studio Platform
             </p>
           </div>

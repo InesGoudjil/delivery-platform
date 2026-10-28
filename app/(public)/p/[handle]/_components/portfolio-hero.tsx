@@ -101,7 +101,7 @@ export function PortfolioHero({
                 e.stopPropagation();
                 setIsMuted((prev) => !prev);
               }}
-              className="h-8 px-3 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border-white/20 text-white font-mono text-xs gap-1.5 shadow-xl transition-all cursor-pointer"
+              className="h-8 px-3 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border-white/20 text-white  text-xs gap-1.5 shadow-xl transition-all cursor-pointer"
             >
               {isMuted ? (
                 <>

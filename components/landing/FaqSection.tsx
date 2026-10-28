@@ -33,7 +33,7 @@ export function FaqSection() {
       {/* Section Header */}
       <div className="space-y-3 max-w-2xl mx-auto">
         <div className="flex justify-center">
-          <span className="text-xs font-semibold uppercase tracking-widest text-primary font-mono">
+          <span className="text-xs font-semibold uppercase tracking-widest text-primary ">
             COMMON QUESTIONS
           </span>
         </div>

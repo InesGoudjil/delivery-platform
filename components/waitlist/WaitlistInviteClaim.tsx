@@ -31,7 +31,7 @@ export function WaitlistInviteClaim({ token, email }: WaitlistInviteClaimProps) 
         <CardDescription className="text-sm text-white/60">
           Your waitlist spot has been unlocked for:
           <br />
-          <strong className="text-white font-mono">{email}</strong>
+          <strong className="text-white ">{email}</strong>
         </CardDescription>
       </CardHeader>
 

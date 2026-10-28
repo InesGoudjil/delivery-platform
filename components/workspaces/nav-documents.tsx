@@ -33,11 +33,9 @@ export function NavDocuments({
   return (
     <SidebarGroup className="p-0">
       {title && (
-        <SidebarGroupLabel asChild className="px-3 mb-1.5 h-auto group-data-[collapsible=icon]:hidden">
+        <SidebarGroupLabel className="px-3 mb-1.5 h-auto group-data-[collapsible=icon]:hidden">
           <TypographyKicker
-            as="div"
-            variant="kicker"
-            className="text-[10px] font-mono font-semibold uppercase tracking-widest text-muted-foreground/70"
+            className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70"
           >
             {title}
           </TypographyKicker>

@@ -45,7 +45,7 @@ export function DeliveryFilterBar({
             <TypographySpan>{tab.label}</TypographySpan>
             <Badge
               variant={isActive ? "secondary" : "outline"}
-              className={`text-[10px] px-1.5 py-0 rounded-full font-mono ${
+              className={`text-[10px] px-1.5 py-0 rounded-full  ${
                 isActive
                   ? "bg-primary-foreground/20 text-primary-foreground border-transparent"
                   : "bg-muted text-muted-foreground border-border/50"

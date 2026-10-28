@@ -29,14 +29,14 @@ export function FloatingUploadProgress({
               <TypographyH4 className="text-xs font-bold font-heading text-card-foreground truncate">
                 {progress.fileName}
               </TypographyH4>
-              <TypographyMuted className="text-[11px] font-mono text-muted-foreground">
+              <TypographyMuted className="text-[11px]  text-muted-foreground">
                 {progress.fileSize} · {progress.fileIndex} of {progress.totalFiles} files
               </TypographyMuted>
             </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <TypographySpan className="text-xs font-bold font-mono text-foreground">
+            <TypographySpan className="text-xs font-bold  text-foreground">
               {progress.percentage}%
             </TypographySpan>
             <Button

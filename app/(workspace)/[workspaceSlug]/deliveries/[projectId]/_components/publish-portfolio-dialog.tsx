@@ -71,7 +71,7 @@ export function PublishPortfolioDialog({
       onOpenChange={onOpenChange}
       size="md"
       badge={
-        <Badge variant="orange" className="w-fit text-[10px] font-mono font-bold uppercase tracking-wider">
+        <Badge variant="kicker" className="w-fit">
           SHOWCASE SPOTLIGHT
         </Badge>
       }
@@ -103,7 +103,7 @@ export function PublishPortfolioDialog({
     >
       <div className="space-y-4">
         <Field orientation="vertical">
-          <FieldLabel htmlFor="publish-cat" className="text-[11px] font-mono text-muted-foreground uppercase tracking-wider block">
+          <FieldLabel htmlFor="publish-cat" className="text-[11px]  text-muted-foreground uppercase tracking-wider block">
             Showcase Category
           </FieldLabel>
           <select
@@ -123,10 +123,10 @@ export function PublishPortfolioDialog({
 
         <Card className="rounded-xl border border-border bg-muted/30 p-3.5 space-y-1.5 text-xs hover:translate-y-0">
           <CardContent className="p-0 space-y-1">
-            <TypographyKicker as="div" variant="kicker" className="text-[11px] font-mono text-muted-foreground uppercase">Target Showcase:</TypographyKicker>
+            <TypographyKicker as="div" variant="kicker" className="text-[11px]  text-muted-foreground uppercase">Target Showcase:</TypographyKicker>
             <Typography as="div" variant="small" className="font-bold text-foreground">{projectTitle}</Typography>
             <TypographyMuted as="div" className="text-[11px]">Client: {clientName}</TypographyMuted>
-            <TypographyMuted as="div" className="text-primary text-[11px] font-mono pt-0.5">
+            <TypographyMuted as="div" className="text-primary text-[11px]  pt-0.5">
               {portfolio ? `Publishes to /${workspaceSlug}/portfolio` : "Creates your public portfolio showcase"}
             </TypographyMuted>
           </CardContent>

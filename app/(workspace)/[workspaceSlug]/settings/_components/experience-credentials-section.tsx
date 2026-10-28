@@ -23,7 +23,7 @@ export function ExperienceCredentialsSection({
     <section className="space-y-4">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <Badge variant="orange" className="font-mono text-[10px] tracking-wider uppercase">
+          <Badge variant="kicker">
             Industry Track Record
           </Badge>
         </div>

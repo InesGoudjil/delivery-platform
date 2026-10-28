@@ -79,17 +79,17 @@ export function LightboxFeedbackDrawer({
         <TypographyH4 className="font-heading font-bold text-xs sm:text-sm flex items-center gap-2 text-white">
           <MessageCircle className="size-4 text-primary" />
           <TypographySpan>{isStill ? "Still Photo Notes" : "Timecoded Notes"}</TypographySpan>
-          <TypographySpan className="text-zinc-500 font-mono text-xs">
+          <TypographySpan className="text-zinc-500  text-xs">
             (V{activeVersionNumber}: {feedbackList.length})
           </TypographySpan>
         </TypographyH4>
 
         {isStill ? (
-          <Badge variant="sage" className="text-[10px] font-mono px-2 py-0.5">
+          <Badge variant="sage" className="text-[10px]  px-2 py-0.5">
             Photo Cut
           </Badge>
         ) : (
-          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-[11px] font-mono text-primary font-bold">
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-[11px]  text-primary font-bold">
             <span className="size-1.5 rounded-full bg-primary animate-pulse" />
             <TypographySpan>{currentCutTimecode}</TypographySpan>
           </div>
@@ -146,7 +146,7 @@ export function LightboxFeedbackDrawer({
                 }`}
               >
                 {/* Author & Timestamp Bar */}
-                <div className="flex items-center justify-between text-[11px] font-mono">
+                <div className="flex items-center justify-between text-[11px] ">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <Avatar className="size-5.5 text-[9px] shrink-0 border border-white/10">
                       <AvatarFallback className="text-[9px] bg-primary/20 text-primary font-bold">
@@ -163,7 +163,7 @@ export function LightboxFeedbackDrawer({
                       render={
                         <Badge
                           variant={isTimecoded ? "orange" : "outline"}
-                          className="text-[10px] font-mono py-0 h-4 flex items-center gap-1 cursor-pointer hover:opacity-80"
+                          className="text-[10px]  py-0 h-4 flex items-center gap-1 cursor-pointer hover:opacity-80"
                         >
                           {isTimecoded && <Play className="size-2 fill-current" />}
                           <TypographySpan>{tcDisplay}</TypographySpan>
@@ -195,7 +195,7 @@ export function LightboxFeedbackDrawer({
                           setReplyInputText("");
                         }
                       }}
-                      className="text-[10px] text-muted-foreground hover:text-white flex items-center gap-1 font-mono transition-colors cursor-pointer"
+                      className="text-[10px] text-muted-foreground hover:text-white flex items-center gap-1  transition-colors cursor-pointer"
                     >
                       <CornerDownRight className="size-3" />
                       <TypographySpan>{replyingToId === f.id ? "Cancel Reply" : "Reply"}</TypographySpan>
@@ -212,12 +212,12 @@ export function LightboxFeedbackDrawer({
                         className="flex items-start gap-2 pl-2.5 border-l-2 border-primary/50 text-xs"
                       >
                         <Avatar className="size-4.5 text-[8px] shrink-0 mt-0.5">
-                          <AvatarFallback className="text-[8px] bg-white/10 text-white font-mono font-bold">
+                          <AvatarFallback className="text-[8px] bg-white/10 text-white  font-bold">
                             {r.authorName ? r.authorName.slice(0, 2).toUpperCase() : "U"}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <TypographySpan className="font-semibold text-white/90 text-[10px] block font-mono">
+                          <TypographySpan className="font-semibold text-white/90 text-[10px] block ">
                             {r.authorName}
                           </TypographySpan>
                           <TypographyP className="text-white/80 leading-snug text-xs">
@@ -272,14 +272,14 @@ export function LightboxFeedbackDrawer({
           onSubmit={handleSendFeedback}
           className="p-3 border-t border-white/10 bg-[#18181d] flex flex-col gap-2 shrink-0"
         >
-          <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground px-1">
+          <div className="flex items-center justify-between text-[10px]  text-muted-foreground px-1">
             <TypographySpan className="flex items-center gap-1">
               <Clock className="size-3 text-primary" />
               <TypographySpan>{isStill ? "Note on Still:" : "Tagging at Timecode:"}</TypographySpan>
             </TypographySpan>
             <Badge
               variant={isStill ? "sage" : "orange"}
-              className="text-[10px] font-mono py-0 h-4"
+              className="text-[10px]  py-0 h-4"
             >
               {isStill
                 ? `V${activeVersionNumber} Still`

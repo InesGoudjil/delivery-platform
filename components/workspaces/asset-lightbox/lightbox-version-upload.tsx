@@ -89,7 +89,7 @@ export function LightboxVersionUpload({
             )}
           </div>
           <div>
-            <TypographyH4 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider font-mono">
+            <TypographyH4 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider ">
               Upload New Revision V{nextVersionNumber}
             </TypographyH4>
             <TypographyMuted className="text-[11px] text-muted-foreground">
@@ -124,7 +124,7 @@ export function LightboxVersionUpload({
       {/* Progress / Active Upload State */}
       {isUploading ? (
         <div className="pt-4 space-y-3">
-          <div className="flex items-center justify-between text-xs font-mono">
+          <div className="flex items-center justify-between text-xs ">
             <TypographySpan className="text-white/90 flex items-center gap-2">
               <Loader2 className="size-3.5 animate-spin text-primary" />
               {uploadStatusText || `Uploading V${nextVersionNumber}...`}

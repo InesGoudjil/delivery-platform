@@ -199,12 +199,12 @@ export function ProjectExplorerModal({
         {/* Project Header */}
         <div className="space-y-3 pr-12">
           <div className="flex flex-wrap items-center gap-2">
-            <TypographySpan className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/15 border border-primary/30 text-[10px] font-mono font-bold text-primary uppercase tracking-wider">
+            <TypographySpan className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/15 border border-primary/30 text-[10px]  font-bold text-primary uppercase tracking-wider">
               <FolderKanban className="size-3" />
               <TypographySpan>PROJECT CONTAINER</TypographySpan>
             </TypographySpan>
 
-            <TypographySpan className="text-[11px] font-mono text-zinc-400 bg-white/5 px-2.5 py-1 rounded-md border border-white/10">
+            <TypographySpan className="text-[11px]  text-zinc-400 bg-white/5 px-2.5 py-1 rounded-md border border-white/10">
               {assets.length} items · {filmCount} film{filmCount !== 1 ? "s" : ""}, {stillCount} still{stillCount !== 1 ? "s" : ""}
             </TypographySpan>
 
@@ -261,7 +261,7 @@ export function ProjectExplorerModal({
             ))}
           </div>
 
-          <TypographySpan className="text-xs font-mono text-zinc-500 hidden sm:inline">
+          <TypographySpan className="text-xs  text-zinc-500 hidden sm:inline">
             Click any still or video to view in full
           </TypographySpan>
         </div>
@@ -296,7 +296,7 @@ export function ProjectExplorerModal({
 
                   {/* Top-Left Badge */}
                   <div className="absolute top-2.5 left-2.5 z-10">
-                    <TypographySpan className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md border border-white/15 text-[9px] font-mono font-bold text-white uppercase tracking-wider">
+                    <TypographySpan className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md border border-white/15 text-[9px]  font-bold text-white uppercase tracking-wider">
                       {isVideo ? (
                         <>
                           <Film className="size-2.5 text-primary" />
@@ -363,7 +363,7 @@ export function ProjectExplorerModal({
                     <TypographyH4 className="text-xs font-bold text-white truncate font-heading group-hover:text-primary transition-colors">
                       {asset.title}
                     </TypographyH4>
-                    <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400">
+                    <div className="flex items-center justify-between text-[10px]  text-zinc-400">
                       <TypographySpan>{isVideo ? "Video Stream" : "Photo Still"}</TypographySpan>
                       {asset.duration && <TypographySpan>{asset.duration}</TypographySpan>}
                     </div>

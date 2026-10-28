@@ -128,7 +128,7 @@ export function WorkspaceHeader({
 
         <BrandLogo href={`/${workspaceSlug}`} size="sm" />
 
-        <TypographySpan className="text-muted-foreground/30 font-mono text-sm hidden sm:inline">/</TypographySpan>
+        <TypographySpan className="text-muted-foreground/30  text-sm hidden sm:inline">/</TypographySpan>
 
         {/* Top Header Workspace Switcher Dropdown */}
         <WorkspaceHeaderSwitcher
@@ -189,13 +189,13 @@ export function WorkspaceHeader({
                   <TypographySpan variant="small" className="font-bold text-sm text-foreground truncate">
                     {userName}
                   </TypographySpan>
-                  <TypographySpan variant="muted" className="text-xs font-mono truncate">
+                  <TypographySpan variant="muted" className="text-xs  truncate">
                     {userEmail}
                   </TypographySpan>
                   <div className="mt-1">
                     <TypographySpan
                       variant="kicker"
-                      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-primary/15 text-primary border border-primary/30 normal-case tracking-normal"
+                      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px]  font-semibold bg-primary/15 text-primary border border-primary/30 normal-case tracking-normal"
                     >
                       {planName} plan
                     </TypographySpan>
@@ -299,7 +299,7 @@ export function WorkspaceHeader({
                     <ExternalLink className="size-4 text-primary" />
                     <TypographySpan variant="small" className="text-xs font-medium">View Public Portfolio</TypographySpan>
                   </div>
-                  <TypographySpan variant="muted" className="text-[10px] font-mono">Live</TypographySpan>
+                  <TypographySpan variant="muted" className="text-[10px] ">Live</TypographySpan>
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>

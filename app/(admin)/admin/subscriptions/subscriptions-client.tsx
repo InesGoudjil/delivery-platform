@@ -219,7 +219,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
         <div>
-          <div className="text-xs font-mono text-primary uppercase tracking-wider mb-1">
+          <div className="text-xs  text-primary uppercase tracking-wider mb-1">
             Stripe &amp; Billing Control
           </div>
           <h1 className="text-3xl font-black font-heading text-foreground tracking-tight">
@@ -255,12 +255,12 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
                 <div className="flex items-center gap-1.5">
                   <CardTitle className="text-base font-bold text-foreground">{tier.name}</CardTitle>
                   {!tier.isActive && (
-                    <Badge variant="outline" className="text-[9px] font-mono border-amber-500/40 text-amber-400 bg-amber-500/10">
+                    <Badge variant="outline" className="text-[9px]  border-amber-500/40 text-amber-400 bg-amber-500/10">
                       Archived
                     </Badge>
                   )}
                 </div>
-                <Badge variant="outline" className="text-[10px] font-mono">
+                <Badge variant="outline" className="text-[10px] ">
                   {tier.activeSubscribersCount} Active
                 </Badge>
               </div>
@@ -268,7 +268,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
               <div className="flex items-baseline justify-between mt-1">
                 <p className="text-2xl font-black font-heading text-primary">
                   ${(tier.priceCents / 100).toFixed(0)}
-                  <span className="text-xs font-normal text-muted-foreground font-mono"> / mo</span>
+                  <span className="text-xs font-normal text-muted-foreground "> / mo</span>
                 </p>
 
                 <div className="flex items-center gap-1">
@@ -298,11 +298,11 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
             </CardHeader>
 
             <CardContent className="pt-2">
-              <p className="text-[11px] text-muted-foreground font-mono leading-relaxed">
+              <p className="text-[11px] text-muted-foreground  leading-relaxed">
                 {tier.featuresSummary}
               </p>
               {tier.stripePriceId && (
-                <p className="text-[9px] font-mono text-muted-foreground mt-2 truncate">
+                <p className="text-[9px]  text-muted-foreground mt-2 truncate">
                   Stripe ID: {tier.stripePriceId}
                 </p>
               )}
@@ -338,7 +338,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-muted/40 border-b border-border text-muted-foreground font-mono uppercase text-[10px]">
+              <thead className="bg-muted/40 border-b border-border text-muted-foreground  uppercase text-[10px]">
                 <tr>
                   <th className="p-4 pl-6">Studio Workspace</th>
                   <th className="p-4">Plan Tier</th>
@@ -363,7 +363,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
                     </td>
 
                     <td className="p-4">
-                      <Badge variant="outline" className="text-[10px] font-mono capitalize border-border">
+                      <Badge variant="outline" className="text-[10px]  capitalize border-border">
                         {sub.planName}
                       </Badge>
                     </td>
@@ -371,7 +371,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
                     <td className="p-4">
                       <Badge
                         variant="outline"
-                        className={`text-[10px] font-mono capitalize ${
+                        className={`text-[10px]  capitalize ${
                           sub.status === "active"
                             ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-bold"
                             : sub.status === "trialing"
@@ -383,11 +383,11 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
                       </Badge>
                     </td>
 
-                    <td className="p-4 font-mono font-semibold text-foreground">
+                    <td className="p-4  font-semibold text-foreground">
                       {sub.priceFormatted}
                     </td>
 
-                    <td className="p-4 font-mono text-muted-foreground text-[11px]">
+                    <td className="p-4  text-muted-foreground text-[11px]">
                       {new Date(sub.createdAt).toLocaleDateString()}
                     </td>
 
@@ -426,7 +426,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
 
           <form onSubmit={handleCreatePlanSubmit} className="space-y-4 py-2">
             {serverError && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-mono">
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs ">
                 {serverError}
               </div>
             )}
@@ -459,7 +459,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
                   placeholder="enterprise"
                   value={createSlug}
                   onChange={(e) => setCreateSlug(e.target.value)}
-                  className="bg-muted border-border text-xs font-mono"
+                  className="bg-muted border-border text-xs "
                 />
               </div>
             </div>
@@ -475,7 +475,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
                   required
                   value={createPriceUsd}
                   onChange={(e) => setCreatePriceUsd(Number(e.target.value))}
-                  className="bg-muted border-border text-xs font-mono"
+                  className="bg-muted border-border text-xs "
                 />
               </div>
 
@@ -489,7 +489,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
                   required
                   value={createStorageGb}
                   onChange={(e) => setCreateStorageGb(Number(e.target.value))}
-                  className="bg-muted border-border text-xs font-mono"
+                  className="bg-muted border-border text-xs "
                 />
               </div>
             </div>
@@ -538,7 +538,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
 
           <form onSubmit={handleSavePlanEdit} className="space-y-4 py-2">
             {serverError && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-mono">
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs ">
                 {serverError}
               </div>
             )}
@@ -566,7 +566,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
                 required
                 value={editPriceUsd}
                 onChange={(e) => setEditPriceUsd(Number(e.target.value))}
-                className="bg-muted border-border text-xs font-mono"
+                className="bg-muted border-border text-xs "
               />
             </div>
 
@@ -607,23 +607,23 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
 
           <div className="space-y-4 py-2 text-xs">
             {serverError && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-mono">
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs ">
                 {serverError}
               </div>
             )}
 
             {deleteSuccessMsg ? (
-              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-xs flex items-center gap-2">
+              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400  text-xs flex items-center gap-2">
                 <Check className="size-4 shrink-0" />
                 <span>{deleteSuccessMsg}</span>
               </div>
             ) : selectedPlan?.slug === "starter" ? (
-              <div className="p-3.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 font-mono">
+              <div className="p-3.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 ">
                 <p className="font-bold uppercase text-[11px] mb-1">🛡️ Protected System Plan</p>
                 <p>The "starter" plan cannot be deleted because new user registrations depend on it.</p>
               </div>
             ) : (selectedPlan?.activeSubscribersCount || 0) > 0 ? (
-              <div className="p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono space-y-1.5">
+              <div className="p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300  space-y-1.5">
                 <p className="font-bold uppercase text-[11px]">⚠️ Active Subscribers Detected</p>
                 <p>
                   This plan currently has <strong>{selectedPlan?.activeSubscribersCount}</strong> active subscriber(s).
@@ -633,7 +633,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
                 </p>
               </div>
             ) : (
-              <div className="p-3.5 rounded-xl bg-muted border border-border text-muted-foreground font-mono">
+              <div className="p-3.5 rounded-xl bg-muted border border-border text-muted-foreground ">
                 <p className="font-bold text-foreground uppercase text-[11px] mb-1">0 Active Subscribers</p>
                 <p>This plan has zero subscribers and will be permanently deleted from the database and archived in Stripe.</p>
               </div>

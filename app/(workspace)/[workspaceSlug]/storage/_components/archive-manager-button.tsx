@@ -42,7 +42,7 @@ export function ArchiveManagerButton({
                 <TypographySpan>Unlock Silo</TypographySpan>
                 <Badge
                   variant="outline"
-                  className="text-[9px] font-mono uppercase bg-blue-500/20 text-blue-400 border-blue-500/30 px-1.5 py-0.5 font-bold"
+                  className="text-[9px]  uppercase bg-blue-500/20 text-blue-400 border-blue-500/30 px-1.5 py-0.5 font-bold"
                 >
                   Studio+
                 </Badge>

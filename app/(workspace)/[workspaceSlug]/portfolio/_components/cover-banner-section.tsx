@@ -94,7 +94,7 @@ export function CoverBannerSection({
             </TypographyH3>
             <Badge
               variant="outline"
-              className="bg-black/60 font-mono text-[10px] uppercase font-bold text-zinc-300 ml-1"
+              className="bg-black/60  text-[10px] uppercase font-bold text-zinc-300 ml-1"
             >
               {currentAspectRatio === "asset" ? "Native Ratio" : currentAspectRatio}{" "}
               {isVideo ? "Video" : "Still"}
@@ -108,7 +108,7 @@ export function CoverBannerSection({
                 size="sm"
                 variant="ghost"
                 onClick={() => setIsTestSoundMuted((m) => !m)}
-                className="h-8 px-2.5 text-xs font-mono gap-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+                className="h-8 px-2.5 text-xs  gap-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"
               >
                 {isTestSoundMuted ? (
                   <VolumeX className="size-3.5 text-zinc-400" />
@@ -223,7 +223,7 @@ export function CoverBannerSection({
               ) : (
                 <div className="w-full h-full bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 flex flex-col items-center justify-center text-zinc-600 gap-2">
                   <Film className="size-10 opacity-40 text-primary" />
-                  <TypographySpan className="text-xs font-mono">No cover asset selected</TypographySpan>
+                  <TypographySpan className="text-xs ">No cover asset selected</TypographySpan>
                 </div>
               )}
 
@@ -238,11 +238,11 @@ export function CoverBannerSection({
               <div className="absolute top-4 left-4 flex items-center gap-2 z-10 pointer-events-none">
                 <Badge
                   variant="outline"
-                  className="bg-black/80 backdrop-blur-md border-white/20 text-white font-mono text-[10px] uppercase font-bold px-2 py-0.5"
+                  className="bg-black/80 backdrop-blur-md border-white/20 text-white  text-[10px] uppercase font-bold px-2 py-0.5"
                 >
                   Live Storefront View
                 </Badge>
-                <Badge variant="orange" className="font-mono text-[10px] uppercase font-bold px-2.5 py-1 shadow-lg">
+                <Badge variant="orange" className=" text-[10px] uppercase font-bold px-2.5 py-1 shadow-lg">
                   {isVideo ? "Cinematic Video" : "High-Res Still"}
                 </Badge>
               </div>
@@ -261,7 +261,7 @@ export function CoverBannerSection({
         <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-4">
           <div className="flex items-center gap-2 pb-1 border-b border-white/[0.08]">
             <Sliders className="size-4 text-primary" />
-            <TypographyH4 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+            <TypographyH4 className="text-xs font-bold text-white uppercase tracking-wider ">
               Hero Display Controls
             </TypographyH4>
           </div>
@@ -294,7 +294,7 @@ export function CoverBannerSection({
                         })
                       }
                       className={cn(
-                        "h-9 flex flex-col justify-center items-center py-1 rounded-xl text-xs font-mono font-bold cursor-pointer transition-all",
+                        "h-9 flex flex-col justify-center items-center py-1 rounded-xl text-xs  font-bold cursor-pointer transition-all",
                         isSelected
                           ? "bg-primary text-primary-foreground shadow-md"
                           : "bg-white/5 hover:bg-white/10 border-white/10 text-zinc-300 hover:text-white"
@@ -317,7 +317,7 @@ export function CoverBannerSection({
                   <Sparkles className="size-3.5 text-primary" />
                   Overlay Darkness
                 </label>
-                <TypographySpan className="text-xs font-mono font-bold text-white">
+                <TypographySpan className="text-xs  font-bold text-white">
                   {overlayOpacity}%
                 </TypographySpan>
               </div>
@@ -337,7 +337,7 @@ export function CoverBannerSection({
                         })
                       }
                       className={cn(
-                        "h-9 rounded-xl text-xs font-mono font-semibold cursor-pointer",
+                        "h-9 rounded-xl text-xs  font-semibold cursor-pointer",
                         isSelected
                           ? "bg-primary text-primary-foreground shadow-sm"
                           : "bg-white/5 hover:bg-white/10 border-white/10 text-zinc-300 hover:text-white"
@@ -402,7 +402,7 @@ export function CoverBannerSection({
                 ({heroCover.category || (isVideo ? "Featured Film" : "Featured Still")})
               </span>
             </div>
-            <TypographySpan className="text-[11px] font-mono text-zinc-500">
+            <TypographySpan className="text-[11px]  text-zinc-500">
               Click the ✨ button on any item in your showcase below to set it as hero
             </TypographySpan>
           </div>

@@ -31,7 +31,7 @@ export function InvoicesHistoryCard({ invoices }: InvoicesHistoryCardProps) {
           </div>
 
           {invoices.length > 0 && (
-            <Badge variant="outline" className="text-[10px] font-mono text-muted-foreground">
+            <Badge variant="outline" className="text-[10px]  text-muted-foreground">
               {invoices.length} {invoices.length === 1 ? "invoice" : "invoices"}
             </Badge>
           )}
@@ -71,7 +71,7 @@ export function InvoicesHistoryCard({ invoices }: InvoicesHistoryCardProps) {
                       <TypographySpan className="text-xs font-bold text-foreground">
                         {inv.description}
                       </TypographySpan>
-                      <TypographySpan className="text-[11px] font-mono text-muted-foreground">
+                      <TypographySpan className="text-[11px]  text-muted-foreground">
                         {inv.invoiceNumber}
                       </TypographySpan>
                     </div>
@@ -81,7 +81,7 @@ export function InvoicesHistoryCard({ invoices }: InvoicesHistoryCardProps) {
                   </div>
 
                   <div className="flex items-center justify-between sm:justify-end gap-4">
-                    <TypographySpan className="font-mono text-sm font-bold text-foreground">
+                    <TypographySpan className=" text-sm font-bold text-foreground">
                       {amountFormatted}
                     </TypographySpan>
 
@@ -90,13 +90,13 @@ export function InvoicesHistoryCard({ invoices }: InvoicesHistoryCardProps) {
                         href={inv.pdfUrl || inv.hostedInvoiceUrl || "#"}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs  font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
                       >
                         <Download data-icon="inline-start" className="size-3.5" />
                         <TypographySpan>PDF Receipt</TypographySpan>
                       </a>
                     ) : (
-                      <Badge variant="outline" className="text-xs capitalize font-mono border-emerald-500/30 text-emerald-500 bg-emerald-500/10">
+                      <Badge variant="outline" className="text-xs capitalize  border-emerald-500/30 text-emerald-500 bg-emerald-500/10">
                         {inv.status}
                       </Badge>
                     )}

@@ -70,11 +70,11 @@ export function AdminSidebar() {
                 alt="CineSpace"
                 className="h-5 w-auto block object-contain select-none"
               />
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/40 text-primary bg-primary/10 font-mono">
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/40 text-primary bg-primary/10 ">
                 ADMIN
               </Badge>
             </div>
-            <p className="text-[10px] text-muted-foreground font-mono">
+            <p className="text-[10px] text-muted-foreground ">
               Platform Control Center
             </p>
           </Link>
@@ -84,7 +84,7 @@ export function AdminSidebar() {
 
         {/* Navigation Items */}
         <nav className="space-y-1.5">
-          <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider px-3 mb-2">
+          <div className="text-[10px]  text-muted-foreground uppercase tracking-wider px-3 mb-2">
             MANAGEMENT
           </div>
           {navItems.map((item) => {
@@ -111,7 +111,7 @@ export function AdminSidebar() {
                 {item.badge && (
                   <span
                     className={cn(
-                      "text-[9px] font-mono px-1.5 py-0.5 rounded-full font-bold",
+                      "text-[9px]  px-1.5 py-0.5 rounded-full font-bold",
                       isActive
                         ? "bg-black/20 text-black"
                         : "bg-muted text-muted-foreground border border-border"
@@ -127,14 +127,14 @@ export function AdminSidebar() {
 
         {/* System Health Pulse Widget */}
         {/* <div className="p-3.5 rounded-2xl bg-muted/40 border border-border space-y-2">
-          <div className="flex items-center justify-between text-[11px] font-mono">
+          <div className="flex items-center justify-between text-[11px] ">
             <span className="text-muted-foreground flex items-center gap-1.5">
               <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
               Global Edge Network
             </span>
             <span className="text-emerald-400 font-bold">99.98%</span>
           </div>
-          <div className="flex items-center justify-between text-[11px] font-mono">
+          <div className="flex items-center justify-between text-[11px] ">
             <span className="text-muted-foreground flex items-center gap-1.5">
               <span className="size-1.5 rounded-full bg-primary" />
               Stream Queue
@@ -155,7 +155,7 @@ export function AdminSidebar() {
           </Avatar>
           <div className="overflow-hidden">
             <p className="text-xs font-bold text-foreground truncate">Platform Admin</p>
-            <p className="text-[10px] text-muted-foreground font-mono truncate">super_admin@cinespace.film</p>
+            <p className="text-[10px] text-muted-foreground  truncate">super_admin@cinespace.film</p>
           </div>
         </div>
 

@@ -444,7 +444,7 @@ export function BrandingClient({
                     <>
                       <Sparkles className="size-3.5" />
                       <TypographySpan>Save Changes</TypographySpan>
-                      <kbd className="hidden md:inline-block ml-1 font-mono text-[10px] bg-black/40 px-1 py-0.5 rounded text-white/90">
+                      <kbd className="hidden md:inline-block ml-1  text-[10px] bg-black/40 px-1 py-0.5 rounded text-white/90">
                         ⌘S
                       </kbd>
                     </>

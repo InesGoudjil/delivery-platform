@@ -195,7 +195,7 @@ export function PortfolioModals() {
         showShareLink={true}
         footerExtra={
           activeStill ? (
-            <div className="w-full flex items-center justify-between text-xs font-mono text-zinc-400">
+            <div className="w-full flex items-center justify-between text-xs  text-zinc-400">
               <TypographySpan className="truncate max-w-sm sm:max-w-md">{activeStill.desc}</TypographySpan>
               <Button
                 variant="link"
@@ -308,7 +308,7 @@ export function PortfolioModals() {
                   <TypographySpan className="px-3 py-1 rounded-full bg-primary text-primary-foreground text-[11px] font-bold uppercase tracking-wider">
                     {selectedProject.client}
                   </TypographySpan>
-                  <TypographySpan className="px-3 py-1 rounded-full bg-black/60 border border-white/15 text-zinc-300 text-[11px] font-mono">
+                  <TypographySpan className="px-3 py-1 rounded-full bg-black/60 border border-white/15 text-zinc-300 text-[11px] ">
                     {selectedProject.tc}
                   </TypographySpan>
                 </div>
@@ -327,7 +327,7 @@ export function PortfolioModals() {
                 <h3 className="font-heading font-bold text-sm text-white uppercase tracking-wider">
                   Project Gallery
                 </h3>
-                <TypographySpan className="text-xs text-zinc-400 font-mono">
+                <TypographySpan className="text-xs text-zinc-400 ">
                   {selectedProject.assetIds.length} Assets
                 </TypographySpan>
               </div>
@@ -356,7 +356,7 @@ export function PortfolioModals() {
                       />
 
                       {/* Tag */}
-                      <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded bg-black/60 backdrop-blur-md border border-white/10 text-[9px] font-mono font-bold text-white uppercase">
+                      <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded bg-black/60 backdrop-blur-md border border-white/10 text-[9px]  font-bold text-white uppercase">
                         {asset.kind === "film" ? "FILM" : "STILL"}
                       </div>
 
@@ -381,7 +381,7 @@ export function PortfolioModals() {
 
             {/* Modal Bottom Inquire */}
             <div className="p-4 bg-[#0a0a0b] border-t border-white/10 flex items-center justify-between">
-              <TypographySpan className="text-xs text-zinc-400 font-mono">
+              <TypographySpan className="text-xs text-zinc-400 ">
                 Location: {selectedProject.location}
               </TypographySpan>
               <Button
@@ -476,7 +476,7 @@ export function PortfolioModals() {
                   <ArrowRight className="size-4 text-emerald-400 group-hover:translate-x-0.5 transition-transform" />
                 </div>
 
-                <div className="flex items-center gap-3 text-zinc-500 text-[11px] font-mono">
+                <div className="flex items-center gap-3 text-zinc-500 text-[11px] ">
                   <span className="flex-1 h-px bg-white/10" />
                   <TypographySpan>OR SEND DETAILS</TypographySpan>
                   <span className="flex-1 h-px bg-white/10" />
@@ -488,7 +488,7 @@ export function PortfolioModals() {
                   className="space-y-3"
                 >
                   <div>
-                    <label className="block text-xs font-mono text-zinc-400 mb-1">
+                    <label className="block text-xs  text-zinc-400 mb-1">
                       Your Name / Company
                     </label>
                     <input
@@ -502,7 +502,7 @@ export function PortfolioModals() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-mono text-zinc-400 mb-1">
+                    <label className="block text-xs  text-zinc-400 mb-1">
                       Your Email / Phone
                     </label>
                     <input
@@ -516,7 +516,7 @@ export function PortfolioModals() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-mono text-zinc-400 mb-1">
+                    <label className="block text-xs  text-zinc-400 mb-1">
                       Project Details
                     </label>
                     <textarea
