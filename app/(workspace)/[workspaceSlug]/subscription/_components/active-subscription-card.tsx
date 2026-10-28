@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { TypographyH2, TypographyMuted } from "@/components/ui/typography";
+import { TypographyH2, TypographyMuted, TypographySmall, TypographySpan } from "@/components/ui/typography";
 import { WorkspaceFeatureConfig } from "@/core/entities/workspace";
 
 interface ActiveSubscriptionCardProps {
@@ -94,13 +94,15 @@ export function ActiveSubscriptionCard({
                 {isStarter ? "FREE TIER" : `${subStatus} PLAN`}
               </Badge>
               {periodEnd ? (
-                <span className="text-xs text-muted-foreground font-mono">
-                  Renews on {new Date(periodEnd).toLocaleDateString()}
-                </span>
+                // <span className="text-xs text-muted-foreground font-mono">
+                // <TypographySmall>
+                //   Renews on {new Date(periodEnd).toLocaleDateString()}
+                // </TypographySmall>
+                <></>
               ) : isStarter ? (
-                <span className="text-xs text-muted-foreground font-mono">
+                <TypographySpan className="text-xs text-muted-foreground font-mono">
                   No renewal fees • Free forever
-                </span>
+                </TypographySpan>
               ) : null}
             </div>
             <CardTitle className="p-0 border-none">
@@ -136,12 +138,12 @@ export function ActiveSubscriptionCard({
                   <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
                     <HardDrive className="size-4" />
                   </div>
-                  <span className="font-semibold text-foreground">Workspace Cloud Storage</span>
+                  <TypographySpan className="font-semibold text-foreground">Workspace Cloud Storage</TypographySpan>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-muted-foreground text-xs">
+                  <TypographySpan className="font-mono text-muted-foreground text-xs">
                     <strong className="text-foreground">{usedGb} GB</strong> of {totalGb} GB
-                  </span>
+                  </TypographySpan>
                   <Badge
                     variant={storagePercentage > 90 ? "destructive" : storagePercentage > 75 ? "orange" : "sage"}
                     className="text-[10px] font-mono px-2 py-0.5 font-bold"
@@ -167,8 +169,8 @@ export function ActiveSubscriptionCard({
             </div>
 
             <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-3 border-t border-border/40 mt-3 font-mono">
-              <span>{remainingGb} GB remaining</span>
-              <span>Need more space? Upgrade to Pro for 500 GB</span>
+              <TypographySpan>{remainingGb} GB remaining</TypographySpan>
+              <TypographySpan>Need more space? Upgrade to Pro for 500 GB</TypographySpan>
             </div>
           </div>
 
@@ -180,12 +182,12 @@ export function ActiveSubscriptionCard({
                 <Share2 className="size-4" />
               </div>
               <div className="flex flex-col mt-2">
-                <span className="text-sm font-bold text-foreground">
+                <TypographySpan className="text-sm font-bold text-foreground">
                   {clientLinks === -1 ? "Unlimited" : clientLinks}
-                </span>
-                <span className="text-[10px] text-muted-foreground font-medium leading-tight">
+                </TypographySpan>
+                <TypographySpan className="text-[10px] text-muted-foreground font-medium leading-tight">
                   Active Links
-                </span>
+                </TypographySpan>
               </div>
             </div>
 
@@ -195,12 +197,12 @@ export function ActiveSubscriptionCard({
                 <Film className="size-4" />
               </div>
               <div className="flex flex-col mt-2">
-                <span className="text-sm font-bold text-foreground">
+                <TypographySpan className="text-sm font-bold text-foreground">
                   {portfolioVideos === -1 ? "Unlimited" : portfolioVideos}
-                </span>
-                <span className="text-[10px] text-muted-foreground font-medium leading-tight">
+                </TypographySpan>
+                <TypographySpan className="text-[10px] text-muted-foreground font-medium leading-tight">
                   Portfolio Films
-                </span>
+                </TypographySpan>
               </div>
             </div>
 
@@ -210,12 +212,12 @@ export function ActiveSubscriptionCard({
                 <Users className="size-4" />
               </div>
               <div className="flex flex-col mt-2">
-                <span className="text-sm font-bold text-foreground">
+                <TypographySpan className="text-sm font-bold text-foreground">
                   {teamSeats === 1 ? "1 (Solo)" : `${teamSeats}`}
-                </span>
-                <span className="text-[10px] text-muted-foreground font-medium leading-tight">
+                </TypographySpan>
+                <TypographySpan className="text-[10px] text-muted-foreground font-medium leading-tight">
                   Team Seats
-                </span>
+                </TypographySpan>
               </div>
             </div>
           </div>
@@ -223,9 +225,9 @@ export function ActiveSubscriptionCard({
 
         {/* Feature Inclusions Status Badges */}
         <div className="flex flex-col gap-2.5">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <TypographySpan className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             Current Tier Feature Inclusions
-          </span>
+          </TypographySpan>
           <div className="flex flex-wrap gap-2">
             {featurePills.map((pill) => (
               <div
@@ -241,11 +243,11 @@ export function ActiveSubscriptionCard({
                 ) : (
                   <Lock className="size-3 shrink-0 text-muted-foreground/50" />
                 )}
-                <span>{pill.label}</span>
+                <TypographySpan>{pill.label}</TypographySpan>
                 {!pill.enabled && pill.highlight && (
-                  <span className="text-[10px] font-mono font-semibold px-1 py-0.2 rounded bg-muted text-muted-foreground">
+                  <TypographySpan className="text-[10px] font-mono font-semibold px-1 py-0.2 rounded bg-muted text-muted-foreground">
                     {pill.highlight}
-                  </span>
+                  </TypographySpan>
                 )}
               </div>
             ))}
@@ -256,7 +258,7 @@ export function ActiveSubscriptionCard({
       <CardFooter className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-border bg-background/40">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <ShieldCheck className="size-4 text-emerald-500 shrink-0" />
-          <span>Payments are end-to-end encrypted with Stripe 256-bit SSL security.</span>
+          <TypographySpan>Payments are end-to-end encrypted with Stripe 256-bit SSL security.</TypographySpan>
         </div>
 
         {canManageBilling ? (
@@ -286,7 +288,7 @@ export function ActiveSubscriptionCard({
               className="rounded-full shadow-md text-xs font-bold shrink-0 cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1.5"
             >
               <Sparkles className="size-3.5" />
-              <span>Upgrade Workspace Plan</span>
+              <TypographySpan>Upgrade Workspace Plan</TypographySpan>
               <ArrowDownCircle className="size-3.5" />
             </Button>
           )

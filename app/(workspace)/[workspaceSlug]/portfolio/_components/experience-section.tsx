@@ -19,6 +19,7 @@ import {
   TypographyH4,
   TypographyMuted,
   TypographySmall,
+  TypographySpan,
 } from "@/components/ui/typography";
 import { updatePortfolioAction } from "@/app/actions/portfolio";
 import { PortfolioExperience } from "@/core/entities/portfolio";
@@ -172,7 +173,7 @@ export function ExperienceSection({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-muted-foreground font-medium block">
-                  Role / Title <span className="text-primary">*</span>
+                  Role / Title <TypographySpan className="text-primary">*</TypographySpan>
                 </Label>
                 <Input
                   type="text"
@@ -186,7 +187,7 @@ export function ExperienceSection({
 
               <div className="space-y-1">
                 <Label className="text-muted-foreground font-medium block">
-                  Company / Client / Agency <span className="text-primary">*</span>
+                  Company / Client / Agency <TypographySpan className="text-primary">*</TypographySpan>
                 </Label>
                 <Input
                   type="text"
@@ -299,7 +300,7 @@ export function ExperienceSection({
         <CardTitle className="p-0 border-none">
           <TypographyH4 className="flex items-center gap-2 text-xs font-bold text-foreground font-heading">
             <Briefcase className="size-4 text-primary" />
-            <span>Experience &amp; Client Track Record</span>
+            <TypographySpan>Experience &amp; Client Track Record</TypographySpan>
           </TypographyH4>
         </CardTitle>
         <CardAction>
@@ -334,7 +335,7 @@ export function ExperienceSection({
                 <CardHeader className="pb-1">
                   <CardTitle className="p-0 border-none">
                     <TypographyH4 className="flex flex-wrap items-center gap-2 text-xs font-bold text-white font-heading">
-                      <span>{exp.role}</span>
+                      <TypographySpan>{exp.role}</TypographySpan>
                       {exp.category && (
                         <Badge variant="orange" className="text-[10px] font-mono px-2 py-0.5 rounded-full font-medium">
                           {exp.category}
@@ -344,12 +345,12 @@ export function ExperienceSection({
                   </CardTitle>
 
                   <TypographyMuted className="text-[11px] text-zinc-300 font-medium flex flex-wrap items-center gap-1.5">
-                    <span>{exp.company}</span>
+                    <TypographySpan>{exp.company}</TypographySpan>
                     {exp.location && (
-                      <span className="text-zinc-500 flex items-center gap-0.5">
+                      <TypographySpan className="text-zinc-500 flex items-center gap-0.5">
                         <MapPin className="size-2.5" />
                         {exp.location}
-                      </span>
+                      </TypographySpan>
                     )}
                   </TypographyMuted>
 

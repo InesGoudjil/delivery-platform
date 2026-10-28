@@ -20,7 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { TypographyH4 } from "@/components/ui/typography";
+import { Typography, TypographyH4, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import { updatePortfolioAction } from "@/app/actions/portfolio";
 import { PortfolioAppearance } from "@/core/entities/portfolio";
 
@@ -88,15 +88,15 @@ export function AppearanceToolbar({
         <CardTitle className="p-0 border-none">
           <TypographyH4 className="flex items-center gap-2 text-sm font-bold text-white font-heading tracking-wide">
             <SlidersHorizontal className="size-4 text-primary" />
-            <span>Appearance</span>
+            <TypographySpan>Appearance</TypographySpan>
           </TypographyH4>
         </CardTitle>
 
         <CardAction>
-          <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-sans">
+          <TypographyMuted className="flex items-center gap-1.5 text-xs text-zinc-400">
             <Lock className="size-3.5 text-zinc-500" />
-            <span>How visitors see your work grid</span>
-          </div>
+            <TypographySpan>How visitors see your work grid</TypographySpan>
+          </TypographyMuted>
         </CardAction>
       </CardHeader>
 
@@ -104,7 +104,7 @@ export function AppearanceToolbar({
       <CardContent className="divide-y divide-white/[0.05] text-xs pt-1">
         {/* Row 1: Card size */}
         <div className="flex items-center justify-between py-3">
-          <span className="text-zinc-300 font-medium">Card size</span>
+          <TypographySpan className="text-zinc-300 font-medium">Card size</TypographySpan>
           <div className="inline-flex rounded-lg bg-[#0c0c0e]/90 border border-white/10 p-0.5 gap-0.5">
             {(["S", "M", "L"] as const).map((sz) => (
               <Button
@@ -130,7 +130,7 @@ export function AppearanceToolbar({
 
         {/* Row 2: Aspect ratio */}
         <div className="flex items-center justify-between py-3">
-          <span className="text-zinc-300 font-medium">Aspect ratio</span>
+          <TypographySpan className="text-zinc-300 font-medium">Aspect ratio</TypographySpan>
           <div className="inline-flex items-center rounded-lg bg-[#0c0c0e]/90 border border-white/10 p-0.5 gap-0.5">
             {/* 16:9 Landscape */}
             <Tooltip>
@@ -237,7 +237,7 @@ export function AppearanceToolbar({
 
         {/* Row 3: Thumbnail scale */}
         <div className="flex items-center justify-between py-3">
-          <span className="text-zinc-300 font-medium">Thumbnail scale</span>
+          <TypographySpan className="text-zinc-300 font-medium">Thumbnail scale</TypographySpan>
           <div className="inline-flex rounded-lg bg-[#0c0c0e]/90 border border-white/10 p-0.5 gap-0.5">
             {(["fit", "fill"] as const).map((sc) => (
               <Tooltip key={sc}>
@@ -271,7 +271,7 @@ export function AppearanceToolbar({
 
         {/* Row 4: Show card info */}
         <div className="flex items-center justify-between py-3">
-          <span className="text-zinc-300 font-medium">Show card info</span>
+          <TypographySpan className="text-zinc-300 font-medium">Show card info</TypographySpan>
           <Switch
             checked={showClientInfo}
             onCheckedChange={(val) => {

@@ -29,6 +29,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { signOutAction } from "@/app/actions/auth";
+import { TypographySpan } from "@/components/ui/typography";
 import { NavDocuments } from "./nav-documents";
 
 import { WorkspaceSwitcher, WorkspaceItem } from "./workspace-switcher";
@@ -198,9 +199,9 @@ export function WorkspaceSidebar({
               className="flex items-center gap-3 px-3 py-2 text-xs font-medium text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2"
             >
               <ArrowRight className="size-4 shrink-0 text-destructive rtl:rotate-180" />
-              <span className="group-data-[collapsible=icon]:hidden">
+              <TypographySpan variant="small" className="group-data-[collapsible=icon]:hidden text-xs font-medium text-destructive">
                 {isPending ? "Logging out..." : "Log out"}
-              </span>
+              </TypographySpan>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

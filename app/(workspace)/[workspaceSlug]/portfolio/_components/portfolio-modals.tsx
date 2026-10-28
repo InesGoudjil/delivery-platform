@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { AppImage } from "@/components/ui/app-image";
 import { CutReviewPlayer } from "@/components/video/cut-review-player";
 import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
-import { TypographyH2, TypographyLead, TypographyH4 } from "@/components/ui/typography";
+import { TypographyH2, TypographyLead, TypographyH4, TypographySpan } from "@/components/ui/typography";
 import { PortfolioItem, ProjectAsset } from "../portfolio-client";
 import { getProjectAssetsAction } from "@/app/actions/portfolio";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
@@ -199,14 +199,14 @@ export function ProjectExplorerModal({
         {/* Project Header */}
         <div className="space-y-3 pr-12">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/15 border border-primary/30 text-[10px] font-mono font-bold text-primary uppercase tracking-wider">
+            <TypographySpan className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/15 border border-primary/30 text-[10px] font-mono font-bold text-primary uppercase tracking-wider">
               <FolderKanban className="size-3" />
-              <span>PROJECT CONTAINER</span>
-            </span>
+              <TypographySpan>PROJECT CONTAINER</TypographySpan>
+            </TypographySpan>
 
-            <span className="text-[11px] font-mono text-zinc-400 bg-white/5 px-2.5 py-1 rounded-md border border-white/10">
+            <TypographySpan className="text-[11px] font-mono text-zinc-400 bg-white/5 px-2.5 py-1 rounded-md border border-white/10">
               {assets.length} items · {filmCount} film{filmCount !== 1 ? "s" : ""}, {stillCount} still{stillCount !== 1 ? "s" : ""}
-            </span>
+            </TypographySpan>
 
             {onEditProject && (
               <Button
@@ -218,7 +218,7 @@ export function ProjectExplorerModal({
                 title="Edit project details"
               >
                 <Pencil className="size-3.5" />
-                <span>Edit Project</span>
+                <TypographySpan>Edit Project</TypographySpan>
               </Button>
             )}
           </div>
@@ -261,16 +261,16 @@ export function ProjectExplorerModal({
             ))}
           </div>
 
-          <span className="text-xs font-mono text-zinc-500 hidden sm:inline">
+          <TypographySpan className="text-xs font-mono text-zinc-500 hidden sm:inline">
             Click any still or video to view in full
-          </span>
+          </TypographySpan>
         </div>
 
         {/* Project Assets Grid */}
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3 text-zinc-400 text-xs">
             <Loader2 className="size-6 animate-spin text-primary" />
-            <span>Loading project assets...</span>
+            <TypographySpan>Loading project assets...</TypographySpan>
           </div>
         ) : filteredAssets.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
@@ -296,19 +296,19 @@ export function ProjectExplorerModal({
 
                   {/* Top-Left Badge */}
                   <div className="absolute top-2.5 left-2.5 z-10">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md border border-white/15 text-[9px] font-mono font-bold text-white uppercase tracking-wider">
+                    <TypographySpan className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md border border-white/15 text-[9px] font-mono font-bold text-white uppercase tracking-wider">
                       {isVideo ? (
                         <>
                           <Film className="size-2.5 text-primary" />
-                          <span>FILM</span>
+                          <TypographySpan>FILM</TypographySpan>
                         </>
                       ) : (
                         <>
                           <ImageIcon className="size-2.5 text-zinc-300" />
-                          <span>STILL</span>
+                          <TypographySpan>STILL</TypographySpan>
                         </>
                       )}
-                    </span>
+                    </TypographySpan>
                   </div>
 
                   {/* Top-Right Action Buttons */}
@@ -364,8 +364,8 @@ export function ProjectExplorerModal({
                       {asset.title}
                     </TypographyH4>
                     <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400">
-                      <span>{isVideo ? "Video Stream" : "Photo Still"}</span>
-                      {asset.duration && <span>{asset.duration}</span>}
+                      <TypographySpan>{isVideo ? "Video Stream" : "Photo Still"}</TypographySpan>
+                      {asset.duration && <TypographySpan>{asset.duration}</TypographySpan>}
                     </div>
                   </div>
                 </div>

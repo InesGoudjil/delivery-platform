@@ -4,7 +4,7 @@ import React from "react";
 import { FileText } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TypographyH2, TypographyMuted } from "@/components/ui/typography";
+import { TypographyH2, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 
 interface BioSectionProps {
   bio: string;
@@ -35,9 +35,9 @@ export function BioSection({ bio, onBioChange }: BioSectionProps) {
             <label className="text-xs font-semibold text-foreground uppercase tracking-wider">
               Filmmaker / Studio Biography
             </label>
-            <span className="text-[11px] font-mono text-muted-foreground">
+            <TypographySpan className="text-[11px] font-mono text-muted-foreground">
               {bio.length} characters
-            </span>
+            </TypographySpan>
           </div>
 
           <textarea

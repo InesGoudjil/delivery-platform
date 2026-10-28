@@ -5,7 +5,7 @@ import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TiltCard } from "@/components/ui/motion";
-import { TypographyH2, TypographyMuted } from "@/components/ui/typography";
+import { TypographyH2, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 export default function SettingsError({
@@ -52,7 +52,7 @@ export default function SettingsError({
                     className="rounded-full bg-primary text-primary-foreground font-extrabold text-xs hover:bg-primary/90 cursor-pointer h-10 px-6 uppercase tracking-wider shadow-lg shadow-primary/20"
                   >
                     <RefreshCw className="size-3.5 mr-2" />
-                    <span>Reload Brand Settings</span>
+                    <TypographySpan>Reload Brand Settings</TypographySpan>
                   </Button>
                 }
               />

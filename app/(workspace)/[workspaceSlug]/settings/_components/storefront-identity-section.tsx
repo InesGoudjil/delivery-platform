@@ -17,6 +17,7 @@ import {
   Crop,
   Shield,
   Building2,
+  Copy,
 } from "lucide-react";
 import { ACCENTS } from "./constants";
 import { cn } from "@/lib/utils";
@@ -28,7 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { TypographyH2, TypographyH4, TypographyMuted } from "@/components/ui/typography";
+import { TypographyH2, TypographyH4, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 
 interface StorefrontIdentitySectionProps {
   brandName: string;
@@ -84,6 +85,15 @@ export function StorefrontIdentitySection({
 }: StorefrontIdentitySectionProps) {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopyLink = () => {
+    if (typeof window === "undefined") return;
+    const url = `${window.location.origin}/p/${handle || workspaceSlug || ""}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const initials =
     brandName
@@ -114,9 +124,9 @@ export function StorefrontIdentitySection({
           <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center justify-between gap-3 animate-in fade-in">
             <div className="flex items-center gap-2">
               <Sparkles className="size-4 text-amber-400 shrink-0" />
-              <span>
+              <TypographySpan>
                 Custom studio branding (logo, profile avatar, and custom accent colors) requires a Pro or Studio plan.
-              </span>
+              </TypographySpan>
             </div>
             {workspaceSlug && (
               <Link
@@ -165,12 +175,12 @@ export function StorefrontIdentitySection({
                     ) : (
                       <div className="w-full h-full rounded-xl bg-zinc-900 border border-white/5 flex flex-col items-center justify-center text-zinc-500">
                         <Building2 className="size-5 text-primary mb-0.5" />
-                        <span className="text-[9px] font-mono font-bold uppercase">LOGO</span>
+                        <TypographySpan className="text-[9px] font-mono font-bold uppercase">LOGO</TypographySpan>
                       </div>
                     )}
                     <div className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity rounded-2xl">
                       <Camera className="size-5 text-primary" />
-                      <span className="text-[9px] font-bold uppercase mt-1 tracking-wider">Change</span>
+                      <TypographySpan className="text-[9px] font-bold uppercase mt-1 tracking-wider">Change</TypographySpan>
                     </div>
                   </div>
                 </TooltipTrigger>
@@ -208,7 +218,7 @@ export function StorefrontIdentitySection({
                         className="rounded-full bg-muted hover:bg-muted/80 border-border text-foreground text-xs font-semibold px-3 h-7 gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
                       >
                         <Upload className="size-3 text-primary" />
-                        <span>{logoUrl ? "Replace Logo" : "Upload Logo"}</span>
+                        <TypographySpan>{logoUrl ? "Replace Logo" : "Upload Logo"}</TypographySpan>
                       </Button>
                     }
                   />
@@ -230,7 +240,7 @@ export function StorefrontIdentitySection({
                           className="rounded-full bg-muted hover:bg-muted/80 border-border text-foreground text-xs font-semibold px-2.5 h-7 gap-1 cursor-pointer shadow-sm"
                         >
                           <Crop className="size-3 text-primary" />
-                          <span>Crop</span>
+                          <TypographySpan>Crop</TypographySpan>
                         </Button>
                       }
                     />
@@ -250,7 +260,7 @@ export function StorefrontIdentitySection({
                           className="rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-semibold px-2.5 h-7 gap-1 cursor-pointer"
                         >
                           <Trash2 className="size-3" />
-                          <span>Remove</span>
+                          <TypographySpan>Remove</TypographySpan>
                         </Button>
                       }
                     />
@@ -301,7 +311,7 @@ export function StorefrontIdentitySection({
                     </AvatarFallback>
                     <div className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity rounded-full">
                       <Camera className="size-5 text-primary" />
-                      <span className="text-[9px] font-bold uppercase mt-1 tracking-wider">Photo</span>
+                      <TypographySpan className="text-[9px] font-bold uppercase mt-1 tracking-wider">Photo</TypographySpan>
                     </div>
                   </Avatar>
                 </TooltipTrigger>
@@ -336,7 +346,7 @@ export function StorefrontIdentitySection({
                         className="rounded-full bg-muted hover:bg-muted/80 border-border text-foreground text-xs font-semibold px-3 h-7 gap-1.5 cursor-pointer shadow-sm"
                       >
                         <Upload className="size-3 text-primary" />
-                        <span>{avatarUrl ? "Replace Photo" : "Upload Portrait"}</span>
+                        <TypographySpan>{avatarUrl ? "Replace Photo" : "Upload Portrait"}</TypographySpan>
                       </Button>
                     }
                   />
@@ -357,7 +367,7 @@ export function StorefrontIdentitySection({
                           className="rounded-full bg-muted hover:bg-muted/80 border-border text-foreground text-xs font-semibold px-2.5 h-7 gap-1 cursor-pointer shadow-sm"
                         >
                           <Crop className="size-3 text-primary" />
-                          <span>Crop</span>
+                          <TypographySpan>Crop</TypographySpan>
                         </Button>
                       }
                     />
@@ -377,7 +387,7 @@ export function StorefrontIdentitySection({
                           className="rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-semibold px-2.5 h-7 gap-1 cursor-pointer"
                         >
                           <Trash2 className="size-3" />
-                          <span>Remove</span>
+                          <TypographySpan>Remove</TypographySpan>
                         </Button>
                       }
                     />
@@ -406,11 +416,37 @@ export function StorefrontIdentitySection({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Public Showcase Handle
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Public Showcase Handle
+              </label>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <button
+                      type="button"
+                      onClick={handleCopyLink}
+                      className="text-[11px] font-mono text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="size-3 text-emerald-400" />
+                          <span className="text-emerald-400 font-sans">Copied link</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="size-3" />
+                          <span className="font-sans">Copy URL</span>
+                        </>
+                      )}
+                    </button>
+                  }
+                />
+                <TooltipContent side="top">Copy full public showcase link</TooltipContent>
+              </Tooltip>
+            </div>
             <div className="flex items-center bg-muted/50 border border-border rounded-xl px-4 h-10 text-sm text-muted-foreground focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 transition-colors">
-              <span className="font-mono text-xs select-none">cinespace.film/p/</span>
+              <TypographySpan className="font-mono text-xs select-none">cinespace.film/p/</TypographySpan>
               <input
                 type="text"
                 required
@@ -452,16 +488,27 @@ export function StorefrontIdentitySection({
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center gap-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                <Palette className="size-3.5 text-primary" />
-                Player &amp; Button Accent Color
-              </label>
-              {!canBranding && (
-                <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[9px] font-mono font-bold">
-                  PRO+
-                </Badge>
-              )}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <Palette className="size-3.5 text-primary" />
+                  Player &amp; Button Accent Color
+                </label>
+                {!canBranding && (
+                  <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[9px] font-mono font-bold">
+                    PRO+
+                  </Badge>
+                )}
+              </div>
+              <div
+                className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono tracking-wider shadow-xs border border-white/10 select-none transition-all"
+                style={{
+                  backgroundColor: accent,
+                  color: getContrastForeground(accent),
+                }}
+              >
+                Accent Preview
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 pt-1">
               {ACCENTS.map((preset) => {
@@ -516,7 +563,7 @@ export function StorefrontIdentitySection({
                   <TooltipContent side="top">Custom color picker</TooltipContent>
                 </Tooltip>
                 <div className="flex items-center bg-muted/60 border border-border rounded-xl px-2.5 h-8 text-xs font-mono text-muted-foreground focus-within:border-ring">
-                  <span className="select-none font-bold text-muted-foreground mr-0.5">#</span>
+                  <TypographySpan className="select-none font-bold text-muted-foreground mr-0.5">#</TypographySpan>
                   <input
                     type="text"
                     disabled={!canBranding}

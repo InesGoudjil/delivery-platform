@@ -21,7 +21,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
+import { TypographyH3, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import type { AppearanceSettings } from "./types";
 
 interface DeliveryAppearanceCardProps {
@@ -69,9 +69,9 @@ export function DeliveryAppearanceCard({
         <CardAction>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
             <Lock className="size-3.5" />
-            <span className="hidden sm:inline">
+            <TypographySpan className="hidden sm:inline">
               How your client sees this gallery
-            </span>
+            </TypographySpan>
           </div>
         </CardAction>
       </CardHeader>
@@ -79,7 +79,7 @@ export function DeliveryAppearanceCard({
       <CardContent className="space-y-4 pt-4 text-xs font-medium">
         {/* Card size row */}
         <div className="flex items-center justify-between py-2 border-b border-border/40">
-          <span className="text-muted-foreground font-sans">Card size</span>
+          <TypographySpan variant="muted">Card size</TypographySpan>
           <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40">
             {(["S", "M", "L"] as const).map((size) => (
               <Button
@@ -102,7 +102,7 @@ export function DeliveryAppearanceCard({
 
         {/* Aspect ratio row */}
         <div className="flex items-center justify-between py-2 border-b border-border/40">
-          <span className="text-muted-foreground font-sans">Aspect ratio</span>
+          <TypographySpan variant="muted">Aspect ratio</TypographySpan>
           <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40">
             <Button
               type="button"
@@ -167,9 +167,9 @@ export function DeliveryAppearanceCard({
 
         {/* Thumbnail scale row */}
         <div className="flex items-center justify-between py-2 border-b border-border/40">
-          <span className="text-muted-foreground font-sans">
+          <TypographySpan variant="muted">
             Thumbnail scale
-          </span>
+          </TypographySpan>
           <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40">
             {(["Fit", "Fill"] as const).map((scale) => (
               <Button
@@ -192,9 +192,9 @@ export function DeliveryAppearanceCard({
 
         {/* Show card info row */}
         <div className="flex items-center justify-between py-2 border-b border-border/40">
-          <span className="text-muted-foreground font-sans">
+          <TypographySpan variant="muted">
             Show card info
-          </span>
+          </TypographySpan>
           <Switch
             checked={showCardInfo}
             onCheckedChange={(checked) =>
@@ -207,9 +207,9 @@ export function DeliveryAppearanceCard({
         <div className="flex items-center justify-between py-2">
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-2">
-              <span className={`font-sans text-xs ${canWatermark ? "text-muted-foreground" : "text-muted-foreground/60"}`}>
+              <TypographySpan variant="muted" className={canWatermark ? "text-muted-foreground" : "text-muted-foreground/60"}>
                 Watermark media
-              </span>
+              </TypographySpan>
               <Badge
                 variant="orange"
                 className="text-[9px] px-1.5 py-0.5 font-bold"

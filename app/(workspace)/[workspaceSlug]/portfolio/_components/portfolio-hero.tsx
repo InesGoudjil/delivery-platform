@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { TypographyH1, TypographyLead } from "@/components/ui/typography";
+import { TypographyH1, TypographyLead, TypographySpan } from "@/components/ui/typography";
 import { UploadFilmModal } from "./upload-film-modal";
 import { UploadProjectModal } from "./upload-project-modal";
 import { PortfolioItem } from "../portfolio-client";
@@ -121,7 +121,7 @@ export function PortfolioHero({
                     target="_blank"
                     className="text-xs text-zinc-400 hover:text-primary flex items-center gap-1.5 transition-colors font-mono"
                   >
-                    <span>/p/{workspace.slug}</span>
+                    <TypographySpan>/p/{workspace.slug}</TypographySpan>
                     <ExternalLink className="size-3" />
                   </Link>
                 }
@@ -154,7 +154,7 @@ export function PortfolioHero({
                   className="rounded-full border-white/15 bg-white/[0.06] hover:bg-white/[0.12] text-white text-xs font-bold px-5 h-10 backdrop-blur-md transition-all shadow-sm flex items-center gap-2 cursor-pointer uppercase tracking-wider"
                 >
                   <Upload className="size-3.5 text-primary" />
-                  <span>UPLOAD FILM OR STILL</span>
+                  <TypographySpan>UPLOAD FILM OR STILL</TypographySpan>
                 </Button>
               }
             />
@@ -171,7 +171,7 @@ export function PortfolioHero({
                   className="rounded-full bg-gradient-to-r from-[#b8481e] via-[#db5722] to-[#8d3615] hover:brightness-110 active:brightness-95 text-white text-xs font-extrabold px-5 h-10 transition-all shadow-lg shadow-orange-950/40 flex items-center gap-1.5 border border-white/20 cursor-pointer uppercase tracking-wider"
                 >
                   <Plus className="size-4 stroke-[3]" />
-                  <span>UPLOAD A PROJECT</span>
+                  <TypographySpan>UPLOAD A PROJECT</TypographySpan>
                 </Button>
               }
             />

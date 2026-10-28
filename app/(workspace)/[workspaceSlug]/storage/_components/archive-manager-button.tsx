@@ -5,6 +5,7 @@ import { Upload, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { TypographySpan } from "@/components/ui/typography";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -38,7 +39,7 @@ export function ArchiveManagerButton({
                 className="rounded-full text-xs font-semibold cursor-pointer shrink-0 border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 gap-1.5"
               >
                 <Lock className="size-3.5 text-blue-400" />
-                <span>Unlock Silo</span>
+                <TypographySpan>Unlock Silo</TypographySpan>
                 <Badge
                   variant="outline"
                   className="text-[9px] font-mono uppercase bg-blue-500/20 text-blue-400 border-blue-500/30 px-1.5 py-0.5 font-bold"

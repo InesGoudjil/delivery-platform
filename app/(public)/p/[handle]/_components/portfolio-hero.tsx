@@ -6,7 +6,7 @@ import { FilmmakerProfile, PublicFeaturedItem, PortfolioProject, PortfolioAsset 
 import { HeroPreviewTrigger } from "./portfolio-buttons";
 import { AppImage } from "@/components/ui/app-image";
 import { Button } from "@/components/ui/button";
-import { TypographyH2 } from "@/components/ui/typography";
+import { TypographyH2, TypographySpan } from "@/components/ui/typography";
 
 interface PortfolioHeroProps {
   profile: FilmmakerProfile;
@@ -106,12 +106,12 @@ export function PortfolioHero({
               {isMuted ? (
                 <>
                   <VolumeX className="size-3.5 text-zinc-400" />
-                  <span className="hidden sm:inline">Unmute</span>
+                  <TypographySpan className="hidden sm:inline">Unmute</TypographySpan>
                 </>
               ) : (
                 <>
                   <Volume2 className="size-3.5 text-primary animate-pulse" />
-                  <span className="hidden sm:inline">Mute</span>
+                  <TypographySpan className="hidden sm:inline">Mute</TypographySpan>
                 </>
               )}
             </Button>

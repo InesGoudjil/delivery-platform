@@ -14,6 +14,7 @@ import {
   TypographyLead,
   TypographyMuted,
   TypographyKicker,
+  TypographySpan,
 } from "@/components/ui/typography";
 import { createDeliveryAction } from "@/app/actions/deliveries";
 import { toast } from "sonner";
@@ -142,9 +143,9 @@ export function DeliveriesHeader({
           <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-2">
             <div className="flex items-center gap-2 font-bold text-amber-400">
               <AlertTriangle className="size-4 shrink-0" />
-              <span>
+              <TypographySpan>
                 Delivery Link Limit Reached ({activeCount} / {clientLinksLimit} Active)
-              </span>
+              </TypographySpan>
             </div>
             <TypographyMuted className="text-muted-foreground text-[11px] leading-relaxed">
               Your current plan allows up to {clientLinksLimit} active project delivery link{clientLinksLimit > 1 ? "s" : ""}. To create more review rooms, archive an existing project or upgrade your plan.
@@ -172,7 +173,7 @@ export function DeliveriesHeader({
         <form id="create-delivery-form" onSubmit={handleCreateProject} className="space-y-4">
           <div className="space-y-1.5">
             <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
-              Project Title <span className="text-primary">*</span>
+              Project Title <TypographySpan className="text-primary">*</TypographySpan>
             </Label>
             <Input
               type="text"
@@ -205,7 +206,7 @@ export function DeliveriesHeader({
                 <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
                   Client Email
                 </Label>
-                <span className="text-[10px] text-muted-foreground/60 font-mono">Optional</span>
+                <TypographySpan className="text-[10px] text-muted-foreground/60 font-mono">Optional</TypographySpan>
               </div>
               <Input
                 type="email"
@@ -222,7 +223,7 @@ export function DeliveriesHeader({
                 <Label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
                   Phone / WhatsApp
                 </Label>
-                <span className="text-[10px] text-muted-foreground/60 font-mono">Optional</span>
+                <TypographySpan className="text-[10px] text-muted-foreground/60 font-mono">Optional</TypographySpan>
               </div>
               <Input
                 type="tel"
@@ -253,9 +254,9 @@ export function DeliveriesHeader({
 
         <div className="flex items-center gap-3">
           {!isUnlimited && (
-            <span className="text-xs font-mono text-muted-foreground hidden sm:inline px-3 py-1.5 rounded-full border border-border bg-card/60">
+            <TypographySpan className="text-xs font-mono text-muted-foreground hidden sm:inline px-3 py-1.5 rounded-full border border-border bg-card/60">
               {activeCount} / {clientLinksLimit} active links
-            </span>
+            </TypographySpan>
           )}
           <Button
             onClick={() => setShowCreateModal(true)}

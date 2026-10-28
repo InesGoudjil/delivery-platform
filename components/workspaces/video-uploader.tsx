@@ -11,7 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
+import { TypographyH3, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import {
   requestAssetUploadAction,
   confirmUploadCompletedAction,
@@ -377,7 +377,7 @@ export function VideoUploader({
         <div className="p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 space-y-3 animate-in fade-in">
           <div className="flex items-center gap-2 font-bold text-sm">
             <CheckCircle2 className="size-5" />
-            <span>Master Asset Uploaded Successfully!</span>
+            <TypographySpan>Master Asset Uploaded Successfully!</TypographySpan>
           </div>
           <TypographyMuted className="text-xs text-muted-foreground">
             {assetType === "video"
@@ -509,8 +509,8 @@ export function VideoUploader({
           {uploading && (
             <div className="space-y-2 pt-2 animate-in fade-in">
               <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-muted-foreground">{statusText}</span>
-                <span className="font-bold text-primary">{progress}%</span>
+                <TypographySpan className="text-muted-foreground">{statusText}</TypographySpan>
+                <TypographySpan className="font-bold text-primary">{progress}%</TypographySpan>
               </div>
               <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden border border-border">
                 <div

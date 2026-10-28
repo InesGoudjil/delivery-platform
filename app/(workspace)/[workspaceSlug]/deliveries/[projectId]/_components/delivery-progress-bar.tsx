@@ -3,6 +3,7 @@
 import { Check, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardAction } from "@/components/ui/card";
+import { TypographySpan } from "@/components/ui/typography";
 
 interface DeliveryProgressBarProps {
   approvedCount: number;
@@ -28,10 +29,10 @@ export function DeliveryProgressBar({
       {/* Progress Info & Bar */}
       <CardContent className="p-0 flex-1 w-full space-y-2">
         <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
-          <span>
+          <TypographySpan variant="muted" className="font-mono text-xs">
             {approvedCount} of {totalAssetsCount} approved by client
-          </span>
-          <span className="font-semibold text-foreground">{percentage}%</span>
+          </TypographySpan>
+          <TypographySpan variant="small" className="font-semibold text-foreground font-mono">{percentage}%</TypographySpan>
         </div>
         <div className="w-full h-2 bg-muted/60 rounded-full overflow-hidden border border-border/20">
           <div
@@ -50,7 +51,7 @@ export function DeliveryProgressBar({
             className="rounded-full border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-extrabold text-xs px-4 py-2.5 shadow-sm cursor-pointer flex items-center gap-1.5 w-full sm:w-auto justify-center"
           >
             <Check className="size-4" />
-            <span>APPROVE CUT</span>
+            <TypographySpan variant="kicker" className="font-extrabold text-xs text-emerald-400">APPROVE CUT</TypographySpan>
           </Button>
         ) : (
           onUnapproveCut && (
@@ -62,7 +63,7 @@ export function DeliveryProgressBar({
             >
               <Check className="size-4 group-hover:hidden" />
               <RotateCcw className="size-3.5 hidden group-hover:block" />
-              <span>APPROVED · UNDO</span>
+              <TypographySpan variant="kicker" className="font-extrabold text-xs">APPROVED · UNDO</TypographySpan>
             </Button>
           )
         )}
@@ -73,7 +74,7 @@ export function DeliveryProgressBar({
           className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs px-5 py-2.5 shadow-sm shrink-0 cursor-pointer flex items-center gap-1.5 w-full sm:w-auto justify-center"
         >
           <Plus className="size-4" />
-          <span>UPLOAD ASSET</span>
+          <TypographySpan variant="kicker" className="font-extrabold text-xs text-primary-foreground">UPLOAD ASSET</TypographySpan>
         </Button>
       </CardAction>
     </Card>

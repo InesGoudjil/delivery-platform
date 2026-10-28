@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { UniversalDialog } from "@/components/ui/universal-dialog";
 import { Button } from "@/components/ui/button";
-import { TypographyH4, TypographyMuted, TypographySmall } from "@/components/ui/typography";
+import { TypographyH4, TypographyMuted, TypographySmall, TypographySpan } from "@/components/ui/typography";
 import { toast } from "sonner";
 import {
   listTrashAssetsAction,
@@ -174,9 +174,9 @@ export function TrashBinDialog({
         icon={<Trash2 className="size-5" />}
         title="Workspace Trash"
         badge={
-          <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-white/10 text-zinc-300">
+          <TypographySpan className="text-xs font-mono px-2 py-0.5 rounded-full bg-white/10 text-zinc-300">
             {assets.length} {assets.length === 1 ? "item" : "items"}
-          </span>
+          </TypographySpan>
         }
         description="Items in trash are automatically purged after 30 days."
         headerExtra={
@@ -189,16 +189,16 @@ export function TrashBinDialog({
               className="rounded-full border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-xs font-semibold px-3 py-1.5 flex items-center gap-1.5 cursor-pointer transition-colors"
             >
               <Trash2 className="size-3.5" />
-              <span>Empty Trash</span>
+              <TypographySpan>Empty Trash</TypographySpan>
             </Button>
           ) : null
         }
         footer={
           <div className="w-full flex items-center justify-between text-[11px] text-zinc-400">
-            <span className="flex items-center gap-1.5">
+            <TypographySpan className="flex items-center gap-1.5">
               <AlertTriangle className="size-3.5 text-amber-400 shrink-0" />
               Restoring an asset returns it directly to its delivery room or portfolio.
-            </span>
+            </TypographySpan>
             <Button
               type="button"
               variant="outline"
@@ -215,7 +215,7 @@ export function TrashBinDialog({
             {isLoading ? (
               <div className="flex flex-col items-center justify-center h-48 gap-3 text-zinc-400">
                 <Loader2 className="size-6 animate-spin text-primary" />
-                <span className="text-xs font-mono">Loading trashed items...</span>
+                <TypographySpan className="text-xs font-mono">Loading trashed items...</TypographySpan>
               </div>
             ) : assets.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-52 gap-3 text-center px-4">
@@ -266,30 +266,30 @@ export function TrashBinDialog({
                           <TypographyH4 className="text-sm font-semibold text-white truncate max-w-[220px] sm:max-w-xs font-heading">
                             {asset.title}
                           </TypographyH4>
-                          <span
+                          <TypographySpan
                             className={`text-[10px] font-mono px-2 py-0.5 rounded-full border shrink-0 ${
                               asset.daysRemaining <= 5
                                 ? "bg-red-500/10 border-red-500/30 text-red-400"
                                 : "bg-amber-500/10 border-amber-500/30 text-amber-300"
                             }`}
                           >
-                            <span className="inline-flex items-center gap-1">
+                            <TypographySpan className="inline-flex items-center gap-1">
                               <Clock className="size-2.5" />
                               {asset.daysRemaining}d left
-                            </span>
-                          </span>
+                            </TypographySpan>
+                          </TypographySpan>
                         </div>
 
                         <div className="flex items-center gap-3 mt-1 text-[11px] text-zinc-400 font-mono">
-                          <span>{isFilm ? "Film Cut" : "Photo Still"}</span>
+                          <TypographySpan>{isFilm ? "Film Cut" : "Photo Still"}</TypographySpan>
                           {asset.fileSizeBytes > 0 && (
                             <>
-                              <span>•</span>
-                              <span>{formatBytes(asset.fileSizeBytes)}</span>
+                              <TypographySpan>•</TypographySpan>
+                              <TypographySpan>{formatBytes(asset.fileSizeBytes)}</TypographySpan>
                             </>
                           )}
-                          <span>•</span>
-                          <span>Trashed {new Date(asset.deletedAt).toLocaleDateString()}</span>
+                          <TypographySpan>•</TypographySpan>
+                          <TypographySpan>Trashed {new Date(asset.deletedAt).toLocaleDateString()}</TypographySpan>
                         </div>
                       </div>
                     </div>
@@ -310,7 +310,7 @@ export function TrashBinDialog({
                         ) : (
                           <RotateCcw className="size-3.5 text-primary" />
                         )}
-                        <span className="hidden sm:inline">Restore</span>
+                        <TypographySpan className="hidden sm:inline">Restore</TypographySpan>
                       </Button>
 
                       <Button
@@ -322,7 +322,7 @@ export function TrashBinDialog({
                         title="Delete permanently"
                       >
                         <Trash2 className="size-3.5" />
-                        <span className="hidden sm:inline">Purge</span>
+                        <TypographySpan className="hidden sm:inline">Purge</TypographySpan>
                       </Button>
                     </div>
                   </div>

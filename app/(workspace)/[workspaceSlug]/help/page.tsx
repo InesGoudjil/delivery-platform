@@ -19,9 +19,11 @@ import {
   TypographyH1,
   TypographyH2,
   TypographyH3,
+  TypographyH5,
   TypographyLead,
   TypographyMuted,
   TypographyKicker,
+  TypographySpan,
 } from "@/components/ui/typography";
 
 export default async function HelpPage({
@@ -152,16 +154,16 @@ export default async function HelpPage({
                 className="flex items-center justify-between p-4 px-5 hover:bg-muted/20 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-lg bg-muted text-foreground border border-border shadow-xs">
+                  <TypographySpan className="text-xs font-mono font-semibold px-2.5 py-1 rounded-lg bg-muted text-foreground border border-border shadow-xs">
                     {sc.key}
-                  </span>
-                  <span className="text-sm text-card-foreground font-medium">
+                  </TypographySpan>
+                  <TypographySpan className="text-sm text-card-foreground font-medium">
                     {sc.action}
-                  </span>
+                  </TypographySpan>
                 </div>
-                <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+                <TypographySpan className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
                   {sc.category}
-                </span>
+                </TypographySpan>
               </div>
             ))}
           </div>
@@ -183,10 +185,10 @@ export default async function HelpPage({
               key={idx}
               className="p-5 rounded-2xl bg-card border border-border space-y-2"
             >
-              <div className="text-sm font-bold font-heading text-foreground flex items-center gap-2">
+              <TypographyH5 as="div" className="text-sm font-bold text-foreground flex items-center gap-2">
                 <CheckCircle2 className="size-4 text-[#86b98f] shrink-0" />
-                <span>{faq.question}</span>
-              </div>
+                <TypographySpan>{faq.question}</TypographySpan>
+              </TypographyH5>
               <TypographyMuted className="text-xs text-muted-foreground leading-relaxed pl-6">
                 {faq.answer}
               </TypographyMuted>

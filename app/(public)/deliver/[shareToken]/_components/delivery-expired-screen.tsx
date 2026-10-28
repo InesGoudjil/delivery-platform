@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Clock, ShieldAlert, ArrowRight, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TypographySpan } from "@/components/ui/typography";
 
 interface DeliveryExpiredScreenProps {
   title: string;
@@ -60,16 +61,16 @@ export function DeliveryExpiredScreen({
               {workspace.brandName.slice(0, 1).toUpperCase()}
             </div>
           )}
-          <span className="text-xs font-mono tracking-widest uppercase font-semibold text-white/90">
+          <TypographySpan className="text-xs font-mono tracking-widest uppercase font-semibold text-white/90">
             {workspace.brandName}
-          </span>
+          </TypographySpan>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
+          <TypographySpan className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
             <Clock className="size-3" />
             Expired Link
-          </span>
+          </TypographySpan>
         </div>
       </header>
 
@@ -81,9 +82,9 @@ export function DeliveryExpiredScreen({
           </div>
 
           <div className="space-y-2">
-            <span className="text-[10px] font-mono text-primary uppercase tracking-widest font-semibold block">
+            <TypographySpan className="text-[10px] font-mono text-primary uppercase tracking-widest font-semibold block">
               CLIENT REVIEW ROOM
-            </span>
+            </TypographySpan>
             <h1 className="text-2xl font-bold font-heading text-white tracking-tight">
               Review Link Expired
             </h1>
@@ -95,10 +96,10 @@ export function DeliveryExpiredScreen({
           <div className="p-4 rounded-2xl bg-black/40 border border-white/5 text-left space-y-2">
             <div className="flex items-start gap-2.5 text-xs text-neutral-400">
               <ShieldAlert className="size-4 text-amber-400 shrink-0 mt-0.5" />
-              <span>
+              <TypographySpan>
                 Access to this delivery cut ended on{" "}
                 <strong className="text-white">{formattedDate}</strong>. Client review links are set with time-limited lifecycles to protect confidential unreleased media.
-              </span>
+              </TypographySpan>
             </div>
           </div>
 

@@ -21,6 +21,7 @@ import {
   TypographyMuted,
   TypographyKicker,
   TypographySmall,
+  TypographySpan,
 } from "@/components/ui/typography";
 
 interface WhatsAppLog {
@@ -208,11 +209,11 @@ export default function NotificationsPage() {
                   <div className="text-[11px] font-mono text-muted-foreground">{log.recipient}</div>
                 </div>
                 <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
-                  <span>{log.sentAt}</span>
-                  <span className="flex items-center gap-1 text-emerald-400">
+                  <TypographySpan>{log.sentAt}</TypographySpan>
+                  <TypographySpan className="flex items-center gap-1 text-emerald-400">
                     <CheckCheck className="size-3.5" />
                     {log.status === "read" ? "Read" : "Delivered"}
-                  </span>
+                  </TypographySpan>
                 </div>
               </div>
             ))}

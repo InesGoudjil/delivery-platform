@@ -40,6 +40,13 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { signOutAction } from "@/app/actions/auth"
+import {
+  Typography,
+  TypographySpan,
+  TypographySmall,
+  TypographyMuted,
+  TypographyKicker,
+} from "@/components/ui/typography"
 
 export interface NavUserProps {
   user: {
@@ -94,12 +101,12 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
               </Avatar>
 
               <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-bold text-[#f6f3ec]">
+                <TypographySpan variant="small" className="truncate font-bold text-[#f6f3ec]">
                   {user.name}
-                </span>
-                <span className="truncate text-xs text-[#71717a] font-mono">
+                </TypographySpan>
+                <TypographySpan variant="muted" className="truncate text-xs text-[#71717a] font-mono">
                   {user.email}
-                </span>
+                </TypographySpan>
               </div>
 
               <ChevronsUpDown className="ml-auto size-4 text-[#71717a] group-data-[collapsible=icon]:hidden" />
@@ -122,16 +129,19 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col flex-1 truncate leading-tight">
-                  <span className="font-bold text-sm text-[#f6f3ec] truncate">
+                  <TypographySpan variant="small" className="font-bold text-sm text-[#f6f3ec] truncate">
                     {user.name}
-                  </span>
-                  <span className="text-xs text-[#9a9a9f] font-mono truncate">
+                  </TypographySpan>
+                  <TypographySpan variant="muted" className="text-xs text-[#9a9a9f] font-mono truncate">
                     {user.email}
-                  </span>
+                  </TypographySpan>
                   <div className="mt-1">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-primary/15 text-primary border border-primary/30">
+                    <TypographySpan
+                      variant="kicker"
+                      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-primary/15 text-primary border border-primary/30 normal-case tracking-normal"
+                    >
                       {planPill}
-                    </span>
+                    </TypographySpan>
                   </div>
                 </div>
               </div>
@@ -147,7 +157,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#f6f3ec] hover:bg-white/10 hover:text-white cursor-pointer transition-colors"
                 >
                   <Pencil className="size-4 text-primary" />
-                  <span>Profile &amp; Bio</span>
+                  <TypographySpan variant="small" className="text-xs font-medium text-[#f6f3ec]">Profile &amp; Bio</TypographySpan>
                 </Link>
               </DropdownMenuItem>
 
@@ -157,7 +167,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#f6f3ec] hover:bg-white/10 hover:text-white cursor-pointer transition-colors"
                 >
                   <Palette className="size-4 text-[#fb923c]" />
-                  <span>Brand &amp; Logo</span>
+                  <TypographySpan variant="small" className="text-xs font-medium text-[#f6f3ec]">Brand &amp; Logo</TypographySpan>
                 </Link>
               </DropdownMenuItem>
 
@@ -167,7 +177,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#f6f3ec] hover:bg-white/10 hover:text-white cursor-pointer transition-colors"
                 >
                   <Users className="size-4 text-[#38bdf8]" />
-                  <span>Team Collaborators</span>
+                  <TypographySpan variant="small" className="text-xs font-medium text-[#f6f3ec]">Team Collaborators</TypographySpan>
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -182,7 +192,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#f6f3ec] hover:bg-white/10 hover:text-white cursor-pointer transition-colors"
                 >
                   <Star className="size-4 text-[#fbbf24]" />
-                  <span>Subscription</span>
+                  <TypographySpan variant="small" className="text-xs font-medium text-[#f6f3ec]">Subscription</TypographySpan>
                 </Link>
               </DropdownMenuItem>
 
@@ -192,7 +202,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#f6f3ec] hover:bg-white/10 hover:text-white cursor-pointer transition-colors"
                 >
                   <Download className="size-4 text-[#86b98f]" />
-                  <span>Billing &amp; Invoices</span>
+                  <TypographySpan variant="small" className="text-xs font-medium text-[#f6f3ec]">Billing &amp; Invoices</TypographySpan>
                 </Link>
               </DropdownMenuItem>
 
@@ -202,7 +212,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#f6f3ec] hover:bg-white/10 hover:text-white cursor-pointer transition-colors"
                 >
                   <Lock className="size-4 text-[#60a5fa]" />
-                  <span>Security &amp; Passcodes</span>
+                  <TypographySpan variant="small" className="text-xs font-medium text-[#f6f3ec]">Security &amp; Passcodes</TypographySpan>
                 </Link>
               </DropdownMenuItem>
 
@@ -212,7 +222,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#f6f3ec] hover:bg-white/10 hover:text-white cursor-pointer transition-colors"
                 >
                   <Bell className="size-4 text-[#c084fc]" />
-                  <span>WhatsApp &amp; Alerts</span>
+                  <TypographySpan variant="small" className="text-xs font-medium text-[#f6f3ec]">WhatsApp &amp; Alerts</TypographySpan>
                 </Link>
               </DropdownMenuItem>
 
@@ -222,7 +232,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#f6f3ec] hover:bg-white/10 hover:text-white cursor-pointer transition-colors"
                 >
                   <HardDrive className="size-4 text-[#94a3b8]" />
-                  <span>Storage &amp; Usage</span>
+                  <TypographySpan variant="small" className="text-xs font-medium text-[#f6f3ec]">Storage &amp; Usage</TypographySpan>
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -237,7 +247,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#f6f3ec] hover:bg-white/10 hover:text-white cursor-pointer transition-colors"
                 >
                   <BookOpen className="size-4 text-[#38bdf8]" />
-                  <span>Studio Documentation</span>
+                  <TypographySpan variant="small" className="text-xs font-medium text-[#f6f3ec]">Studio Documentation</TypographySpan>
                 </Link>
               </DropdownMenuItem>
 
@@ -247,7 +257,7 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                   className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#f6f3ec] hover:bg-white/10 hover:text-white cursor-pointer transition-colors"
                 >
                   <MessageCircle className="size-4 text-[#a78bfa]" />
-                  <span>Help &amp; Shortcuts</span>
+                  <TypographySpan variant="small" className="text-xs font-medium text-[#f6f3ec]">Help &amp; Shortcuts</TypographySpan>
                 </Link>
               </DropdownMenuItem>
 
@@ -260,9 +270,9 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
                 >
                   <div className="flex items-center gap-2.5">
                     <ExternalLink className="size-4 text-primary" />
-                    <span>View Public Portfolio</span>
+                    <TypographySpan variant="small" className="text-xs font-medium text-[#f6f3ec]">View Public Portfolio</TypographySpan>
                   </div>
-                  <span className="text-[10px] font-mono text-[#71717a]">Live</span>
+                  <TypographySpan variant="muted" className="text-[10px] font-mono text-[#71717a]">Live</TypographySpan>
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -276,7 +286,9 @@ export function NavUser({ user, onSignOut }: NavUserProps) {
               className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-red-400 hover:bg-red-500/15 hover:text-red-300 cursor-pointer transition-colors"
             >
               <ArrowRight className="size-4 text-red-400" />
-              <span>{isPending ? "Logging out..." : "Log out"}</span>
+              <TypographySpan variant="small" className="text-xs font-semibold text-red-400">
+                {isPending ? "Logging out..." : "Log out"}
+              </TypographySpan>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

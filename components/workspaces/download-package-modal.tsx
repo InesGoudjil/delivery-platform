@@ -24,6 +24,7 @@ import {
   TypographyH5,
   TypographyMuted,
   TypographySmall,
+  TypographySpan,
 } from "@/components/ui/typography";
 import {
   formatBytes,
@@ -396,19 +397,19 @@ export function DownloadPackageModal({
             {validItems.length === 1 ? "Deliverable" : "Deliverables"}
           </Badge>
           {totalSizeBytes > 0 && (
-            <span className="text-[11px] font-mono text-[#aeaeb4]">
+            <TypographySpan className="text-[11px] font-mono text-[#aeaeb4]">
               {formatBytes(totalSizeBytes)} total
-            </span>
+            </TypographySpan>
           )}
         </div>
       }
       bodyClassName="space-y-5"
       footer={
         <div className="w-full flex flex-col sm:flex-row items-center justify-between text-[11px] text-[#71717a] font-mono gap-1">
-          <span>
+          <TypographySpan>
             💡 Direct stream from cloud storage — zero browser memory limit
-          </span>
-          <span>Compatible with Free Download Manager, IDM &amp; browser shelf</span>
+          </TypographySpan>
+          <TypographySpan>Compatible with Free Download Manager, IDM &amp; browser shelf</TypographySpan>
         </div>
       }
     >
@@ -465,12 +466,12 @@ export function DownloadPackageModal({
                   {hasCopiedLinks ? (
                     <>
                       <Check className="size-3 text-emerald-400 mr-1.5" />
-                      <span>Copied</span>
+                      <TypographySpan>Copied</TypographySpan>
                     </>
                   ) : (
                     <>
                       <Copy className="size-3 mr-1.5" />
-                      <span>Copy Links</span>
+                      <TypographySpan>Copy Links</TypographySpan>
                     </>
                   )}
                 </Button>
@@ -486,16 +487,16 @@ export function DownloadPackageModal({
                   {isQueueRunning ? (
                     <>
                       <Loader2 className="size-3.5 animate-spin" />
-                      <span>Queueing...</span>
+                      <TypographySpan>Queueing...</TypographySpan>
                     </>
                   ) : (
                     <>
                       <Download className="size-3.5" />
-                      <span>
+                      <TypographySpan>
                         {selectedDownloadableItems.length === validItems.length
                           ? `Download All (${selectedDownloadableItems.length})`
                           : `Download Selected (${selectedDownloadableItems.length})`}
-                      </span>
+                      </TypographySpan>
                     </>
                   )}
                 </Button>
@@ -506,16 +507,16 @@ export function DownloadPackageModal({
             {isQueueRunning && queueProgress && (
               <div className="space-y-1.5 pt-2 border-t border-white/10">
                 <div className="flex items-center justify-between text-[11px] font-mono text-[#aeaeb4]">
-                  <span>
+                  <TypographySpan>
                     Dispatching {queueProgress.current} of {queueProgress.total}:{" "}
                     <strong className="text-white">{queueProgress.title}</strong>
-                  </span>
-                  <span>
+                  </TypographySpan>
+                  <TypographySpan>
                     {Math.round(
                       (queueProgress.current / queueProgress.total) * 100
                     )}
                     %
-                  </span>
+                  </TypographySpan>
                 </div>
                 <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
                   <div
@@ -556,10 +557,10 @@ export function DownloadPackageModal({
 
             <div className="flex items-center gap-3">
               {isLoadingManifest && (
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-primary">
+                <TypographySpan className="inline-flex items-center gap-1.5 text-[11px] font-mono text-primary">
                   <Loader2 className="size-3 animate-spin" />
                   Syncing all deliverables...
-                </span>
+                </TypographySpan>
               )}
               {downloadableFilteredItems.length > 1 && (
                 <Button
@@ -574,7 +575,7 @@ export function DownloadPackageModal({
                   ) : (
                     <Square className="size-3.5" />
                   )}
-                  <span>{allFilteredSelected ? "Deselect All" : "Select All"}</span>
+                  <TypographySpan>{allFilteredSelected ? "Deselect All" : "Select All"}</TypographySpan>
                 </Button>
               )}
             </div>
@@ -675,10 +676,10 @@ export function DownloadPackageModal({
                         </div>
 
                         <div className="flex items-center gap-2 text-[10px] sm:text-[11px] font-mono text-[#aeaeb4] truncate">
-                          <span>{item.aspectRatio || "16:9"}</span>
-                          {item.duration && <span>· {item.duration}</span>}
+                          <TypographySpan>{item.aspectRatio || "16:9"}</TypographySpan>
+                          {item.duration && <TypographySpan>· {item.duration}</TypographySpan>}
                           {item.fileSizeBytes && item.fileSizeBytes > 0 ? (
-                            <span>· {formatBytes(item.fileSizeBytes)}</span>
+                            <TypographySpan>· {formatBytes(item.fileSizeBytes)}</TypographySpan>
                           ) : null}
                         </div>
                       </div>
@@ -749,17 +750,17 @@ export function DownloadPackageModal({
                         {isDownloaded ? (
                           <>
                             <Check className="size-3.5 text-emerald-400" />
-                            <span className="hidden sm:inline">Downloaded</span>
+                            <TypographySpan className="hidden sm:inline">Downloaded</TypographySpan>
                           </>
                         ) : !canDownloadItem ? (
                           <>
                             <Lock className="size-3.5" />
-                            <span>Locked</span>
+                            <TypographySpan>Locked</TypographySpan>
                           </>
                         ) : (
                           <>
                             <Download className="size-3.5" />
-                            <span>Download</span>
+                            <TypographySpan>Download</TypographySpan>
                           </>
                         )}
                       </Button>

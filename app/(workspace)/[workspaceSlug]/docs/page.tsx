@@ -21,6 +21,7 @@ import {
   TypographyLead,
   TypographyMuted,
   TypographyKicker,
+  TypographySpan,
 } from "@/components/ui/typography";
 
 export default async function DocsPage({
@@ -146,9 +147,9 @@ export default async function DocsPage({
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground">
+                    <TypographySpan className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground">
                       Step {phase.step}
-                    </span>
+                    </TypographySpan>
                     <TypographyH3 className="text-base font-bold font-heading text-card-foreground">
                       {phase.title}
                     </TypographyH3>

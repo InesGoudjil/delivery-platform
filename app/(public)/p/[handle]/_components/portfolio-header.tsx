@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { FilmmakerProfile } from "@/lib/portfolio-data";
+import { TypographySpan } from "@/components/ui/typography";
 import { ShareButton, ContactButton } from "./portfolio-buttons";
 
 interface PortfolioHeaderProps {
@@ -35,9 +36,9 @@ export function PortfolioHeader({ profile }: PortfolioHeaderProps) {
                 </div>
               )}
               <div className="flex items-center gap-1.5">
-                <span className="font-heading font-extrabold text-xl sm:text-2xl tracking-tight text-white group-hover:text-zinc-200 transition-colors">
+                <TypographySpan className="font-heading font-extrabold text-xl sm:text-2xl tracking-tight text-white group-hover:text-zinc-200 transition-colors">
                   {profile.name}
-                </span>
+                </TypographySpan>
                 <span className="inline-block size-2 rounded-full bg-primary" />
               </div>
             </div>

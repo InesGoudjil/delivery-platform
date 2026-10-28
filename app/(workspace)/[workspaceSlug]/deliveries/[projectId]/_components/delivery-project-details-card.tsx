@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
+import { TypographyH3, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import { toast } from "sonner";
 
 interface DeliveryProjectDetailsCardProps {
@@ -113,14 +113,14 @@ export function DeliveryProjectDetailsCard({
 
         {/* Client Information Section */}
         <div className="space-y-3 pt-1">
-          <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+          <TypographySpan className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
             CLIENT CONTACT INFORMATION
-          </span>
+          </TypographySpan>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Field orientation="vertical">
               <FieldLabel htmlFor="project-client" className="text-muted-foreground font-mono text-xs flex items-center gap-1.5">
                 <User className="size-3 text-muted-foreground/70" />
-                <span>Client / Brand</span>
+                <TypographySpan>Client / Brand</TypographySpan>
               </FieldLabel>
               <Input
                 id="project-client"
@@ -134,11 +134,11 @@ export function DeliveryProjectDetailsCard({
 
             <Field orientation="vertical">
               <FieldLabel htmlFor="project-client-email" className="text-muted-foreground font-mono text-xs flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
+                <TypographySpan className="flex items-center gap-1.5">
                   <Mail className="size-3 text-muted-foreground/70" />
-                  <span>Email</span>
-                </span>
-                <span className="text-[10px] text-muted-foreground/60">Optional</span>
+                  <TypographySpan>Email</TypographySpan>
+                </TypographySpan>
+                <TypographySpan className="text-[10px] text-muted-foreground/60">Optional</TypographySpan>
               </FieldLabel>
               <Input
                 id="project-client-email"
@@ -152,11 +152,11 @@ export function DeliveryProjectDetailsCard({
 
             <Field orientation="vertical">
               <FieldLabel htmlFor="project-client-phone" className="text-muted-foreground font-mono text-xs flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
+                <TypographySpan className="flex items-center gap-1.5">
                   <Phone className="size-3 text-muted-foreground/70" />
-                  <span>Phone / WhatsApp</span>
-                </span>
-                <span className="text-[10px] text-muted-foreground/60">Optional</span>
+                  <TypographySpan>Phone / WhatsApp</TypographySpan>
+                </TypographySpan>
+                <TypographySpan className="text-[10px] text-muted-foreground/60">Optional</TypographySpan>
               </FieldLabel>
               <Input
                 id="project-client-phone"

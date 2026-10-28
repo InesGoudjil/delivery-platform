@@ -50,6 +50,7 @@ import {
 import { addFeedbackAction, addFeedbackReplyAction, toggleFeedbackResolvedAction } from "@/app/actions/feedback";
 import { AmbientBackground } from "@/components/ui/ambient-background";
 import { AccentThemeProvider } from "@/components/theme/accent-theme-provider";
+import { TypographySpan } from "@/components/ui/typography";
 import {
   UniversalDialogRoot,
   UniversalDialogContent,
@@ -829,7 +830,7 @@ export function DeliveryRoomClient({
                 {passcodeError && (
                   <div className="flex items-center justify-center gap-1.5 text-xs text-red-400 mt-2 font-medium">
                     <AlertCircle className="size-3.5" />
-                    <span>{passcodeError}</span>
+                    <TypographySpan>{passcodeError}</TypographySpan>
                   </div>
                 )}
               </div>
@@ -871,10 +872,10 @@ export function DeliveryRoomClient({
           <div className="bg-amber-500/10 border border-amber-500/20 px-4 sm:px-6 py-3 rounded-2xl text-xs text-amber-200 flex flex-wrap items-center justify-between gap-3 font-mono">
             <div className="flex items-center gap-2">
               <Clock className="size-4 text-amber-400 shrink-0" />
-              <span>
+              <TypographySpan>
                 <strong>CREATOR PREVIEW MODE:</strong> This public link expired on{" "}
                 {new Date(delivery.expiresAt!).toLocaleDateString()}. Clients are blocked from viewing this review room.
-              </span>
+              </TypographySpan>
             </div>
             <Link
               href={`/${workspace.slug}/deliveries/${delivery.id}`}
@@ -896,10 +897,10 @@ export function DeliveryRoomClient({
                   className="h-7 w-auto object-contain"
                 />
               ) : (
-                <span className="font-heading font-extrabold text-lg sm:text-xl text-[#f6f3ec] tracking-tight">
+                <TypographySpan className="font-heading font-extrabold text-lg sm:text-xl text-[#f6f3ec] tracking-tight">
                   {workspace.brandName}
-                  <span className="text-primary">.</span>
-                </span>
+                  <TypographySpan className="text-primary">.</TypographySpan>
+                </TypographySpan>
               )}
             </div>
 
@@ -912,7 +913,7 @@ export function DeliveryRoomClient({
               }`}
             >
               <Lock className="size-3" />
-              <span>Private · {expiryLabel}</span>
+              <TypographySpan>Private · {expiryLabel}</TypographySpan>
             </Badge>
           </header>
 
@@ -939,39 +940,39 @@ export function DeliveryRoomClient({
               {/* 4 Metadata statistics */}
               <div className="flex flex-wrap items-center gap-8 sm:gap-14 mt-6 pt-5 border-t border-white/15">
                 <div className="flex flex-col gap-1">
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-[#aeaeb4]">
+                  <TypographySpan className="font-mono text-[10px] uppercase tracking-widest text-[#aeaeb4]">
                     DELIVERED
-                  </span>
-                  <span className="font-heading font-bold text-sm sm:text-base text-[#f6f3ec]">
+                  </TypographySpan>
+                  <TypographySpan className="font-heading font-bold text-sm sm:text-base text-[#f6f3ec]">
                     {formattedDate}
-                  </span>
+                  </TypographySpan>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-[#aeaeb4]">
+                  <TypographySpan className="font-mono text-[10px] uppercase tracking-widest text-[#aeaeb4]">
                     LOCATION
-                  </span>
-                  <span className="font-heading font-bold text-sm sm:text-base text-[#f6f3ec]">
+                  </TypographySpan>
+                  <TypographySpan className="font-heading font-bold text-sm sm:text-base text-[#f6f3ec]">
                     {displayLocation}
-                  </span>
+                  </TypographySpan>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-[#aeaeb4]">
+                  <TypographySpan className="font-mono text-[10px] uppercase tracking-widest text-[#aeaeb4]">
                     TOTAL SIZE
-                  </span>
-                  <span className="font-heading font-bold text-sm sm:text-base text-primary">
+                  </TypographySpan>
+                  <TypographySpan className="font-heading font-bold text-sm sm:text-base text-primary">
                     {formattedTotalSize}
-                  </span>
+                  </TypographySpan>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-[#aeaeb4]">
+                  <TypographySpan className="font-mono text-[10px] uppercase tracking-widest text-[#aeaeb4]">
                     ASSETS
-                  </span>
-                  <span className="font-heading font-bold text-sm sm:text-base text-[#f6f3ec]">
+                  </TypographySpan>
+                  <TypographySpan className="font-heading font-bold text-sm sm:text-base text-[#f6f3ec]">
                     {displayAssetCount}
-                  </span>
+                  </TypographySpan>
                 </div>
               </div>
 
@@ -986,13 +987,13 @@ export function DeliveryRoomClient({
                   ) : (
                     <Lock className="size-4" />
                   )}
-                  <span>
+                  <TypographySpan>
                     {isGlobalDownloadUnlocked
                       ? "DOWNLOAD ALL"
                       : approvedCount > 0
                       ? `DOWNLOAD APPROVED (${approvedCount})`
                       : "DOWNLOADS LOCKED"}
-                  </span>
+                  </TypographySpan>
                 </Button>
               </div>
             </div>
@@ -1012,9 +1013,9 @@ export function DeliveryRoomClient({
                   }}
                 />
               </div>
-              <span className="text-xs sm:text-sm text-[#aeaeb4] font-sans whitespace-nowrap">
+              <TypographySpan className="text-xs sm:text-sm text-[#aeaeb4] font-sans whitespace-nowrap">
                 {approvedCount} of {assets.length} assets approved
-              </span>
+              </TypographySpan>
             </div>
 
             {/* Right: Actions */}
@@ -1025,9 +1026,9 @@ export function DeliveryRoomClient({
                 className="rounded-full bg-white/10 hover:bg-white/15 text-white border-white/15 font-bold text-xs tracking-wider uppercase px-5 py-2.5 transition-colors cursor-pointer h-auto gap-2"
               >
                 <MessageCircle className="size-4" />
-                <span>
+                <TypographySpan>
                   MESSAGE {workspace.brandName.split(" ")[0].toUpperCase()}
-                </span>
+                </TypographySpan>
               </Button>
 
               {allApproved ? (
@@ -1045,7 +1046,7 @@ export function DeliveryRoomClient({
                       <RotateCcw className="size-3.5 hidden group-hover:block" />
                     </>
                   )}
-                  <span>PROJECT APPROVED · UNDO</span>
+                  <TypographySpan>PROJECT APPROVED · UNDO</TypographySpan>
                 </Button>
               ) : (
                 <Button
@@ -1058,7 +1059,7 @@ export function DeliveryRoomClient({
                   ) : (
                     <Check className="size-4" />
                   )}
-                  <span>APPROVE ALL</span>
+                  <TypographySpan>APPROVE ALL</TypographySpan>
                 </Button>
               )}
             </div>
@@ -1304,9 +1305,9 @@ export function DeliveryRoomClient({
 
                           {showCardInfo && (
                             <div className="p-3.5 border-t border-white/10 flex items-center justify-between gap-2 bg-[#141416]">
-                              <span className="text-xs font-semibold text-white truncate">
+                              <TypographySpan className="text-xs font-semibold text-white truncate">
                                 {asset.title}
-                              </span>
+                              </TypographySpan>
                               <div className="flex items-center gap-1.5 shrink-0">
                                 <Button
                                   type="button"
@@ -1433,9 +1434,9 @@ export function DeliveryRoomClient({
                         ) : (
                           <Check className="size-3.5 stroke-[2.5]" />
                         )}
-                        <span>
+                        <TypographySpan>
                           {activeAsset.isApproved ? "Approved · Undo" : "Approve Cut"}
-                        </span>
+                        </TypographySpan>
                       </Button>
                     }
                   />
@@ -1458,7 +1459,7 @@ export function DeliveryRoomClient({
                         className="rounded-full border-white/20 text-white bg-white/10 hover:bg-white/20 text-xs font-bold px-3 py-1.5 cursor-pointer flex items-center gap-1.5 disabled:opacity-40"
                       >
                         <Download className="size-3.5 text-primary" />
-                        <span className="hidden sm:inline">Download Cut</span>
+                        <TypographySpan className="hidden sm:inline">Download Cut</TypographySpan>
                       </Button>
                     }
                   />
@@ -1552,9 +1553,9 @@ export function DeliveryRoomClient({
                   <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
                     <div className="flex items-center gap-2">
                       <Layers className="size-3.5 text-primary" />
-                      <span className="text-xs font-mono text-[#aeaeb4]">
+                      <TypographySpan className="text-xs font-mono text-[#aeaeb4]">
                         Version:
-                      </span>
+                      </TypographySpan>
                     </div>
                     <div className="flex gap-1.5">
                       {activeAsset.versions.map((v) => {
@@ -1572,9 +1573,9 @@ export function DeliveryRoomClient({
                                 : "bg-white/5 border-white/10 text-[#aeaeb4] hover:text-[#f6f3ec] hover:bg-white/10"
                             }`}
                           >
-                            <span>V{v.versionNumber}</span>
+                            <TypographySpan>V{v.versionNumber}</TypographySpan>
                             {v.isActiveVersion && (
-                              <span className="text-[9px] opacity-75">★</span>
+                              <TypographySpan className="text-[9px] opacity-75">★</TypographySpan>
                             )}
                           </Button>
                         );
@@ -1655,7 +1656,7 @@ export function DeliveryRoomClient({
                                         {c.authorName ? c.authorName.slice(0, 2).toUpperCase() : "U"}
                                       </AvatarFallback>
                                     </Avatar>
-                                    <span className="font-semibold text-white">{c.authorName}</span>
+                                    <TypographySpan className="font-semibold text-white">{c.authorName}</TypographySpan>
                                   </div>
                                   {hasTimestamp ? (
                                     <Badge variant="orange" className="text-[10px] font-mono font-bold py-0 h-4">
@@ -1718,9 +1719,9 @@ export function DeliveryRoomClient({
                                           </AvatarFallback>
                                         </Avatar>
                                         <div className="flex-1 min-w-0">
-                                          <span className="font-semibold text-white/90 text-[10px] block font-mono">
+                                          <TypographySpan className="font-semibold text-white/90 text-[10px] block font-mono">
                                             {r.authorName}
-                                          </span>
+                                          </TypographySpan>
                                           <p className="text-white/80 leading-snug">{r.commentText}</p>
                                         </div>
                                       </div>
@@ -1772,7 +1773,7 @@ export function DeliveryRoomClient({
                       >
                         <div className="flex items-center justify-between text-[10px] font-mono text-[#aeaeb4]">
                           <div className="flex items-center gap-1.5">
-                            <span>As:</span>
+                            <TypographySpan>As:</TypographySpan>
                             <Input
                               type="text"
                               value={commentAuthor}

@@ -5,6 +5,7 @@ import { Layers, Star, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { AssetVersionItem, FeedbackItem } from "./types";
+import { TypographySpan, TypographyKicker } from "@/components/ui/typography";
 
 export interface LightboxVersionBarProps {
   versions: AssetVersionItem[];
@@ -39,10 +40,13 @@ export function LightboxVersionBar({
     <div className="flex items-center justify-between gap-3 bg-[#18181d] px-3 py-2 rounded-2xl border border-white/10 flex-wrap">
       {/* Version Pills List */}
       <div className="flex items-center gap-2 flex-wrap min-w-0">
-        <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 shrink-0 select-none">
+        <TypographySpan
+          variant="kicker"
+          className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 shrink-0 select-none"
+        >
           <Layers className="size-3.5 text-primary" />
-          <span>Versions ({versions.length}):</span>
-        </span>
+          <TypographySpan>Versions ({versions.length}):</TypographySpan>
+        </TypographySpan>
 
         <div className="flex items-center gap-1.5 flex-wrap">
           {versions.map((ver) => {
@@ -65,17 +69,17 @@ export function LightboxVersionBar({
                       : "bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10"
                   }`}
                 >
-                  <span>V{ver.versionNumber}</span>
+                  <TypographySpan>V{ver.versionNumber}</TypographySpan>
                   {isClientActive && (
-                    <span
+                    <TypographySpan
                       className="text-[10px] text-amber-300 font-bold flex items-center gap-0.5"
                       title="Active Version for Clients"
                     >
-                      ★ <span className="hidden sm:inline text-[9px] uppercase">Active</span>
-                    </span>
+                      ★ <TypographySpan className="hidden sm:inline text-[9px] uppercase">Active</TypographySpan>
+                    </TypographySpan>
                   )}
                   {verFeedbackCount > 0 && (
-                    <span
+                    <TypographySpan
                       className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
                         isSelected
                           ? "bg-primary-foreground/20 text-primary-foreground"
@@ -83,7 +87,7 @@ export function LightboxVersionBar({
                       }`}
                     >
                       {verFeedbackCount}
-                    </span>
+                    </TypographySpan>
                   )}
                 </Button>
 
@@ -129,7 +133,7 @@ export function LightboxVersionBar({
           }`}
         >
           <Plus className="size-3" />
-          <span>{showUploadZone ? "Close Upload" : `Upload V${nextVersionNumber || versions.length + 1}`}</span>
+          <TypographySpan>{showUploadZone ? "Close Upload" : `Upload V${nextVersionNumber || versions.length + 1}`}</TypographySpan>
         </Button>
       )}
     </div>

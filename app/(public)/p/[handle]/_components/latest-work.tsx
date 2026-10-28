@@ -10,7 +10,7 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TiltCard } from "@/components/ui/motion";
-import { TypographyH2, TypographyH3, TypographyKicker, TypographyMuted } from "@/components/ui/typography";
+import { TypographyH2, TypographyH3, TypographyKicker, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 
 interface LatestWorkProps {
   projects: PortfolioProject[];
@@ -191,11 +191,11 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                   {isLoadingMore ? (
                     <div className="flex items-center gap-2.5">
                       <Loader2 className="size-4 animate-spin text-primary" />
-                      <span>Loading projects...</span>
+                      <TypographySpan>Loading projects...</TypographySpan>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <span>Load More Projects</span>
+                      <TypographySpan>Load More Projects</TypographySpan>
                       {projects.length - visibleProjects.length > 0 && (
                         <Badge
                           variant="secondary"
@@ -216,7 +216,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
             {projects.length <= visibleProjects.length && projects.length > PAGE_SIZE && (
               <div className="text-center pt-2 pb-2 text-[11px] font-mono text-zinc-500 flex items-center justify-center gap-2">
                 <CheckCircle2 className="size-3.5 text-emerald-400" />
-                <span>All {projects.length} projects displayed</span>
+                <TypographySpan>All {projects.length} projects displayed</TypographySpan>
               </div>
             )}
           </div>
@@ -268,7 +268,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                           <div className="absolute top-3 left-3 z-10">
                             <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[10px] font-mono font-bold text-white uppercase gap-1.5">
                               <Film className="size-3 text-primary" />
-                              <span>{film.resolution || "HD 60fps"}</span>
+                              <TypographySpan>{film.resolution || "HD 60fps"}</TypographySpan>
                             </Badge>
                           </div>
 
@@ -312,11 +312,11 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                   {isLoadingMore ? (
                     <div className="flex items-center gap-2.5">
                       <Loader2 className="size-4 animate-spin text-primary" />
-                      <span>Loading films...</span>
+                      <TypographySpan>Loading films...</TypographySpan>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <span>Load More Films</span>
+                      <TypographySpan>Load More Films</TypographySpan>
                       {films.length - visibleFilms.length > 0 && (
                         <Badge
                           variant="secondary"
@@ -337,7 +337,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
             {films.length <= visibleFilms.length && films.length > PAGE_SIZE && (
               <div className="text-center pt-2 pb-2 text-[11px] font-mono text-zinc-500 flex items-center justify-center gap-2">
                 <CheckCircle2 className="size-3.5 text-emerald-400" />
-                <span>All {films.length} films displayed</span>
+                <TypographySpan>All {films.length} films displayed</TypographySpan>
               </div>
             )}
           </div>
@@ -377,7 +377,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                       {/* Top-left STILL badge */}
                       <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/15 text-[10px] font-mono font-bold text-white uppercase tracking-wider">
                         <ImageIcon className="size-3 text-zinc-300" />
-                        <span>STILL</span>
+                        <TypographySpan>STILL</TypographySpan>
                       </div>
 
                       {/* Hover overlay with title */}
@@ -411,7 +411,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                         {/* Top-left STILL badge */}
                         <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/15 text-[10px] font-mono font-bold text-white uppercase tracking-wider">
                           <ImageIcon className="size-3 text-zinc-300" />
-                          <span>STILL</span>
+                          <TypographySpan>STILL</TypographySpan>
                         </div>
 
                         {/* Hover overlay with title */}
@@ -448,11 +448,11 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                   {isLoadingMore ? (
                     <div className="flex items-center gap-2.5">
                       <Loader2 className="size-4 animate-spin text-primary" />
-                      <span>Loading stills...</span>
+                      <TypographySpan>Loading stills...</TypographySpan>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <span>Load More Stills</span>
+                      <TypographySpan>Load More Stills</TypographySpan>
                       {stills.length - visibleStills.length > 0 && (
                         <Badge
                           variant="secondary"
@@ -473,7 +473,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
             {stills.length <= visibleStills.length && stills.length > PAGE_SIZE && (
               <div className="text-center pt-2 pb-2 text-[11px] font-mono text-zinc-500 flex items-center justify-center gap-2">
                 <CheckCircle2 className="size-3.5 text-emerald-400" />
-                <span>All {stills.length} stills displayed</span>
+                <TypographySpan>All {stills.length} stills displayed</TypographySpan>
               </div>
             )}
           </div>

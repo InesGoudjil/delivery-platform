@@ -15,6 +15,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import {
+  Typography,
+  TypographySpan,
+  TypographySmall,
+  TypographyMuted,
+  TypographyKicker,
+} from "@/components/ui/typography";
 
 export interface WorkspaceHeaderItem {
   id?: string;
@@ -68,9 +75,9 @@ export function WorkspaceHeaderSwitcher({
           <div className="flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-[9px] shrink-0">
             {initials}
           </div>
-          <span className="truncate text-xs font-bold max-w-[130px]">
+          <TypographySpan variant="small" className="truncate text-xs font-bold max-w-[130px]">
             {activeWorkspace.name}
-          </span>
+          </TypographySpan>
           <ChevronsUpDown className="size-3 text-muted-foreground shrink-0" />
         </Button>
       </DropdownMenuTrigger>
@@ -80,8 +87,10 @@ export function WorkspaceHeaderSwitcher({
         align="start"
         sideOffset={8}
       >
-        <DropdownMenuLabel className="text-[10px] font-mono text-muted-foreground px-2.5 py-1 uppercase tracking-wider">
-          Workspaces ({workspaces.length})
+        <DropdownMenuLabel className="px-2.5 py-1">
+          <TypographySpan variant="kicker" className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+            Workspaces ({workspaces.length})
+          </TypographySpan>
         </DropdownMenuLabel>
 
         <div className="flex flex-col gap-1 my-1">
@@ -109,18 +118,18 @@ export function WorkspaceHeaderSwitcher({
                 </div>
                 <div className="flex flex-col flex-1 truncate">
                   <div className="flex items-center gap-1.5 truncate">
-                    <span className="truncate text-xs font-semibold text-foreground">
+                    <TypographySpan variant="small" className="truncate text-xs font-semibold text-foreground">
                       {ws.name}
-                    </span>
+                    </TypographySpan>
                     {ws.accountType === "studio" && (
-                      <span className="text-[9px] bg-primary/20 text-primary font-bold px-1 rounded">
+                      <TypographySpan variant="kicker" className="text-[9px] bg-primary/20 text-primary font-bold px-1 rounded normal-case tracking-normal">
                         Studio
-                      </span>
+                      </TypographySpan>
                     )}
                   </div>
-                  <span className="truncate text-[10px] text-muted-foreground font-mono">
+                  <TypographySpan variant="muted" className="truncate text-[10px] font-mono">
                     {ws.plan || (ws.accountType === "studio" ? "Studio • 5 Seats" : "Personal")}
-                  </span>
+                  </TypographySpan>
                 </div>
                 {isCurrent && <Check className="size-3.5 text-primary shrink-0 ml-auto" />}
               </DropdownMenuItem>
@@ -138,7 +147,9 @@ export function WorkspaceHeaderSwitcher({
             <div className="flex size-6 items-center justify-center rounded-lg border border-primary/40 bg-primary/10 shrink-0">
               <Plus className="size-3.5 text-primary" />
             </div>
-            <span>Create New Workspace</span>
+            <TypographySpan variant="small" className="text-xs font-semibold">
+              Create New Workspace
+            </TypographySpan>
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>

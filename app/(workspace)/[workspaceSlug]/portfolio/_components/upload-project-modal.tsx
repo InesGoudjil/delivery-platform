@@ -19,7 +19,7 @@ import {
   Info,
 } from "lucide-react";
 import { UniversalDialog } from "@/components/ui/universal-dialog";
-import { TypographyMuted } from "@/components/ui/typography";
+import { TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import {
   createShowcaseProjectAction,
   attachAssetsToShowcaseProjectAction,
@@ -532,9 +532,9 @@ export function UploadProjectModal({
           <div className="p-3.5 rounded-2xl bg-primary/10 border border-primary/30 text-primary text-xs flex items-center justify-between gap-3 animate-in fade-in">
             <div className="flex items-center gap-2">
               <Loader2 className="size-4 animate-spin shrink-0" />
-              <span>
+              <TypographySpan>
                 <strong>Upload running in background.</strong> You can safely close this modal; progress will continue in the notification.
-              </span>
+              </TypographySpan>
             </div>
             <Button
               type="button"
@@ -553,9 +553,9 @@ export function UploadProjectModal({
           <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center justify-between gap-3 animate-in fade-in">
             <div className="flex items-center gap-2">
               <AlertCircle className="size-4 text-amber-400 shrink-0" />
-              <span>
+              <TypographySpan>
                 Portfolio film limit reached ({limit} allowed on Starter plan).
-              </span>
+              </TypographySpan>
             </div>
             {workspaceSlug && (
               <Link
@@ -573,7 +573,7 @@ export function UploadProjectModal({
         {errorMessage && (
           <div className="p-3.5 rounded-xl bg-destructive/15 border border-destructive/30 text-destructive text-xs flex items-center gap-2 animate-in fade-in">
             <AlertCircle className="size-4 shrink-0" />
-            <span className="flex-1">{errorMessage}</span>
+            <TypographySpan className="flex-1">{errorMessage}</TypographySpan>
           </div>
         )}
 
@@ -614,7 +614,7 @@ export function UploadProjectModal({
 
                 <div className="space-y-1">
                   <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
-                    DESCRIPTION <span className="normal-case text-zinc-500">(optional)</span>
+                    DESCRIPTION <TypographySpan className="normal-case text-zinc-500">(optional)</TypographySpan>
                   </Label>
                   <Input
                     type="text"
@@ -631,7 +631,7 @@ export function UploadProjectModal({
             {/* Right 1 Col: Project Cover Thumbnail */}
             <div className="space-y-1.5 flex flex-col justify-between">
               <Label className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase block font-mono">
-                COVER POSTER <span className="normal-case text-zinc-500">(optional)</span>
+                COVER POSTER <TypographySpan className="normal-case text-zinc-500">(optional)</TypographySpan>
               </Label>
 
               <div className="flex items-center gap-2">
@@ -666,7 +666,7 @@ export function UploadProjectModal({
                     className="rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border-white/15 text-white text-[11px] font-semibold py-1.5 px-2.5 h-auto flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                   >
                     <Upload className="size-3 text-zinc-300" />
-                    <span>{coverPreview ? "Change Cover" : "Upload Cover"}</span>
+                    <TypographySpan>{coverPreview ? "Change Cover" : "Upload Cover"}</TypographySpan>
                   </Button>
 
                   {coverPreview && (
@@ -716,9 +716,9 @@ export function UploadProjectModal({
                 <Layers className="size-3.5 text-primary" />
                 PROJECT ASSETS & MEDIA ({totalCount})
               </Label>
-              <span className="text-[10px] font-mono text-zinc-500">
+              <TypographySpan className="text-[10px] font-mono text-zinc-500">
                 Videos, Cut versions & High-res stills
-              </span>
+              </TypographySpan>
             </div>
 
             {/* Hidden multi-file input */}
@@ -774,24 +774,24 @@ export function UploadProjectModal({
                 {/* Batch Queue Header & Stats */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-black/40 border border-white/10 rounded-2xl p-3">
                   <div className="flex items-center gap-2.5 flex-wrap text-xs">
-                    <span className="font-bold text-white">
+                    <TypographySpan className="font-bold text-white">
                       Queue: {totalCount} Files
-                    </span>
-                    <span className="text-zinc-500">·</span>
+                    </TypographySpan>
+                    <TypographySpan className="text-zinc-500">·</TypographySpan>
                     {videoCount > 0 && (
-                      <span className="flex items-center gap-1 text-primary font-mono text-[11px]">
+                      <TypographySpan className="flex items-center gap-1 text-primary font-mono text-[11px]">
                         <Film className="size-3.5" /> {videoCount} Video{videoCount > 1 ? "s" : ""}
-                      </span>
+                      </TypographySpan>
                     )}
                     {stillCount > 0 && (
-                      <span className="flex items-center gap-1 text-sky-400 font-mono text-[11px]">
+                      <TypographySpan className="flex items-center gap-1 text-sky-400 font-mono text-[11px]">
                         <ImageIcon className="size-3.5" /> {stillCount} Still{stillCount > 1 ? "s" : ""}
-                      </span>
+                      </TypographySpan>
                     )}
                     {completedCount > 0 && (
-                      <span className="flex items-center gap-1 text-emerald-400 font-mono text-[11px]">
+                      <TypographySpan className="flex items-center gap-1 text-emerald-400 font-mono text-[11px]">
                         <CheckCircle2 className="size-3.5" /> {completedCount} Uploaded
-                      </span>
+                      </TypographySpan>
                     )}
                   </div>
 
@@ -872,24 +872,24 @@ export function UploadProjectModal({
 
                           <div className="flex items-center gap-2 shrink-0">
                             {item.status === "queued" && (
-                              <span className="text-[10px] font-mono bg-white/10 text-zinc-300 px-2.5 py-1 rounded-full">
+                              <TypographySpan className="text-[10px] font-mono bg-white/10 text-zinc-300 px-2.5 py-1 rounded-full">
                                 Queued
-                              </span>
+                              </TypographySpan>
                             )}
                             {item.status === "uploading" && (
-                              <span className="text-[10px] font-mono bg-primary/20 text-primary border border-primary/40 px-2.5 py-1 rounded-full flex items-center gap-1 font-bold">
+                              <TypographySpan className="text-[10px] font-mono bg-primary/20 text-primary border border-primary/40 px-2.5 py-1 rounded-full flex items-center gap-1 font-bold">
                                 <Loader2 className="size-3 animate-spin" /> {item.progress}%
-                              </span>
+                              </TypographySpan>
                             )}
                             {item.status === "completed" && (
-                              <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1 font-bold">
+                              <TypographySpan className="text-[10px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1 font-bold">
                                 <CheckCircle2 className="size-3" /> Done
-                              </span>
+                              </TypographySpan>
                             )}
                             {item.status === "error" && (
-                              <span className="text-[10px] font-mono bg-destructive/20 text-destructive border border-destructive/40 px-2.5 py-1 rounded-full flex items-center gap-1 font-bold">
+                              <TypographySpan className="text-[10px] font-mono bg-destructive/20 text-destructive border border-destructive/40 px-2.5 py-1 rounded-full flex items-center gap-1 font-bold">
                                 <AlertCircle className="size-3" /> Error
-                              </span>
+                              </TypographySpan>
                             )}
 
                             {!uploading && item.status !== "uploading" && (
@@ -910,8 +910,8 @@ export function UploadProjectModal({
                         {item.status === "uploading" && (
                           <div className="space-y-1 pt-1 animate-in fade-in">
                             <div className="flex items-center justify-between text-[10px] font-mono">
-                              <span className="text-zinc-400 truncate max-w-[280px]">{item.statusText}</span>
-                              <span className="font-bold text-primary">{item.progress}%</span>
+                              <TypographySpan className="text-zinc-400 truncate max-w-[280px]">{item.statusText}</TypographySpan>
+                              <TypographySpan className="font-bold text-primary">{item.progress}%</TypographySpan>
                             </div>
                             <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
                               <div
@@ -933,11 +933,11 @@ export function UploadProjectModal({
           {uploading && (
             <div className="space-y-1.5 pt-2 border-t border-white/10 animate-in fade-in">
               <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-zinc-400 flex items-center gap-1.5 truncate">
+                <TypographySpan className="text-zinc-400 flex items-center gap-1.5 truncate">
                   <Loader2 className="size-3.5 animate-spin text-primary" />
                   {statusText || "Processing upload..."}
-                </span>
-                <span className="font-bold text-primary">{overallProgress}%</span>
+                </TypographySpan>
+                <TypographySpan className="font-bold text-primary">{overallProgress}%</TypographySpan>
               </div>
               <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
                 <div
@@ -952,13 +952,13 @@ export function UploadProjectModal({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-white/10">
             <TypographyMuted className="text-xs text-zinc-400">
               {completedCount === totalCount && totalCount > 0 ? (
-                <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                <TypographySpan className="text-emerald-400 font-semibold flex items-center gap-1.5">
                   <CheckCircle2 className="size-4" /> All {totalCount} items uploaded successfully!
-                </span>
+                </TypographySpan>
               ) : (
-                <span>
+                <TypographySpan>
                   {queuedCount} {queuedCount === 1 ? "asset" : "assets"} queued for this showcase project
-                </span>
+                </TypographySpan>
               )}
             </TypographyMuted>
 

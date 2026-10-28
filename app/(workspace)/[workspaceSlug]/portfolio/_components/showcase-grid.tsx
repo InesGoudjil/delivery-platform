@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import { Star, Play, Film, Image as ImageIcon, FolderKanban, Maximize2, Trash2, Pencil, Loader2, CheckCircle2 } from "lucide-react";
+import { Star, Play, Film, Image as ImageIcon, FolderKanban, Maximize2, Trash2, Pencil, Loader2, CheckCircle2, Sparkles } from "lucide-react";
 import { AppImage } from "@/components/ui/app-image";
 import {
   Card,
@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { TiltCard } from "@/components/ui/motion";
-import { TypographyH4, TypographyMuted } from "@/components/ui/typography";
+import { TypographyH4, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
 import { toggleFeaturedItemAction } from "@/app/actions/portfolio";
 import { PortfolioAppearance } from "@/core/entities/portfolio";
@@ -35,6 +35,8 @@ interface ShowcaseGridProps {
   onDeleteItem?: (item: PortfolioItem) => Promise<void> | void;
   onEditItem?: (item: PortfolioItem) => void;
   onOpenTrash?: () => void;
+  heroAssetId?: string | null;
+  onSetAsHero?: (item: PortfolioItem) => void;
 }
 
 function parseItemAspectRatio(ar?: string | number): number | null {
@@ -107,6 +109,8 @@ export function ShowcaseGrid({
   onDeleteItem,
   onEditItem,
   onOpenTrash,
+  heroAssetId,
+  onSetAsHero,
 }: ShowcaseGridProps) {
   const [isPending, startTransition] = useTransition();
 
@@ -260,7 +264,7 @@ export function ShowcaseGrid({
                     className="flex items-center gap-2 px-4 py-2 h-auto rounded-full bg-white/5 hover:bg-white/10 border-white/10 hover:border-amber-500/30 text-xs font-bold text-zinc-300 hover:text-white transition-all cursor-pointer"
                   >
                     <Trash2 className="size-3.5 text-amber-400" />
-                    <span>Trash</span>
+                    <TypographySpan>Trash</TypographySpan>
                   </Button>
                 }
               />
@@ -275,6 +279,7 @@ export function ShowcaseGrid({
         <div className={isMasonry ? masonryClasses : `grid ${gridClasses}`}>
         {visibleProjects.map((item) => {
           const isFeatured = featuredIds.includes(item.id);
+          const isHero = heroAssetId ? heroAssetId === item.id : false;
           const isVideo = item.type === "film" || item.type === "project";
 
           return (
@@ -285,7 +290,9 @@ export function ShowcaseGrid({
               <TiltCard tiltIntensity={4} glareIntensity={0.12} className={`w-full ${isMasonry ? "h-auto" : "h-full"}`}>
                 <Card
                   onClick={() => onSelectItem(item)}
-                  className={`group relative rounded-2xl bg-[#0c0c0e] border border-white/10 overflow-hidden transition-all duration-300 hover:border-white/30 p-0 cursor-pointer w-full ${isMasonry ? "h-auto" : "h-full"}`}
+                  className={`group relative rounded-2xl bg-[#0c0c0e] border overflow-hidden transition-all duration-300 p-0 cursor-pointer w-full ${isMasonry ? "h-auto" : "h-full"} ${
+                    isHero ? "border-primary/80 ring-1 ring-primary/40 shadow-lg shadow-primary/10" : "border-white/10 hover:border-white/30"
+                  }`}
                 >
                   {/* Media Image */}
                   {isMasonry ? (
@@ -306,8 +313,8 @@ export function ShowcaseGrid({
                     </AspectRatio>
                   )}
 
-                {/* Top-Left Badge (FILM / STILL / PROJECT) */}
-                <div className="absolute top-3 left-3 z-10">
+                {/* Top-Left Badges (FILM / STILL / PROJECT & HERO INDICATOR) */}
+                <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 flex-wrap">
                   <Badge
                     variant="outline"
                     className="bg-black/60 backdrop-blur-md border border-white/15 text-[10px] font-mono font-bold text-white uppercase tracking-wider gap-1.5 px-2.5 py-1 rounded-md"
@@ -315,24 +322,59 @@ export function ShowcaseGrid({
                     {item.type === "still" ? (
                       <>
                         <ImageIcon className="size-3 text-zinc-300" />
-                        <span>STILL</span>
+                        <TypographySpan>STILL</TypographySpan>
                       </>
                     ) : item.type === "project" ? (
                       <>
                         <FolderKanban className="size-3 text-zinc-300" />
-                        <span>PROJECT</span>
+                        <TypographySpan>PROJECT</TypographySpan>
                       </>
                     ) : (
                       <>
                         <Film className="size-3 text-zinc-300" />
-                        <span>FILM</span>
+                        <TypographySpan>FILM</TypographySpan>
                       </>
                     )}
                   </Badge>
+
+                  {isHero && (
+                    <Badge className="bg-primary text-primary-foreground font-mono text-[9px] uppercase font-extrabold px-2 py-1 rounded-md shadow-lg flex items-center gap-1 border-none">
+                      <Sparkles className="size-2.5 fill-current" />
+                      <TypographySpan>HERO</TypographySpan>
+                    </Badge>
+                  )}
                 </div>
 
-                {/* Top-Right Action Controls (Star Pin + Edit + Delete) */}
+                {/* Top-Right Action Controls (Hero Sparkles + Star Pin + Edit + Delete) */}
                 <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+                  {onSetAsHero && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSetAsHero(item);
+                            }}
+                            className={`size-8 rounded-full p-0 flex items-center justify-center transition-all cursor-pointer shadow-md ${
+                              isHero
+                                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/30 opacity-100 ring-2 ring-primary/40"
+                                : "bg-black/50 backdrop-blur-md text-zinc-400 hover:text-primary hover:bg-white/20 border border-white/10 opacity-0 group-hover:opacity-100 max-sm:opacity-100"
+                            }`}
+                          >
+                            <Sparkles className={`size-3.5 ${isHero ? "fill-current" : ""}`} />
+                          </Button>
+                        }
+                      />
+                      <TooltipContent>
+                        {isHero ? "Currently Active Storefront Hero" : "Set as Cover Banner & Hero"}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+
                   <Tooltip>
                     <TooltipTrigger
                       render={
@@ -456,11 +498,11 @@ export function ShowcaseGrid({
               {isLoadingMore ? (
                 <div className="flex items-center gap-2.5">
                   <Loader2 className="size-4 animate-spin text-primary" />
-                  <span>Loading {activeTab}...</span>
+                  <TypographySpan>Loading {activeTab}...</TypographySpan>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span>Load More {activeTab}</span>
+                  <TypographySpan>Load More {activeTab}</TypographySpan>
                   {remainingCount > 0 && (
                     <Badge
                       variant="secondary"
@@ -481,7 +523,7 @@ export function ShowcaseGrid({
         {!hasMore && filteredProjects.length > PAGE_SIZE && (
           <div className="col-span-full [column-span:all] text-center pt-6 pb-2 text-[11px] font-mono text-zinc-500 flex items-center justify-center gap-2">
             <CheckCircle2 className="size-3.5 text-emerald-400" />
-            <span>All {filteredProjects.length} {activeTab} displayed</span>
+            <TypographySpan>All {filteredProjects.length} {activeTab} displayed</TypographySpan>
           </div>
         )}
       </div>

@@ -20,6 +20,13 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import {
+  Typography,
+  TypographySpan,
+  TypographySmall,
+  TypographyMuted,
+  TypographyKicker,
+} from "@/components/ui/typography"
 
 export interface WorkspaceItem {
   id?: string
@@ -97,12 +104,12 @@ export function WorkspaceSwitcher({
                 {initials}
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-bold text-sidebar-foreground">
+                <TypographySpan variant="small" className="truncate font-bold text-sidebar-foreground">
                   {activeWorkspace.name}
-                </span>
-                <span className="truncate text-xs text-muted-foreground font-mono">
+                </TypographySpan>
+                <TypographySpan variant="muted" className="truncate text-xs font-mono">
                   {activeWorkspace.plan || "Studio"}
-                </span>
+                </TypographySpan>
               </div>
               <ChevronsUpDown className="ml-auto size-4 text-muted-foreground group-data-[collapsible=icon]:hidden" />
             </SidebarMenuButton>
@@ -114,8 +121,10 @@ export function WorkspaceSwitcher({
             side={isMobile ? "bottom" : "right"}
             sideOffset={8}
           >
-            <DropdownMenuLabel className="text-xs text-muted-foreground font-mono px-2 py-1 uppercase tracking-wider">
-              Workspaces
+            <DropdownMenuLabel className="px-2 py-1">
+              <TypographySpan variant="kicker" className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
+                Workspaces
+              </TypographySpan>
             </DropdownMenuLabel>
 
             {list.map((ws, index) => {
@@ -138,14 +147,18 @@ export function WorkspaceSwitcher({
                   </div>
                   <div className="flex flex-col flex-1 truncate">
                     <div className="flex items-center gap-1.5 truncate">
-                      <span className="font-semibold text-foreground truncate">{ws.name}</span>
+                      <TypographySpan variant="small" className="font-semibold text-foreground truncate">
+                        {ws.name}
+                      </TypographySpan>
                       {ws.accountType === "studio" && (
-                        <span className="text-[9px] bg-primary/20 text-primary font-bold px-1 rounded">
+                        <TypographySpan variant="kicker" className="text-[9px] bg-primary/20 text-primary font-bold px-1 rounded normal-case tracking-normal">
                           Studio
-                        </span>
+                        </TypographySpan>
                       )}
                     </div>
-                    <span className="text-[10px] text-muted-foreground">{ws.plan || (ws.accountType === "studio" ? "Studio • 5 Seats" : "Personal")}</span>
+                    <TypographySpan variant="muted" className="text-[10px]">
+                      {ws.plan || (ws.accountType === "studio" ? "Studio • 5 Seats" : "Personal")}
+                    </TypographySpan>
                   </div>
                   {isCurrent && <Check className="size-3.5 text-primary ml-auto" />}
                   <DropdownMenuShortcut className="text-[10px] font-mono text-muted-foreground">
@@ -165,7 +178,9 @@ export function WorkspaceSwitcher({
                 <div className="flex size-6 items-center justify-center rounded-md border border-primary/40 bg-primary/10">
                   <Plus className="size-3.5 text-primary" />
                 </div>
-                <span>Create Workspace</span>
+                <TypographySpan variant="small" className="text-xs font-semibold">
+                  Create Workspace
+                </TypographySpan>
               </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>

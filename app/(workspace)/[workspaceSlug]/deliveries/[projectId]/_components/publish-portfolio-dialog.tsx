@@ -7,6 +7,7 @@ import { UniversalDialog } from "@/components/ui/universal-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { Typography, TypographySpan, TypographySmall, TypographyMuted, TypographyKicker } from "@/components/ui/typography";
 import { publishDeliveryToPortfolioAction } from "@/app/actions/deliveries";
 import { toast } from "sonner";
 
@@ -93,7 +94,9 @@ export function PublishPortfolioDialog({
             className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs px-5 py-2.5 cursor-pointer shadow-lg shadow-primary/20 flex items-center gap-2"
           >
             <Sparkles className="size-3.5" />
-            <span>{isPublishing ? "Publishing..." : "Publish to Portfolio"}</span>
+            <TypographySpan variant="kicker" className="font-extrabold text-xs text-primary-foreground">
+              {isPublishing ? "Publishing..." : "Publish to Portfolio"}
+            </TypographySpan>
           </Button>
         </>
       }
@@ -120,12 +123,12 @@ export function PublishPortfolioDialog({
 
         <Card className="rounded-xl border border-border bg-muted/30 p-3.5 space-y-1.5 text-xs hover:translate-y-0">
           <CardContent className="p-0 space-y-1">
-            <div className="text-[11px] font-mono text-muted-foreground uppercase">Target Showcase:</div>
-            <div className="font-bold text-foreground">{projectTitle}</div>
-            <div className="text-muted-foreground text-[11px]">Client: {clientName}</div>
-            <div className="text-primary text-[11px] font-mono pt-0.5">
+            <TypographyKicker as="div" variant="kicker" className="text-[11px] font-mono text-muted-foreground uppercase">Target Showcase:</TypographyKicker>
+            <Typography as="div" variant="small" className="font-bold text-foreground">{projectTitle}</Typography>
+            <TypographyMuted as="div" className="text-[11px]">Client: {clientName}</TypographyMuted>
+            <TypographyMuted as="div" className="text-primary text-[11px] font-mono pt-0.5">
               {portfolio ? `Publishes to /${workspaceSlug}/portfolio` : "Creates your public portfolio showcase"}
-            </div>
+            </TypographyMuted>
           </CardContent>
         </Card>
       </div>
