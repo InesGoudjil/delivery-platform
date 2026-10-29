@@ -44,6 +44,9 @@ export interface LightboxAssetItem {
   duration?: string | number | null;
   tc?: string;
   desc?: string;
+  size?: string;
+  fileSizeBytes?: number;
+  fileSizeText?: string;
   src?: string | null;
   url?: string | null;
   mediaUrl?: string | null;
@@ -90,6 +93,8 @@ export interface AssetLightboxModalProps {
   workspaceId?: string;
   projectId?: string;
   workspaceSlug?: string;
+  shareToken?: string;
+  deliveryId?: string;
   onAssetUploaded?: (asset: any, version?: any) => void;
 
   // Display Configuration
@@ -97,6 +102,7 @@ export interface AssetLightboxModalProps {
   showVersions?: boolean;
   showDownload?: boolean;
   showShareLink?: boolean;
+  onDownload?: (item: LightboxAssetItem, version?: AssetVersionItem | null) => void;
   headerExtra?: ReactNode;
   footerExtra?: ReactNode;
 }

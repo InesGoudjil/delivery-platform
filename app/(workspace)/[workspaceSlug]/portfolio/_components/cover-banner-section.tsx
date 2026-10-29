@@ -267,8 +267,8 @@ export function CoverBannerSection({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Aspect Ratio Framing (Includes Asset Native Aspect) */}
-            <div className="space-y-1.5">
+            {/* Aspect Ratio Framing (Includes Asset Native Aspect) - Hidden per user request */}
+            <div className="hidden space-y-1.5">
               <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
                 <Layers className="size-3.5 text-primary" />
                 Aspect Ratio Framing

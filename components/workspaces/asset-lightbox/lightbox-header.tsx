@@ -2,26 +2,19 @@
 
 import React, { ReactNode } from "react";
 import {
-  FileVideo,
-  Image as ImageIcon,
-  Check,
   X,
   Share2,
-  Download,
-  UploadCloud,
-  Pencil,
   Trash2,
   ArrowLeft,
-  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { TypographyH3, TypographyMuted, TypographySpan } from "@/components/ui/typography";
+import { TypographyH3 } from "@/components/ui/typography";
 
 export interface LightboxHeaderProps {
   title: string;
   isStill: boolean;
+  fileSizeText?: string;
   activeVersionNumber: number;
   hasVersions: boolean;
   category?: string | null;
@@ -49,6 +42,7 @@ export interface LightboxHeaderProps {
 export function LightboxHeader({
   title,
   isStill,
+  fileSizeText = "-- MB",
   activeVersionNumber,
   hasVersions,
   category,
@@ -72,12 +66,13 @@ export function LightboxHeader({
   onEditAsset,
   onDeleteAsset,
 }: LightboxHeaderProps) {
-  const isApproved = status === "approved";
+  const typeLabel = isStill ? "Photo" : "Video";
+  const eyebrow = `${typeLabel} · ${fileSizeText}`;
 
   return (
-    <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4 shrink-0">
-      {/* Left Metadata & Title */}
-      <div className="flex items-center gap-3 min-w-0">
+    <header className="flex items-start justify-between gap-4 pb-3 shrink-0">
+      {/* Left Eyebrow & Title */}
+      <div className="flex items-start gap-2.5 min-w-0">
         {onBack && (
           <Tooltip>
             <TooltipTrigger
@@ -85,151 +80,47 @@ export function LightboxHeader({
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
+                  size="icon-xs"
                   onClick={onBack}
-                  className="rounded-full bg-white/5 hover:bg-white/15 text-white text-xs font-semibold h-8 px-2.5 flex items-center gap-1.5 transition-colors cursor-pointer border border-white/10 shrink-0"
+                  className="size-8 rounded-full bg-white/5 hover:bg-white/15 text-white cursor-pointer border border-white/10 shrink-0 mt-0.5"
                 >
-                  <ArrowLeft className="size-3.5" />
-                  <TypographySpan className="hidden sm:inline">Back</TypographySpan>
+                  <ArrowLeft className="size-4" />
                 </Button>
               }
             />
-            <TooltipContent>Return to project gallery</TooltipContent>
+            <TooltipContent>Back</TooltipContent>
           </Tooltip>
         )}
 
-        <div className="size-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 text-primary">
-          {isStill ? (
-            <ImageIcon className="size-4.5" />
-          ) : (
-            <FileVideo className="size-4.5" />
-          )}
-        </div>
-
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <TypographyH3 className="font-heading font-bold text-base sm:text-lg text-white truncate max-w-[200px] sm:max-w-md">
-              {title}
-            </TypographyH3>
-            {hasVersions && (
-              <Badge variant="orange" className="text-[10px]  font-bold px-2 py-0.5">
-                V{activeVersionNumber}
-              </Badge>
-            )}
+          {/* Eyebrow in coral/primary matching visual mockup */}
+          <div className="text-[12px] font-semibold text-primary tracking-wide flex items-center gap-1.5">
+            <span>{eyebrow}</span>
             {category && (
-              <Badge variant="outline" className="text-[10px]  text-zinc-400 border-white/15">
-                {category}
-              </Badge>
-            )}
-          </div>
-          <TypographyMuted className="text-xs text-muted-foreground  truncate flex items-center gap-1.5 mt-0.5">
-            <TypographySpan>Aspect: {displayAspectRatio}</TypographySpan>
-            <TypographySpan>·</TypographySpan>
-            {timecode && (
               <>
-                <TypographySpan>{timecode}</TypographySpan>
-                <TypographySpan>·</TypographySpan>
+                <span className="text-zinc-500">·</span>
+                <span className="text-zinc-400 font-normal">{category}</span>
               </>
             )}
-            <TypographySpan className="text-zinc-400">
-              {isStill ? "Hi-Res Still" : "ProRes / Master Stream"}
-            </TypographySpan>
-          </TypographyMuted>
+            {displayAspectRatio && (
+              <>
+                <span className="text-zinc-500">·</span>
+                <span className="text-zinc-400 font-normal">{displayAspectRatio}</span>
+              </>
+            )}
+          </div>
+
+          {/* Large Bold Title */}
+          <TypographyH3 className="font-heading font-bold text-xl sm:text-2xl text-white tracking-tight truncate mt-0.5">
+            {title}
+          </TypographyH3>
         </div>
       </div>
 
-      {/* Right Controls & Approval CTA */}
-      <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap justify-end">
-        {/* Optional Custom Header Slot */}
+      {/* Right Action Icons & Close Button */}
+      <div className="flex items-center gap-1.5 shrink-0">
         {headerExtra}
 
-        {/* 🌟 Prominent Approval Toggle (Delivery Review Mode) */}
-        {onToggleApproval && status && (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  type="button"
-                  onClick={onToggleApproval}
-                  size="sm"
-                  className={`rounded-full text-xs font-bold px-3.5 py-1.5 cursor-pointer flex items-center gap-1.5 h-8 transition-all ${
-                    isApproved
-                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 hover:border-emerald-500/60 shadow-sm shadow-emerald-950/40"
-                      : "bg-primary hover:bg-primary/90 text-primary-foreground border border-primary/30 shadow-md shadow-primary/25"
-                  }`}
-                >
-                  {isApproved ? (
-                    <>
-                      <CheckCircle2 className="size-3.5 text-emerald-400" />
-                      <TypographySpan>Approved</TypographySpan>
-                    </>
-                  ) : (
-                    <>
-                      <Check className="size-3.5" />
-                      <TypographySpan>Mark Approved</TypographySpan>
-                    </>
-                  )}
-                </Button>
-              }
-            />
-            <TooltipContent>
-              {isApproved ? "Click to request revisions on this cut" : "Approve this asset version"}
-            </TooltipContent>
-          </Tooltip>
-        )}
-
-        {/* Upload New Version Button */}
-        {showVersions && canUploadVersion && onToggleUploadZone && (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onToggleUploadZone}
-                  disabled={isUploadingVersion}
-                  className={`rounded-full text-xs font-bold px-3 py-1.5 cursor-pointer flex items-center gap-1.5 h-8 transition-all ${
-                    showUploadZone
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "border-primary/40 text-primary bg-primary/10 hover:bg-primary/20"
-                  }`}
-                >
-                  <UploadCloud className="size-3.5 text-primary" />
-                  <TypographySpan className="hidden md:inline">
-                    {showUploadZone ? "Close Upload" : `Upload V${nextVersionNumber || activeVersionNumber + 1}`}
-                  </TypographySpan>
-                </Button>
-              }
-            />
-            <TooltipContent>
-              Upload a new revised cut or still (V{nextVersionNumber || activeVersionNumber + 1})
-            </TooltipContent>
-          </Tooltip>
-        )}
-
-        {/* Download Master Button */}
-        {showDownload && onDownload && (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onDownload}
-                  className="rounded-full border-white/20 text-white bg-white/5 hover:bg-white/15 text-xs font-bold px-3 py-1.5 cursor-pointer flex items-center gap-1.5 h-8 transition-colors"
-                >
-                  <Download className="size-3.5 text-primary" />
-                  <TypographySpan className="hidden lg:inline">Download</TypographySpan>
-                </Button>
-              }
-            />
-            <TooltipContent>Download master media file to disk</TooltipContent>
-          </Tooltip>
-        )}
-
-        {/* Share Link Button */}
         {showShareLink && onShareLink && (
           <Tooltip>
             <TooltipTrigger
@@ -239,47 +130,26 @@ export function LightboxHeader({
                   variant="ghost"
                   size="icon-xs"
                   onClick={onShareLink}
-                  className="size-8 rounded-full bg-white/5 hover:bg-white/15 text-white cursor-pointer border border-white/10"
+                  className="size-8.5 rounded-full bg-white/5 hover:bg-white/15 text-white/80 hover:text-white cursor-pointer border border-white/10 transition-colors"
                 >
                   <Share2 className="size-3.5" />
                 </Button>
               }
             />
-            <TooltipContent>Copy shareable link</TooltipContent>
+            <TooltipContent>Share link</TooltipContent>
           </Tooltip>
         )}
 
-        {/* Edit Metadata Button */}
-        {onEditAsset && (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-xs"
-                  onClick={onEditAsset}
-                  className="size-8 rounded-full border-white/15 text-white/80 hover:text-white bg-white/5 hover:bg-white/15 cursor-pointer"
-                >
-                  <Pencil className="size-3.5" />
-                </Button>
-              }
-            />
-            <TooltipContent>Edit title and ratio</TooltipContent>
-          </Tooltip>
-        )}
-
-        {/* Delete Asset Button */}
         {onDeleteAsset && (
           <Tooltip>
             <TooltipTrigger
               render={
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="icon-xs"
                   onClick={onDeleteAsset}
-                  className="size-8 rounded-full border-red-500/30 text-red-400 bg-red-500/10 hover:bg-red-500/20 cursor-pointer"
+                  className="size-8.5 rounded-full bg-white/5 hover:bg-red-500/20 text-white/70 hover:text-red-400 cursor-pointer border border-white/10 transition-colors"
                 >
                   <Trash2 className="size-3.5" />
                 </Button>
@@ -289,7 +159,6 @@ export function LightboxHeader({
           </Tooltip>
         )}
 
-        {/* Close Modal Button */}
         <Tooltip>
           <TooltipTrigger
             render={
@@ -298,9 +167,9 @@ export function LightboxHeader({
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
-                className="size-8 sm:size-9 rounded-full bg-white/10 hover:bg-white/20 text-muted-foreground hover:text-white flex items-center justify-center cursor-pointer ml-1"
+                className="size-9 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white flex items-center justify-center cursor-pointer transition-colors border border-white/5"
               >
-                <X className="size-4 sm:size-5" />
+                <X className="size-4.5" />
               </Button>
             }
           />

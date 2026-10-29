@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { TypographyH4 } from "@/components/ui/typography";
+import { FeaturedBadge } from "@/components/workspaces/media-card";
 import { toggleFeaturedItemAction } from "@/app/actions/portfolio";
 import { PortfolioItem } from "../portfolio-client";
 
@@ -114,6 +115,9 @@ export function FeaturedReel({
                   containerClassName="size-full"
                 />
               </AspectRatio>
+
+              {/* Featured Badge */}
+              <FeaturedBadge className="absolute top-1.5 left-1.5 z-10" />
 
               {/* Unpin Button with Tooltip */}
               <Tooltip>

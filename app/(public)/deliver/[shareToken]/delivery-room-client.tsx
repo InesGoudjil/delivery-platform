@@ -3,40 +3,36 @@
 import { useState, useRef, useTransition } from "react";
 import Link from "next/link";
 import {
-  Play,
   Check,
   Download,
   MessageCircle,
   Lock,
-  Send,
-  Share2,
   KeyRound,
   ShieldCheck,
-  X,
   FileVideo,
   AlertCircle,
   Clock,
-  Layers,
-  Sparkles,
-  ExternalLink,
-  ShieldAlert,
   Loader2,
   Eye,
   EyeOff,
-  Image as ImageIcon,
   RotateCcw,
-  CornerDownRight,
 } from "lucide-react";
 import { toast } from "sonner";
-import { CutReviewPlayer, type CutReviewPlayerRef } from "@/components/video/cut-review-player";
-import { formatTimecode, parseTimecodeToSeconds } from "@/lib/timecode";
 import {
   resolveMediaUrl,
   resolveThumbnailUrl,
   parseAspectRatio,
-  detectAspectRatioFromDimensions,
 } from "@/lib/media";
-import { WatermarkOverlay } from "@/components/ui/watermark-overlay";
+import {
+  MediaCard,
+  MediaGrid,
+  MediaBadge,
+  VersionBadge,
+} from "@/components/workspaces/media-card";
+import {
+  AssetLightboxModal,
+  type LightboxAssetItem,
+} from "@/components/workspaces/asset-lightbox-modal";
 import { DownloadPackageModal } from "@/components/workspaces/download-package-modal";
 import { getDownloadFilename, triggerDirectDownload } from "@/lib/download";
 import {
@@ -44,10 +40,8 @@ import {
   toggleAssetApprovalAction,
   approveAllAssetsAction,
   unapproveAllAssetsAction,
-  approveCutAction,
   recordClientDownloadAction,
 } from "@/app/actions/deliveries";
-import { addFeedbackAction, addFeedbackReplyAction, toggleFeedbackResolvedAction } from "@/app/actions/feedback";
 import { AmbientBackground } from "@/components/ui/ambient-background";
 import { AccentThemeProvider } from "@/components/theme/accent-theme-provider";
 import { TypographySpan } from "@/components/ui/typography";
@@ -58,20 +52,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { AppImage } from "@/components/ui/app-image";
-import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from "@/components/ui/avatar";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-import { TiltCard } from "@/components/ui/motion";
 import {
   TypographyH1,
   TypographyH2,
-  TypographyH3,
-  TypographyH4,
-  TypographyKicker,
   TypographyLead,
-  TypographyMuted,
 } from "@/components/ui/typography";
 
 export interface AssetVersionItem {
@@ -164,52 +149,6 @@ export interface DeliveryRoomProps {
   whiteLabel?: boolean;
 }
 
-function DeliveryRoomMasonryMedia({
-  src,
-  alt,
-  type = "video",
-  aspectRatio,
-  thumbnailScale,
-  children,
-}: {
-  src: string;
-  alt: string;
-  type?: "video" | "photo";
-  aspectRatio?: string | null;
-  thumbnailScale?: "Fit" | "Fill";
-  children?: React.ReactNode;
-}) {
-  const initialRatio = aspectRatio ? parseAspectRatio(aspectRatio).cssRatio : "16 / 10";
-  const [resolvedRatio, setResolvedRatio] = useState<string>(initialRatio);
-
-  return (
-    <div
-      className="relative w-full overflow-hidden bg-black/40"
-      style={{
-        aspectRatio: resolvedRatio,
-      }}
-    >
-      <AppImage
-        src={src}
-        alt={alt}
-        fill
-        containerClassName="absolute inset-0 w-full h-full"
-        fallbackIcon={type === "photo" ? "image" : "film"}
-        className={`w-full h-full ${
-          thumbnailScale === "Fit" ? "object-contain bg-black" : "object-cover"
-        } group-hover:scale-105 transition-transform duration-500`}
-        onLoad={(e) => {
-          const img = e.currentTarget;
-          if (img && img.naturalWidth && img.naturalHeight && !aspectRatio) {
-            const detected = detectAspectRatioFromDimensions(img.naturalWidth, img.naturalHeight);
-            setResolvedRatio(detected.cssRatio);
-          }
-        }}
-      />
-      {children}
-    </div>
-  );
-}
 
 export function DeliveryRoomClient({
   delivery,
@@ -250,40 +189,20 @@ export function DeliveryRoomClient({
   const [showDownloadModal, setShowDownloadModal] = useState(false);
 
   // Comments state
-  const [commentAuthor, setCommentAuthor] = useState(
-    currentUser?.name || clientName || "Client Reviewer"
-  );
-  const [commentText, setCommentText] = useState("");
-  const [isSubmittingComment, startCommentTransition] = useTransition();
-  const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
-  const [replyingToId, setReplyingToId] = useState<string | null>(null);
-  const [replyInputText, setReplyInputText] = useState("");
-  const [isSubmittingReply, startReplyTransition] = useTransition();
-
-  // Timecode playhead state
-  const cutPlayerRef = useRef<CutReviewPlayerRef | null>(null);
-  const [currentPlayheadTime, setCurrentPlayheadTime] = useState(0);
-  const [currentPlayheadTc, setCurrentPlayheadTc] = useState("00:00:00");
+  const [commentAuthor, setCommentAuthor] = useState(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("cinespace_reviewer_name");
+      if (stored?.trim()) return stored.trim();
+    }
+    return currentUser?.name || clientName || "Client Reviewer";
+  });
 
   // Loading states for approvals
   const [approvingAssetId, setApprovingAssetId] = useState<string | null>(null);
   const [isApprovingAll, setIsApprovingAll] = useState(false);
 
-  // Find active asset & version
+  // Find active asset
   const activeAsset = assets.find((a) => a.id === activeAssetId) || null;
-  const activeVersion = activeAsset
-    ? activeAsset.versions.find((v) => v.id === selectedVersionId) ||
-      activeAsset.activeVersion ||
-      activeAsset.versions[0] ||
-      null
-    : null;
-
-  // Feedback for active version
-  const activeFeedback = activeAsset
-    ? activeAsset.feedback.filter(
-        (f) => !activeVersion || f.assetVersionId === activeVersion.id
-      )
-    : [];
 
   // Check if all assets are approved
   const allApproved =
@@ -515,39 +434,9 @@ export function DeliveryRoomClient({
     }
   };
 
-  // 4. Add Timecoded Comment
-  const handleAddComment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!commentText.trim() || !activeAsset || !activeVersion) return;
-
-    const isStill =
-      activeAsset.type === "photo_gallery" ||
-      activeAsset.type === "image" ||
-      activeAsset.type === "still" ||
-      activeAsset.type === "photo";
-
-    const capturedTime = isStill
-      ? null
-      : (cutPlayerRef.current?.getCurrentTime() ?? currentPlayheadTime);
-    const roundedTime = capturedTime !== null ? Math.round(capturedTime * 100) / 100 : null;
-    const formattedTc = roundedTime !== null ? formatTimecode(roundedTime, 24) : null;
-
-    if (typeof window !== "undefined" && commentAuthor.trim()) {
-      localStorage.setItem("cinespace_reviewer_name", commentAuthor.trim());
-    }
-
-    const tempId = `temp_${Date.now()}`;
-    const newFeedback: FeedbackItem = {
-      id: tempId,
-      assetVersionId: activeVersion.id,
-      authorName: commentAuthor.trim() || "Client",
-      commentText: commentText.trim(),
-      timestampSeconds: roundedTime,
-      isResolved: false,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Optimistic append
+  // 4. Feedback & Reply Handlers (Delegated from AssetLightboxModal)
+  const handleAddFeedback = (newFeedback: FeedbackItem) => {
+    if (!activeAsset) return;
     setAssets((prev) =>
       prev.map((a) => {
         if (a.id === activeAsset.id) {
@@ -559,71 +448,10 @@ export function DeliveryRoomClient({
         return a;
       })
     );
-    setCommentText("");
-    setActiveCommentId(tempId);
-    if (isStill) {
-      toast.success("Feedback note added to still");
-    } else {
-      toast.success(`Timecoded note added at [${formattedTc}]`);
-    }
-
-    startCommentTransition(async () => {
-      const res = await addFeedbackAction({
-        assetVersionId: activeVersion.id,
-        authorName: commentAuthor.trim() || "Client",
-        commentText: newFeedback.commentText,
-        timestampSeconds: roundedTime,
-        shareToken: delivery.shareToken,
-        deliveryId: delivery.id,
-      });
-
-      if (res.success && res.feedback) {
-        // Swap temp ID with real DB ID
-        setAssets((prev) =>
-          prev.map((a) => {
-            if (a.id === activeAsset.id) {
-              return {
-                ...a,
-                feedback: a.feedback.map((f) => (f.id === tempId ? (res.feedback as FeedbackItem) : f)),
-              };
-            }
-            return a;
-          })
-        );
-      }
-    });
   };
 
-  // 5. Toggle Resolve Comment
-  const handleToggleResolve = async (feedbackId: string, currentResolved: boolean) => {
-    setAssets((prev) =>
-      prev.map((a) => ({
-        ...a,
-        feedback: a.feedback.map((f) =>
-          f.id === feedbackId ? { ...f, isResolved: !currentResolved } : f
-        ),
-      }))
-    );
-
-    await toggleFeedbackResolvedAction(feedbackId, !currentResolved, delivery.shareToken, delivery.id);
-  };
-
-  // 5b. Add Feedback Reply
-  const handleAddReply = (feedbackId: string) => {
-    if (!replyInputText.trim() || !activeAsset) return;
-    const content = replyInputText.trim();
-    const author = commentAuthor.trim() || "Client Reviewer";
-    const tempReplyId = `temp_reply_${Date.now()}`;
-
-    const newReply: FeedbackReplyItem = {
-      id: tempReplyId,
-      feedbackId,
-      authorName: author,
-      commentText: content,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Optimistic update
+  const handleAddReply = (feedbackId: string, reply: FeedbackReplyItem) => {
+    if (!activeAsset) return;
     setAssets((prev) =>
       prev.map((a) => {
         if (a.id === activeAsset.id) {
@@ -633,7 +461,7 @@ export function DeliveryRoomClient({
               f.id === feedbackId
                 ? {
                     ...f,
-                    replies: [...(f.replies || []), newReply],
+                    replies: [...(f.replies || []), reply],
                   }
                 : f
             ),
@@ -642,45 +470,6 @@ export function DeliveryRoomClient({
         return a;
       })
     );
-
-    setReplyInputText("");
-    setReplyingToId(null);
-    toast.success("Reply posted");
-
-    startReplyTransition(async () => {
-      const res = await addFeedbackReplyAction({
-        feedbackId,
-        commentText: content,
-        authorName: author,
-        shareToken: delivery.shareToken,
-        deliveryId: delivery.id,
-      });
-
-      if (res.success && res.reply) {
-        setAssets((prev) =>
-          prev.map((a) => {
-            if (a.id === activeAsset.id) {
-              return {
-                ...a,
-                feedback: a.feedback.map((f) =>
-                  f.id === feedbackId
-                    ? {
-                        ...f,
-                        replies: (f.replies || []).map((r) =>
-                          r.id === tempReplyId ? (res.reply as FeedbackReplyItem) : r
-                        ),
-                      }
-                    : f
-                ),
-              };
-            }
-            return a;
-          })
-        );
-      } else if (res.error) {
-        toast.error(res.error);
-      }
-    });
   };
 
   // 6. WhatsApp Share & Message Creator
@@ -767,10 +556,63 @@ export function DeliveryRoomClient({
     setActiveAssetId(asset.id);
     const activeVer = asset.activeVersion || asset.versions[0] || null;
     setSelectedVersionId(activeVer ? activeVer.id : null);
-    setCurrentPlayheadTime(0);
-    setCurrentPlayheadTc("00:00:00");
-    setActiveCommentId(null);
   };
+
+  const currentAssetIndex = activeAsset
+    ? filteredAssets.findIndex((a) => a.id === activeAsset.id)
+    : -1;
+
+  const handleNextAsset = () => {
+    if (currentAssetIndex >= 0 && currentAssetIndex < filteredAssets.length - 1) {
+      openAssetModal(filteredAssets[currentAssetIndex + 1]);
+    } else if (filteredAssets.length > 0) {
+      openAssetModal(filteredAssets[0]);
+    }
+  };
+
+  const handlePrevAsset = () => {
+    if (currentAssetIndex > 0) {
+      openAssetModal(filteredAssets[currentAssetIndex - 1]);
+    } else if (filteredAssets.length > 0) {
+      openAssetModal(filteredAssets[filteredAssets.length - 1]);
+    }
+  };
+
+  const handleLightboxDownload = (item: LightboxAssetItem, version?: any) => {
+    const asset = assets.find((a) => String(a.id) === String(item.id));
+    if (asset) {
+      handleSingleAssetDownload(asset, version);
+    }
+  };
+
+  const activeLightboxItem: LightboxAssetItem | null = activeAsset
+    ? {
+        id: activeAsset.id,
+        title: activeAsset.title,
+        type: activeAsset.type,
+        aspectRatio: activeAsset.aspectRatio,
+        status: activeAsset.isApproved ? "approved" : "in_review",
+        isApproved: activeAsset.isApproved,
+        versionId:
+          selectedVersionId ||
+          activeAsset.activeVersion?.id ||
+          activeAsset.versions?.[0]?.id,
+        versions: activeAsset.versions.map((v) => ({
+          id: v.id,
+          versionNumber: v.versionNumber,
+          rawFileUrl: v.rawFileUrl,
+          downloadUrl: v.downloadUrl,
+          hlsManifestUrl: v.hlsManifestUrl,
+          thumbnailUrl: v.thumbnailUrl,
+          durationSeconds: v.durationSeconds,
+          fileSizeBytes: v.fileSizeBytes || 0,
+          transcodingStatus: v.transcodingStatus || "ready",
+          isActiveVersion: v.isActiveVersion ?? false,
+          createdAt: "",
+        })),
+        feedback: activeAsset.feedback,
+      }
+    : null;
 
   // 🎬 MAIN CLIENT DELIVERY VIEW SCREEN WITH MODAL PASSCODE DIALOG
   return (
@@ -918,7 +760,7 @@ export function DeliveryRoomClient({
           </header>
 
           {/* 2. Hero Project Cover Banner */}
-          <div className="relative rounded-3xl overflow-hidden border border-white/10 min-h-[380px] sm:min-h-[460px] flex items-end shadow-2xl group">
+          <div className="relative rounded-3xl overflow-hidden border border-white/10 min-h-[460px] sm:min-h-[560px] lg:min-h-[600px] flex items-end shadow-2xl group">
             {/* Project Cover Background */}
             <div
               className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-[1.02]"
@@ -1147,26 +989,10 @@ export function DeliveryRoomClient({
                 const thumbnailScale = app.thumbnailScale || "Fill";
                 const showCardInfo = app.showCardInfo ?? true;
 
-                const containerClasses = isMasonry
-                  ? `columns-1 ${
-                      cardSize === "S"
-                        ? "sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5"
-                        : cardSize === "L"
-                        ? "sm:columns-1 md:columns-2 lg:columns-3"
-                        : "sm:columns-2 md:columns-3 xl:columns-4"
-                    } gap-5 space-y-5 pt-1`
-                  : `grid grid-cols-1 ${
-                      cardSize === "S"
-                        ? "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-                        : cardSize === "L"
-                        ? "sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-                        : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                    } gap-5 pt-1`;
-
                 const numericRatio = parseAspectRatio(aspectRatioSetting).numeric;
 
                 return (
-                  <div className={containerClasses}>
+                  <MediaGrid isMasonry={isMasonry} cardSize={cardSize} className="gap-5 pt-1">
                     {filteredAssets.map((asset) => {
                       const ver = asset.activeVersion || asset.versions[0] || null;
                       const isPhoto =
@@ -1190,177 +1016,162 @@ export function DeliveryRoomClient({
                       const isWatermarkedSetting = app.watermarkMedia ?? delivery.isWatermarked ?? true;
                       const showWatermarkOnAsset = isWatermarkedSetting && !asset.isApproved;
 
-                      const mediaBadges = (
-                        <>
-                          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/5 transition-colors" />
-
-                          {/* Watermark overlay on thumbnail cards */}
-                          {showWatermarkOnAsset && (
-                            <WatermarkOverlay
-                              text={workspace?.brandName || "STUDIO PREVIEW"}
-                              variant="card"
-                            />
-                          )}
-
-                          {/* Top-Left: Type Icon Badge */}
-                          <div className="absolute top-3 left-3 size-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center text-white shadow-md z-10">
-                            {isPhoto ? (
-                              <ImageIcon className="size-3.5" />
-                            ) : (
-                              <Play className="size-3.5 fill-white" />
-                            )}
-                          </div>
-
-                          {/* Top-Right: Interactive Approve / Unapprove + Quick Download */}
-                          <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
-                            {(isGlobalDownloadUnlocked || asset.isApproved) && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon-xs"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSingleAssetDownload(asset);
-                                }}
-                                title={`Download ${asset.title}`}
-                                className="size-7 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white/90 hover:text-white hover:bg-white/20 hover:border-white/40 flex items-center justify-center shadow-md transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 p-0"
-                              >
-                                <Download className="size-3.5" />
-                              </Button>
-                            )}
-
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-xs"
-                              disabled={approvingAssetId === asset.id}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleToggleAssetApproval(asset.id);
-                              }}
-                              title={
-                                asset.isApproved
-                                  ? "Approved — click to unapprove"
-                                  : "Click to approve cut"
-                              }
-                              className={`size-7 rounded-full p-0 flex items-center justify-center shadow-md font-bold transition-all cursor-pointer ${
-                                asset.isApproved
-                                  ? "bg-[#86b98f] hover:bg-amber-400 text-black opacity-100"
-                                  : "bg-black/60 backdrop-blur-md border border-white/20 text-white/80 hover:text-black hover:bg-[#86b98f] hover:border-[#86b98f] opacity-0 group-hover:opacity-100 max-sm:opacity-100"
-                              }`}
-                            >
-                              {approvingAssetId === asset.id ? (
-                                <Loader2 className="size-3.5 animate-spin" />
-                              ) : (
-                                <Check className="size-3.5 stroke-[3]" />
-                              )}
-                            </Button>
-                          </div>
-
-                          {/* Bottom-Right: Duration timecode (videos only) */}
-                          {!isPhoto && durationLabel && (
-                            <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[11px]  font-semibold text-white border border-white/10 z-10">
-                              {durationLabel}
-                            </div>
-                          )}
-                        </>
-                      );
-
                       return (
-                        <div
+                        <MediaCard
                           key={asset.id}
+                          title={asset.title}
+                          src={poster}
+                          type={isPhoto ? "photo" : "video"}
+                          aspectRatio={asset.aspectRatio}
+                          numericRatio={numericRatio}
+                          isMasonry={isMasonry}
+                          thumbnailScale={thumbnailScale}
                           onClick={() => openAssetModal(asset)}
-                          onContextMenu={(e) => {
-                            if (showWatermarkOnAsset) e.preventDefault();
-                          }}
-                          className={`group relative rounded-2xl overflow-hidden border border-white/10 bg-[#141416] cursor-pointer hover:border-white/30 transition-all duration-300 shadow-xl hover:-translate-y-1 ${
-                            isMasonry ? "break-inside-avoid mb-5" : ""
-                          }`}
-                        >
-                          {isMasonry ? (
-                            <DeliveryRoomMasonryMedia
-                              src={poster}
-                              alt={asset.title}
-                              type={isPhoto ? "photo" : "video"}
-                              aspectRatio={asset.aspectRatio}
-                              thumbnailScale={thumbnailScale}
-                            >
-                              {mediaBadges}
-                            </DeliveryRoomMasonryMedia>
-                          ) : (
-                            <AspectRatio ratio={numericRatio} className="w-full relative overflow-hidden bg-black/40">
-                              <AppImage
-                                src={poster}
-                                alt={asset.title}
-                                fill
-                                containerClassName="absolute inset-0 w-full h-full"
-                                fallbackIcon={isPhoto ? "image" : "film"}
-                                className={`w-full h-full ${
-                                  thumbnailScale === "Fit" ? "object-contain bg-black" : "object-cover"
-                                } group-hover:scale-105 transition-transform duration-500`}
-                              />
-                              {mediaBadges}
-                            </AspectRatio>
-                          )}
-
-                          {showCardInfo && (
-                            <div className="p-3.5 border-t border-white/10 flex items-center justify-between gap-2 bg-[#141416]">
-                              <TypographySpan className="text-xs font-semibold text-white truncate">
-                                {asset.title}
-                              </TypographySpan>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="xs"
-                                  disabled={approvingAssetId === asset.id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleToggleAssetApproval(asset.id);
-                                  }}
-                                  title={
-                                    asset.isApproved
-                                      ? "Click to unapprove"
-                                      : "Click to approve"
-                                  }
-                                  className="h-auto p-0 hover:bg-transparent cursor-pointer focus:outline-none"
+                          showInfo={showCardInfo}
+                          footerMode={showCardInfo ? "card" : "none"}
+                          watermarkMedia={
+                            showWatermarkOnAsset
+                              ? {
+                                  enabled: true,
+                                  text: workspace?.brandName || "STUDIO PREVIEW",
+                                  variant: "card",
+                                }
+                              : undefined
+                          }
+                          tiltIntensity={3}
+                          glareIntensity={0.1}
+                          topLeft={
+                            <>
+                              <MediaBadge type={isPhoto ? "photo" : "video"} />
+                              {asset.versions && asset.versions.length > 1 && (
+                                <VersionBadge
+                                  versionNumber={ver?.versionNumber || 1}
+                                  totalVersions={asset.versions.length}
+                                />
+                              )}
+                              {asset.isApproved && (
+                                <Badge
+                                  variant="sage"
+                                  className="text-[9px] px-1.5 py-0.5 font-bold uppercase rounded-md shadow-md border-none"
                                 >
-                                  <Badge
-                                    variant="outline"
-                                    className={`text-[10px] shrink-0 font-medium transition-colors ${
-                                      asset.isApproved
-                                        ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10 hover:bg-amber-500/15 hover:text-amber-300 hover:border-amber-500/30"
-                                        : "border-amber-500/30 text-amber-400 bg-amber-500/10 hover:bg-emerald-500/15 hover:text-emerald-300 hover:border-emerald-500/30"
-                                    }`}
-                                  >
-                                    {asset.isApproved ? "✓ Approved" : "In Review"}
-                                  </Badge>
-                                </Button>
+                                  ✓ Approved
+                                </Badge>
+                              )}
+                            </>
+                          }
+                          topRight={
+                            <>
+                              {(isGlobalDownloadUnlocked || asset.isApproved) && (
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="icon"
-                                  disabled={!isGlobalDownloadUnlocked && !asset.isApproved}
+                                  size="icon-xs"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleSingleAssetDownload(asset);
                                   }}
-                                  className="size-6 rounded-md text-[#aeaeb4] hover:text-white hover:bg-white/10 transition-colors p-0 cursor-pointer disabled:opacity-30"
-                                  title={
-                                    isGlobalDownloadUnlocked || asset.isApproved
-                                      ? `Download ${asset.title}`
-                                      : "Approve cut to unlock download"
-                                  }
+                                  title={`Download ${asset.title}`}
+                                  className="size-7 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white/90 hover:text-white hover:bg-white/20 hover:border-white/40 flex items-center justify-center shadow-md transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 p-0"
                                 >
-                                  <Download className="size-3" />
+                                  <Download className="size-3.5" />
                                 </Button>
+                              )}
+
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-xs"
+                                disabled={approvingAssetId === asset.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleAssetApproval(asset.id);
+                                }}
+                                title={
+                                  asset.isApproved
+                                    ? "Approved — click to unapprove"
+                                    : "Click to approve cut"
+                                }
+                                className={`size-7 rounded-full p-0 flex items-center justify-center shadow-md font-bold transition-all cursor-pointer ${
+                                  asset.isApproved
+                                    ? "bg-[#86b98f] hover:bg-amber-400 text-black opacity-100"
+                                    : "bg-black/60 backdrop-blur-md border border-white/20 text-white/80 hover:text-black hover:bg-[#86b98f] hover:border-[#86b98f] opacity-0 group-hover:opacity-100 max-sm:opacity-100"
+                                }`}
+                              >
+                                {approvingAssetId === asset.id ? (
+                                  <Loader2 className="size-3.5 animate-spin" />
+                                ) : (
+                                  <Check className="size-3.5 stroke-[3]" />
+                                )}
+                              </Button>
+                            </>
+                          }
+                          bottomRight={
+                            !isPhoto && durationLabel ? (
+                              <div className="px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[11px] font-semibold text-white border border-white/10 z-10">
+                                {durationLabel}
                               </div>
-                            </div>
-                          )}
-                        </div>
+                            ) : null
+                          }
+                          footer={
+                            showCardInfo ? (
+                              <div className="p-3.5 border-t border-white/10 flex items-center justify-between gap-2 bg-[#141416] w-full">
+                                <TypographySpan className="text-xs font-semibold text-white truncate">
+                                  {asset.title}
+                                </TypographySpan>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="xs"
+                                    disabled={approvingAssetId === asset.id}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleAssetApproval(asset.id);
+                                    }}
+                                    title={
+                                      asset.isApproved
+                                        ? "Click to unapprove"
+                                        : "Click to approve"
+                                    }
+                                    className="h-auto p-0 hover:bg-transparent cursor-pointer focus:outline-none"
+                                  >
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-[10px] shrink-0 font-medium transition-colors ${
+                                        asset.isApproved
+                                          ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10 hover:bg-amber-500/15 hover:text-amber-300 hover:border-amber-500/30"
+                                          : "border-amber-500/30 text-amber-400 bg-amber-500/10 hover:bg-emerald-500/15 hover:text-emerald-300 hover:border-emerald-500/30"
+                                      }`}
+                                    >
+                                      {asset.isApproved ? "✓ Approved" : "In Review"}
+                                    </Badge>
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    disabled={!isGlobalDownloadUnlocked && !asset.isApproved}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSingleAssetDownload(asset);
+                                    }}
+                                    className="size-6 rounded-md text-[#aeaeb4] hover:text-white hover:bg-white/10 transition-colors p-0 cursor-pointer disabled:opacity-30"
+                                    title={
+                                      isGlobalDownloadUnlocked || asset.isApproved
+                                        ? `Download ${asset.title}`
+                                        : "Approve cut to unlock download"
+                                    }
+                                  >
+                                    <Download className="size-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : null
+                          }
+                        />
                       );
                     })}
-                  </div>
+                  </MediaGrid>
                 );
               })()
             )}
@@ -1382,458 +1193,29 @@ export function DeliveryRoomClient({
           </footer>
         </div>
 
-      {/* 📹 3. INTERACTIVE VIDEO REVIEW LIGHTBOX MODAL */}
-      <UniversalDialogRoot open={Boolean(activeAsset)} onOpenChange={(open) => !open && setActiveAssetId(null)}>
-        <UniversalDialogContent
-          size="5xl"
-          showCloseButton={false}
-          overlayClassName="bg-black/90 backdrop-blur-xl"
-          className="bg-[#111115] rounded-2xl sm:rounded-3xl w-full max-w-5xl max-h-[96vh] sm:max-h-[92vh] overflow-y-auto p-4 sm:p-8 space-y-4 sm:space-y-6 text-[#f6f3ec] shadow-2xl relative border border-white/15"
-        >
-          {activeAsset && (
-            <div>
-            {/* Modal Top Bar */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-3 sm:pb-4">
-              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                <FileVideo className="size-5 sm:size-6 text-primary shrink-0" />
-                <div className="min-w-0">
-                  <TypographyH3 className="font-display font-bold text-base sm:text-lg text-[#f6f3ec] truncate">
-                    {activeAsset.title}
-                  </TypographyH3>
-                  <TypographyMuted className="text-[11px] sm:text-xs text-[#aeaeb4]  truncate">
-                    Aspect:{" "}
-                    {typeof activeAsset.aspectRatio === "object" && activeAsset.aspectRatio !== null
-                      ? (activeAsset.aspectRatio as any)?.shortLabel ||
-                        (activeAsset.aspectRatio as any)?.id ||
-                        (activeAsset.aspectRatio as any)?.cssRatio ||
-                        "16:9"
-                      : activeAsset.aspectRatio || "16:9"}{" "}
-                    · {activeFeedback.length} timecoded notes
-                  </TypographyMuted>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0 ml-2">
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        type="button"
-                        variant={activeAsset.isApproved ? "outline" : "default"}
-                        size="sm"
-                        disabled={approvingAssetId === activeAsset.id}
-                        onClick={() => handleToggleAssetApproval(activeAsset.id)}
-                        className={`rounded-full text-xs font-bold px-3.5 py-1.5 cursor-pointer flex items-center gap-1.5 transition-all ${
-                          activeAsset.isApproved
-                            ? "border-[#86b98f]/40 bg-[#86b98f]/20 hover:bg-amber-500/20 text-[#86b98f] hover:text-amber-300 hover:border-amber-500/40"
-                            : "bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/30 shadow-md shadow-emerald-950/50"
-                        }`}
-                      >
-                        {approvingAssetId === activeAsset.id ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : (
-                          <Check className="size-3.5 stroke-[2.5]" />
-                        )}
-                        <TypographySpan>
-                          {activeAsset.isApproved ? "Approved · Undo" : "Approve Cut"}
-                        </TypographySpan>
-                      </Button>
-                    }
-                  />
-                  <TooltipContent>
-                    {activeAsset.isApproved
-                      ? "Click to remove approval for this asset"
-                      : "Approve this asset"}
-                  </TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={!isGlobalDownloadUnlocked && !activeAsset.isApproved}
-                        onClick={() => handleSingleAssetDownload(activeAsset, activeVersion)}
-                        className="rounded-full border-white/20 text-white bg-white/10 hover:bg-white/20 text-xs font-bold px-3 py-1.5 cursor-pointer flex items-center gap-1.5 disabled:opacity-40"
-                      >
-                        <Download className="size-3.5 text-primary" />
-                        <TypographySpan className="hidden sm:inline">Download Cut</TypographySpan>
-                      </Button>
-                    }
-                  />
-                  <TooltipContent>
-                    {!isGlobalDownloadUnlocked && !activeAsset.isApproved
-                      ? "Approve cut to unlock download"
-                      : `Download ${activeAsset.title} V${activeVersion?.versionNumber || 1}`}
-                  </TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setActiveAssetId(null)}
-                        className="size-9 rounded-full bg-white/10 text-[#aeaeb4] hover:text-[#f6f3ec] hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-                      >
-                        <X className="size-5" />
-                      </Button>
-                    }
-                  />
-                  <TooltipContent>Close preview (Esc)</TooltipContent>
-                </Tooltip>
-              </div>
-            </div>
-
-            {/* Video Player Stage & Comment Sidebar */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
-              {/* Player Column */}
-              <div className="lg:col-span-7 space-y-3 sm:space-y-4">
-                {(() => {
-                  const isStill =
-                    activeAsset.type === "photo_gallery" ||
-                    activeAsset.type === "image" ||
-                    activeAsset.type === "still" ||
-                    activeAsset.type === "photo";
-
-                  const isWatermarkedSetting =
-                    delivery.appearance?.watermarkMedia ?? delivery.isWatermarked ?? true;
-                  const showWatermarkOnAsset = isWatermarkedSetting && !activeAsset.isApproved;
-
-                  return activeVersion ? (
-                    <CutReviewPlayer
-                      ref={cutPlayerRef}
-                      isPhoto={isStill}
-                      src={
-                        isStill
-                          ? resolveMediaUrl(activeVersion.rawFileUrl || activeVersion.thumbnailUrl) || "/images/hero.jpg"
-                          : resolveMediaUrl(activeVersion.hlsManifestUrl) ||
-                            resolveMediaUrl(activeVersion.rawFileUrl) ||
-                            "https://files.vidstack.io/sprite-fight/hls/stream.m3u8"
-                      }
-                      title={activeAsset.title}
-                      poster={resolveThumbnailUrl(activeVersion.thumbnailUrl, activeVersion.rawFileUrl, isStill) || "/images/hero.jpg"}
-                      aspectRatio={activeAsset.aspectRatio || "16:9"}
-                      fps={24}
-                      showWatermark={showWatermarkOnAsset}
-                      watermarkText={workspace?.brandName || "STUDIO PREVIEW"}
-                      comments={activeFeedback.map((c) => ({
-                        id: c.id,
-                        timestampSeconds: isStill ? null : (c.timestampSeconds ?? 0),
-                        authorName: c.authorName,
-                        commentText: c.commentText,
-                        isResolved: c.isResolved,
-                      }))}
-                      activeCommentId={activeCommentId}
-                      onCommentSelect={(commentId, timestamp) => {
-                        if (!isStill) {
-                          setActiveCommentId(commentId);
-                          cutPlayerRef.current?.seekTo(timestamp);
-                        }
-                      }}
-                      onTimeChange={(time, tc) => {
-                        if (!isStill) {
-                          setCurrentPlayheadTime(time);
-                          setCurrentPlayheadTc(tc);
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div className="aspect-video bg-black/50 border border-white/10 rounded-2xl flex items-center justify-center text-xs text-[#aeaeb4]">
-                      No media version available
-                    </div>
-                  );
-                })()}
-
-                {/* Version Selector Bar */}
-                {activeAsset.versions && activeAsset.versions.length > 0 && (
-                  <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/10">
-                    <div className="flex items-center gap-2">
-                      <Layers className="size-3.5 text-primary" />
-                      <TypographySpan className="text-xs  text-[#aeaeb4]">
-                        Version:
-                      </TypographySpan>
-                    </div>
-                    <div className="flex gap-1.5">
-                      {activeAsset.versions.map((v) => {
-                        const isSelected = activeVersion?.id === v.id;
-                        return (
-                          <Button
-                            key={v.id}
-                            type="button"
-                            size="sm"
-                            variant={isSelected ? "default" : "outline"}
-                            onClick={() => setSelectedVersionId(v.id)}
-                            className={`px-3 py-1.5 h-7 rounded-lg text-xs font-bold  transition-all cursor-pointer flex items-center gap-1 ${
-                              isSelected
-                                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md border-transparent"
-                                : "bg-white/5 border-white/10 text-[#aeaeb4] hover:text-[#f6f3ec] hover:bg-white/10"
-                            }`}
-                          >
-                            <TypographySpan>V{v.versionNumber}</TypographySpan>
-                            {v.isActiveVersion && (
-                              <TypographySpan className="text-[9px] opacity-75">★</TypographySpan>
-                            )}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Timestamped Comment Drawer */}
-              {(() => {
-                const isStill =
-                  activeAsset.type === "photo_gallery" ||
-                  activeAsset.type === "image" ||
-                  activeAsset.type === "still" ||
-                  activeAsset.type === "photo";
-
-                return (
-                  <div className="lg:col-span-5 bg-white/5 p-4 sm:p-5 rounded-2xl flex flex-col justify-between min-h-[360px] sm:min-h-[420px] lg:h-[480px] border border-white/10">
-                    <div className="space-y-3 sm:space-y-4 overflow-hidden flex flex-col h-full">
-                      <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
-                        <TypographyH4 className="font-display font-bold text-sm text-[#f6f3ec] flex items-center gap-2">
-                          <MessageCircle className={`size-4 ${isStill ? "text-emerald-400" : "text-primary"}`} />
-                          Notes ({activeFeedback.length})
-                        </TypographyH4>
-                        {isStill ? (
-                          <Badge variant="sage" className="text-[10px]  font-bold">
-                            Still Photography
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px]  text-primary border-primary/30">
-                            Playhead: {currentPlayheadTc}
-                          </Badge>
-                        )}
-                      </div>
-
-                      {/* Comments Feed */}
-                      <div className="space-y-2.5 sm:space-y-3 overflow-y-auto pr-1 flex-1">
-                        {activeFeedback.length === 0 ? (
-                          <div className="h-full flex flex-col items-center justify-center text-center p-4 text-xs text-[#aeaeb4] space-y-1">
-                            <p>No comments on this {isStill ? "still" : "version"} yet.</p>
-                            <p className="text-[11px] text-[#71717a]">
-                              {isStill
-                                ? "Leave feedback or revision notes for this photo still below."
-                                : "Pause at any frame and type your feedback below."}
-                            </p>
-                          </div>
-                        ) : (
-                          activeFeedback.map((c) => {
-                            const isSelected = activeCommentId === c.id;
-                            const commentTime = c.timestampSeconds;
-                            const hasTimestamp = !isStill && commentTime !== null && commentTime !== undefined;
-                            const tcDisplay = hasTimestamp ? formatTimecode(commentTime, 24) : null;
-
-                            return (
-                              <div
-                                key={c.id}
-                                onClick={() => {
-                                  if (hasTimestamp) {
-                                    cutPlayerRef.current?.seekTo(commentTime);
-                                    setActiveCommentId(c.id);
-                                  }
-                                }}
-                                className={`p-3 rounded-xl text-xs space-y-1.5 transition-all border ${
-                                  hasTimestamp ? "cursor-pointer" : ""
-                                } ${
-                                  isSelected
-                                    ? "bg-primary/20 border-primary text-[#f6f3ec] ring-1 ring-primary"
-                                    : c.isResolved
-                                    ? "bg-white/5 border-white/5 text-[#71717a] opacity-75"
-                                    : "bg-[#18181c] border-white/10 text-[#f6f3ec] hover:border-white/20"
-                                }`}
-                              >
-                                <div className="flex items-center justify-between text-[10px] text-[#aeaeb4] ">
-                                  <div className="flex items-center gap-1.5">
-                                    <Avatar className="size-5 text-[9px] shrink-0">
-                                      <AvatarFallback className="text-[9px] bg-white/10 text-white ">
-                                        {c.authorName ? c.authorName.slice(0, 2).toUpperCase() : "U"}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <TypographySpan className="font-semibold text-white">{c.authorName}</TypographySpan>
-                                  </div>
-                                  {hasTimestamp ? (
-                                    <Badge variant="orange" className="text-[10px]  font-bold py-0 h-4">
-                                      {tcDisplay}
-                                    </Badge>
-                                  ) : (
-                                    <Badge variant="sage" className="text-[9px]  py-0 h-4">
-                                      Still Note
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="leading-snug text-xs">{c.commentText}</p>
-
-                                {/* Action Row: Reply & Resolve */}
-                                <div className="flex items-center justify-between pt-1">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (replyingToId === c.id) {
-                                        setReplyingToId(null);
-                                      } else {
-                                        setReplyingToId(c.id);
-                                        setReplyInputText("");
-                                      }
-                                    }}
-                                    className="text-[10px] text-[#aeaeb4] hover:text-white flex items-center gap-1  transition-colors cursor-pointer"
-                                  >
-                                    <CornerDownRight className="size-3" />
-                                    {replyingToId === c.id ? "Cancel" : "Reply"}
-                                  </button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleToggleResolve(c.id, c.isResolved);
-                                    }}
-                                    className={`h-6 text-[10px]  px-2 py-0.5 rounded cursor-pointer transition-colors ${
-                                      c.isResolved
-                                        ? "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
-                                        : "text-[#aeaeb4] hover:text-white hover:bg-white/10"
-                                    }`}
-                                  >
-                                    {c.isResolved ? "✓ Resolved" : "Mark resolved"}
-                                  </Button>
-                                </div>
-
-                                {/* Threaded Replies */}
-                                {c.replies && c.replies.length > 0 && (
-                                  <div className="mt-2 pt-2 border-t border-white/5 space-y-2">
-                                    {c.replies.map((r) => (
-                                      <div
-                                        key={r.id}
-                                        className="flex items-start gap-2 pl-2 border-l-2 border-primary/40 text-[11px]"
-                                      >
-                                        <Avatar className="size-4 text-[8px] shrink-0 mt-0.5">
-                                          <AvatarFallback className="text-[8px] bg-white/10 text-white ">
-                                            {r.authorName ? r.authorName.slice(0, 2).toUpperCase() : "U"}
-                                          </AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex-1 min-w-0">
-                                          <TypographySpan className="font-semibold text-white/90 text-[10px] block ">
-                                            {r.authorName}
-                                          </TypographySpan>
-                                          <p className="text-white/80 leading-snug">{r.commentText}</p>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-
-                                {/* Inline Reply Input */}
-                                {replyingToId === c.id && (
-                                  <div
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="mt-2 pt-2 border-t border-white/10 flex gap-2"
-                                  >
-                                    <Input
-                                      type="text"
-                                      placeholder={`Reply to ${c.authorName}...`}
-                                      value={replyInputText}
-                                      onChange={(e) => setReplyInputText(e.target.value)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter" && !e.shiftKey) {
-                                          e.preventDefault();
-                                          handleAddReply(c.id);
-                                        }
-                                      }}
-                                      autoFocus
-                                      className="flex-1 bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-white h-7 focus-visible:ring-1 focus-visible:ring-primary"
-                                    />
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      disabled={!replyInputText.trim() || isSubmittingReply}
-                                      onClick={() => handleAddReply(c.id)}
-                                      className="h-7 px-2.5 text-xs bg-primary hover:bg-primary/90 text-white rounded-lg cursor-pointer"
-                                    >
-                                      <Send className="size-3" />
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-
-                      {/* Comment Input */}
-                      <form
-                        onSubmit={handleAddComment}
-                        className="pt-3 border-t border-white/10 flex flex-col gap-2 shrink-0"
-                      >
-                        <div className="flex items-center justify-between text-[10px]  text-[#aeaeb4]">
-                          <div className="flex items-center gap-1.5">
-                            <TypographySpan>As:</TypographySpan>
-                            <Input
-                              type="text"
-                              value={commentAuthor}
-                              onChange={(e) => setCommentAuthor(e.target.value)}
-                              placeholder="Your Name"
-                              className="h-6 w-28 bg-transparent text-white font-semibold underline underline-offset-2 border-none p-0 text-xs focus-visible:ring-0 focus-visible:underline"
-                            />
-                          </div>
-                          {isStill ? (
-                            <Badge variant="sage" className="text-[9px]  font-bold py-0 h-4">
-                              Still Note
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-[10px]  font-bold py-0 h-4 text-primary border-primary/30">
-                              {currentPlayheadTc}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          <Input
-                            type="text"
-                            placeholder={
-                              isStill
-                                ? "Add feedback note on this still..."
-                                : `Leave note at ${currentPlayheadTc}...`
-                            }
-                            value={commentText}
-                            onChange={(e) => setCommentText(e.target.value)}
-                            disabled={isSubmittingComment}
-                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary text-white placeholder:text-neutral-500 min-h-[44px]"
-                          />
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <Button
-                                  type="submit"
-                                  disabled={isSubmittingComment || !commentText.trim()}
-                                  className="bg-primary hover:bg-primary/90 disabled:opacity-40 text-primary-foreground font-bold px-4 rounded-xl text-xs h-[44px] flex items-center justify-center transition-colors cursor-pointer shrink-0 shadow-md shadow-primary/25"
-                                >
-                                  {isSubmittingComment ? (
-                                    <Loader2 className="size-4 animate-spin" />
-                                  ) : (
-                                    <Send className="size-4" />
-                                  )}
-                                </Button>
-                              }
-                            />
-                            <TooltipContent>Post timecoded note</TooltipContent>
-                          </Tooltip>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        )}
-      </UniversalDialogContent>
-    </UniversalDialogRoot>
+      {/* 📹 3. CENTRALIZED INTERACTIVE VIDEO REVIEW LIGHTBOX MODAL */}
+      <AssetLightboxModal
+        activeItem={activeLightboxItem}
+        onClose={() => setActiveAssetId(null)}
+        onNext={filteredAssets.length > 1 ? handleNextAsset : undefined}
+        onPrev={filteredAssets.length > 1 ? handlePrevAsset : undefined}
+        feedbackList={activeAsset?.feedback || []}
+        onAddFeedback={handleAddFeedback}
+        onAddReply={handleAddReply}
+        onToggleApproval={handleToggleAssetApproval}
+        authorName={commentAuthor}
+        showFeedback={true}
+        showVersions={Boolean(activeAsset?.versions && activeAsset.versions.length > 0)}
+        showDownload={isGlobalDownloadUnlocked || Boolean(activeAsset?.isApproved)}
+        onDownload={handleLightboxDownload}
+        watermarkMedia={
+          (delivery.appearance?.watermarkMedia ?? delivery.isWatermarked ?? true) &&
+          !activeAsset?.isApproved
+        }
+        watermarkText={workspace?.brandName || "STUDIO PREVIEW"}
+        shareToken={delivery.shareToken}
+        deliveryId={delivery.id}
+      />
 
       {/* 📦 Master Deliverables Package Modal */}
       <DownloadPackageModal

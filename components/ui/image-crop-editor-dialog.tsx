@@ -467,9 +467,9 @@ export function ImageCropEditorDialog({
           )}
         </div>
 
-        {/* Aspect Ratio Selector (when unlocked) */}
+        {/* Aspect Ratio Selector (when unlocked) - Hidden per user request */}
         {showAspectSwitcher && (
-          <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="hidden items-center justify-between gap-2 flex-wrap">
             <span className="text-[10px]  uppercase tracking-widest text-zinc-400">
               Aspect Ratio
             </span>

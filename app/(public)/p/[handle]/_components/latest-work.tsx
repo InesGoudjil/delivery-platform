@@ -1,15 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { Film, Image as ImageIcon, Layers, Play, Loader2, CheckCircle2 } from "lucide-react";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import {
+  MediaCard,
+  MediaGrid,
+  MediaBadge,
+  AssetCountBadge,
+  PlayButtonOverlay,
+  ZoomButtonOverlay,
+} from "@/components/workspaces/media-card";
 import { PortfolioProject, PortfolioAsset } from "@/lib/portfolio-data";
 import { PortfolioAppearance } from "@/core/entities/portfolio";
 import { usePortfolioModal } from "./portfolio-context";
-import { AppImage } from "@/components/ui/app-image";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TiltCard } from "@/components/ui/motion";
 import { TypographyH2, TypographyH3, TypographyKicker, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 
 interface LatestWorkProps {
@@ -41,7 +47,18 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
   const visibleFilms = films.slice(0, visibleCounts.films);
   const visibleStills = stills.slice(0, visibleCounts.stills);
 
-  const handleLoadMore = (tab: "projects" | "films" | "stills") => {
+  const hasMoreProjects = projects.length > visibleProjects.length;
+  const hasMoreFilms = films.length > visibleFilms.length;
+  const hasMoreStills = stills.length > visibleStills.length;
+
+  const currentHasMore =
+    activeTab === "projects"
+      ? hasMoreProjects
+      : activeTab === "films"
+      ? hasMoreFilms
+      : hasMoreStills;
+
+  const handleLoadMore = useCallback((tab: "projects" | "films" | "stills") => {
     setIsLoadingMore(true);
     setTimeout(() => {
       setVisibleCounts((prev) => ({
@@ -50,7 +67,19 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
       }));
       setIsLoadingMore(false);
     }, 200);
-  };
+  }, [PAGE_SIZE]);
+
+  const handleCurrentLoadMore = useCallback(() => {
+    if (isLoadingMore) return;
+    handleLoadMore(activeTab);
+  }, [activeTab, isLoadingMore, handleLoadMore]);
+
+  const { sentinelRef } = useInfiniteScroll({
+    hasMore: currentHasMore,
+    isLoading: isLoadingMore,
+    onLoadMore: handleCurrentLoadMore,
+    rootMargin: "300px",
+  });
 
   const isMasonry =
     appearance?.aspectRatio === "grid" ||
@@ -58,25 +87,11 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
     appearance?.aspectRatio === "4:3";
 
   const cardSize = appearance?.cardSize || "M";
-  const gridClasses =
-    cardSize === "S"
-      ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5"
-      : cardSize === "M"
-      ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-5"
-      : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6";
-
-  const columnsClass =
-    cardSize === "S"
-      ? "columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-3.5"
-      : cardSize === "M"
-      ? "columns-1 sm:columns-2 md:columns-3 lg:columns-3 xl:columns-4 gap-5"
-      : "columns-1 sm:columns-2 lg:grid-cols-3 gap-6";
-
-  const itemSpacing =
-    cardSize === "S" ? "mb-3.5" : cardSize === "L" ? "mb-6" : "mb-5";
 
   const numericRatio =
-    appearance?.aspectRatio === "9:16"
+    isMasonry
+      ? undefined
+      : appearance?.aspectRatio === "9:16"
       ? 9 / 16
       : appearance?.aspectRatio === "1:1"
       ? 1
@@ -131,83 +146,54 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
           </div>
         ) : (
           <div className="space-y-8">
-            <div className={isMasonry ? `${columnsClass} animate-in fade-in duration-300` : `grid ${gridClasses} animate-in fade-in duration-300`}>
+            <MediaGrid isMasonry={isMasonry} cardSize={cardSize} className="animate-in fade-in duration-300">
               {visibleProjects.map((proj) => (
-                <div key={proj.id} className={isMasonry ? `break-inside-avoid ${itemSpacing} w-full` : "h-full"}>
-                  <TiltCard tiltIntensity={4} glareIntensity={0.12} className={`w-full ${isMasonry ? "h-auto" : "h-full"}`}>
-                    <div
-                      onClick={() => setSelectedProject(proj)}
-                      className={`group relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300 w-full ${isMasonry ? "h-auto" : "h-full"}`}
-                    >
-                      <AspectRatio ratio={isMasonry ? 16 / 11 : numericRatio} className="w-full">
-                        <AppImage
-                          src={proj.coverImage}
-                          alt={proj.title}
-                          fallbackIcon="film"
-                          objectFit={thumbObjectFit}
-                          containerClassName="size-full"
-                          className="size-full transition-transform duration-500 group-hover:scale-105"
-                        />
-                      </AspectRatio>
-
-                      {/* Gradient shadow */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent group-hover:via-black/20 transition-all duration-300 pointer-events-none" />
-
-                      {/* Top-right asset count badge */}
-                      <div className="absolute top-3 right-3 z-10">
-                        <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[11px]  text-zinc-200">
-                          {proj.tc}
-                        </Badge>
-                      </div>
-
-                      {/* Bottom title and client */}
-                      <div className="absolute bottom-4 left-4 right-4 z-10 space-y-0.5 pointer-events-none">
-                        <TypographyH3 className="font-heading font-bold text-base text-white group-hover:text-primary transition-colors truncate">
-                          {proj.title}
-                        </TypographyH3>
-                        {showClient && (
-                          <TypographyMuted className="text-xs text-zinc-400  truncate">
-                            {proj.client}
-                          </TypographyMuted>
-                        )}
-                      </div>
-                    </div>
-                  </TiltCard>
-                </div>
+                <MediaCard
+                  key={proj.id}
+                  title={proj.title}
+                  subtitle={proj.client}
+                  showInfo={showClient}
+                  showTitle={showClient}
+                  showSubtitle={showClient}
+                  src={proj.coverImage}
+                  type="project"
+                  isMasonry={isMasonry}
+                  numericRatio={isMasonry ? 16 / 11 : numericRatio}
+                  thumbnailScale={thumbScale}
+                  onClick={() => setSelectedProject(proj)}
+                  tiltIntensity={4}
+                  glareIntensity={0.12}
+                  topRight={<AssetCountBadge count={proj.tc} />}
+                  textAlign="center"
+                  footerMode="overlay"
+                />
               ))}
-            </div>
+            </MediaGrid>
 
-            {/* Load More & Stats for Projects */}
-            {projects.length > visibleProjects.length && (
-              <div className="flex flex-col items-center justify-center pt-4 pb-2 space-y-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="lg"
-                  disabled={isLoadingMore}
+            {/* Infinite Scroll Sentinel & Stats for Projects */}
+            {hasMoreProjects && (
+              <div
+                ref={sentinelRef}
+                className="flex flex-col items-center justify-center pt-8 pb-4 space-y-3"
+              >
+                <div
                   onClick={() => handleLoadMore("projects")}
-                  className="group relative rounded-full px-8 py-3 bg-[#141416]/80 hover:bg-[#1a1a1e] border-white/10 hover:border-primary/50 text-white font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-xl cursor-pointer"
+                  className="flex items-center gap-2.5 px-6 py-2.5 rounded-full bg-[#141416]/90 border border-white/10 text-white shadow-xl cursor-pointer hover:border-primary/40 transition-all duration-300"
                 >
-                  {isLoadingMore ? (
-                    <div className="flex items-center gap-2.5">
-                      <Loader2 className="size-4 animate-spin text-primary" />
-                      <TypographySpan>Loading projects...</TypographySpan>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <TypographySpan>Load More Projects</TypographySpan>
-                      {projects.length - visibleProjects.length > 0 && (
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px]  px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
-                        >
-                          +{projects.length - visibleProjects.length} more
-                        </Badge>
-                      )}
-                    </div>
+                  <Loader2 className="size-4 animate-spin text-primary" />
+                  <TypographySpan className="text-xs font-bold uppercase tracking-wider">
+                    {isLoadingMore ? "Loading projects..." : "Loading more projects"}
+                  </TypographySpan>
+                  {projects.length - visibleProjects.length > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
+                    >
+                      +{projects.length - visibleProjects.length} more
+                    </Badge>
                   )}
-                </Button>
-                <p className="text-[11px]  text-zinc-400">
+                </div>
+                <p className="text-[11px] text-zinc-400">
                   Showing {visibleProjects.length} of {projects.length} projects
                 </p>
               </div>
@@ -234,101 +220,63 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
           </div>
         ) : (
           <div className="space-y-8">
-            <div className={isMasonry ? `${columnsClass} animate-in fade-in duration-300` : `grid ${gridClasses} animate-in fade-in duration-300`}>
+            <MediaGrid isMasonry={isMasonry} cardSize={cardSize} className="animate-in fade-in duration-300">
               {visibleFilms.map((film) => {
-                const filmRatio = isMasonry ? (film.ar || 16 / 9) : numericRatio;
+                const filmRatio = isMasonry ? (film.ar || undefined) : numericRatio;
                 return (
-                  <div key={film.id} className={isMasonry ? `break-inside-avoid ${itemSpacing} w-full` : "h-full"}>
-                    <TiltCard tiltIntensity={4} glareIntensity={0.12} className={`w-full ${isMasonry ? "h-auto" : "h-full"}`}>
-                      <div
-                        onClick={() => setActiveFilm(film)}
-                        className={`group relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300 w-full ${isMasonry ? "h-auto" : "h-full"} flex flex-col justify-between`}
-                      >
-                        <div className="relative w-full overflow-hidden">
-                          <AspectRatio ratio={filmRatio} className="w-full">
-                            <AppImage
-                              src={film.image}
-                              alt={film.title}
-                              fallbackIcon="film"
-                              objectFit={thumbObjectFit}
-                              containerClassName="size-full"
-                              className="size-full transition-transform duration-500 group-hover:scale-105"
-                            />
-                          </AspectRatio>
-                          <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors pointer-events-none" />
-
-                          {/* Top-right duration */}
-                          <div className="absolute top-3 right-3 z-10">
-                            <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[11px]  text-white">
-                              {film.tc}
-                            </Badge>
-                          </div>
-
-                          {/* Top-left resolution */}
-                          <div className="absolute top-3 left-3 z-10">
-                            <Badge variant="outline" className="bg-black/60 backdrop-blur-md border-white/10 text-[10px]  font-bold text-white uppercase gap-1.5">
-                              <Film className="size-3 text-primary" />
-                              <TypographySpan>{film.resolution || "HD 60fps"}</TypographySpan>
-                            </Badge>
-                          </div>
-
-                          {/* Center play icon */}
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="size-12 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300 shadow-xl">
-                              <Play className="size-5 fill-current ml-0.5" />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Card bottom info */}
-                        <div className="p-4 bg-[#121214] border-t border-white/5 space-y-1">
-                          <TypographyH3 className="font-heading font-bold text-base text-white group-hover:text-primary transition-colors truncate">
-                            {film.title}
-                          </TypographyH3>
-                          {showClient && (
-                            <p className="text-xs text-zinc-400 font-sans line-clamp-1">
-                              {film.desc}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </TiltCard>
-                  </div>
+                  <MediaCard
+                    key={film.id}
+                    title={film.title}
+                    subtitle={film.desc}
+                    showInfo={showClient}
+                    showTitle={showClient}
+                    showSubtitle={showClient}
+                    src={film.image}
+                    type="film"
+                    isMasonry={isMasonry}
+                    numericRatio={filmRatio}
+                    thumbnailScale={thumbScale}
+                    onClick={() => setActiveFilm(film)}
+                    tiltIntensity={4}
+                    glareIntensity={0.12}
+                    topLeft={<MediaBadge type="film" />}
+                    topRight={
+                      film.tc ? (
+                        <AssetCountBadge count={film.tc} />
+                      ) : undefined
+                    }
+                    centerAction={<PlayButtonOverlay />}
+                    textAlign="center"
+                    footerMode="overlay"
+                  />
                 );
               })}
-            </div>
+            </MediaGrid>
 
-            {/* Load More & Stats for Films */}
-            {films.length > visibleFilms.length && (
-              <div className="flex flex-col items-center justify-center pt-4 pb-2 space-y-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="lg"
-                  disabled={isLoadingMore}
+            {/* Infinite Scroll Sentinel & Stats for Films */}
+            {hasMoreFilms && (
+              <div
+                ref={sentinelRef}
+                className="flex flex-col items-center justify-center pt-8 pb-4 space-y-3"
+              >
+                <div
                   onClick={() => handleLoadMore("films")}
-                  className="group relative rounded-full px-8 py-3 bg-[#141416]/80 hover:bg-[#1a1a1e] border-white/10 hover:border-primary/50 text-white font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-xl cursor-pointer"
+                  className="flex items-center gap-2.5 px-6 py-2.5 rounded-full bg-[#141416]/90 border border-white/10 text-white shadow-xl cursor-pointer hover:border-primary/40 transition-all duration-300"
                 >
-                  {isLoadingMore ? (
-                    <div className="flex items-center gap-2.5">
-                      <Loader2 className="size-4 animate-spin text-primary" />
-                      <TypographySpan>Loading films...</TypographySpan>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <TypographySpan>Load More Films</TypographySpan>
-                      {films.length - visibleFilms.length > 0 && (
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px]  px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
-                        >
-                          +{films.length - visibleFilms.length} more
-                        </Badge>
-                      )}
-                    </div>
+                  <Loader2 className="size-4 animate-spin text-primary" />
+                  <TypographySpan className="text-xs font-bold uppercase tracking-wider">
+                    {isLoadingMore ? "Loading films..." : "Loading more films"}
+                  </TypographySpan>
+                  {films.length - visibleFilms.length > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
+                    >
+                      +{films.length - visibleFilms.length} more
+                    </Badge>
                   )}
-                </Button>
-                <p className="text-[11px]  text-zinc-400">
+                </div>
+                <p className="text-[11px] text-zinc-400">
                   Showing {visibleFilms.length} of {films.length} films
                 </p>
               </div>
@@ -357,114 +305,55 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
           </div>
         ) : (
           <div className="space-y-8">
-            <div className={isMasonry ? `${columnsClass} animate-in fade-in duration-300` : `grid ${gridClasses} animate-in fade-in duration-300`}>
+            <MediaGrid isMasonry={isMasonry} cardSize={cardSize} className="animate-in fade-in duration-300">
               {visibleStills.map((still) => (
-                <div
+                <MediaCard
                   key={still.id}
+                  title={still.title}
+                  subtitle={still.cat}
+                  showInfo={showClient}
+                  showTitle={showClient}
+                  showSubtitle={showClient}
+                  src={still.image}
+                  type="still"
+                  isMasonry={isMasonry}
+                  numericRatio={isMasonry ? undefined : numericRatio}
+                  thumbnailScale={thumbScale}
                   onClick={() => setActiveStill(still)}
-                  className={isMasonry ? `break-inside-avoid ${itemSpacing} w-full group relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300` : "h-full"}
+                  tiltIntensity={4}
+                  glareIntensity={0.12}
+                  topLeft={<MediaBadge type="still" />}
+                  centerAction={<ZoomButtonOverlay />}
+                  textAlign="center"
+                  footerMode="overlay"
+                />
+              ))}
+            </MediaGrid>
+
+            {/* Infinite Scroll Sentinel & Stats for Stills */}
+            {hasMoreStills && (
+              <div
+                ref={sentinelRef}
+                className="flex flex-col items-center justify-center pt-8 pb-4 space-y-3"
+              >
+                <div
+                  onClick={() => handleLoadMore("stills")}
+                  className="flex items-center gap-2.5 px-6 py-2.5 rounded-full bg-[#141416]/90 border border-white/10 text-white shadow-xl cursor-pointer hover:border-primary/40 transition-all duration-300"
                 >
-                  {isMasonry ? (
-                    <>
-                      {/* Still image in Masonry */}
-                      <img
-                        src={still.image}
-                        alt={still.title}
-                        loading="lazy"
-                        className={`w-full h-auto ${thumbObjectFit === "contain" ? "object-contain bg-black" : "object-cover"} transition-transform duration-500 group-hover:scale-105 block`}
-                      />
-
-                      {/* Top-left STILL badge */}
-                      <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/15 text-[10px]  font-bold text-white uppercase tracking-wider">
-                        <ImageIcon className="size-3 text-zinc-300" />
-                        <TypographySpan>STILL</TypographySpan>
-                      </div>
-
-                      {/* Hover overlay with title */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                        <div className="space-y-0.5">
-                          <p className="text-sm font-bold text-white font-heading">
-                            {still.title}
-                          </p>
-                          {showClient && (
-                            <p className="text-xs text-zinc-400  capitalize">
-                              {still.cat}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <TiltCard tiltIntensity={4} glareIntensity={0.12} className="w-full h-full">
-                      <div className="group relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300 w-full h-full">
-                        <AspectRatio ratio={numericRatio} className="w-full">
-                          <AppImage
-                            src={still.image}
-                            alt={still.title}
-                            fallbackIcon="image"
-                            objectFit={thumbObjectFit}
-                            containerClassName="size-full"
-                            className="size-full transition-transform duration-500 group-hover:scale-105"
-                          />
-                        </AspectRatio>
-
-                        {/* Top-left STILL badge */}
-                        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/15 text-[10px]  font-bold text-white uppercase tracking-wider">
-                          <ImageIcon className="size-3 text-zinc-300" />
-                          <TypographySpan>STILL</TypographySpan>
-                        </div>
-
-                        {/* Hover overlay with title */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                          <div className="space-y-0.5">
-                            <p className="text-sm font-bold text-white font-heading">
-                              {still.title}
-                            </p>
-                            {showClient && (
-                              <p className="text-xs text-zinc-400  capitalize">
-                                {still.cat}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </TiltCard>
+                  <Loader2 className="size-4 animate-spin text-primary" />
+                  <TypographySpan className="text-xs font-bold uppercase tracking-wider">
+                    {isLoadingMore ? "Loading stills..." : "Loading more stills"}
+                  </TypographySpan>
+                  {stills.length - visibleStills.length > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
+                    >
+                      +{stills.length - visibleStills.length} more
+                    </Badge>
                   )}
                 </div>
-              ))}
-            </div>
-
-            {/* Load More & Stats for Stills */}
-            {stills.length > visibleStills.length && (
-              <div className="flex flex-col items-center justify-center pt-4 pb-2 space-y-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="lg"
-                  disabled={isLoadingMore}
-                  onClick={() => handleLoadMore("stills")}
-                  className="group relative rounded-full px-8 py-3 bg-[#141416]/80 hover:bg-[#1a1a1e] border-white/10 hover:border-primary/50 text-white font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-xl cursor-pointer"
-                >
-                  {isLoadingMore ? (
-                    <div className="flex items-center gap-2.5">
-                      <Loader2 className="size-4 animate-spin text-primary" />
-                      <TypographySpan>Loading stills...</TypographySpan>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <TypographySpan>Load More Stills</TypographySpan>
-                      {stills.length - visibleStills.length > 0 && (
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px]  px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
-                        >
-                          +{stills.length - visibleStills.length} more
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-                </Button>
-                <p className="text-[11px]  text-zinc-400">
+                <p className="text-[11px] text-zinc-400">
                   Showing {visibleStills.length} of {stills.length} stills
                 </p>
               </div>

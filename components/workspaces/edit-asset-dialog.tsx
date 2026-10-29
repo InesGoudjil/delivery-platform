@@ -335,7 +335,7 @@ export function EditAssetDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             {/* CATEGORY */}
             <div className="space-y-1.5">
               <label className="text-[10px]  text-muted-foreground uppercase tracking-widest block">
@@ -350,8 +350,8 @@ export function EditAssetDialog({
               />
             </div>
 
-            {/* ASPECT RATIO */}
-            <div className="space-y-2">
+            {/* ASPECT RATIO - Hidden per user request */}
+            <div className="hidden space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-[10px]  text-muted-foreground uppercase tracking-widest block">
                   ASPECT RATIO

@@ -5,22 +5,13 @@ import {
   MessageCircle,
   CornerDownRight,
   Send,
-  ImageIcon,
   Clock,
   Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import {
-  TypographyH4,
-  TypographyP,
-  TypographySmall,
-  TypographyMuted,
-  TypographySpan,
-} from "@/components/ui/typography";
 import { formatTimecode } from "@/lib/timecode";
 import { FeedbackItem, FeedbackReplyItem } from "./types";
 
@@ -46,6 +37,7 @@ export function LightboxFeedbackDrawer({
   onAddReply,
 }: LightboxFeedbackDrawerProps) {
   const [inputText, setInputText] = useState("");
+  const [attachTime, setAttachTime] = useState(true);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyInputText, setReplyInputText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,57 +65,31 @@ export function LightboxFeedbackDrawer({
   };
 
   return (
-    <div className="bg-[#141418] border border-white/10 rounded-2xl flex flex-col justify-between h-full min-h-[440px] overflow-hidden shadow-xl">
-      {/* Drawer Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#18181d] shrink-0">
-        <TypographyH4 className="font-heading font-bold text-xs sm:text-sm flex items-center gap-2 text-white">
-          <MessageCircle className="size-4 text-primary" />
-          <TypographySpan>{isStill ? "Still Photo Notes" : "Timecoded Notes"}</TypographySpan>
-          <TypographySpan className="text-zinc-500  text-xs">
-            (V{activeVersionNumber}: {feedbackList.length})
-          </TypographySpan>
-        </TypographyH4>
-
-        {isStill ? (
-          <Badge variant="sage" className="text-[10px]  px-2 py-0.5">
-            Photo Cut
-          </Badge>
-        ) : (
-          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-[11px]  text-primary font-bold">
+    <div className="bg-[#18181d]/90 border border-white/10 rounded-2xl p-4 flex flex-col gap-3 shadow-lg w-full">
+      {/* 1. Header */}
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-white tracking-tight flex items-center gap-2">
+          <span>Client comments</span>
+          {feedbackList.length > 0 && (
+            <span className="text-xs text-zinc-400 font-normal">
+              ({feedbackList.length})
+            </span>
+          )}
+        </h4>
+        {!isStill && (
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-zinc-400">
             <span className="size-1.5 rounded-full bg-primary animate-pulse" />
-            <TypographySpan>{currentCutTimecode}</TypographySpan>
+            <span>{currentCutTimecode}</span>
           </div>
         )}
       </div>
 
-      {/* Scrollable Comments List */}
-      <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5 custom-scrollbar min-h-0">
-        {feedbackList.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground select-none">
-            {isStill ? (
-              <>
-                <ImageIcon className="size-8 opacity-25 mb-2 text-primary" />
-                <TypographySmall className="text-xs text-zinc-300">
-                  No notes yet for V{activeVersionNumber}.
-                </TypographySmall>
-                <TypographyMuted className="text-[11px] text-zinc-500 mt-1 max-w-[200px]">
-                  Leave revisions or approval feedback on this photo still.
-                </TypographyMuted>
-              </>
-            ) : (
-              <>
-                <MessageCircle className="size-8 opacity-25 mb-2 text-primary" />
-                <TypographySmall className="text-xs text-zinc-300">
-                  No timecoded notes for V{activeVersionNumber}.
-                </TypographySmall>
-                <TypographyMuted className="text-[11px] text-zinc-500 mt-1 max-w-[220px]">
-                  Pause the video at any frame to pin a frame-accurate note.
-                </TypographyMuted>
-              </>
-            )}
-          </div>
-        ) : (
-          feedbackList.map((f) => {
+      {/* 2. Comments List / Empty State */}
+      {feedbackList.length === 0 ? (
+        <p className="text-xs text-zinc-400 py-1 select-none">No comments yet.</p>
+      ) : (
+        <div className="space-y-2.5 max-h-[220px] overflow-y-auto custom-scrollbar pr-1">
+          {feedbackList.map((f) => {
             const isTimecoded =
               !isStill &&
               f.timestampSeconds !== undefined &&
@@ -136,26 +102,24 @@ export function LightboxFeedbackDrawer({
             return (
               <div
                 key={f.id}
-                onClick={() => {
-                  onSelectComment(f.id, f.timestampSeconds);
-                }}
+                onClick={() => onSelectComment(f.id, f.timestampSeconds)}
                 className={`p-3 rounded-xl text-xs space-y-2 border transition-all cursor-pointer ${
                   isSelected
-                    ? "bg-primary/15 border-primary text-white ring-1 ring-primary/50 shadow-md"
-                    : "bg-black/40 border-white/10 text-white/90 hover:bg-black/60 hover:border-white/20"
+                    ? "bg-primary/15 border-primary text-white ring-1 ring-primary/40 shadow-md"
+                    : "bg-white/[0.03] border-white/10 text-white/90 hover:bg-white/[0.06] hover:border-white/20"
                 }`}
               >
                 {/* Author & Timestamp Bar */}
-                <div className="flex items-center justify-between text-[11px] ">
+                <div className="flex items-center justify-between text-[11px]">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <Avatar className="size-5.5 text-[9px] shrink-0 border border-white/10">
+                    <Avatar className="size-5 text-[9px] shrink-0 border border-white/10">
                       <AvatarFallback className="text-[9px] bg-primary/20 text-primary font-bold">
                         {f.authorName ? f.authorName.slice(0, 2).toUpperCase() : "U"}
                       </AvatarFallback>
                     </Avatar>
-                    <TypographySpan className="font-semibold text-white truncate max-w-[120px]">
+                    <span className="font-semibold text-white truncate max-w-[120px]">
                       {f.authorName}
-                    </TypographySpan>
+                    </span>
                   </div>
 
                   <Tooltip>
@@ -163,10 +127,10 @@ export function LightboxFeedbackDrawer({
                       render={
                         <Badge
                           variant={isTimecoded ? "orange" : "outline"}
-                          className="text-[10px]  py-0 h-4 flex items-center gap-1 cursor-pointer hover:opacity-80"
+                          className="text-[10px] py-0 h-4 flex items-center gap-1 cursor-pointer hover:opacity-80"
                         >
                           {isTimecoded && <Play className="size-2 fill-current" />}
-                          <TypographySpan>{tcDisplay}</TypographySpan>
+                          <span>{tcDisplay}</span>
                         </Badge>
                       }
                     />
@@ -177,13 +141,13 @@ export function LightboxFeedbackDrawer({
                 </div>
 
                 {/* Comment Text */}
-                <TypographyP className="text-white/95 leading-relaxed text-xs">
+                <p className="text-white/95 leading-relaxed text-xs">
                   {f.commentText}
-                </TypographyP>
+                </p>
 
-                {/* Action Bar (Reply toggle) */}
+                {/* Reply Toggle */}
                 {onAddReply && (
-                  <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center justify-between pt-0.5">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -195,10 +159,10 @@ export function LightboxFeedbackDrawer({
                           setReplyInputText("");
                         }
                       }}
-                      className="text-[10px] text-muted-foreground hover:text-white flex items-center gap-1  transition-colors cursor-pointer"
+                      className="text-[10px] text-zinc-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
                     >
                       <CornerDownRight className="size-3" />
-                      <TypographySpan>{replyingToId === f.id ? "Cancel Reply" : "Reply"}</TypographySpan>
+                      <span>{replyingToId === f.id ? "Cancel" : "Reply"}</span>
                     </button>
                   </div>
                 )}
@@ -211,18 +175,18 @@ export function LightboxFeedbackDrawer({
                         key={r.id}
                         className="flex items-start gap-2 pl-2.5 border-l-2 border-primary/50 text-xs"
                       >
-                        <Avatar className="size-4.5 text-[8px] shrink-0 mt-0.5">
-                          <AvatarFallback className="text-[8px] bg-white/10 text-white  font-bold">
+                        <Avatar className="size-4 text-[8px] shrink-0 mt-0.5">
+                          <AvatarFallback className="text-[8px] bg-white/10 text-white font-bold">
                             {r.authorName ? r.authorName.slice(0, 2).toUpperCase() : "U"}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <TypographySpan className="font-semibold text-white/90 text-[10px] block ">
+                          <span className="font-semibold text-white/90 text-[10px] block">
                             {r.authorName}
-                          </TypographySpan>
-                          <TypographyP className="text-white/80 leading-snug text-xs">
+                          </span>
+                          <p className="text-white/80 leading-snug text-xs">
                             {r.commentText}
-                          </TypographyP>
+                          </p>
                         </div>
                       </div>
                     ))}
@@ -235,7 +199,7 @@ export function LightboxFeedbackDrawer({
                     onClick={(e) => e.stopPropagation()}
                     className="mt-2 pt-2 border-t border-white/10 flex gap-2 animate-in fade-in duration-150"
                   >
-                    <Input
+                    <input
                       type="text"
                       placeholder={`Reply to ${f.authorName}...`}
                       value={replyInputText}
@@ -247,7 +211,7 @@ export function LightboxFeedbackDrawer({
                         }
                       }}
                       autoFocus
-                      className="flex-1 bg-black/60 border border-white/15 rounded-lg px-2.5 py-1 text-xs text-white h-7.5 focus-visible:ring-1 focus-visible:ring-primary"
+                      className="flex-1 bg-black/60 border border-white/15 rounded-lg px-2.5 py-1 text-xs text-white h-7.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     />
                     <Button
                       type="button"
@@ -262,59 +226,62 @@ export function LightboxFeedbackDrawer({
                 )}
               </div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
 
-      {/* Bottom Sticky Note Input Bar */}
+      {/* 3. Reply Capsule Input with Circular Orange Send Button */}
       {onAddFeedback && (
-        <form
-          onSubmit={handleSendFeedback}
-          className="p-3 border-t border-white/10 bg-[#18181d] flex flex-col gap-2 shrink-0"
-        >
-          <div className="flex items-center justify-between text-[10px]  text-muted-foreground px-1">
-            <TypographySpan className="flex items-center gap-1">
-              <Clock className="size-3 text-primary" />
-              <TypographySpan>{isStill ? "Note on Still:" : "Tagging at Timecode:"}</TypographySpan>
-            </TypographySpan>
-            <Badge
-              variant={isStill ? "sage" : "orange"}
-              className="text-[10px]  py-0 h-4"
-            >
-              {isStill
-                ? `V${activeVersionNumber} Still`
-                : `${currentCutTimecode} (V${activeVersionNumber})`}
-            </Badge>
-          </div>
-
-          <div className="flex gap-2">
-            <Input
+        <form onSubmit={handleSendFeedback} className="mt-1">
+          <div className="bg-[#0d0d12] border border-white/10 rounded-full pl-4 pr-1.5 py-1.5 flex items-center gap-2 transition-all focus-within:border-primary/50">
+            <input
               type="text"
               placeholder={
                 isStill
-                  ? `Add note on V${activeVersionNumber} still...`
-                  : `Note at ${currentCutTimecode} on V${activeVersionNumber}...`
+                  ? "Reply to your client..."
+                  : attachTime
+                  ? `Reply to your client (${currentCutTimecode})...`
+                  : "Reply to your client..."
               }
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               disabled={isSubmitting}
-              className="flex-1 bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-xs focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary text-white h-9 placeholder:text-zinc-500"
+              className="bg-transparent text-xs text-white placeholder:text-zinc-500 focus:outline-none flex-1 py-1"
             />
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={!inputText.trim() || isSubmitting}
-                    className="size-9 p-0 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 cursor-pointer shrink-0 flex items-center justify-center shadow-md shadow-primary/20 disabled:opacity-40"
-                  >
-                    <Send className="size-3.5" />
-                  </Button>
-                }
-              />
-              <TooltipContent>Post timecoded note</TooltipContent>
-            </Tooltip>
+
+            {!isStill && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <button
+                      type="button"
+                      onClick={() => setAttachTime((prev) => !prev)}
+                      className={`p-1.5 rounded-full transition-colors cursor-pointer ${
+                        attachTime
+                          ? "text-primary bg-primary/10"
+                          : "text-zinc-500 hover:text-white"
+                      }`}
+                    >
+                      <Clock className="size-3.5" />
+                    </button>
+                  }
+                />
+                <TooltipContent>
+                  {attachTime
+                    ? `Timecode pin enabled (${currentCutTimecode})`
+                    : "Click to pin note to current timecode"}
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            <button
+              type="submit"
+              disabled={!inputText.trim() || isSubmitting}
+              className="size-7 sm:size-8 rounded-full bg-primary hover:bg-primary/90 text-white flex items-center justify-center shadow-md shadow-primary/20 shrink-0 cursor-pointer transition-all active:scale-95 disabled:opacity-40"
+              title="Send reply"
+            >
+              <Send className="size-3.5 fill-current ml-0.5" />
+            </button>
           </div>
         </form>
       )}

@@ -1,7 +1,10 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
+import { Clock, CheckCircle2, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
   UniversalDialogRoot,
   UniversalDialogContent,
@@ -47,10 +50,13 @@ export function AssetLightboxModal({
   workspaceId,
   projectId,
   workspaceSlug,
+  shareToken,
+  deliveryId,
   onAssetUploaded,
   showFeedback,
   showVersions = true,
   showDownload = true,
+  onDownload,
   showShareLink = false,
   headerExtra,
   footerExtra,
@@ -253,6 +259,17 @@ export function AssetLightboxModal({
     isStill
   );
 
+  const rawBytes =
+    currentVersion?.fileSizeBytes ||
+    activeItem.fileSizeBytes ||
+    activeItem.fileSize;
+  const fileSizeText =
+    typeof rawBytes === "number" && rawBytes > 0
+      ? formatBytes(rawBytes)
+      : typeof activeItem.size === "string"
+      ? activeItem.size
+      : "-- MB";
+
   // Handlers
   const handleSendFeedback = async (text: string) => {
     if (!onAddFeedback) return;
@@ -285,6 +302,8 @@ export function AssetLightboxModal({
         authorName: authorName || "Filmmaker",
         commentText: text,
         timestampSeconds: roundedTime,
+        shareToken,
+        deliveryId,
       }).catch((err) => {
         console.error("Error saving feedback note:", err);
         toast.error("Failed to save feedback note");
@@ -311,6 +330,7 @@ export function AssetLightboxModal({
         feedbackId,
         authorName: author,
         commentText: text,
+        shareToken,
       });
     } catch (err: any) {
       console.error("Error saving feedback reply:", err);
@@ -418,6 +438,10 @@ export function AssetLightboxModal({
   };
 
   const handleDownload = () => {
+    if (onDownload) {
+      onDownload(activeItem, currentVersion);
+      return;
+    }
     const dlUrl =
       currentVersion?.downloadUrl ||
       currentVersion?.rawFileUrl ||
@@ -440,32 +464,30 @@ export function AssetLightboxModal({
     triggerToast(`Downloading ${activeItem.title}`);
   };
 
+  const isApproved = activeItem.status === "approved";
+
   return (
     <UniversalDialogRoot
       open={Boolean(activeItem)}
       onOpenChange={(open) => !open && onClose()}
     >
       <UniversalDialogContent
-        size="full"
+        size="2xl"
         showCloseButton={false}
-        overlayClassName="bg-black/90 backdrop-blur-md"
-        className="w-[96vw] max-w-[1540px] h-[92vh] max-h-[94vh] flex flex-col p-4 sm:p-6 bg-[#0f0f13] border border-white/15 shadow-2xl rounded-3xl text-white outline-none overflow-hidden"
+        overlayClassName="bg-black/85 backdrop-blur-md"
+        className="w-full max-w-[620px] max-h-[92vh] overflow-y-auto custom-scrollbar flex flex-col p-5 sm:p-6 bg-[#141418]/95 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-3xl text-white outline-none overscroll-contain gap-4"
       >
-        {/* Top Header Bar */}
+        {/* 1. Top Minimalist Header */}
         <LightboxHeader
           title={activeItem.title}
           isStill={isStill}
+          fileSizeText={fileSizeText}
           activeVersionNumber={activeVersionNumber}
           hasVersions={allVersions.length > 0}
           category={activeItem.category}
           displayAspectRatio={displayAspectRatio}
           timecode={activeItem.tc}
           status={activeItem.status}
-          onToggleApproval={
-            onToggleApproval
-              ? () => onToggleApproval(String(activeItem.id), activeItem.status!)
-              : undefined
-          }
           onBack={onBack}
           onClose={onClose}
           headerExtra={headerExtra}
@@ -476,24 +498,51 @@ export function AssetLightboxModal({
               triggerToast("Link copied to clipboard");
             }
           }}
-          showDownload={showDownload}
-          onDownload={handleDownload}
-          showVersions={showVersions}
-          canUploadVersion={Boolean(workspaceId && projectId)}
-          onToggleUploadZone={() => setShowUploadZone((prev) => !prev)}
-          isUploadingVersion={isUploadingVersion}
-          showUploadZone={showUploadZone}
-          nextVersionNumber={nextVersionNumber}
-          onEditAsset={onEditAsset ? () => onEditAsset(activeItem) : undefined}
           onDeleteAsset={
             onDeleteAsset ? () => setShowDeleteConfirm(true) : undefined
           }
         />
 
-        {/* Content Body */}
-        <div className="flex-1 min-h-0 flex flex-col gap-3.5 pt-3 overflow-hidden">
-          {/* Version Switcher Bar */}
-          {showVersions && (
+        {/* 2. Media Player Stage */}
+        <div className="w-full shrink-0">
+          <LightboxPlayerStage
+            keyId={currentVersion?.id || String(activeItem.id)}
+            playerRef={cutPlayerRef}
+            isStill={isStill}
+            mediaSrc={videoOrPhotoSrc}
+            posterUrl={posterUrl}
+            title={`${activeItem.title}${
+              allVersions.length > 0 ? ` (V${activeVersionNumber})` : ""
+            }`}
+            resolvedAspectRatio={resolvedAspectRatio}
+            watermarkMedia={watermarkMedia}
+            watermarkText={watermarkText || "PREVIEW WATERMARK"}
+            feedbackList={currentVersionFeedback}
+            activeCommentId={activeCommentId}
+            onCommentSelect={(commentId, timestamp) => {
+              setActiveCommentId(commentId);
+              if (
+                !isStill &&
+                timestamp !== null &&
+                timestamp !== undefined
+              ) {
+                cutPlayerRef.current?.seekTo(timestamp);
+              }
+            }}
+            onTimeChange={(time, tc) => {
+              if (!isStill) {
+                setCurrentCutTime(time);
+                setCurrentCutTimecode(tc);
+              }
+            }}
+            onPrev={onPrev}
+            onNext={onNext}
+          />
+        </div>
+
+        {/* 3. Version Pills & Manage Versions Section */}
+        {showVersions && (
+          <div className="flex flex-col gap-3 w-full">
             <LightboxVersionBar
               versions={allVersions}
               selectedVersionId={currentVersion?.id || selectedVersionId}
@@ -511,110 +560,128 @@ export function AssetLightboxModal({
               onToggleUploadZone={() => setShowUploadZone((prev) => !prev)}
               isUploadingVersion={isUploadingVersion}
               nextVersionNumber={nextVersionNumber}
+              onEditAsset={onEditAsset ? () => onEditAsset(activeItem) : undefined}
             />
-          )}
 
-          {/* Expandable Version Upload Dropzone */}
-          {showVersions && showUploadZone && (
-            <LightboxVersionUpload
-              nextVersionNumber={nextVersionNumber}
-              isStill={isStill}
-              isUploading={isUploadingVersion}
-              uploadProgress={uploadProgress}
-              uploadStatusText={uploadStatusText}
-              uploadError={uploadError}
-              onUploadFile={handleUploadNewVersion}
-              onCancelUpload={cancelUpload}
-              onClose={() => {
-                setShowUploadZone(false);
-                setUploadError(null);
-              }}
-            />
-          )}
-
-          {/* Center Stage + Feedback Grid */}
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <div
-              className={
-                hasFeedbackMode
-                  ? "grid grid-cols-1 lg:grid-cols-12 gap-5 h-full min-h-0 items-stretch"
-                  : "w-full h-full flex items-center justify-center min-h-0"
-              }
-            >
-              {/* Left Media Stage Column */}
-              <div
-                className={
-                  hasFeedbackMode
-                    ? "lg:col-span-8 h-full min-h-0 relative flex items-center justify-center"
-                    : "w-full h-full relative flex items-center justify-center"
-                }
-              >
-                <LightboxPlayerStage
-                  keyId={currentVersion?.id || String(activeItem.id)}
-                  playerRef={cutPlayerRef}
-                  isStill={isStill}
-                  mediaSrc={videoOrPhotoSrc}
-                  posterUrl={posterUrl}
-                  title={`${activeItem.title}${
-                    allVersions.length > 0 ? ` (V${activeVersionNumber})` : ""
-                  }`}
-                  resolvedAspectRatio={resolvedAspectRatio}
-                  watermarkMedia={watermarkMedia}
-                  watermarkText={watermarkText || "PREVIEW WATERMARK"}
-                  feedbackList={currentVersionFeedback}
-                  activeCommentId={activeCommentId}
-                  onCommentSelect={(commentId, timestamp) => {
-                    setActiveCommentId(commentId);
-                    if (
-                      !isStill &&
-                      timestamp !== null &&
-                      timestamp !== undefined
-                    ) {
-                      cutPlayerRef.current?.seekTo(timestamp);
-                    }
-                  }}
-                  onTimeChange={(time, tc) => {
-                    if (!isStill) {
-                      setCurrentCutTime(time);
-                      setCurrentCutTimecode(tc);
-                    }
-                  }}
-                  onPrev={onPrev}
-                  onNext={onNext}
-                />
-              </div>
-
-              {/* Right Feedback Column (Delivery Review Mode) */}
-              {hasFeedbackMode && (
-                <div className="lg:col-span-4 h-full min-h-0">
-                  <LightboxFeedbackDrawer
-                    isStill={isStill}
-                    activeVersionNumber={activeVersionNumber}
-                    feedbackList={currentVersionFeedback}
-                    activeCommentId={activeCommentId}
-                    currentCutTimecode={currentCutTimecode}
-                    onSelectComment={(commentId, timestamp) => {
-                      setActiveCommentId(commentId);
-                      if (
-                        !isStill &&
-                        timestamp !== null &&
-                        timestamp !== undefined
-                      ) {
-                        cutPlayerRef.current?.seekTo(timestamp);
-                      }
-                    }}
-                    onAddFeedback={handleSendFeedback}
-                    onAddReply={handleSendReply}
-                  />
-                </div>
-              )}
-            </div>
+            {/* Expandable Version Upload Dropzone */}
+            {showUploadZone && (
+              <LightboxVersionUpload
+                nextVersionNumber={nextVersionNumber}
+                isStill={isStill}
+                isUploading={isUploadingVersion}
+                uploadProgress={uploadProgress}
+                uploadStatusText={uploadStatusText}
+                uploadError={uploadError}
+                onUploadFile={handleUploadNewVersion}
+                onCancelUpload={cancelUpload}
+                onClose={() => {
+                  setShowUploadZone(false);
+                  setUploadError(null);
+                }}
+              />
+            )}
           </div>
+        )}
+
+        {/* 4. Status Bar & Download Action Row */}
+        <div className="flex items-center justify-between gap-3 pt-1 flex-wrap">
+          {/* Approval Status Badge / Toggle */}
+          <div className="flex items-center gap-2">
+            {onToggleApproval && activeItem.status ? (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onToggleApproval(String(activeItem.id), activeItem.status!)
+                      }
+                      className={`flex items-center gap-2 text-xs sm:text-sm font-medium cursor-pointer transition-colors ${
+                        isApproved
+                          ? "text-emerald-400 hover:text-emerald-300"
+                          : "text-zinc-300 hover:text-white"
+                      }`}
+                    >
+                      {isApproved ? (
+                        <>
+                          <CheckCircle2 className="size-4 text-emerald-400" />
+                          <span>Approved · click to undo</span>
+                        </>
+                      ) : (
+                        <>
+                          <Clock className="size-4 text-primary" />
+                          <span>Awaiting client approval</span>
+                        </>
+                      )}
+                    </button>
+                  }
+                />
+                <TooltipContent>
+                  {isApproved
+                    ? "Click to request revisions on this cut"
+                    : "Approve this asset version"}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-zinc-300">
+                {isApproved ? (
+                  <>
+                    <CheckCircle2 className="size-4 text-emerald-400" />
+                    <span className="text-emerald-400">Approved</span>
+                  </>
+                ) : (
+                  <>
+                    <Clock className="size-4 text-primary" />
+                    <span>Awaiting client approval</span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Download Button */}
+          {showDownload && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleDownload}
+              className="rounded-full border border-white/20 bg-white/5 hover:bg-white/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5 cursor-pointer transition-colors h-auto shadow-sm"
+            >
+              <Download className="size-3.5 text-zinc-300" />
+              <span>DOWNLOAD</span>
+            </Button>
+          )}
         </div>
 
-        {/* Optional Custom Footer / Inquiry CTAs */}
+        {/* 5. Client Comments Section */}
+        {hasFeedbackMode && (
+          <div className="w-full">
+            <LightboxFeedbackDrawer
+              isStill={isStill}
+              activeVersionNumber={activeVersionNumber}
+              feedbackList={currentVersionFeedback}
+              activeCommentId={activeCommentId}
+              currentCutTimecode={currentCutTimecode}
+              onSelectComment={(commentId, timestamp) => {
+                setActiveCommentId(commentId);
+                if (
+                  !isStill &&
+                  timestamp !== null &&
+                  timestamp !== undefined
+                ) {
+                  cutPlayerRef.current?.seekTo(timestamp);
+                }
+              }}
+              onAddFeedback={handleSendFeedback}
+              onAddReply={handleSendReply}
+            />
+          </div>
+        )}
+
+        {/* 6. Optional Custom Footer / Inquiry CTAs */}
         {footerExtra && (
-          <div className="w-full pt-3 mt-2 border-t border-white/10 flex items-center justify-between text-xs  text-zinc-400 shrink-0">
+          <div className="w-full pt-3 mt-1 border-t border-white/10 flex items-center justify-between text-xs text-zinc-400 shrink-0">
             {footerExtra}
           </div>
         )}
