@@ -565,102 +565,31 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                 )}
               </div>
 
-              {/* Floating Timecode Pill (Top Left) */}
-              <div className="absolute top-4 left-4 z-20 flex items-center gap-2 pointer-events-none">
-                <span className="px-3 py-1 rounded-full text-xs  font-bold bg-black/80 text-white border border-white/15 backdrop-blur-md shadow-lg flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  {formatTimecode(currentTime, fps)}
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px]  text-muted-foreground bg-black/60 border border-white/10 backdrop-blur-md">
-                  {fps} FPS
-                </span>
-              </div>
             </>
             )
           )}
-
-          {/* Floating Title (Top Right) */}
-          <div className="absolute top-4 right-4 z-20 pointer-events-none">
-            <span className="px-2.5 py-1 rounded-full text-[11px]  font-medium text-white/80 bg-black/80 border border-white/10 backdrop-blur-md">
-              {title || "Cut Preview"}
-            </span>
-          </div>
         </div>
 
-        {/* Custom NLE HUD Review Controls & Scrubber */}
-        <div className="bg-[#121215] border-t border-white/10 p-3.5 space-y-3">
+        {/* Minimalist Bottom Review Bar */}
+        <div className="bg-[#121215] border-t border-white/10 px-3 py-2 flex flex-col gap-1.5 shrink-0">
           {isImageCut ? (
-            <div className="flex items-center justify-between text-xs py-1">
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30  text-[11px] flex items-center gap-1.5 font-bold">
-                  <ImageIcon className="size-3.5" />
-                  Still Photography Cut
-                </span>
-                <span className="text-muted-foreground text-[11px] ">
-                  {(bounding.parsed as any)?.shortLabel ||
-                    (bounding.parsed as any)?.label ||
-                    (typeof activeRatio === "string" ? activeRatio : bounding.parsed?.id || "16:9")}{" "}
-                  High-Resolution Asset
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {/* Zoom Controls */}
-                <div className="flex items-center bg-black/60 border border-white/10 rounded-lg p-0.5">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => setZoomLevel((prev) => Math.max(1, prev - 0.5))}
-                    disabled={zoomLevel <= 1}
-                    className="p-1 text-muted-foreground hover:text-white disabled:opacity-30 cursor-pointer h-auto hover:bg-transparent"
-                    title="Zoom Out"
-                  >
-                    <ZoomOut className="size-3.5" />
-                  </Button>
-                  <span className="px-2 text-[10px]  text-white font-bold min-w-[38px] text-center">
-                    {Math.round(zoomLevel * 100)}%
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => setZoomLevel((prev) => Math.min(4, prev + 0.5))}
-                    disabled={zoomLevel >= 4}
-                    className="p-1 text-muted-foreground hover:text-white disabled:opacity-30 cursor-pointer h-auto hover:bg-transparent"
-                    title="Zoom In"
-                  >
-                    <ZoomIn className="size-3.5" />
-                  </Button>
-                </div>
-
-                {zoomLevel > 1 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setZoomLevel(1)}
-                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[10px]  text-white cursor-pointer h-auto border-white/10"
-                  >
-                    Reset Fit
-                  </Button>
-                )}
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={toggleFullscreen}
-                  className="size-7 rounded-lg bg-black/60 border border-white/10 text-white/80 hover:text-white flex items-center justify-center cursor-pointer transition-colors p-0"
-                  title="Fullscreen"
-                >
-                  {isFullscreen ? <Minimize className="size-3.5" /> : <Maximize className="size-3.5" />}
-                </Button>
-              </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-zinc-400 text-xs font-medium">Still Photo</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                onClick={toggleFullscreen}
+                className="size-7 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer transition-colors p-0"
+                title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+              >
+                {isFullscreen ? <Minimize className="size-3.5" /> : <Maximize className="size-3.5" />}
+              </Button>
             </div>
           ) : (
             <>
-              {/* 1. Scrubber Track with Comment Markers */}
-              <div className="relative flex flex-col gap-1.5">
+              {/* 1. Slim Scrubber Track with Comment Markers */}
+              <div className="relative flex flex-col gap-1">
                 <div
                   ref={scrubberRef}
                   onClick={handleScrubberClick}
@@ -669,24 +598,24 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                   className="relative w-full h-3 flex items-center cursor-pointer group/scrub"
                 >
                   {/* Background Bar */}
-                  <div className="w-full h-1.5 bg-white/15 rounded-full overflow-hidden transition-all group-hover/scrub:h-2" />
+                  <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden transition-all group-hover/scrub:h-1.5" />
 
                   {/* Played Progress Bar */}
                   <div
-                    className="absolute left-0 h-1.5 bg-primary rounded-full transition-all pointer-events-none group-hover/scrub:h-2"
+                    className="absolute left-0 h-1 bg-primary rounded-full transition-all pointer-events-none group-hover/scrub:h-1.5"
                     style={{ width: `${progressPercent}%` }}
                   />
 
                   {/* Scrubber Playhead Thumb */}
                   <div
-                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-primary shadow-lg pointer-events-none transition-transform group-hover/scrub:scale-125"
+                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border border-white shadow-md pointer-events-none transition-transform group-hover/scrub:scale-125"
                     style={{ left: `${progressPercent}%` }}
                   />
 
                   {/* Hover Preview Marker */}
                   {hoverPercent !== null && (
                     <div
-                      className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-1.5 h-3 bg-white/50 rounded-full pointer-events-none"
+                      className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-1.5 h-2.5 bg-white/50 rounded-full pointer-events-none"
                       style={{ left: `${hoverPercent}%` }}
                     />
                   )}
@@ -716,7 +645,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                           }}
                           onMouseEnter={() => setHoveredComment(comment)}
                           onMouseLeave={() => setHoveredComment(null)}
-                          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-2.5 h-2.5 rounded-full cursor-pointer transition-all hover:scale-150 ${
+                          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-2 h-2 rounded-full cursor-pointer transition-all hover:scale-150 ${
                             isActive
                               ? "bg-white ring-2 ring-primary scale-125"
                               : comment.isResolved
@@ -733,7 +662,7 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                 {hoveredComment && hoveredComment.timestampSeconds !== null && hoveredComment.timestampSeconds !== undefined && (
                   <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 bg-black/90 border border-white/20 px-3 py-1.5 rounded-xl text-xs backdrop-blur-md shadow-2xl flex items-center gap-2 pointer-events-none animate-in fade-in">
                     <MessageSquare className="size-3 text-primary" />
-                    <span className=" font-bold text-primary">
+                    <span className="font-bold text-primary">
                       [{formatTimecode(hoveredComment.timestampSeconds, fps)}]
                     </span>
                     <span className="font-semibold text-white truncate max-w-[200px]">
@@ -745,50 +674,50 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                   </div>
                 )}
                 {!hoveredComment && hoverTime !== null && (
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 bg-black/85 border border-white/15 px-2 py-0.5 rounded text-[11px]  text-white pointer-events-none">
+                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 bg-black/85 border border-white/15 px-2 py-0.5 rounded text-[11px] text-white pointer-events-none">
                     {formatTimecode(hoverTime, fps)}
                   </div>
                 )}
               </div>
 
-              {/* 2. Control Bar Buttons (Frame Step, Play, Timecode, Speed, Audio, Fullscreen) */}
-              <div className="flex items-center justify-between gap-3 text-xs">
-                {/* Left Group: Play/Pause, Frame Stepping, Timecode */}
+              {/* 2. Compact Controls Row (Play, Frame Step, Timecode, Mute, Fullscreen) */}
+              <div className="flex items-center justify-between gap-2 text-xs">
+                {/* Left: Play/Pause, Frame Stepping, Timecode */}
                 <div className="flex items-center gap-2">
                   <Button
                     type="button"
                     size="icon"
                     onClick={togglePlay}
-                    className="size-8 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center cursor-pointer transition-all active:scale-95 border-0 p-0"
+                    className="size-7 rounded-lg bg-primary/15 hover:bg-primary text-primary hover:text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 border-0 p-0"
                     title={isPaused ? "Play (Space)" : "Pause (Space)"}
                   >
                     {isPaused ? (
-                      <Play className="size-4 fill-current ml-0.5" />
+                      <Play className="size-3.5 fill-current ml-0.5" />
                     ) : (
-                      <Pause className="size-4 fill-current" />
+                      <Pause className="size-3.5 fill-current" />
                     )}
                   </Button>
 
                   {/* Precision Frame Stepping */}
-                  <div className="flex items-center bg-black/60 border border-white/10 rounded-lg p-0.5">
+                  <div className="flex items-center bg-white/5 border border-white/10 rounded-lg p-0.5">
                     <Button
                       type="button"
                       variant="ghost"
                       size="xs"
                       onClick={() => handleStepFrame(-1)}
-                      className="px-2 py-1 rounded text-[11px]  text-white/80 hover:text-white hover:bg-white/10 flex items-center gap-0.5 transition-colors cursor-pointer h-auto"
+                      className="px-1.5 py-0.5 rounded text-[10px] text-zinc-300 hover:text-white hover:bg-white/10 flex items-center gap-0.5 transition-colors cursor-pointer h-auto"
                       title="Step -1 Frame (←)"
                     >
                       <ChevronLeft className="size-3" />
                       <span>-1F</span>
                     </Button>
-                    <div className="w-[1px] h-3 bg-white/10" />
+                    <div className="w-[1px] h-2.5 bg-white/10" />
                     <Button
                       type="button"
                       variant="ghost"
                       size="xs"
                       onClick={() => handleStepFrame(1)}
-                      className="px-2 py-1 rounded text-[11px]  text-white/80 hover:text-white hover:bg-white/10 flex items-center gap-0.5 transition-colors cursor-pointer h-auto"
+                      className="px-1.5 py-0.5 rounded text-[10px] text-zinc-300 hover:text-white hover:bg-white/10 flex items-center gap-0.5 transition-colors cursor-pointer h-auto"
                       title="Step +1 Frame (→)"
                     >
                       <span>+1F</span>
@@ -797,57 +726,35 @@ export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerPro
                   </div>
 
                   {/* Timecode Readout */}
-                  <div className=" text-xs text-white/90 px-2 py-1 bg-black/40 rounded-lg border border-white/5 flex items-center gap-1.5">
-                    <span className="text-primary font-bold">
+                  <div className="text-[11px] font-mono flex items-center gap-1 text-zinc-400">
+                    <span className="text-primary font-semibold">
                       {formatTimecode(currentTime, fps)}
                     </span>
-                    <span className="text-white/40">/</span>
-                    <span className="text-white/60">{formatTimecode(duration, fps)}</span>
+                    <span className="text-zinc-600">/</span>
+                    <span>{formatTimecode(duration, fps)}</span>
                   </div>
                 </div>
 
-                {/* Right Group: Speed, Volume, Fullscreen */}
-                <div className="flex items-center gap-2 ">
-                  {/* Playback Rate Selector */}
-                  <div className="flex items-center bg-black/60 border border-white/10 rounded-lg p-0.5 text-[10px]">
-                    {([0.5, 1, 1.5, 2] as const).map((rate) => (
-                      <Button
-                        key={rate}
-                        type="button"
-                        variant={playbackRate === rate ? "default" : "ghost"}
-                        size="xs"
-                        onClick={() => handleRateChange(rate)}
-                        className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer h-auto text-[10px] ${
-                          playbackRate === rate
-                            ? "bg-primary text-primary-foreground font-bold hover:bg-primary/90"
-                            : "text-white/60 hover:text-white hover:bg-transparent"
-                        }`}
-                      >
-                        {rate}x
-                      </Button>
-                    ))}
-                  </div>
-
-                  {/* Volume / Mute */}
+                {/* Right: Mute + Fullscreen (Speed selector removed) */}
+                <div className="flex items-center gap-1">
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon-xs"
                     onClick={toggleMute}
-                    className="size-7 rounded-lg bg-black/60 border border-white/10 text-white/80 hover:text-white flex items-center justify-center cursor-pointer transition-colors p-0"
+                    className="size-7 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer transition-colors p-0"
                     title={isMuted ? "Unmute" : "Mute"}
                   >
-                    {isMuted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
+                    {isMuted ? <VolumeX className="size-3.5 text-zinc-400" /> : <Volume2 className="size-3.5" />}
                   </Button>
 
-                  {/* Fullscreen */}
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon-xs"
                     onClick={toggleFullscreen}
-                    className="size-7 rounded-lg bg-black/60 border border-white/10 text-white/80 hover:text-white flex items-center justify-center cursor-pointer transition-colors p-0"
-                    title="Fullscreen"
+                    className="size-7 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer transition-colors p-0"
+                    title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
                   >
                     {isFullscreen ? <Minimize className="size-3.5" /> : <Maximize className="size-3.5" />}
                   </Button>

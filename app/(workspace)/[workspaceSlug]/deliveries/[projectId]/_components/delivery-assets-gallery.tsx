@@ -1,8 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Check, Video, ImageIcon, Play, Trash2, Pencil, Download, Loader2, CheckCircle2 } from "lucide-react";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import {
+  MediaCard,
+  MediaGrid,
+  MediaBadge,
+  VersionBadge,
+  PlayButtonOverlay,
+  ZoomButtonOverlay,
+} from "@/components/workspaces/media-card";
 import { getDownloadFilename, triggerDirectDownload } from "@/lib/download";
 import {
   Card,
@@ -12,9 +21,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { AppImage } from "@/components/ui/app-image";
-import { TiltCard } from "@/components/ui/motion";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
   TypographyH2,
@@ -24,7 +30,6 @@ import {
   TypographySpan,
 } from "@/components/ui/typography";
 import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
-import { WatermarkOverlay } from "@/components/ui/watermark-overlay";
 import type { GalleryItem, AppearanceSettings } from "./types";
 
 interface DeliveryAssetsGalleryProps {
@@ -40,49 +45,6 @@ interface DeliveryAssetsGalleryProps {
   onDeleteAsset?: (item: GalleryItem) => Promise<void> | void;
   onEditAsset?: (item: GalleryItem) => void;
   onOpenTrash?: () => void;
-}
-
-function DeliveryMasonryMedia({
-  src,
-  alt,
-  type = "video",
-  thumbnailScale,
-  children,
-}: {
-  src: string;
-  alt: string;
-  type?: "video" | "photo";
-  thumbnailScale?: "Fit" | "Fill";
-  children?: React.ReactNode;
-}) {
-  const [naturalAspect, setNaturalAspect] = useState<number | null>(null);
-
-  return (
-    <div
-      className="relative w-full overflow-hidden bg-black/40"
-      style={{
-        aspectRatio: naturalAspect ? `${naturalAspect}` : "16 / 10",
-      }}
-    >
-      <AppImage
-        src={src}
-        alt={alt}
-        fill
-        containerClassName="absolute inset-0 w-full h-full"
-        fallbackIcon={type === "photo" ? "image" : "film"}
-        className={`w-full h-full ${
-          thumbnailScale === "Fit" ? "object-contain bg-black" : "object-cover"
-        } group-hover:scale-105 transition-transform duration-500`}
-        onLoad={(e) => {
-          const img = e.currentTarget;
-          if (img && img.naturalWidth && img.naturalHeight) {
-            setNaturalAspect(img.naturalWidth / img.naturalHeight);
-          }
-        }}
-      />
-      {children}
-    </div>
-  );
 }
 
 export function DeliveryAssetsGallery({
@@ -109,24 +71,21 @@ export function DeliveryAssetsGallery({
     return true;
   });
 
+  const handleInfiniteLoadMore = useCallback(() => {
+    if (isLoadingMore || !hasMore || !onLoadMore) return;
+    onLoadMore(filterTab);
+  }, [isLoadingMore, hasMore, onLoadMore, filterTab]);
+
+  const { sentinelRef } = useInfiniteScroll({
+    hasMore,
+    isLoading: isLoadingMore,
+    onLoadMore: handleInfiniteLoadMore,
+    rootMargin: "300px",
+  });
+
   const { cardSize, aspectRatioSetting, thumbnailScale, showCardInfo, watermarkMedia } = appearance;
   const isMasonry = aspectRatioSetting === "masonry";
-
-  const containerClasses = isMasonry
-    ? `columns-1 ${
-        cardSize === "S"
-          ? "sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5"
-          : cardSize === "L"
-          ? "sm:columns-1 md:columns-2 lg:columns-3"
-          : "sm:columns-2 md:columns-3 xl:columns-4"
-      } gap-4 space-y-4`
-    : `grid grid-cols-1 ${
-        cardSize === "S"
-          ? "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-          : cardSize === "L"
-          ? "sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-          : "sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4"
-      } gap-4`;
+  console.log("items",appearance)
 
   return (
     <div className="space-y-6">
@@ -190,266 +149,108 @@ export function DeliveryAssetsGallery({
       </div>
 
       {/* Masonry / Responsive Asset Grid */}
-      <div className={containerClasses}>
+      <MediaGrid isMasonry={isMasonry} cardSize={cardSize} className="gap-4">
         {filteredItems.map((item) => {
           const numericRatio =
-            aspectRatioSetting === "16:9"
+            isMasonry
+              ? undefined
+              : aspectRatioSetting === "16:9"
               ? 16 / 9
               : aspectRatioSetting === "1:1"
               ? 1
               : aspectRatioSetting === "9:16"
               ? 9 / 16
-              : item.aspectRatio === "9:16"
-              ? 9 / 16
               : 16 / 9;
 
-          const mediaOverlay = (
-            <>
-              {/* Creator preview of watermark when enabled */}
-              {watermarkMedia && (
-                <WatermarkOverlay
-                  text="WATERMARK ACTIVE"
-                  variant="card"
-                  opacity={0.16}
-                />
-              )}
-
-              <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
-                <div className="size-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white">
-                  {item.type === "video" ? (
-                    <Video className="size-3.5" />
-                  ) : (
-                    <ImageIcon className="size-3.5" />
-                  )}
-                </div>
-                <div className="px-2 h-7 rounded-lg bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-[10px]  font-bold text-white tracking-wider">
-                  V{item.versionNumber || 1}
-                  {item.totalVersions && item.totalVersions > 1 && (
-                    <TypographySpan className="text-[9px] text-primary ml-1">
-                      ({item.totalVersions})
-                    </TypographySpan>
-                  )}
-                </div>
-              </div>
-
-              <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
-                {onToggleApproval && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon-xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleApproval(item.id, item.status);
-                          }}
-                          className={`size-7 rounded-lg backdrop-blur-md transition-all cursor-pointer shadow-md ${
-                            item.status === "approved"
-                              ? "bg-emerald-500/80 border-emerald-400/50 text-black hover:bg-amber-500/80 hover:border-amber-400/50 hover:text-black opacity-100"
-                              : "bg-black/60 border-white/20 text-zinc-300 hover:text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 opacity-0 group-hover:opacity-100 max-sm:opacity-100"
-                          }`}
-                        >
-                          <Check className="size-3.5 stroke-[2.5]" />
-                        </Button>
-                      }
-                    />
-                    <TooltipContent>
-                      {item.status === "approved"
-                        ? "Approved — click to unapprove"
-                        : "Approve asset"}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon-xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const dlUrl =
-                            item.downloadUrl ||
-                            item.rawUrl ||
-                            (item.type === "photo" ? item.src : "");
-                          if (!dlUrl) {
-                            toast.error("No master file available for download.");
-                            return;
-                          }
-                          const filename = getDownloadFilename(
-                            item.title,
-                            item.versionNumber,
-                            dlUrl,
-                            item.type
-                          );
-                          triggerDirectDownload(dlUrl, filename);
-                          toast.success(`Downloading ${item.title}`, {
-                            description: `Saving as ${filename}`,
-                          });
-                        }}
-                        className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-white hover:bg-white/20 hover:border-white/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
-                      >
-                        <Download className="size-3.5" />
-                      </Button>
-                    }
-                  />
-                  <TooltipContent>Download master file</TooltipContent>
-                </Tooltip>
-
-                {onEditAsset && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon-xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEditAsset(item);
-                          }}
-                          className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-white hover:bg-white/20 hover:border-white/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
-                        >
-                          <Pencil className="size-3.5" />
-                        </Button>
-                      }
-                    />
-                    <TooltipContent>Edit asset title &amp; aspect ratio</TooltipContent>
-                  </Tooltip>
-                )}
-                {onDeleteAsset && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon-xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setItemToDelete(item);
-                          }}
-                          className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      }
-                    />
-                    <TooltipContent>Move asset to trash</TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                {/*<div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-2xl scale-90 group-hover:scale-100 transition-transform">
-                  <Play className="size-5 fill-current ml-0.5" />
-                </div>*/}
-              </div>
-
-              <Badge
-                variant="outline"
-                className="absolute bottom-3 right-3 z-10 text-[10px]  bg-black/80 px-2 py-0.5 rounded text-white border-white/10"
-              >
-                {item.duration}
-              </Badge>
-            </>
-          );
+          const aspectLabel =
+            typeof item.aspectRatio === "object" && item.aspectRatio !== null
+              ? (item.aspectRatio as any)?.shortLabel ||
+                (item.aspectRatio as any)?.id ||
+                (item.aspectRatio as any)?.cssRatio ||
+                "16:9"
+              : item.aspectRatio || "16:9";
 
           return (
-            <TiltCard
+            <MediaCard
               key={item.id}
+              title={item.title}
+              // subtitle={`Aspect: ${aspectLabel}`}
+
+              showInfo={showCardInfo}
+              showTitle={showCardInfo}
+              showSubtitle={showCardInfo}
+              src={item.src}
+              type={item.type}
+              aspectRatio={item.aspectRatio}
+              numericRatio={numericRatio}
+              isMasonry={isMasonry}
+              thumbnailScale={"Fill"}
+              onClick={() => onSelectItem(item)}
+              textAlign="center"
+              footerMode="overlay"
+              watermarkMedia={
+                watermarkMedia
+                  ? { enabled: true, text: "WATERMARK ACTIVE", opacity: 0.16 }
+                  : undefined
+              }
               tiltIntensity={3}
               glareIntensity={0.1}
-              className={`${isMasonry ? "break-inside-avoid mb-4" : ""} rounded-2xl`}
-            >
-              <Card
-                onClick={() => onSelectItem(item)}
-                className="rounded-2xl border border-border/80 overflow-hidden group hover:border-primary/50 transition-all duration-300 cursor-pointer relative shadow-lg p-0 gap-0 hover:translate-y-0"
-              >
-                <CardContent className="p-0 relative overflow-hidden">
-                  {isMasonry ? (
-                    <DeliveryMasonryMedia
-                      src={item.src}
-                      alt={item.title}
-                      type={item.type}
-                      thumbnailScale={thumbnailScale}
+              topLeft={
+                <>
+                  <MediaBadge type={item.type} />
+                  <VersionBadge
+                    versionNumber={item.versionNumber || 1}
+                    totalVersions={item.totalVersions}
+                  />
+                  {item.status === "approved" && (
+                    <Badge
+                      variant="sage"
+                      className="text-[9px] px-1.5 py-0.5 font-bold uppercase rounded-md shadow-md border-none"
                     >
-                      {mediaOverlay}
-                    </DeliveryMasonryMedia>
-                  ) : (
-                    <AspectRatio ratio={numericRatio} className="w-full relative overflow-hidden bg-black/40">
-                      <AppImage
-                        src={item.src}
-                        alt={item.title}
-                        fill
-                        containerClassName="absolute inset-0 w-full h-full"
-                        fallbackIcon={item.type === "photo" ? "image" : "film"}
-                        className={`w-full h-full ${
-                          thumbnailScale === "Fit" ? "object-contain bg-black" : "object-cover"
-                        } group-hover:scale-105 transition-transform duration-500`}
-                      />
-                      {mediaOverlay}
-                    </AspectRatio>
+                      ✓ Approved
+                    </Badge>
                   )}
-                </CardContent>
-
-                {showCardInfo && (
-                  <CardFooter className="p-3.5 border-t border-border/40 flex-col items-start gap-1">
-                    <CardTitle className="p-0 border-none w-full">
-                      <TypographyH4 className="text-xs font-bold text-card-foreground truncate w-full font-heading">
-                        {item.title}
-                      </TypographyH4>
-                    </CardTitle>
-                    <div className="flex items-center justify-between text-[11px]  text-muted-foreground w-full">
-                      <TypographySpan>
-                        Aspect:{" "}
-                        {typeof item.aspectRatio === "object" && item.aspectRatio !== null
-                          ? (item.aspectRatio as any)?.shortLabel ||
-                            (item.aspectRatio as any)?.id ||
-                            (item.aspectRatio as any)?.cssRatio ||
-                            "16:9"
-                          : item.aspectRatio || "16:9"}
-                      </TypographySpan>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {onToggleApproval ? (
+                </>
+              }
+              topRight={
+                <>
+                  {onToggleApproval && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
                           <Button
                             type="button"
-                            variant="ghost"
-                            size="sm"
+                            variant="outline"
+                            size="icon-xs"
                             onClick={(e) => {
                               e.stopPropagation();
                               onToggleApproval(item.id, item.status);
                             }}
-                            title={
+                            className={`size-7 rounded-lg backdrop-blur-md transition-all cursor-pointer shadow-md ${
                               item.status === "approved"
-                                ? "Click to unapprove asset"
-                                : "Click to approve asset"
-                            }
-                            className="cursor-pointer focus:outline-none h-auto p-0 hover:bg-transparent"
+                                ? "bg-emerald-500/80 border-emerald-400/50 text-black hover:bg-amber-500/80 hover:border-amber-400/50 hover:text-black opacity-100"
+                                : "bg-black/60 border-white/20 text-zinc-300 hover:text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 opacity-0 group-hover:opacity-100 max-sm:opacity-100"
+                            }`}
                           >
-                            <Badge
-                              variant={item.status === "approved" ? "sage" : "orange"}
-                              className="text-[10px] px-1.5 py-0 font-medium hover:opacity-80 transition-opacity"
-                            >
-                              {item.status === "approved" ? "✓ Approved" : "In Review"}
-                            </Badge>
+                            <Check className="size-3.5 stroke-[2.5]" />
                           </Button>
-                        ) : (
-                          <Badge
-                            variant={item.status === "approved" ? "sage" : "orange"}
-                            className="text-[10px] px-1.5 py-0 font-medium"
-                          >
-                            {item.status === "approved" ? "✓ Approved" : "In Review"}
-                          </Badge>
-                        )}
+                        }
+                      />
+                      <TooltipContent>
+                        {item.status === "approved"
+                          ? "Approved — click to unapprove"
+                          : "Approve asset"}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
                         <Button
                           type="button"
-                          variant="ghost"
-                          size="icon"
+                          variant="outline"
+                          size="icon-xs"
                           onClick={(e) => {
                             e.stopPropagation();
                             const dlUrl =
@@ -471,20 +272,74 @@ export function DeliveryAssetsGallery({
                               description: `Saving as ${filename}`,
                             });
                           }}
-                          className="size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted p-0 transition-colors cursor-pointer"
-                          title={`Download ${item.title}`}
+                          className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-white hover:bg-white/20 hover:border-white/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
                         >
-                          <Download className="size-3" />
+                          <Download className="size-3.5" />
                         </Button>
-                      </div>
-                    </div>
-                  </CardFooter>
-                )}
-              </Card>
-            </TiltCard>
+                      }
+                    />
+                    <TooltipContent>Download master file</TooltipContent>
+                  </Tooltip>
+
+                  {onEditAsset && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditAsset(item);
+                            }}
+                            className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-white hover:bg-white/20 hover:border-white/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                        }
+                      />
+                      <TooltipContent>Edit asset details</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {onDeleteAsset && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setItemToDelete(item);
+                            }}
+                            className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        }
+                      />
+                      <TooltipContent>Move asset to trash</TooltipContent>
+                    </Tooltip>
+                  )}
+                </>
+              }
+              centerAction={item.type === "video" ? <PlayButtonOverlay /> : <ZoomButtonOverlay />}
+              bottomRight={
+                item.duration ? (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] bg-black/80 px-2 py-0.5 rounded text-white border-white/10"
+                  >
+                    {item.duration}
+                  </Badge>
+                ) : undefined
+              }
+            />
           );
         })}
-      </div>
+      </MediaGrid>
 
       {/* Empty Filter State */}
       {filteredItems.length === 0 && (
@@ -493,38 +348,31 @@ export function DeliveryAssetsGallery({
         </div>
       )}
 
-      {/* Pagination / Load More Footer */}
+      {/* Infinite Scroll Sentinel & Stats Footer */}
       {hasMore && (
-        <div className="flex flex-col items-center justify-center pt-8 pb-4 space-y-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            disabled={isLoadingMore}
+        <div
+          ref={sentinelRef}
+          className="flex flex-col items-center justify-center pt-8 pb-4 space-y-3"
+        >
+          <div
             onClick={() => onLoadMore?.(filterTab)}
-            className="group relative rounded-full px-8 py-3 bg-card/60 hover:bg-card border-border hover:border-primary/50 text-foreground font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-lg cursor-pointer"
+            className="flex items-center gap-2.5 px-6 py-2.5 rounded-full bg-card/80 border border-border text-foreground shadow-lg cursor-pointer hover:border-primary/50 transition-all duration-300"
           >
-            {isLoadingMore ? (
-              <div className="flex items-center gap-2.5">
-                <Loader2 className="size-4 animate-spin text-primary" />
-                <TypographySpan>Loading assets...</TypographySpan>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <TypographySpan>Load More Assets</TypographySpan>
-                {totalCount !== undefined && totalCount > items.length && (
-                  <Badge
-                    variant="secondary"
-                    className="text-[10px]  px-2 py-0.5 rounded-full ml-1 bg-primary/10 text-primary border border-primary/20"
-                  >
-                    +{totalCount - items.length} more
-                  </Badge>
-                )}
-              </div>
+            <Loader2 className="size-4 animate-spin text-primary" />
+            <TypographySpan className="text-xs font-bold uppercase tracking-wider">
+              {isLoadingMore ? "Loading assets..." : "Loading more assets"}
+            </TypographySpan>
+            {totalCount !== undefined && totalCount > items.length && (
+              <Badge
+                variant="secondary"
+                className="text-[10px] px-2 py-0.5 rounded-full ml-1 bg-primary/10 text-primary border border-primary/20"
+              >
+                +{totalCount - items.length} more
+              </Badge>
             )}
-          </Button>
+          </div>
           {totalCount !== undefined && totalCount > 0 && (
-            <TypographyMuted className="text-[11px]  text-muted-foreground">
+            <TypographyMuted className="text-[11px] text-muted-foreground">
               Showing {filteredItems.length} of {totalCount} total assets
             </TypographyMuted>
           )}

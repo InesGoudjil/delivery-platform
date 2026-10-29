@@ -8,7 +8,7 @@ export default function RootLoading() {
       showBar
       caption={
         <>
-          Loading <b>Studio Workspace</b>
+          {/*Loading <b>Studio Workspace</b>*/}
         </>
       }
     />

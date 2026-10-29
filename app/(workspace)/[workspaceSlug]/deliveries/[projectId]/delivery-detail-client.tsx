@@ -807,7 +807,6 @@ export function DeliveryDetailClient({
         if (res.approvedCount !== undefined) {
           setApprovedCountState(res.approvedCount);
         }
-        toast.success(`Loaded ${res.items.length} more deliverables`);
       } else {
         toast.error(res.error || "Failed to load more assets");
       }

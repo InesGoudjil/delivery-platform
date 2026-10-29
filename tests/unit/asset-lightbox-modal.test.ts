@@ -7,6 +7,7 @@ import {
   FilmPlayerModal,
 } from "@/app/(workspace)/[workspaceSlug]/portfolio/_components/portfolio-modals";
 import { PortfolioModals } from "@/app/(public)/p/[handle]/_components/portfolio-modals";
+import { DeliveryRoomClient } from "@/app/(public)/deliver/[shareToken]/delivery-room-client";
 import { detectAspectRatioFromDimensions, parseAspectRatio } from "@/lib/media-ratios";
 
 describe("AssetLightboxModal Centralization", () => {
@@ -91,5 +92,9 @@ describe("AssetLightboxModal Centralization", () => {
     expect(videoAsset.type).toBe("video");
     expect(videoAsset.hlsUrl).toContain("manifest/video.m3u8");
     expect(videoAsset.versions[0].hlsManifestUrl).toContain("manifest/video.m3u8");
+  });
+
+  it("exports DeliveryRoomClient on public delivery routes using centralized media primitives", () => {
+    expect(typeof DeliveryRoomClient).toBe("function");
   });
 });

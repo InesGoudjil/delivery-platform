@@ -1,8 +1,16 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useCallback } from "react";
 import { Star, Play, Film, Image as ImageIcon, FolderKanban, Maximize2, Trash2, Pencil, Loader2, CheckCircle2, Sparkles } from "lucide-react";
-import { AppImage } from "@/components/ui/app-image";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import {
+  MediaCard,
+  MediaGrid,
+  MediaBadge,
+  HeroBadge,
+  PlayButtonOverlay,
+  ZoomButtonOverlay,
+} from "@/components/workspaces/media-card";
 import {
   Card,
   CardHeader,
@@ -13,9 +21,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { TiltCard } from "@/components/ui/motion";
 import { TypographyH4, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
 import { toggleFeaturedItemAction } from "@/app/actions/portfolio";
@@ -38,63 +44,6 @@ interface ShowcaseGridProps {
   heroAssetId?: string | null;
   onSetAsHero?: (item: PortfolioItem) => void;
 }
-
-function parseItemAspectRatio(ar?: string | number): number | null {
-  if (!ar) return null;
-  if (typeof ar === "number") return ar;
-  if (typeof ar === "string") {
-    if (ar.includes(":")) {
-      const [w, h] = ar.split(":").map(Number);
-      if (w && h && !isNaN(w) && !isNaN(h)) return w / h;
-    }
-    const val = parseFloat(ar);
-    if (!isNaN(val) && val > 0) return val;
-  }
-  return null;
-}
-
-function ShowcaseMasonryMedia({
-  item,
-  thumbnailScale,
-}: {
-  item: PortfolioItem;
-  thumbnailScale?: "fit" | "fill";
-}) {
-  const parsedRatio = parseItemAspectRatio(item.aspectRatio);
-  const defaultRatio =
-    item.type === "film" ? 16 / 9 : item.type === "still" ? 3 / 4 : 4 / 3;
-
-  const [naturalRatio, setNaturalRatio] = useState<number | null>(parsedRatio);
-  const effectiveRatio = naturalRatio || parsedRatio || defaultRatio;
-
-  return (
-    <div
-      className="relative w-full overflow-hidden bg-[#0c0c0e]"
-      style={{
-        aspectRatio: `${effectiveRatio}`,
-      }}
-    >
-      <AppImage
-        src={item.thumbnailUrl}
-        alt={item.title}
-        fill
-        objectFit={thumbnailScale === "fit" ? "contain" : "cover"}
-        fallbackIcon={item.type === "still" ? "image" : "film"}
-        containerClassName="size-full"
-        className="transition-transform duration-500 group-hover:scale-105"
-        onLoad={(e: any) => {
-          if (!parsedRatio && e?.currentTarget?.naturalWidth && e?.currentTarget?.naturalHeight) {
-            const ratio = e.currentTarget.naturalWidth / e.currentTarget.naturalHeight;
-            if (ratio > 0 && isFinite(ratio)) {
-              setNaturalRatio(ratio);
-            }
-          }
-        }}
-      />
-    </div>
-  );
-}
-
 
 export function ShowcaseGrid({
   portfolioId,
@@ -170,7 +119,7 @@ export function ShowcaseGrid({
   const hasMore = filteredProjects.length > currentVisibleCount;
   const remainingCount = Math.max(0, filteredProjects.length - currentVisibleCount);
 
-  const handleLoadMore = () => {
+  const handleLoadMore = useCallback(() => {
     setIsLoadingMore(true);
     setTimeout(() => {
       setVisibleCounts((prev) => ({
@@ -179,36 +128,33 @@ export function ShowcaseGrid({
       }));
       setIsLoadingMore(false);
     }, 200);
-  };
+  }, [activeTab, PAGE_SIZE]);
+
+  const handleInfiniteLoadMore = useCallback(() => {
+    if (isLoadingMore) return;
+    handleLoadMore();
+  }, [isLoadingMore, handleLoadMore]);
+
+  const { sentinelRef } = useInfiniteScroll({
+    hasMore,
+    isLoading: isLoadingMore,
+    onLoadMore: handleInfiniteLoadMore,
+    rootMargin: "300px",
+  });
 
   const isMasonry =
     appearance.aspectRatio === "grid" ||
     appearance.aspectRatio === "masonry" ||
     appearance.aspectRatio === "4:3";
 
-  // Dynamic Grid Classes based on Card Size
   const cardSize = appearance.cardSize || "M";
-  const gridClasses =
-    cardSize === "S"
-      ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5"
-      : cardSize === "M"
-      ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-5"
-      : "grid-cols-1 sm:grid-cols-2 gap-6";
-
-  const masonryClasses =
-    cardSize === "S"
-      ? "columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-3.5"
-      : cardSize === "M"
-      ? "columns-1 sm:columns-2 md:columns-3 lg:columns-3 gap-5"
-      : "columns-1 sm:columns-2 gap-6";
-
-  const masonryItemSpacing =
-    cardSize === "S" ? "mb-3.5" : cardSize === "L" ? "mb-6" : "mb-5";
 
   // Dynamic Aspect Ratio classes & numeric ratio
   const aspectRatio = appearance.aspectRatio || "16:9";
   const numericRatio =
-    aspectRatio === "9:16"
+    isMasonry
+      ? undefined
+      : aspectRatio === "9:16"
       ? 9 / 16
       : aspectRatio === "1:1"
       ? 1
@@ -276,77 +222,38 @@ export function ShowcaseGrid({
 
       <CardContent className="pt-2">
         {/* Showcase Grid / Masonry */}
-        <div className={isMasonry ? masonryClasses : `grid ${gridClasses}`}>
+        <MediaGrid isMasonry={isMasonry} cardSize={cardSize}>
         {visibleProjects.map((item) => {
           const isFeatured = featuredIds.includes(item.id);
           const isHero = heroAssetId ? heroAssetId === item.id : false;
           const isVideo = item.type === "film" || item.type === "project";
 
           return (
-            <div
+            <MediaCard
               key={item.id}
-              className={isMasonry ? `break-inside-avoid ${masonryItemSpacing} w-full` : "h-full"}
-            >
-              <TiltCard tiltIntensity={4} glareIntensity={0.12} className={`w-full ${isMasonry ? "h-auto" : "h-full"}`}>
-                <Card
-                  onClick={() => onSelectItem(item)}
-                  className={`group relative rounded-2xl bg-[#0c0c0e] border overflow-hidden transition-all duration-300 p-0 cursor-pointer w-full ${isMasonry ? "h-auto" : "h-full"} ${
-                    isHero ? "border-primary/80 ring-1 ring-primary/40 shadow-lg shadow-primary/10" : "border-white/10 hover:border-white/30"
-                  }`}
-                >
-                  {/* Media Image */}
-                  {isMasonry ? (
-                    <ShowcaseMasonryMedia
-                      item={item}
-                      thumbnailScale={appearance.thumbnailScale}
-                    />
-                  ) : (
-                    <AspectRatio ratio={numericRatio} className="w-full">
-                      <AppImage
-                        src={item.thumbnailUrl}
-                        alt={item.title}
-                        objectFit={appearance.thumbnailScale === "fit" ? "contain" : "cover"}
-                        fallbackIcon={item.type === "still" ? "image" : "film"}
-                        containerClassName="size-full"
-                        className="transition-transform duration-500 group-hover:scale-105"
-                      />
-                    </AspectRatio>
-                  )}
-
-                {/* Top-Left Badges (FILM / STILL / PROJECT & HERO INDICATOR) */}
-                <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 flex-wrap">
-                  <Badge
-                    variant="outline"
-                    className="bg-black/60 backdrop-blur-md border border-white/15 text-[10px]  font-bold text-white uppercase tracking-wider gap-1.5 px-2.5 py-1 rounded-md"
-                  >
-                    {item.type === "still" ? (
-                      <>
-                        <ImageIcon className="size-3 text-zinc-300" />
-                        <TypographySpan>STILL</TypographySpan>
-                      </>
-                    ) : item.type === "project" ? (
-                      <>
-                        <FolderKanban className="size-3 text-zinc-300" />
-                        <TypographySpan>PROJECT</TypographySpan>
-                      </>
-                    ) : (
-                      <>
-                        <Film className="size-3 text-zinc-300" />
-                        <TypographySpan>FILM</TypographySpan>
-                      </>
-                    )}
-                  </Badge>
-
-                  {isHero && (
-                    <Badge className="bg-primary text-primary-foreground  text-[9px] uppercase font-extrabold px-2 py-1 rounded-md shadow-lg flex items-center gap-1 border-none">
-                      <Sparkles className="size-2.5 fill-current" />
-                      <TypographySpan>HERO</TypographySpan>
-                    </Badge>
-                  )}
-                </div>
-
-                {/* Top-Right Action Controls (Hero Sparkles + Star Pin + Edit + Delete) */}
-                <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+              title={item.title}
+              subtitle={item.category}
+              showInfo={appearance.showClientInfo}
+              showSubtitle={appearance.showClientInfo}
+              src={item.thumbnailUrl}
+              type={item.type}
+              aspectRatio={item.aspectRatio}
+              numericRatio={numericRatio}
+              isMasonry={isMasonry}
+              thumbnailScale={appearance.thumbnailScale}
+              onClick={() => onSelectItem(item)}
+              isHero={isHero}
+              isFeatured={isFeatured}
+              tiltIntensity={4}
+              glareIntensity={0.12}
+              topLeft={
+                <>
+                  <MediaBadge type={item.type} />
+                  {isHero && <HeroBadge />}
+                </>
+              }
+              topRight={
+                <>
                   {onSetAsHero && (
                     <Tooltip>
                       <TooltipTrigger
@@ -444,89 +351,56 @@ export function ShowcaseGrid({
                       <TooltipContent>Delete {item.type === "project" ? "project" : "asset"}</TooltipContent>
                     </Tooltip>
                   )}
-                </div>
-
-                {/* Center Action Button for Video Cuts / Projects or Zoom for Stills */}
-                {isVideo ? (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="size-11 rounded-full bg-black/50 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-xl group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                      <Play className="size-4.5 ml-0.5 fill-current" />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="size-11 rounded-full bg-black/50 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-xl scale-90 group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                      <Maximize2 className="size-4.5 stroke-[2.5]" />
-                    </div>
-                  </div>
-                )}
-
-                {/* Bottom Label Overlay */}
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-3.5 pt-8 pointer-events-none flex flex-col justify-end">
-                  <TypographyH4 className="text-xs font-bold text-white tracking-tight leading-snug truncate font-heading">
-                    {item.title}
-                  </TypographyH4>
-                  {appearance.showClientInfo && (
-                    <TypographyMuted className="text-[10px] text-zinc-400  truncate">
-                      {item.category}
-                    </TypographyMuted>
-                  )}
-                </div>
-              </Card>
-            </TiltCard>
-          </div>
+                </>
+              }
+              // centerAction={isVideo ? <PlayButtonOverlay /> : <ZoomButtonOverlay />}
+              footerMode="overlay"
+            />
           );
         })}
+        </MediaGrid>
 
         {filteredProjects.length === 0 && (
-          <div className="col-span-full [column-span:all] py-12 text-center text-zinc-500 text-xs italic">
+          <div className="py-12 text-center text-zinc-500 text-xs italic">
             No {activeTab} yet. Click the upload button above to add your first {activeTab.slice(0, -1)}.
           </div>
         )}
 
-        {/* Load More Button & Stats Footer */}
+        {/* Infinite Scroll Sentinel & Stats Footer */}
         {hasMore && (
-          <div className="col-span-full [column-span:all] flex flex-col items-center justify-center pt-8 pb-4 space-y-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              disabled={isLoadingMore}
+          <div
+            ref={sentinelRef}
+            className="flex flex-col items-center justify-center pt-8 pb-4 space-y-3"
+          >
+            <div
               onClick={handleLoadMore}
-              className="group relative rounded-full px-8 py-3 bg-[#0c0c0e]/80 hover:bg-[#141416] border-white/10 hover:border-primary/50 text-white font-bold text-xs tracking-wider uppercase transition-all duration-300 shadow-xl cursor-pointer"
+              className="flex items-center gap-2.5 px-6 py-2.5 rounded-full bg-[#0c0c0e]/90 border border-white/10 text-white shadow-xl cursor-pointer hover:border-primary/40 transition-all duration-300"
             >
-              {isLoadingMore ? (
-                <div className="flex items-center gap-2.5">
-                  <Loader2 className="size-4 animate-spin text-primary" />
-                  <TypographySpan>Loading {activeTab}...</TypographySpan>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <TypographySpan>Load More {activeTab}</TypographySpan>
-                  {remainingCount > 0 && (
-                    <Badge
-                      variant="secondary"
-                      className="text-[10px]  px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
-                    >
-                      +{remainingCount} more
-                    </Badge>
-                  )}
-                </div>
+              <Loader2 className="size-4 animate-spin text-primary" />
+              <TypographySpan className="text-xs font-bold uppercase tracking-wider">
+                {isLoadingMore ? `Loading ${activeTab}...` : `Loading more ${activeTab}`}
+              </TypographySpan>
+              {remainingCount > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
+                >
+                  +{remainingCount} more
+                </Badge>
               )}
-            </Button>
-            <TypographyMuted className="text-[11px]  text-zinc-400">
+            </div>
+            <TypographyMuted className="text-[11px] text-zinc-400">
               Showing {visibleProjects.length} of {filteredProjects.length} {activeTab}
             </TypographyMuted>
           </div>
         )}
 
         {!hasMore && filteredProjects.length > PAGE_SIZE && (
-          <div className="col-span-full [column-span:all] text-center pt-6 pb-2 text-[11px]  text-zinc-500 flex items-center justify-center gap-2">
+          <div className="text-center pt-6 pb-2 text-[11px] text-zinc-500 flex items-center justify-center gap-2">
             <CheckCircle2 className="size-3.5 text-emerald-400" />
             <TypographySpan>All {filteredProjects.length} {activeTab} displayed</TypographySpan>
           </div>
         )}
-      </div>
       </CardContent>
 
       <DeleteConfirmDialog

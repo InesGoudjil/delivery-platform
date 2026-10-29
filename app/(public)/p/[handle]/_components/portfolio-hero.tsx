@@ -133,9 +133,9 @@ export function PortfolioHero({
 
         {/* Minimal Hero Information - Title Only */}
         <div className="absolute bottom-6 left-6 right-6 sm:bottom-10 sm:left-10 sm:right-10 z-10 pointer-events-none">
-          <TypographyH2 className="font-heading font-extrabold text-2xl sm:text-4xl lg:text-5xl text-white tracking-tight drop-shadow-md uppercase max-w-3xl">
+          {/*<TypographyH2 className="font-heading font-extrabold text-2xl sm:text-4xl lg:text-5xl text-white tracking-tight drop-shadow-md uppercase max-w-3xl">
             {heroTitle}
-          </TypographyH2>
+          </TypographyH2>*/}
         </div>
       </HeroPreviewTrigger>
     </section>
