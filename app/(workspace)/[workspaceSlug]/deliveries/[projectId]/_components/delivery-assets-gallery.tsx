@@ -325,7 +325,7 @@ export function DeliveryAssetsGallery({
                   )}
                 </>
               }
-              centerAction={item.type === "video" ? <PlayButtonOverlay /> : <ZoomButtonOverlay />}
+              // centerAction={item.type === "video" ? <PlayButtonOverlay /> : <ZoomButtonOverlay />}
               bottomRight={
                 item.duration ? (
                   <Badge

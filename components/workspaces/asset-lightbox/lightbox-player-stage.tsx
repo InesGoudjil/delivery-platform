@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { CutReviewPlayerRef } from "@/components/video/cut-review-player";
 import { MediaReviewStage } from "@/components/media";
+import { parseAspectRatio } from "@/lib/media-ratios";
 import { FeedbackItem } from "./types";
 
 export interface LightboxPlayerStageProps {
@@ -43,8 +44,17 @@ export function LightboxPlayerStage({
   onNext,
   playerRef,
 }: LightboxPlayerStageProps) {
+  const parsedRatio = parseAspectRatio(resolvedAspectRatio);
+  const isPortrait = parsedRatio.isPortrait;
+
   return (
-    <div className="relative w-full min-h-[260px] max-h-[500px] flex items-center justify-center overflow-hidden rounded-2xl bg-black/80 border border-white/10 group/stage shrink-0 shadow-xl">
+    <div
+      className={`relative w-full flex items-center justify-center overflow-hidden rounded-2xl bg-black/80 border border-white/10 group/stage shrink-0 shadow-xl ${
+        isPortrait
+          ? "h-[480px] sm:h-[520px]"
+          : "min-h-[260px] max-h-[500px]"
+      }`}
+    >
       {/* Floating Prev Button */}
       {onPrev && (
         <Tooltip>
@@ -85,6 +95,7 @@ export function LightboxPlayerStage({
           activeCommentId={activeCommentId}
           onCommentSelect={onCommentSelect}
           onTimeChange={onTimeChange}
+          className="w-full h-full"
         />
       </div>
 
