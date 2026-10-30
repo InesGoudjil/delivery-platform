@@ -11,3 +11,4 @@ export * from "./asset";
 export * from "./feedback";
 export * from "./notification";
 export * from "./waitlist";
+export * from "./workspace-settings";

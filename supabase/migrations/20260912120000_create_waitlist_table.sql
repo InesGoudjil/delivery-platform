@@ -26,7 +26,7 @@ CREATE INDEX IF NOT EXISTS idx_waitlist_ranking ON public.waitlist_entries(statu
 -- Database Function: Calculate accurate real-time queue position
 CREATE OR REPLACE FUNCTION public.get_waitlist_position(p_entry_id UUID)
 RETURNS TABLE (
-  position BIGINT,
+  "position" BIGINT,
   total_pending BIGINT
 ) AS $$
 DECLARE
@@ -71,6 +71,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ALTER TABLE public.waitlist_entries ENABLE ROW LEVEL SECURITY;
 
 -- Allow public / anon insert for joining waitlist with defaults
+DROP POLICY IF EXISTS "Allow public insert to waitlist" ON public.waitlist_entries;
 CREATE POLICY "Allow public insert to waitlist"
   ON public.waitlist_entries
   FOR INSERT
@@ -81,6 +82,7 @@ CREATE POLICY "Allow public insert to waitlist"
   );
 
 -- Allow reading waitlist entry
+DROP POLICY IF EXISTS "Allow reading waitlist entry" ON public.waitlist_entries;
 CREATE POLICY "Allow reading waitlist entry"
   ON public.waitlist_entries
   FOR SELECT

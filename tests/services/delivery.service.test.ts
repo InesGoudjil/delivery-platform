@@ -22,8 +22,11 @@ describe("core/services/DeliveryService", () => {
     title: "Client Video Delivery",
     shareToken: "token_123",
     status: "in_review",
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    isDownloadAllowed: true,
+    notifyOnDownload: true,
+    isWatermarked: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 
   beforeEach(() => {

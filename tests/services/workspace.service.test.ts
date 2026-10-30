@@ -25,8 +25,9 @@ describe("core/services/WorkspaceService", () => {
     accentColor: "#f5551d",
     defaultLanguage: "ar",
     accountType: "individual",
-    createdAt: new Date("2026-01-01"),
-    updatedAt: new Date("2026-01-01"),
+    storageUsedBytes: 0,
+    createdAt: new Date("2026-01-01").toISOString(),
+    updatedAt: new Date("2026-01-01").toISOString(),
   };
 
   const starterPlan = {
@@ -130,9 +131,11 @@ describe("core/services/WorkspaceService", () => {
         ownerId: "other_user",
         brandName: "Partner Studio",
         slug: "partner-studio",
-        accountType: "team",
-        createdAt: new Date("2026-02-01"),
-        updatedAt: new Date("2026-02-01"),
+        defaultLanguage: "en",
+        accountType: "studio",
+        storageUsedBytes: 0,
+        createdAt: new Date("2026-02-01").toISOString(),
+        updatedAt: new Date("2026-02-01").toISOString(),
       };
 
       vi.mocked(memberRepo.listByUserId!).mockResolvedValue([

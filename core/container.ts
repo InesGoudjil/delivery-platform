@@ -30,6 +30,7 @@ import {
   SupabaseInvoiceRepository,
   SupabaseWaitlistRepository,
   SupabaseInquiryRepository,
+  SupabaseWorkspaceSettingsRepository,
 } from "./repositories";
 import { ZeptoMailEmailProvider, IEmailProvider } from "./providers/email";
 
@@ -74,6 +75,7 @@ export interface CoreServices {
     notification: SupabaseNotificationLogRepository;
     waitlist: SupabaseWaitlistRepository;
     inquiry: SupabaseInquiryRepository;
+    settings: SupabaseWorkspaceSettingsRepository;
   };
   services: {
     auth: AuthService;
@@ -95,6 +97,7 @@ export interface CoreServices {
     silo: SiloService;
     siloProvider: ISiloStorageProvider;
     email: IEmailProvider;
+    settings: SupabaseWorkspaceSettingsRepository;
   };
 }
 
@@ -137,6 +140,7 @@ export function createCoreServices(
   const invoiceRepo = new SupabaseInvoiceRepository(systemClient);
   const waitlistRepo = new SupabaseWaitlistRepository(systemClient);
   const inquiryRepo = new SupabaseInquiryRepository(systemClient);
+  const workspaceSettingsRepo = new SupabaseWorkspaceSettingsRepository(supabase);
 
   // Email Provider (Zoho ZeptoMail)
   const emailProvider = new ZeptoMailEmailProvider();
@@ -249,6 +253,7 @@ export function createCoreServices(
       notification: notificationRepo,
       waitlist: waitlistRepo,
       inquiry: inquiryRepo,
+      settings: workspaceSettingsRepo,
     },
     services: {
       auth: authService,
@@ -270,6 +275,7 @@ export function createCoreServices(
       silo: siloService,
       siloProvider,
       email: emailProvider,
+      settings: workspaceSettingsRepo,
     },
   };
 }

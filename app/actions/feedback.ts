@@ -75,11 +75,13 @@ export async function addFeedbackAction(params: AddFeedbackParams) {
     const user = await userServices.auth.getCurrentUser();
 
     // Verify access
+    let deliveryContext: any = null;
     if (shareToken) {
-      const { isAuthorized } = await verifyDeliveryAccessContext(shareToken);
-      if (!isAuthorized) {
+      const authCtx = await verifyDeliveryAccessContext(shareToken);
+      if (!authCtx.isAuthorized) {
         return { error: "Passcode verification required to leave feedback on this cut." };
       }
+      deliveryContext = authCtx.delivery;
     } else {
       if (!user) {
         return { error: "Unauthorized. Authentication or delivery share token required." };
@@ -110,6 +112,46 @@ export async function addFeedbackAction(params: AddFeedbackParams) {
       commentText,
       timestampSeconds,
     });
+
+    // Dispatch real-time note alert to studio members if notification preference is active
+    if (deliveryContext) {
+      try {
+        const settings = await adminServices.settings.findByWorkspaceId(deliveryContext.workspaceId);
+        const shouldNotify = settings ? settings.notifyComments : true;
+        if (shouldNotify) {
+          const members = await adminServices.member.listMembers(deliveryContext.workspaceId);
+          const notifyEmails = members
+            .filter((m) => (m.role === "owner" || m.role === "admin") && Boolean(m.email))
+            .map((m) => m.email as string);
+
+          if (notifyEmails.length > 0) {
+            let origin = "https://cut.app";
+            try {
+              const { headers } = await import("next/headers");
+              const headerList = await headers();
+              const host = headerList.get("host");
+              const proto = headerList.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
+              if (host) origin = `${proto}://${host}`;
+            } catch {
+              // fallback
+            }
+
+            await adminServices.notification
+              .notifyNewFeedback({
+                deliveryId: deliveryContext.id,
+                recipientEmails: notifyEmails,
+                authorName: authorName || (user?.email ? user.email.split("@")[0] : "Client Guest"),
+                commentText,
+                timestampSeconds,
+                origin,
+              })
+              .catch((err) => console.warn("[Feedback] Failed to dispatch note notification:", err));
+          }
+        }
+      } catch (notifyErr) {
+        console.warn("[Feedback] Notification warning:", notifyErr);
+      }
+    }
 
     if (shareToken) {
       revalidatePath(`/deliver/${shareToken}`);

@@ -22,6 +22,7 @@ CREATE INDEX IF NOT EXISTS idx_invoices_stripe_invoice_id ON public.invoices(str
 ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policy: Workspace members/owners can view their workspace invoices
+DROP POLICY IF EXISTS "Workspace members can view invoices" ON public.invoices;
 CREATE POLICY "Workspace members can view invoices"
   ON public.invoices
   FOR SELECT
