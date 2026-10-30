@@ -17,3 +17,4 @@ export * from "./notification.repository";
 export * from "./invoice.repository";
 export * from "./waitlist.repository";
 export * from "./inquiry.repository";
+export * from "./workspace-settings.repository";

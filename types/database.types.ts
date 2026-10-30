@@ -738,6 +738,44 @@ export interface Database {
           updated_at?: string;
         };
       };
+      workspace_settings: {
+        Row: {
+          workspace_id: string;
+          notify_approvals: boolean;
+          notify_comments: boolean;
+          notify_downloads: boolean;
+          weekly_digest: boolean;
+          whatsapp_number: string | null;
+          whatsapp_enabled: boolean;
+          default_link_expiration_days: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          workspace_id: string;
+          notify_approvals?: boolean;
+          notify_comments?: boolean;
+          notify_downloads?: boolean;
+          weekly_digest?: boolean;
+          whatsapp_number?: string | null;
+          whatsapp_enabled?: boolean;
+          default_link_expiration_days?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          workspace_id?: string;
+          notify_approvals?: boolean;
+          notify_comments?: boolean;
+          notify_downloads?: boolean;
+          weekly_digest?: boolean;
+          whatsapp_number?: string | null;
+          whatsapp_enabled?: boolean;
+          default_link_expiration_days?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
   };
 }

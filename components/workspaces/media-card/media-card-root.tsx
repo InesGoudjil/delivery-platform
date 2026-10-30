@@ -148,7 +148,7 @@ export function MediaCard({
     <TiltCard
       tiltIntensity={tiltIntensity}
       glareIntensity={glareIntensity}
-      className={`w-full ${isMasonry ? "break-inside-avoid mb-4 h-auto" : "h-full"} ${containerClassName}`}
+      className={`rounded-2xl w-full ${isMasonry ? "break-inside-avoid mb-4 h-auto" : "h-full"} ${containerClassName}`}
     >
       <Card
         onClick={onClick}

@@ -29,8 +29,8 @@ describe("core/services/SubscriptionService", () => {
       password_protected: false,
       silo_archive: false,
     },
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 
   const proPlan: Plan = {
@@ -49,8 +49,8 @@ describe("core/services/SubscriptionService", () => {
       password_protected: true,
       silo_archive: true,
     },
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 
   beforeEach(() => {

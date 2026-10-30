@@ -281,11 +281,24 @@ export async function createDeliveryAction(
       }
     }
 
+    // Auto-calculate default expiration date based on workspace security policy if not explicitly set
+    let calculatedExpiresAt: string | undefined = undefined;
+    try {
+      const settings = await services.settings.findByWorkspaceId(cleanWorkspaceId);
+      const days = settings?.defaultLinkExpirationDays ?? 30;
+      if (days && days > 0) {
+        calculatedExpiresAt = new Date(Date.now() + days * 86400000).toISOString();
+      }
+    } catch {
+      // Fallback: no auto-expiration
+    }
+
     const delivery = await services.delivery.createDelivery({
       workspaceId: cleanWorkspaceId,
       title: cleanTitle,
       description: cleanDescription,
       clientId,
+      expiresAt: calculatedExpiresAt,
     });
 
     const workspace = await services.workspace.getWorkspaceById(cleanWorkspaceId);
@@ -316,10 +329,14 @@ export async function approveCutAction(deliveryId: string, approvedByName?: stri
 
     let notifyEmails: string[] = [];
     try {
-      const members = await services.member.listMembers(delivery.workspaceId);
-      notifyEmails = members
-        .filter((m) => (m.role === "owner" || m.role === "admin") && Boolean(m.email))
-        .map((m) => m.email as string);
+      const settings = await services.settings.findByWorkspaceId(delivery.workspaceId);
+      const shouldNotify = settings ? settings.notifyApprovals : true;
+      if (shouldNotify) {
+        const members = await services.member.listMembers(delivery.workspaceId);
+        notifyEmails = members
+          .filter((m) => (m.role === "owner" || m.role === "admin") && Boolean(m.email))
+          .map((m) => m.email as string);
+      }
     } catch {
       // fallback
     }
@@ -375,10 +392,14 @@ export async function approveAllAssetsAction(deliveryId: string, approvedByName?
 
     let notifyEmails: string[] = [];
     try {
-      const members = await services.member.listMembers(delivery.workspaceId);
-      notifyEmails = members
-        .filter((m) => (m.role === "owner" || m.role === "admin") && Boolean(m.email))
-        .map((m) => m.email as string);
+      const settings = await services.settings.findByWorkspaceId(delivery.workspaceId);
+      const shouldNotify = settings ? settings.notifyApprovals : true;
+      if (shouldNotify) {
+        const members = await services.member.listMembers(delivery.workspaceId);
+        notifyEmails = members
+          .filter((m) => (m.role === "owner" || m.role === "admin") && Boolean(m.email))
+          .map((m) => m.email as string);
+      }
     } catch {
       // fallback
     }
@@ -1125,6 +1146,16 @@ export async function recordClientDownloadAction(params: {
     const delivery = await core.services.delivery.getDeliveryById(validated.data.deliveryId);
     if (!delivery || !delivery.notifyOnDownload) {
       return { success: true, notified: false };
+    }
+
+    // Check workspace-level notification preference
+    try {
+      const settings = await core.services.settings.findByWorkspaceId(delivery.workspaceId);
+      if (settings && !settings.notifyDownloads) {
+        return { success: true, notified: false };
+      }
+    } catch {
+      // Proceed if settings lookup fails
     }
 
     const workspace = await core.services.workspace.getWorkspaceById(delivery.workspaceId);

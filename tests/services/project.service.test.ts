@@ -75,6 +75,8 @@ describe("core/services/ProjectService", () => {
     it("throws an error when portfolio showcase film limit is exceeded", async () => {
       vi.mocked(subscriptionService.canAddPortfolioVideo!).mockResolvedValue({
         allowed: false,
+        currentCount: 5,
+        maxAllowed: 5,
         reason: "Portfolio showcase film limit reached. Please upgrade your subscription plan.",
       });
 

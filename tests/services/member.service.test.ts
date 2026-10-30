@@ -26,9 +26,10 @@ describe("core/services/MemberService", () => {
     slug: "acme-studios",
     accentColor: "#f5551d",
     defaultLanguage: "en",
-    accountType: "creator",
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    accountType: "individual",
+    storageUsedBytes: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 
   beforeEach(() => {
@@ -102,7 +103,7 @@ describe("core/services/MemberService", () => {
         workspaceId: "ws_1",
         userId: "user_editor",
         role: "editor",
-        joinedAt: new Date(),
+        joinedAt: new Date().toISOString(),
       });
 
       const member = await service.getMember("ws_1", "user_editor");
