@@ -3,46 +3,22 @@
 import {
   useRef,
   useState,
-  useEffect,
-  useCallback,
   forwardRef,
   useImperativeHandle,
 } from "react";
-import {
-  MediaPlayer,
-  MediaProvider,
-  Poster,
-  type MediaPlayerInstance,
-} from "@vidstack/react";
-import "@vidstack/react/player/styles/base.css";
+import "@videojs/react/video/skin.css";
+import { resolveAdapterType } from "@videojs/react";
+import { Video, VideoPlayer, VideoSkin, usePlayer } from "@videojs/react/video";
+import { HlsJsVideo } from "@videojs/react/media/hlsjs-video";
+import { Image as ImageIcon } from "lucide-react";
 
-import {
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  Maximize,
-  Minimize,
-  ChevronLeft,
-  ChevronRight,
-  RotateCcw,
-  MessageSquare,
-  Sparkles,
-  AlertCircle,
-  Loader2,
-  Image as ImageIcon,
-  ZoomIn,
-  ZoomOut,
-} from "lucide-react";
 import { formatTimecode, stepByFrames } from "@/lib/timecode";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 import {
   getMediaBoundingStyles,
   detectAspectRatioFromDimensions,
-  parseAspectRatio,
 } from "@/lib/media-ratios";
 import { WatermarkOverlay } from "@/components/ui/watermark-overlay";
-import { Button } from "@/components/ui/button";
 
 export function isImageSource(url?: string): boolean {
   if (!url) return false;
@@ -92,678 +68,253 @@ export interface CutReviewPlayerProps {
   watermarkText?: string;
 }
 
-export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerProps>(
-  (
-    {
-      src,
-      title,
-      poster,
-      aspectRatio = "16:9",
-      fps = 24,
-      isPhoto = false,
-      iframeEmbedUrl,
-      comments = [],
-      activeCommentId,
-      onCommentSelect,
-      onTimeChange,
-      className = "",
-      autoPlay = false,
-      showWatermark = false,
-      watermarkText,
-    },
-    ref
-  ) => {
-    const playerRef = useRef<MediaPlayerInstance>(null);
-    const scrubberRef = useRef<HTMLDivElement>(null);
+interface CutReviewPlayerInnerProps extends CutReviewPlayerProps {
+  forwardedRef?: React.ForwardedRef<CutReviewPlayerRef>;
+}
 
-    const resolvedVideoSrc = resolveMediaUrl(src);
-    const resolvedPoster = resolveThumbnailUrl(poster, src, isPhoto);
+function CutReviewPlayerInner({
+  src,
+  title,
+  poster,
+  aspectRatio = "16:9",
+  fps = 24,
+  isPhoto = false,
+  iframeEmbedUrl,
+  onTimeChange,
+  className = "",
+  autoPlay = false,
+  showWatermark = false,
+  watermarkText,
+  forwardedRef,
+}: CutReviewPlayerInnerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [detectedRatio, setDetectedRatio] = useState<string | null>(null);
 
-    // Only treat as image cut if explicitly marked as photo or the actual video source is an image
-    const isImageCut = Boolean(
-      isPhoto ||
-      (resolvedVideoSrc && isImageSource(resolvedVideoSrc))
-    );
+  const currentTime = usePlayer((s) => s.currentTime);
+  const duration = usePlayer((s) => s.duration);
+  const play = usePlayer((s) => s.play);
+  const pause = usePlayer((s) => s.pause);
+  const seek = usePlayer((s) => s.seek);
 
-    // Extract Cloudflare Stream UID if present
-    const streamUidMatch = (resolvedVideoSrc || "").match(
+  const resolvedVideoSrc = resolveMediaUrl(src);
+  const resolvedPoster = resolveThumbnailUrl(poster, src, isPhoto);
+
+  const isImageCut = Boolean(
+    isPhoto || (resolvedVideoSrc && isImageSource(resolvedVideoSrc))
+  );
+
+  // If a raw Cloudflare Stream UID or videodelivery URL was provided without .m3u8, ensure it points to the HLS manifest
+  let videoStreamSrc = isImageCut
+    ? ""
+    : resolvedVideoSrc || "https://files.vidstack.io/sprite-fight/hls/stream.m3u8";
+
+  if (
+    videoStreamSrc &&
+    (videoStreamSrc.includes("cloudflarestream.com") || videoStreamSrc.includes("videodelivery.net")) &&
+    !videoStreamSrc.includes(".m3u8") &&
+    !videoStreamSrc.includes(".mp4")
+  ) {
+    const streamUidMatch = videoStreamSrc.match(
       /(?:cloudflarestream\.com|videodelivery\.net)\/([a-f0-9]{32})/i
     );
-    const streamUid = streamUidMatch ? streamUidMatch[1] : null;
-    const streamHostMatch = (resolvedVideoSrc || "").match(/https?:\/\/([^/]+)/);
-    const streamDomain = streamHostMatch ? streamHostMatch[1] : "videodelivery.net";
-    const computedIframeUrl =
-      iframeEmbedUrl ||
-      (streamUid ? `https://${streamDomain}/${streamUid}/iframe` : null);
+    if (streamUidMatch) {
+      const streamHostMatch = videoStreamSrc.match(/https?:\/\/([^/]+)/);
+      const streamDomain = streamHostMatch ? streamHostMatch[1] : "videodelivery.net";
+      videoStreamSrc = `https://${streamDomain}/${streamUidMatch[1]}/manifest/video.m3u8`;
+    }
+  }
 
-    // Reliable video stream fallback ONLY if it is a video cut
-    const videoStreamSrc = isImageCut
-      ? ""
-      : resolvedVideoSrc || "https://files.vidstack.io/sprite-fight/hls/stream.m3u8";
+  const activeRatio = detectedRatio || aspectRatio || "16:9";
+  const bounding = getMediaBoundingStyles(activeRatio);
 
-    const [useIframeFallback, setUseIframeFallback] = useState(false);
-    const [retryCount, setRetryCount] = useState(0);
-    const [zoomLevel, setZoomLevel] = useState(1);
-    const [currentTime, setCurrentTime] = useState(0);
-    const [duration, setDuration] = useState(0);
-    const [isPaused, setIsPaused] = useState(true);
-    const [isMuted, setIsMuted] = useState(false);
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    const [playbackRate, setPlaybackRate] = useState(1);
-    const [hoveredComment, setHoveredComment] = useState<CutCommentMarker | null>(null);
-    const [hoverTime, setHoverTime] = useState<number | null>(null);
-    const [isDraggingScrubber, setIsDraggingScrubber] = useState(false);
-    const [mediaError, setMediaError] = useState<string | null>(null);
-    const [isEncoding, setIsEncoding] = useState(false);
-    const [detectedRatio, setDetectedRatio] = useState<string | null>(null);
-
-    const activeRatio = detectedRatio || aspectRatio || "16:9";
-    const bounding = getMediaBoundingStyles(activeRatio);
-
-    useEffect(() => {
-      setDetectedRatio(null);
-    }, [aspectRatio, src]);
-
-    // Imperative Handle for parent components (seeking, stepping, etc.)
-    useImperativeHandle(ref, () => ({
-      seekTo: (seconds: number) => {
-        if (playerRef.current) {
-          playerRef.current.currentTime = seconds;
-          playerRef.current.pause();
-        }
-      },
-      play: () => playerRef.current?.play(),
-      pause: () => playerRef.current?.pause(),
-      getCurrentTime: () => playerRef.current?.currentTime ?? currentTime,
-      getDuration: () => playerRef.current?.duration ?? duration,
-      stepFrame: (direction: 1 | -1) => {
-        handleStepFrame(direction);
-      },
-    }));
-
-    const handleStepFrame = useCallback(
-      (direction: 1 | -1) => {
-        if (!playerRef.current) return;
-        playerRef.current.pause();
-        const nextTime = stepByFrames(
-          playerRef.current.currentTime || currentTime,
-          direction,
-          duration,
-          fps
-        );
-        playerRef.current.currentTime = nextTime;
-        setCurrentTime(nextTime);
-        onTimeChange?.(nextTime, formatTimecode(nextTime, fps));
-      },
-      [currentTime, duration, fps, onTimeChange]
-    );
-
-    const handleStepSeconds = useCallback(
-      (secondsDelta: number) => {
-        if (!playerRef.current) return;
-        const current = playerRef.current.currentTime || currentTime;
-        const nextTime = Math.min(Math.max(0, current + secondsDelta), duration);
-        playerRef.current.currentTime = nextTime;
-        setCurrentTime(nextTime);
-        onTimeChange?.(nextTime, formatTimecode(nextTime, fps));
-      },
-      [currentTime, duration, fps, onTimeChange]
-    );
-
-    // Keyboard Shortcuts for NLE-grade cut review
-    useEffect(() => {
-      const handleKeyDown = (e: KeyboardEvent) => {
-        // Ignore shortcuts if the user is typing in an input or textarea
-        const activeTag = document.activeElement?.tagName.toLowerCase();
-        if (activeTag === "input" || activeTag === "textarea") return;
-
-        if (e.code === "Space") {
-          e.preventDefault();
-          if (playerRef.current) {
-            if (playerRef.current.paused) {
-              playerRef.current.play();
-            } else {
-              playerRef.current.pause();
-            }
-          }
-        } else if (e.code === "ArrowLeft") {
-          e.preventDefault();
-          if (e.shiftKey) {
-            handleStepSeconds(-1);
-          } else {
-            handleStepFrame(-1);
-          }
-        } else if (e.code === "ArrowRight") {
-          e.preventDefault();
-          if (e.shiftKey) {
-            handleStepSeconds(1);
-          } else {
-            handleStepFrame(1);
-          }
-        } else if (e.key === "j" || e.key === "J") {
-          e.preventDefault();
-          handleStepSeconds(-2);
-        } else if (e.key === "k" || e.key === "K") {
-          e.preventDefault();
-          playerRef.current?.pause();
-        } else if (e.key === "l" || e.key === "L") {
-          e.preventDefault();
-          handleStepSeconds(2);
-        }
-      };
-
-      window.addEventListener("keydown", handleKeyDown);
-      return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [handleStepFrame, handleStepSeconds]);
-
-    // Scrubber interaction
-    const getScrubTimeFromEvent = (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!scrubberRef.current || duration <= 0) return 0;
-      const rect = scrubberRef.current.getBoundingClientRect();
-      const clickX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-      const percentage = clickX / rect.width;
-      return percentage * duration;
-    };
-
-    const handleScrubberClick = (e: React.MouseEvent<HTMLDivElement>) => {
-      const targetTime = getScrubTimeFromEvent(e);
-      if (playerRef.current) {
-        playerRef.current.currentTime = targetTime;
-        setCurrentTime(targetTime);
-        onTimeChange?.(targetTime, formatTimecode(targetTime, fps));
+  useImperativeHandle(forwardedRef, () => ({
+    seekTo: (seconds: number) => {
+      seek(seconds);
+      if (videoRef.current) {
+        videoRef.current.currentTime = seconds;
       }
-    };
-
-    const handleScrubberMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-      const hoverSec = getScrubTimeFromEvent(e);
-      setHoverTime(hoverSec);
-    };
-
-    const handleScrubberMouseLeave = () => {
-      setHoverTime(null);
-      setHoveredComment(null);
-    };
-
-    const togglePlay = () => {
-      if (!playerRef.current) return;
-      if (playerRef.current.paused) {
-        playerRef.current.play();
-      } else {
-        playerRef.current.pause();
+      onTimeChange?.(seconds, formatTimecode(seconds, fps));
+    },
+    play: () => {
+      play().catch(() => {});
+    },
+    pause: () => {
+      pause();
+    },
+    getCurrentTime: () => {
+      if (videoRef.current) return videoRef.current.currentTime;
+      return currentTime ?? 0;
+    },
+    getDuration: () => {
+      if (videoRef.current && Number.isFinite(videoRef.current.duration) && videoRef.current.duration > 0) {
+        return videoRef.current.duration;
       }
-    };
-
-    const toggleMute = () => {
-      if (!playerRef.current) return;
-      playerRef.current.muted = !playerRef.current.muted;
-      setIsMuted(playerRef.current.muted);
-    };
-
-    const toggleFullscreen = () => {
-      if (!playerRef.current) return;
-      if (isFullscreen) {
-        playerRef.current.exitFullscreen();
-        setIsFullscreen(false);
-      } else {
-        playerRef.current.enterFullscreen();
-        setIsFullscreen(true);
+      return duration ?? 0;
+    },
+    stepFrame: (direction: 1 | -1) => {
+      const cur = videoRef.current ? videoRef.current.currentTime : (currentTime ?? 0);
+      const dur =
+        videoRef.current && Number.isFinite(videoRef.current.duration) && videoRef.current.duration > 0
+          ? videoRef.current.duration
+          : (duration ?? 0);
+      const nextTime = stepByFrames(cur, direction, dur, fps);
+      seek(nextTime);
+      if (videoRef.current) {
+        videoRef.current.currentTime = nextTime;
       }
-    };
+      onTimeChange?.(nextTime, formatTimecode(nextTime, fps));
+    },
+  }));
 
-    const handleRateChange = (rate: number) => {
-      if (!playerRef.current) return;
-      playerRef.current.playbackRate = rate;
-      setPlaybackRate(rate);
-    };
-
-    // Calculate progress percentage
-    const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-    const hoverPercent =
-      duration > 0 && hoverTime !== null ? (hoverTime / duration) * 100 : null;
-
+  if (isImageCut) {
     return (
       <div
-        className={`group/player relative flex flex-col bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl select-none ${className}`}
+        className={`group/player relative flex items-center justify-center bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl select-none w-full h-full ${className}`}
+        style={bounding.style}
       >
-        {/* Video or Photo Display Core */}
         <div
-          style={bounding.style}
-          className={`relative overflow-hidden bg-black flex items-center justify-center ${bounding.className}`}
+          className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden cursor-zoom-in"
+          onContextMenu={(e) => {
+            if (showWatermark) e.preventDefault();
+          }}
+          onDoubleClick={() => setZoomLevel((prev) => (prev > 1 ? 1 : 2))}
         >
-          {isImageCut ? (
-            /* Dedicated High-Res Photo Still Review */
-            <div
-              className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden cursor-zoom-in"
-              onContextMenu={(e) => {
-                if (showWatermark) e.preventDefault();
-              }}
-              onDoubleClick={() => setZoomLevel((prev) => (prev > 1 ? 1 : 2))}
-            >
-              <img
-                src={resolvedVideoSrc || resolvedPoster || src || poster}
-                alt={title || "Still Asset"}
-                draggable={false}
-                onError={(e) => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.src = "/api/media/placeholder.svg";
-                }}
-                onLoad={(e) => {
-                  const img = e.currentTarget;
-                  if (img.naturalWidth && img.naturalHeight && (!aspectRatio || aspectRatio === "16:9")) {
-                    const detected = detectAspectRatioFromDimensions(img.naturalWidth, img.naturalHeight);
-                    if (detected.id !== "16:9") {
-                      setDetectedRatio(detected.id === "custom" ? detected.cssRatio : detected.id);
-                    }
-                  }
-                }}
-                style={{
-                  transform: `scale(${zoomLevel})`,
-                  transition: "transform 200ms ease-out",
-                }}
-                className="max-w-full max-h-full object-contain pointer-events-none select-none"
-              />
-              {showWatermark && (
-                <WatermarkOverlay text={watermarkText} variant="player" showBadge />
-              )}
-              <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full text-xs  font-bold bg-black/80 text-emerald-400 border border-emerald-500/30 backdrop-blur-md shadow-lg flex items-center gap-1.5">
-                  <ImageIcon className="size-3.5" />
-                  STILL ASSET
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px]  text-muted-foreground bg-black/60 border border-white/10 backdrop-blur-md">
-                  {(bounding.parsed as any)?.shortLabel ||
-                    (bounding.parsed as any)?.label ||
-                    (typeof activeRatio === "string" ? activeRatio : bounding.parsed?.id || "16:9")}
-                </span>
-              </div>
-            </div>
-          ) : (
-            /* Video Review Core (Vidstack / Cloudflare Stream) */
-            useIframeFallback && computedIframeUrl ? (
-              <div className="relative w-full h-full bg-black flex items-center justify-center">
-                <iframe
-                  src={computedIframeUrl}
-                  title={title || "Video Player"}
-                  allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-                  allowFullScreen
-                  className="w-full h-full border-0"
-                />
-                {showWatermark && (
-                  <WatermarkOverlay text={watermarkText} variant="player" showBadge />
-                )}
-              </div>
-            ) : (
-              <>
-                <MediaPlayer
-                  ref={playerRef}
-                  src={videoStreamSrc}
-                  title={title}
-                  autoPlay={autoPlay}
-                  playsInline
-                  className="w-full h-full object-contain"
-                  onTimeUpdate={(detail) => {
-                    setCurrentTime(detail.currentTime);
-                    onTimeChange?.(detail.currentTime, formatTimecode(detail.currentTime, fps));
-                  }}
-                  onDurationChange={(d) => setDuration(d)}
-                  onPlay={() => {
-                    setIsPaused(false);
-                    setMediaError(null);
-                    setIsEncoding(false);
-                  }}
-                  onPause={() => setIsPaused(true)}
-                  onError={(detail: any) => {
-                    console.warn("[CutReviewPlayer] Vidstack playback error:", detail, videoStreamSrc);
-                    const isHls = videoStreamSrc.includes("manifest/video.m3u8");
-                    if (retryCount < 8 && isHls) {
-                      setIsEncoding(true);
-                      setMediaError(null);
-                      setTimeout(() => {
-                        setRetryCount((prev) => prev + 1);
-                        if (playerRef.current) {
-                          playerRef.current.currentTime = 0;
-                          playerRef.current.play().catch(() => {});
-                        }
-                      }, 3500);
-                    } else {
-                      setIsEncoding(false);
-                      if (computedIframeUrl) {
-                        setMediaError("Direct video stream is taking longer to finish encoding. You can switch to the web player or retry.");
-                      } else {
-                        setMediaError("Video stream processing or temporarily unavailable.");
-                      }
-                    }
-                  }}
-                  onFullscreenChange={(fs) => setIsFullscreen(fs)}
-                >
-                  <MediaProvider>
-                    {resolvedPoster && (
-                      <Poster
-                        src={resolvedPoster}
-                        alt={title || "Video thumbnail"}
-                        className="w-full h-full object-contain"
-                      />
-                    )}
-                  </MediaProvider>
-
-                  {showWatermark && (
-                    <WatermarkOverlay text={watermarkText} variant="player" showBadge />
-                  )}
-                </MediaPlayer>
-
-                {/* Cloudflare Edge Encoding In Progress Overlay */}
-                {isEncoding && (
-                  <div className="absolute inset-0 z-30 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-4 animate-in fade-in">
-                    <div className="relative">
-                      <div className="size-14 rounded-full bg-primary/15 text-primary flex items-center justify-center border border-primary/30">
-                        <Loader2 className="size-7 animate-spin" />
-                      </div>
-                      <span className="absolute -bottom-1 -right-1 flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-                      </span>
-                    </div>
-
-                    <div className="space-y-1.5 max-w-sm">
-                      <h4 className="font-bold text-sm text-white">
-                        Processing Video Cut
-                      </h4>
-                      <p className="text-xs text-zinc-400">
-                        Transcoding video cut & generating adaptive streaming tiers...
-                      </p>
-                      <p className="text-[11px]  text-zinc-500">
-                        Checking stream readiness (Attempt {retryCount + 1} of 8)
-                      </p>
-                    </div>
-
-                    {computedIframeUrl && (
-                      <div className="pt-1">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setUseIframeFallback(true);
-                            setIsEncoding(false);
-                            setMediaError(null);
-                          }}
-                          className="rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors cursor-pointer border-white/15 h-auto py-1.5 px-4"
-                        >
-                          Watch in Web Player Now
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Stream Error Recovery Overlay */}
-                {mediaError && !isEncoding && (
-                  <div className="absolute inset-0 z-30 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-3 animate-in fade-in">
-                    <div className="size-12 rounded-full bg-primary/20 text-primary flex items-center justify-center border border-primary/40">
-                      <AlertCircle className="size-6" />
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="font-bold text-sm text-white">Stream Notice</h4>
-                      <p className="text-xs text-muted-foreground max-w-sm">
-                        {mediaError}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => {
-                          setMediaError(null);
-                          setRetryCount(0);
-                          setIsEncoding(true);
-                          if (playerRef.current) {
-                            playerRef.current.currentTime = 0;
-                            playerRef.current.play().catch(() => {});
-                          }
-                        }}
-                        className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 transition-colors cursor-pointer h-auto py-1.5 px-4 border-0"
-                      >
-                        Retry Stream
-                      </Button>
-                      {computedIframeUrl && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setUseIframeFallback(true);
-                            setMediaError(null);
-                          }}
-                          className="rounded-full bg-white/10 text-white font-bold text-xs hover:bg-white/20 transition-colors cursor-pointer border-white/15 h-auto py-1.5 px-4"
-                        >
-                          Use Web Player
-                        </Button>
-                      )}
-                      {!showWatermark && resolvedVideoSrc && !resolvedVideoSrc.includes("manifest/video.m3u8") && (
-                        <a
-                          href={resolvedVideoSrc}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-zinc-300 font-bold text-xs hover:bg-white/15 transition-colors"
-                        >
-                          Direct File
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-              {/* Center Play/Pause Overlay Indicator on Click */}
-              <div
-                onClick={togglePlay}
-                className="absolute inset-0 cursor-pointer flex items-center justify-center"
-              >
-                {isPaused && !mediaError && (
-                  <div className="w-16 h-16 rounded-full bg-black/60 border border-white/20 backdrop-blur-md flex items-center justify-center text-primary shadow-2xl scale-95 group-hover/player:scale-105 transition-transform">
-                    <Play className="size-7 fill-current ml-1" />
-                  </div>
-                )}
-              </div>
-
-            </>
-            )
+          <img
+            src={resolvedVideoSrc || resolvedPoster || src || poster}
+            alt={title || "Still Asset"}
+            draggable={false}
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = "/api/media/placeholder.svg";
+            }}
+            onLoad={(e) => {
+              const img = e.currentTarget;
+              if (
+                img.naturalWidth &&
+                img.naturalHeight &&
+                (!aspectRatio || aspectRatio === "16:9")
+              ) {
+                const detected = detectAspectRatioFromDimensions(
+                  img.naturalWidth,
+                  img.naturalHeight
+                );
+                if (detected.id !== "16:9") {
+                  setDetectedRatio(
+                    detected.id === "custom" ? detected.cssRatio : detected.id
+                  );
+                }
+              }
+            }}
+            style={{
+              transform: `scale(${zoomLevel})`,
+              transition: "transform 200ms ease-out",
+            }}
+            className="max-w-full max-h-full object-contain pointer-events-none select-none"
+          />
+          {showWatermark && (
+            <WatermarkOverlay text={watermarkText} variant="player" showBadge />
           )}
-        </div>
-
-        {/* Minimalist Bottom Review Bar */}
-        <div className="bg-[#121215] border-t border-white/10 px-3 py-2 flex flex-col gap-1.5 shrink-0">
-          {isImageCut ? (
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-zinc-400 text-xs font-medium">Still Photo</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                onClick={toggleFullscreen}
-                className="size-7 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer transition-colors p-0"
-                title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-              >
-                {isFullscreen ? <Minimize className="size-3.5" /> : <Maximize className="size-3.5" />}
-              </Button>
-            </div>
-          ) : (
-            <>
-              {/* 1. Slim Scrubber Track with Comment Markers */}
-              <div className="relative flex flex-col gap-1">
-                <div
-                  ref={scrubberRef}
-                  onClick={handleScrubberClick}
-                  onMouseMove={handleScrubberMouseMove}
-                  onMouseLeave={handleScrubberMouseLeave}
-                  className="relative w-full h-3 flex items-center cursor-pointer group/scrub"
-                >
-                  {/* Background Bar */}
-                  <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden transition-all group-hover/scrub:h-1.5" />
-
-                  {/* Played Progress Bar */}
-                  <div
-                    className="absolute left-0 h-1 bg-primary rounded-full transition-all pointer-events-none group-hover/scrub:h-1.5"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-
-                  {/* Scrubber Playhead Thumb */}
-                  <div
-                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border border-white shadow-md pointer-events-none transition-transform group-hover/scrub:scale-125"
-                    style={{ left: `${progressPercent}%` }}
-                  />
-
-                  {/* Hover Preview Marker */}
-                  {hoverPercent !== null && (
-                    <div
-                      className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-1.5 h-2.5 bg-white/50 rounded-full pointer-events-none"
-                      style={{ left: `${hoverPercent}%` }}
-                    />
-                  )}
-
-                  {/* Comment Markers on Timeline */}
-                  {duration > 0 &&
-                    comments.map((comment) => {
-                      if (
-                        comment.timestampSeconds === undefined ||
-                        comment.timestampSeconds === null
-                      )
-                        return null;
-                      const markerPercent = (comment.timestampSeconds / duration) * 100;
-                      const isActive = activeCommentId === comment.id;
-
-                      return (
-                        <div
-                          key={comment.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (playerRef.current && comment.timestampSeconds !== undefined && comment.timestampSeconds !== null) {
-                              playerRef.current.currentTime = comment.timestampSeconds;
-                              playerRef.current.pause();
-                              setCurrentTime(comment.timestampSeconds);
-                              onCommentSelect?.(comment.id, comment.timestampSeconds);
-                            }
-                          }}
-                          onMouseEnter={() => setHoveredComment(comment)}
-                          onMouseLeave={() => setHoveredComment(null)}
-                          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-2 h-2 rounded-full cursor-pointer transition-all hover:scale-150 ${
-                            isActive
-                              ? "bg-white ring-2 ring-primary scale-125"
-                              : comment.isResolved
-                              ? "bg-emerald-400"
-                              : "bg-primary"
-                          }`}
-                          style={{ left: `${markerPercent}%` }}
-                        />
-                      );
-                    })}
-                </div>
-
-                {/* Hover Tooltip (shows time or comment details) */}
-                {hoveredComment && hoveredComment.timestampSeconds !== null && hoveredComment.timestampSeconds !== undefined && (
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 bg-black/90 border border-white/20 px-3 py-1.5 rounded-xl text-xs backdrop-blur-md shadow-2xl flex items-center gap-2 pointer-events-none animate-in fade-in">
-                    <MessageSquare className="size-3 text-primary" />
-                    <span className="font-bold text-primary">
-                      [{formatTimecode(hoveredComment.timestampSeconds, fps)}]
-                    </span>
-                    <span className="font-semibold text-white truncate max-w-[200px]">
-                      {hoveredComment.authorName}:
-                    </span>
-                    <span className="text-white/80 truncate max-w-[260px]">
-                      {hoveredComment.commentText}
-                    </span>
-                  </div>
-                )}
-                {!hoveredComment && hoverTime !== null && (
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 bg-black/85 border border-white/15 px-2 py-0.5 rounded text-[11px] text-white pointer-events-none">
-                    {formatTimecode(hoverTime, fps)}
-                  </div>
-                )}
-              </div>
-
-              {/* 2. Compact Controls Row (Play, Frame Step, Timecode, Mute, Fullscreen) */}
-              <div className="flex items-center justify-between gap-2 text-xs">
-                {/* Left: Play/Pause, Frame Stepping, Timecode */}
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    size="icon"
-                    onClick={togglePlay}
-                    className="size-7 rounded-lg bg-primary/15 hover:bg-primary text-primary hover:text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 border-0 p-0"
-                    title={isPaused ? "Play (Space)" : "Pause (Space)"}
-                  >
-                    {isPaused ? (
-                      <Play className="size-3.5 fill-current ml-0.5" />
-                    ) : (
-                      <Pause className="size-3.5 fill-current" />
-                    )}
-                  </Button>
-
-                  {/* Precision Frame Stepping */}
-                  <div className="flex items-center bg-white/5 border border-white/10 rounded-lg p-0.5">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => handleStepFrame(-1)}
-                      className="px-1.5 py-0.5 rounded text-[10px] text-zinc-300 hover:text-white hover:bg-white/10 flex items-center gap-0.5 transition-colors cursor-pointer h-auto"
-                      title="Step -1 Frame (←)"
-                    >
-                      <ChevronLeft className="size-3" />
-                      <span>-1F</span>
-                    </Button>
-                    <div className="w-[1px] h-2.5 bg-white/10" />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => handleStepFrame(1)}
-                      className="px-1.5 py-0.5 rounded text-[10px] text-zinc-300 hover:text-white hover:bg-white/10 flex items-center gap-0.5 transition-colors cursor-pointer h-auto"
-                      title="Step +1 Frame (→)"
-                    >
-                      <span>+1F</span>
-                      <ChevronRight className="size-3" />
-                    </Button>
-                  </div>
-
-                  {/* Timecode Readout */}
-                  <div className="text-[11px] font-mono flex items-center gap-1 text-zinc-400">
-                    <span className="text-primary font-semibold">
-                      {formatTimecode(currentTime, fps)}
-                    </span>
-                    <span className="text-zinc-600">/</span>
-                    <span>{formatTimecode(duration, fps)}</span>
-                  </div>
-                </div>
-
-                {/* Right: Mute + Fullscreen (Speed selector removed) */}
-                <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={toggleMute}
-                    className="size-7 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer transition-colors p-0"
-                    title={isMuted ? "Unmute" : "Mute"}
-                  >
-                    {isMuted ? <VolumeX className="size-3.5 text-zinc-400" /> : <Volume2 className="size-3.5" />}
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={toggleFullscreen}
-                    className="size-7 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer transition-colors p-0"
-                    title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-                  >
-                    {isFullscreen ? <Minimize className="size-3.5" /> : <Maximize className="size-3.5" />}
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
+          <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-black/80 text-emerald-400 border border-emerald-500/30 backdrop-blur-md shadow-lg flex items-center gap-1.5">
+              <ImageIcon className="size-3.5" />
+              STILL ASSET
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] text-muted-foreground bg-black/60 border border-white/10 backdrop-blur-md">
+              {(bounding.parsed as any)?.shortLabel ||
+                (bounding.parsed as any)?.label ||
+                (typeof activeRatio === "string"
+                  ? activeRatio
+                  : bounding.parsed?.id || "16:9")}
+            </span>
+          </div>
         </div>
       </div>
+    );
+  }
+
+  if (iframeEmbedUrl) {
+    return (
+      <div
+        className={`relative w-full h-full bg-black flex items-center justify-center rounded-2xl overflow-hidden border border-white/10 shadow-2xl ${className}`}
+        style={bounding.style}
+      >
+        <iframe
+          src={iframeEmbedUrl}
+          title={title || "Video Player"}
+          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+          allowFullScreen
+          className="w-full h-full border-0"
+        />
+        {showWatermark && (
+          <WatermarkOverlay text={watermarkText} variant="player" showBadge />
+        )}
+      </div>
+    );
+  }
+
+  const isHls =
+    videoStreamSrc.includes(".m3u8") ||
+    resolveAdapterType(videoStreamSrc) === "hls";
+
+  return (
+    <div
+      className={`group/player relative flex items-center justify-center bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl select-none w-full h-full ${className}`}
+      style={bounding.style}
+    >
+      <VideoSkin
+        style={{
+          width: "100%",
+          height: "100%",
+          aspectRatio: bounding.parsed.cssRatio,
+        }}
+        className="w-full h-full"
+      >
+        {isHls ? (
+          <HlsJsVideo
+            key={videoStreamSrc}
+            ref={videoRef}
+            src={videoStreamSrc}
+            autoPlay={autoPlay}
+            playsInline
+            onTimeUpdate={(e) => {
+              onTimeChange?.(
+                e.currentTarget.currentTime,
+                formatTimecode(e.currentTarget.currentTime, fps)
+              );
+            }}
+          />
+        ) : (
+          <Video
+            key={videoStreamSrc}
+            ref={videoRef}
+            src={videoStreamSrc}
+            autoPlay={autoPlay}
+            playsInline
+            onTimeUpdate={(e) => {
+              onTimeChange?.(
+                e.currentTarget.currentTime,
+                formatTimecode(e.currentTarget.currentTime, fps)
+              );
+            }}
+          />
+        )}
+        {showWatermark && (
+          <WatermarkOverlay text={watermarkText} variant="player" showBadge />
+        )}
+      </VideoSkin>
+    </div>
+  );
+}
+
+export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerProps>(
+  (props, ref) => {
+    const resolvedPoster = resolveThumbnailUrl(props.poster, props.src, props.isPhoto);
+
+    return (
+      <VideoPlayer title={props.title} poster={resolvedPoster}>
+        <CutReviewPlayerInner {...props} forwardedRef={ref} />
+      </VideoPlayer>
     );
   }
 );

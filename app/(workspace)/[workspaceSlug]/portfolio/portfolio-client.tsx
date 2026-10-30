@@ -564,6 +564,7 @@ export function PortfolioClient({
           onDeleteAsset={handleDeleteItem}
           onEditAsset={handleOpenEdit}
           showFeedback={false}
+          showApproval={false}
         />
       )}
 

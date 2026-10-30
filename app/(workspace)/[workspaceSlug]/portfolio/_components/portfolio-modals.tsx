@@ -61,6 +61,7 @@ export function StillLightboxModal({
       onDeleteAsset={onDelete}
       onEditAsset={onEdit}
       showFeedback={false}
+      showApproval={false}
     />
   );
 }
@@ -91,6 +92,7 @@ export function FilmPlayerModal({
       onDeleteAsset={onDelete}
       onEditAsset={onEdit}
       showFeedback={false}
+      showApproval={false}
     />
   );
 }

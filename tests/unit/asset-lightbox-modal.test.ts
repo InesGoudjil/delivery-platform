@@ -8,7 +8,7 @@ import {
 } from "@/app/(workspace)/[workspaceSlug]/portfolio/_components/portfolio-modals";
 import { PortfolioModals } from "@/app/(public)/p/[handle]/_components/portfolio-modals";
 import { DeliveryRoomClient } from "@/app/(public)/deliver/[shareToken]/delivery-room-client";
-import { detectAspectRatioFromDimensions, parseAspectRatio } from "@/lib/media-ratios";
+import { detectAspectRatioFromDimensions, parseAspectRatio, getMediaBoundingStyles } from "@/lib/media-ratios";
 
 describe("AssetLightboxModal Centralization", () => {
   it("exports the centralized AssetLightboxModal component from workspaces", () => {
@@ -96,5 +96,17 @@ describe("AssetLightboxModal Centralization", () => {
 
   it("exports DeliveryRoomClient on public delivery routes using centralized media primitives", () => {
     expect(typeof DeliveryRoomClient).toBe("function");
+  });
+
+  it("accurately handles 9:16 vertical video ratio and provides portrait bounding styles", () => {
+    const vertical = parseAspectRatio("9:16");
+    expect(vertical.id).toBe("9:16");
+    expect(vertical.isPortrait).toBe(true);
+    expect(vertical.isLandscape).toBe(false);
+    expect(vertical.cssRatio).toBe("9 / 16");
+
+    const bounding = getMediaBoundingStyles("9:16");
+    expect(bounding.style).toEqual({ aspectRatio: "9 / 16" });
+    expect(bounding.parsed.isPortrait).toBe(true);
   });
 });

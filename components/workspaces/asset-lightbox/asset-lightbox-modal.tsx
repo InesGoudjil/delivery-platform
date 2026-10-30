@@ -58,6 +58,7 @@ export function AssetLightboxModal({
   showDownload = true,
   onDownload,
   showShareLink = false,
+  showApproval,
   headerExtra,
   footerExtra,
 }: AssetLightboxModalProps) {
@@ -465,6 +466,10 @@ export function AssetLightboxModal({
   };
 
   const isApproved = activeItem.status === "approved";
+  const hasApprovalSection =
+    showApproval !== undefined
+      ? showApproval
+      : Boolean(onToggleApproval || activeItem.status);
 
   return (
     <UniversalDialogRoot
@@ -584,75 +589,83 @@ export function AssetLightboxModal({
         )}
 
         {/* 4. Status Bar & Download Action Row */}
-        <div className="flex items-center justify-between gap-3 pt-1 flex-wrap">
-          {/* Approval Status Badge / Toggle */}
-          <div className="flex items-center gap-2">
-            {onToggleApproval && activeItem.status ? (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onToggleApproval(String(activeItem.id), activeItem.status!)
+        {(hasApprovalSection || showDownload) && (
+          <div
+            className={`flex items-center gap-3 pt-1 flex-wrap ${
+              hasApprovalSection ? "justify-between" : "justify-end"
+            }`}
+          >
+            {/* Approval Status Badge / Toggle */}
+            {hasApprovalSection && (
+              <div className="flex items-center gap-2">
+                {onToggleApproval && activeItem.status ? (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onToggleApproval(String(activeItem.id), activeItem.status!)
+                          }
+                          className={`flex items-center gap-2 text-xs sm:text-sm font-medium cursor-pointer transition-colors ${
+                            isApproved
+                              ? "text-emerald-400 hover:text-emerald-300"
+                              : "text-zinc-300 hover:text-white"
+                          }`}
+                        >
+                          {isApproved ? (
+                            <>
+                              <CheckCircle2 className="size-4 text-emerald-400" />
+                              <span>Approved · click to undo</span>
+                            </>
+                          ) : (
+                            <>
+                              <Clock className="size-4 text-primary" />
+                              <span>Awaiting client approval</span>
+                            </>
+                          )}
+                        </button>
                       }
-                      className={`flex items-center gap-2 text-xs sm:text-sm font-medium cursor-pointer transition-colors ${
-                        isApproved
-                          ? "text-emerald-400 hover:text-emerald-300"
-                          : "text-zinc-300 hover:text-white"
-                      }`}
-                    >
-                      {isApproved ? (
-                        <>
-                          <CheckCircle2 className="size-4 text-emerald-400" />
-                          <span>Approved · click to undo</span>
-                        </>
-                      ) : (
-                        <>
-                          <Clock className="size-4 text-primary" />
-                          <span>Awaiting client approval</span>
-                        </>
-                      )}
-                    </button>
-                  }
-                />
-                <TooltipContent>
-                  {isApproved
-                    ? "Click to request revisions on this cut"
-                    : "Approve this asset version"}
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-zinc-300">
-                {isApproved ? (
-                  <>
-                    <CheckCircle2 className="size-4 text-emerald-400" />
-                    <span className="text-emerald-400">Approved</span>
-                  </>
+                    />
+                    <TooltipContent>
+                      {isApproved
+                        ? "Click to request revisions on this cut"
+                        : "Approve this asset version"}
+                    </TooltipContent>
+                  </Tooltip>
                 ) : (
-                  <>
-                    <Clock className="size-4 text-primary" />
-                    <span>Awaiting client approval</span>
-                  </>
+                  <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-zinc-300">
+                    {isApproved ? (
+                      <>
+                        <CheckCircle2 className="size-4 text-emerald-400" />
+                        <span className="text-emerald-400">Approved</span>
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="size-4 text-primary" />
+                        <span>Awaiting client approval</span>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             )}
-          </div>
 
-          {/* Download Button */}
-          {showDownload && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleDownload}
-              className="rounded-full border border-white/20 bg-white/5 hover:bg-white/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5 cursor-pointer transition-colors h-auto shadow-sm"
-            >
-              <Download className="size-3.5 text-zinc-300" />
-              <span>DOWNLOAD</span>
-            </Button>
-          )}
-        </div>
+            {/* Download Button */}
+            {showDownload && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleDownload}
+                className="rounded-full border border-white/20 bg-white/5 hover:bg-white/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5 cursor-pointer transition-colors h-auto shadow-sm"
+              >
+                <Download className="size-3.5 text-zinc-300" />
+                <span>DOWNLOAD</span>
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* 5. Client Comments Section */}
         {hasFeedbackMode && (

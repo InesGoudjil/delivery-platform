@@ -190,6 +190,7 @@ export function PortfolioModals() {
         onNext={hasMultipleStills ? handleNextStill : undefined}
         onPrev={hasMultipleStills ? handlePrevStill : undefined}
         showFeedback={false}
+        showApproval={false}
         showVersions={false}
         showDownload={false}
         showShareLink={true}
@@ -248,6 +249,7 @@ export function PortfolioModals() {
         onNext={hasMultipleFilms ? handleNextFilm : undefined}
         onPrev={hasMultipleFilms ? handlePrevFilm : undefined}
         showFeedback={false}
+        showApproval={false}
         showVersions={false}
         showDownload={false}
         showShareLink={true}

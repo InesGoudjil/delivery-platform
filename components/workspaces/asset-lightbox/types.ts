@@ -102,6 +102,7 @@ export interface AssetLightboxModalProps {
   showVersions?: boolean;
   showDownload?: boolean;
   showShareLink?: boolean;
+  showApproval?: boolean;
   onDownload?: (item: LightboxAssetItem, version?: AssetVersionItem | null) => void;
   headerExtra?: ReactNode;
   footerExtra?: ReactNode;
