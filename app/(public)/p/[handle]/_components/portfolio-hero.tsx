@@ -5,6 +5,7 @@ import { Play, Image as ImageIcon, Volume2, VolumeX } from "lucide-react";
 import { FilmmakerProfile, PublicFeaturedItem, PortfolioProject, PortfolioAsset } from "@/lib/portfolio-data";
 import { HeroPreviewTrigger } from "./portfolio-buttons";
 import { AppImage } from "@/components/ui/app-image";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TypographyH2, TypographySpan } from "@/components/ui/typography";
 
@@ -49,6 +50,11 @@ export function PortfolioHero({
 
   const overlayOpacity = heroCover?.overlayOpacity ?? 50;
 
+  const showHeroText = heroCover?.showHeroText ?? true;
+  const heroCategory =
+    heroCover?.category ||
+    primaryFeatured?.category ||
+    (isCoverVideo ? "Featured Film" : "Featured Still");
   const heroTitle = heroCover?.title || primaryFeatured?.title || featuredProject?.title || profile.name;
 
   const isAmbientVideo = isCoverVideo && videoBehavior === "ambient_loop" && Boolean(mediaUrl);
@@ -131,12 +137,24 @@ export function PortfolioHero({
           </div>
         )}*/}
 
-        {/* Minimal Hero Information - Title Only */}
-        <div className="absolute bottom-6 left-6 right-6 sm:bottom-10 sm:left-10 sm:right-10 z-10 pointer-events-none">
-          {/*<TypographyH2 className="font-heading font-extrabold text-2xl sm:text-4xl lg:text-5xl text-white tracking-tight drop-shadow-md uppercase max-w-3xl">
-            {heroTitle}
-          </TypographyH2>*/}
-        </div>
+        {/* Hero Information - Headline and Category / Badge Text */}
+        {showHeroText && (
+          <div className="absolute bottom-6 left-6 right-6 sm:bottom-10 sm:left-10 sm:right-10 z-10 pointer-events-none space-y-2.5 max-w-3xl">
+            {heroCategory && (
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant="orange"
+                  className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 shadow-lg"
+                >
+                  {heroCategory}
+                </Badge>
+              </div>
+            )}
+            <TypographyH2 className="font-heading font-extrabold text-2xl sm:text-4xl lg:text-5xl text-white tracking-tight drop-shadow-md uppercase">
+              {heroTitle}
+            </TypographyH2>
+          </div>
+        )}
       </HeroPreviewTrigger>
     </section>
   );

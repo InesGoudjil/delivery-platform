@@ -35,7 +35,10 @@ export function LightboxVersionBar({
   nextVersionNumber,
   onEditAsset,
 }: LightboxVersionBarProps) {
-  if (versions.length === 0 && !canUploadVersion) return null;
+  const canManage = Boolean(canMakeActive || onEditAsset);
+
+  // If there are no multiple versions and cannot upload or manage versions, do not render
+  if (versions.length <= 1 && !canUploadVersion && !canManage) return null;
 
   const currentVer =
     versions.find((v) => v.id === selectedVersionId) ||
@@ -64,19 +67,19 @@ export function LightboxVersionBar({
                 size="sm"
                 variant={isSelected ? "default" : "outline"}
                 onClick={() => onSelectVersion(ver.id)}
-                className={`px-3.5 py-1 h-7.5 rounded-full text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-4 py-1.5 h-auto rounded-full text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
                   isSelected
-                    ? "bg-primary/10 border-primary text-white ring-1 ring-primary/40 shadow-sm"
-                    : "bg-white/5 border-white/10 text-zinc-300 hover:text-white hover:bg-white/10"
+                    ? "bg-primary/10 border border-primary text-primary shadow-sm"
+                    : "bg-[#18181d] border border-white/10 text-zinc-300 hover:text-white hover:bg-white/10"
                 }`}
               >
                 <span>V{ver.versionNumber}</span>
-                {ver.isActiveVersion && (
+                {canManage && ver.isActiveVersion && (
                   <span className="text-amber-400 text-[11px]" title="Active client version">
                     ★
                   </span>
                 )}
-                {verFeedbackCount > 0 && (
+                {canManage && verFeedbackCount > 0 && (
                   <span
                     className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                       isSelected ? "bg-primary text-primary-foreground" : "bg-white/15 text-white"
@@ -89,7 +92,7 @@ export function LightboxVersionBar({
             );
           })
         ) : (
-          <div className="px-3.5 py-1 h-7.5 rounded-full text-xs font-semibold bg-primary/10 border border-primary text-white flex items-center gap-1.5">
+          <div className="px-4 py-1.5 h-auto rounded-full text-xs font-semibold bg-primary/10 border border-primary text-primary flex items-center gap-1.5">
             <span>V1</span>
           </div>
         )}
@@ -102,7 +105,7 @@ export function LightboxVersionBar({
             variant="outline"
             onClick={onToggleUploadZone}
             disabled={isUploadingVersion}
-            className={`px-3.5 py-1 h-7.5 rounded-full text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3.5 py-1.5 h-auto rounded-full text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
               showUploadZone
                 ? "bg-primary text-primary-foreground border-primary"
                 : "border-primary/50 text-primary bg-primary/5 hover:bg-primary/15"
@@ -114,64 +117,66 @@ export function LightboxVersionBar({
         )}
       </div>
 
-      {/* 2. MANAGE VERSIONS Section */}
-      <div className="mt-3">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-2 select-none">
-          MANAGE VERSIONS
-        </div>
-        <div className="bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="text-sm font-semibold text-white">
-              V{currentVer?.versionNumber || 1}
-            </span>
-            {isClientActive && (
-              <span className="text-[10px] text-amber-300 font-bold px-2 py-0.5 rounded-full bg-amber-400/10 border border-amber-400/25">
-                ★ Client Active
+      {/* 2. MANAGE VERSIONS Section (Only in workspace management mode) */}
+      {canManage && (
+        <div className="mt-3">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-2 select-none">
+            MANAGE VERSIONS
+          </div>
+          <div className="bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="text-sm font-semibold text-white">
+                V{currentVer?.versionNumber || 1}
               </span>
-            )}
-            {canMakeActive && !isClientActive && onMakeVersionActive && currentVer && (
+              {isClientActive && (
+                <span className="text-[10px] text-amber-300 font-bold px-2 py-0.5 rounded-full bg-amber-400/10 border border-amber-400/25">
+                  ★ Client Active
+                </span>
+              )}
+              {canMakeActive && !isClientActive && onMakeVersionActive && currentVer && (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => onMakeVersionActive(currentVer.id, currentVer.versionNumber)}
+                        className="text-[11px] text-zinc-400 hover:text-amber-300 flex items-center gap-1 h-auto p-0 cursor-pointer ml-1"
+                      >
+                        <Star className="size-3" />
+                        <span>Make Active</span>
+                      </Button>
+                    }
+                  />
+                  <TooltipContent>
+                    Set V{currentVer.versionNumber} as active version for client
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+
+            {onEditAsset && (
               <Tooltip>
                 <TooltipTrigger
                   render={
                     <Button
                       type="button"
                       variant="ghost"
-                      size="xs"
-                      onClick={() => onMakeVersionActive(currentVer.id, currentVer.versionNumber)}
-                      className="text-[11px] text-zinc-400 hover:text-amber-300 flex items-center gap-1 h-auto p-0 cursor-pointer ml-1"
+                      size="icon-xs"
+                      onClick={onEditAsset}
+                      className="size-7 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer transition-colors p-0"
                     >
-                      <Star className="size-3" />
-                      <span>Make Active</span>
+                      <Pencil className="size-4" />
                     </Button>
                   }
                 />
-                <TooltipContent>
-                  Set V{currentVer.versionNumber} as active version for client
-                </TooltipContent>
+                <TooltipContent>Edit deliverable details</TooltipContent>
               </Tooltip>
             )}
           </div>
-
-          {onEditAsset && (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={onEditAsset}
-                    className="size-7 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer transition-colors p-0"
-                  >
-                    <Pencil className="size-4" />
-                  </Button>
-                }
-              />
-              <TooltipContent>Edit deliverable details</TooltipContent>
-            </Tooltip>
-          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -383,7 +383,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     }
   }
 
-  const filmmakerAvatar = ownerAvatarUrl || brandLogo || "/images/about-img.png";
+  const filmmakerAvatar = ownerAvatarUrl || brandLogo || "";
   const heroCover = portfolio?.appearance?.heroCover || null;
 
   const coverSelected =

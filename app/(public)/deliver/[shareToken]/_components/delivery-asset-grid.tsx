@@ -53,7 +53,15 @@ export function DeliveryAssetGrid({
   const isMasonry = aspectRatioSetting === "masonry";
   const thumbnailScale = app.thumbnailScale || "Fill";
   const showCardInfo = app.showCardInfo ?? true;
-  const numericRatio = parseAspectRatio(aspectRatioSetting).numeric;
+  const numericRatio = isMasonry
+    ? undefined
+    : aspectRatioSetting === "16:9"
+    ? 16 / 9
+    : aspectRatioSetting === "1:1"
+    ? 1
+    : aspectRatioSetting === "9:16"
+    ? 9 / 16
+    : parseAspectRatio(aspectRatioSetting).numeric;
 
   return (
     <div className="space-y-5 pt-4">

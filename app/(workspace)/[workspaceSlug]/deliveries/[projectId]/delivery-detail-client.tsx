@@ -19,6 +19,7 @@ import {
   restoreDeliveryFromSiloAction,
   checkDeliverySiloStatusAction,
 } from "@/app/actions/silo";
+import { toggleFeedbackResolvedAction } from "@/app/actions/feedback";
 import { resolveThumbnailUrl, resolveMediaUrl } from "@/lib/media";
 import { EditAssetDialog, type EditableAssetItem } from "@/components/workspaces/edit-asset-dialog";
 import { TrashBinDialog } from "@/components/workspaces/trash-bin-dialog";
@@ -95,6 +96,12 @@ type GalleryOptimisticAction =
       itemId: string;
       feedbackId: string;
       reply: FeedbackReplyItem;
+    }
+  | {
+      type: "toggle-feedback-resolved";
+      itemId: string;
+      feedbackId: string;
+      isResolved: boolean;
     };
 
 export function DeliveryDetailClient({
@@ -282,25 +289,43 @@ export function DeliveryDetailClient({
           }
         }
         case "add-feedback":
-          return prev.map((item) =>
-            item.id === action.itemId
-              ? {
-                  ...item,
-                  feedback: [...(item.feedback || []), action.feedback],
-                }
-              : item
-          );
+          return prev.map((item) => {
+            if (item.id !== action.itemId) return item;
+            const existing = item.feedback || [];
+            if (existing.some((f) => f.id === action.feedback.id)) {
+              return item;
+            }
+            return {
+              ...item,
+              feedback: [...existing, action.feedback],
+            };
+          });
         case "add-feedback-reply":
+          return prev.map((item) => {
+            if (item.id !== action.itemId) return item;
+            return {
+              ...item,
+              feedback: (item.feedback || []).map((fb) => {
+                if (fb.id !== action.feedbackId) return fb;
+                const existingReplies = fb.replies || [];
+                if (existingReplies.some((r) => r.id === action.reply.id)) {
+                  return fb;
+                }
+                return {
+                  ...fb,
+                  replies: [...existingReplies, action.reply],
+                };
+              }),
+            };
+          });
+        case "toggle-feedback-resolved":
           return prev.map((item) =>
             item.id === action.itemId
               ? {
                   ...item,
                   feedback: (item.feedback || []).map((fb) =>
                     fb.id === action.feedbackId
-                      ? {
-                          ...fb,
-                          replies: [...(fb.replies || []), action.reply],
-                        }
+                      ? { ...fb, isResolved: action.isResolved }
                       : fb
                   ),
                 }
@@ -817,6 +842,92 @@ export function DeliveryDetailClient({
     }
   };
 
+  const handleToggleResolveFeedback = async (feedbackId: string, currentResolved: boolean) => {
+    if (!activeItem) return;
+    const nextResolved = !currentResolved;
+    setFeedbackList((prev) =>
+      prev.map((fb) => (fb.id === feedbackId ? { ...fb, isResolved: nextResolved } : fb))
+    );
+    setLoadedItems((prev) =>
+      prev.map((item) =>
+        item.id === activeItem.id
+          ? {
+              ...item,
+              feedback: (item.feedback || []).map((fb) =>
+                fb.id === feedbackId ? { ...fb, isResolved: nextResolved } : fb
+              ),
+            }
+          : item
+      )
+    );
+    startTransition(() => {
+      setOptimisticItems({
+        type: "toggle-feedback-resolved",
+        itemId: activeItem.id,
+        feedbackId,
+        isResolved: nextResolved,
+      });
+    });
+
+    const res = await toggleFeedbackResolvedAction(
+      feedbackId,
+      nextResolved,
+      undefined,
+      project.id
+    );
+    if (res?.error) {
+      toast.error(res.error);
+    }
+  };
+
+  const handleReconcileFeedbackId = (tempId: string, realId: string) => {
+    setFeedbackList((prev) =>
+      prev.map((fb) => (fb.id === tempId ? { ...fb, id: realId } : fb))
+    );
+    setLoadedItems((prev) =>
+      prev.map((item) => ({
+        ...item,
+        feedback: (item.feedback || []).map((fb) =>
+          fb.id === tempId ? { ...fb, id: realId } : fb
+        ),
+      }))
+    );
+  };
+
+  const handleReconcileReplyId = (
+    feedbackId: string,
+    tempReplyId: string,
+    realReplyId: string
+  ) => {
+    setFeedbackList((prev) =>
+      prev.map((fb) =>
+        fb.id === feedbackId
+          ? {
+              ...fb,
+              replies: (fb.replies || []).map((r) =>
+                r.id === tempReplyId ? { ...r, id: realReplyId } : r
+              ),
+            }
+          : fb
+      )
+    );
+    setLoadedItems((prev) =>
+      prev.map((item) => ({
+        ...item,
+        feedback: (item.feedback || []).map((fb) =>
+          fb.id === feedbackId
+            ? {
+                ...fb,
+                replies: (fb.replies || []).map((r) =>
+                  r.id === tempReplyId ? { ...r, id: realReplyId } : r
+                ),
+              }
+            : fb
+        ),
+      }))
+    );
+  };
+
   const totalAssetsCount = totalAssetsCountState;
   const approvedCount = approvedCountState;
 
@@ -1025,10 +1136,21 @@ export function DeliveryDetailClient({
         <AssetLightboxModal
           activeItem={activeItem}
           onClose={handleCloseLightbox}
-          feedbackList={activeItem?.feedback && activeItem.feedback.length > 0 ? activeItem.feedback : feedbackList}
+          feedbackList={activeItem?.feedback || []}
           onAddFeedback={(fb) => {
-            setFeedbackList((prev) => [...prev, fb]);
+            setFeedbackList((prev) => {
+              if (prev.some((f) => f.id === fb.id)) return prev;
+              return [...prev, fb];
+            });
             if (activeItem) {
+              setLoadedItems((prev) =>
+                prev.map((item) => {
+                  if (item.id !== activeItem.id) return item;
+                  const existing = item.feedback || [];
+                  if (existing.some((f) => f.id === fb.id)) return item;
+                  return { ...item, feedback: [...existing, fb] };
+                })
+              );
               startTransition(() => {
                 setOptimisticItems({
                   type: "add-feedback",
@@ -1040,13 +1162,28 @@ export function DeliveryDetailClient({
           }}
           onAddReply={(feedbackId, reply) => {
             setFeedbackList((prev) =>
-              prev.map((fb) =>
-                fb.id === feedbackId
-                  ? { ...fb, replies: [...(fb.replies || []), reply] }
-                  : fb
-              )
+              prev.map((fb) => {
+                if (fb.id !== feedbackId) return fb;
+                const existing = fb.replies || [];
+                if (existing.some((r) => r.id === reply.id)) return fb;
+                return { ...fb, replies: [...existing, reply] };
+              })
             );
             if (activeItem) {
+              setLoadedItems((prev) =>
+                prev.map((item) => {
+                  if (item.id !== activeItem.id) return item;
+                  return {
+                    ...item,
+                    feedback: (item.feedback || []).map((fb) => {
+                      if (fb.id !== feedbackId) return fb;
+                      const existing = fb.replies || [];
+                      if (existing.some((r) => r.id === reply.id)) return fb;
+                      return { ...fb, replies: [...existing, reply] };
+                    }),
+                  };
+                })
+              );
               startTransition(() => {
                 setOptimisticItems({
                   type: "add-feedback-reply",
@@ -1057,6 +1194,9 @@ export function DeliveryDetailClient({
               });
             }
           }}
+          onReconcileFeedbackId={handleReconcileFeedbackId}
+          onReconcileReplyId={handleReconcileReplyId}
+          onToggleResolve={handleToggleResolveFeedback}
           onToggleApproval={handleToggleAssetApproval}
           onDeleteAsset={handleDeleteAsset}
           onEditAsset={handleOpenEditAsset}
@@ -1067,6 +1207,7 @@ export function DeliveryDetailClient({
           workspaceId={workspace.id}
           projectId={project.id}
           workspaceSlug={workspace.slug}
+          deliveryId={project.id}
           onAssetUploaded={handleAssetUploaded}
         />
 

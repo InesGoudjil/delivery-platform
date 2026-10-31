@@ -160,7 +160,7 @@ export async function verifyDeliveryPasscodeAction(
         id: asset.id,
         title: asset.title,
         type: asset.type,
-        aspectRatio: "16:9",
+        aspectRatio: asset.aspectRatio || undefined,
         isApproved: asset.isApproved,
         sortOrder: asset.sortOrder,
         versions: mappedVersions,

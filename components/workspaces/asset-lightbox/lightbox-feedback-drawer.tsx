@@ -7,6 +7,7 @@ import {
   Send,
   Clock,
   Play,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,8 +23,10 @@ export interface LightboxFeedbackDrawerProps {
   activeCommentId: string | null;
   onSelectComment: (commentId: string, timestamp?: number | null) => void;
   currentCutTimecode: string;
-  onAddFeedback?: (text: string) => Promise<void> | void;
+  onAddFeedback?: (text: string, attachTime?: boolean) => Promise<void> | void;
   onAddReply?: (feedbackId: string, text: string) => Promise<void> | void;
+  onToggleResolve?: (feedbackId: string, currentResolved: boolean) => Promise<void> | void;
+  assetTitle?: string;
 }
 
 export function LightboxFeedbackDrawer({
@@ -35,6 +38,8 @@ export function LightboxFeedbackDrawer({
   currentCutTimecode,
   onAddFeedback,
   onAddReply,
+  onToggleResolve,
+  assetTitle,
 }: LightboxFeedbackDrawerProps) {
   const [inputText, setInputText] = useState("");
   const [attachTime, setAttachTime] = useState(true);
@@ -50,7 +55,7 @@ export function LightboxFeedbackDrawer({
     setInputText("");
     setIsSubmitting(true);
     try {
-      await onAddFeedback(text);
+      await onAddFeedback(text, attachTime);
     } finally {
       setIsSubmitting(false);
     }
@@ -69,7 +74,7 @@ export function LightboxFeedbackDrawer({
       {/* 1. Header */}
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-white tracking-tight flex items-center gap-2">
-          <span>Client comments</span>
+          <span>{assetTitle ? `Comments on ${assetTitle}` : "Comments"}</span>
           {feedbackList.length > 0 && (
             <span className="text-xs text-zinc-400 font-normal">
               ({feedbackList.length})
@@ -86,10 +91,12 @@ export function LightboxFeedbackDrawer({
 
       {/* 2. Comments List / Empty State */}
       {feedbackList.length === 0 ? (
-        <p className="text-xs text-zinc-400 py-1 select-none">No comments yet.</p>
+        <p className="text-xs text-zinc-400 py-1 select-none">
+          No comments yet — leave the first note.
+        </p>
       ) : (
         <div className="space-y-2.5 max-h-[220px] overflow-y-auto custom-scrollbar pr-1">
-          {feedbackList.map((f) => {
+          {Array.from(new Map(feedbackList.map((f) => [f.id, f])).values()).map((f) => {
             const isTimecoded =
               !isStill &&
               f.timestampSeconds !== undefined &&
@@ -106,6 +113,8 @@ export function LightboxFeedbackDrawer({
                 className={`p-3 rounded-xl text-xs space-y-2 border transition-all cursor-pointer ${
                   isSelected
                     ? "bg-primary/15 border-primary text-white ring-1 ring-primary/40 shadow-md"
+                    : f.isResolved
+                    ? "bg-white/[0.02] border-white/5 text-zinc-400 opacity-80 hover:opacity-100 hover:bg-white/[0.04]"
                     : "bg-white/[0.03] border-white/10 text-white/90 hover:bg-white/[0.06] hover:border-white/20"
                 }`}
               >
@@ -120,6 +129,12 @@ export function LightboxFeedbackDrawer({
                     <span className="font-semibold text-white truncate max-w-[120px]">
                       {f.authorName}
                     </span>
+                    {f.isResolved && (
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        <Check className="size-2" />
+                        <span>Resolved</span>
+                      </span>
+                    )}
                   </div>
 
                   <Tooltip>
@@ -141,13 +156,13 @@ export function LightboxFeedbackDrawer({
                 </div>
 
                 {/* Comment Text */}
-                <p className="text-white/95 leading-relaxed text-xs">
+                <p className={`leading-relaxed text-xs ${f.isResolved ? "text-zinc-400" : "text-white/95"}`}>
                   {f.commentText}
                 </p>
 
-                {/* Reply Toggle */}
-                {onAddReply && (
-                  <div className="flex items-center justify-between pt-0.5">
+                {/* Actions Row: Reply Toggle & Resolve Toggle */}
+                <div className="flex items-center justify-between pt-0.5 gap-2">
+                  {onAddReply ? (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -164,13 +179,41 @@ export function LightboxFeedbackDrawer({
                       <CornerDownRight className="size-3" />
                       <span>{replyingToId === f.id ? "Cancel" : "Reply"}</span>
                     </button>
-                  </div>
-                )}
+                  ) : (
+                    <span />
+                  )}
+
+                  {onToggleResolve && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleResolve(f.id, Boolean(f.isResolved));
+                      }}
+                      className={`h-6 text-[10px] px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                        f.isResolved
+                          ? "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
+                          : "text-zinc-400 hover:text-white hover:bg-white/10"
+                      }`}
+                    >
+                      {f.isResolved ? (
+                        <span className="flex items-center gap-1">
+                          <Check className="size-2.5" />
+                          <span>Resolved</span>
+                        </span>
+                      ) : (
+                        <span>Mark resolved</span>
+                      )}
+                    </Button>
+                  )}
+                </div>
 
                 {/* Threaded Replies */}
                 {f.replies && f.replies.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-white/5 space-y-2">
-                    {f.replies.map((r: FeedbackReplyItem) => (
+                    {Array.from(new Map(f.replies.map((r: FeedbackReplyItem) => [r.id, r])).values()).map((r: FeedbackReplyItem) => (
                       <div
                         key={r.id}
                         className="flex items-start gap-2 pl-2.5 border-l-2 border-primary/50 text-xs"
@@ -232,16 +275,35 @@ export function LightboxFeedbackDrawer({
 
       {/* 3. Reply Capsule Input with Circular Orange Send Button */}
       {onAddFeedback && (
-        <form onSubmit={handleSendFeedback} className="mt-1">
+        <form onSubmit={handleSendFeedback} className="mt-1 flex flex-col gap-2">
+          {!isStill && (
+            <button
+              type="button"
+              onClick={() => setAttachTime((prev) => !prev)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer w-fit ${
+                attachTime
+                  ? "text-primary border-primary/50 bg-primary/10"
+                  : "text-zinc-400 border-white/10 hover:text-white"
+              }`}
+            >
+              <Clock className="size-3.5" />
+              <span>
+                {attachTime
+                  ? `Pinned to ${currentCutTimecode}`
+                  : "Add timecode"}
+              </span>
+            </button>
+          )}
+
           <div className="bg-[#0d0d12] border border-white/10 rounded-full pl-4 pr-1.5 py-1.5 flex items-center gap-2 transition-all focus-within:border-primary/50">
             <input
               type="text"
               placeholder={
                 isStill
-                  ? "Reply to your client..."
+                  ? "Add a comment..."
                   : attachTime
-                  ? `Reply to your client (${currentCutTimecode})...`
-                  : "Reply to your client..."
+                  ? `Note at ${currentCutTimecode}...`
+                  : "Add a comment..."
               }
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
@@ -249,36 +311,11 @@ export function LightboxFeedbackDrawer({
               className="bg-transparent text-xs text-white placeholder:text-zinc-500 focus:outline-none flex-1 py-1"
             />
 
-            {!isStill && (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <button
-                      type="button"
-                      onClick={() => setAttachTime((prev) => !prev)}
-                      className={`p-1.5 rounded-full transition-colors cursor-pointer ${
-                        attachTime
-                          ? "text-primary bg-primary/10"
-                          : "text-zinc-500 hover:text-white"
-                      }`}
-                    >
-                      <Clock className="size-3.5" />
-                    </button>
-                  }
-                />
-                <TooltipContent>
-                  {attachTime
-                    ? `Timecode pin enabled (${currentCutTimecode})`
-                    : "Click to pin note to current timecode"}
-                </TooltipContent>
-              </Tooltip>
-            )}
-
             <button
               type="submit"
               disabled={!inputText.trim() || isSubmitting}
               className="size-7 sm:size-8 rounded-full bg-primary hover:bg-primary/90 text-white flex items-center justify-center shadow-md shadow-primary/20 shrink-0 cursor-pointer transition-all active:scale-95 disabled:opacity-40"
-              title="Send reply"
+              title="Send comment"
             >
               <Send className="size-3.5 fill-current ml-0.5" />
             </button>

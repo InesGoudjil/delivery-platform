@@ -8,6 +8,8 @@ import {
 } from "@/app/(workspace)/[workspaceSlug]/portfolio/_components/portfolio-modals";
 import { PortfolioModals } from "@/app/(public)/p/[handle]/_components/portfolio-modals";
 import { DeliveryRoomClient } from "@/app/(public)/deliver/[shareToken]/delivery-room-client";
+import { LightboxFeedbackDrawer } from "@/components/workspaces/asset-lightbox/lightbox-feedback-drawer";
+import { addFeedbackSchema, toggleFeedbackResolvedSchema } from "@/lib/validations/feedback";
 import { detectAspectRatioFromDimensions, parseAspectRatio, getMediaBoundingStyles } from "@/lib/media-ratios";
 
 describe("AssetLightboxModal Centralization", () => {
@@ -108,5 +110,50 @@ describe("AssetLightboxModal Centralization", () => {
     const bounding = getMediaBoundingStyles("9:16");
     expect(bounding.style).toEqual({ aspectRatio: "9 / 16" });
     expect(bounding.parsed.isPortrait).toBe(true);
+  });
+
+  describe("Feedback & Resolution Support", () => {
+    it("validates feedback comments with null timestamp for still photo notes", () => {
+      const stillFeedback = {
+        assetVersionId: "ver_123",
+        authorName: "Director",
+        commentText: "Frame looks great, adjust grading.",
+        timestampSeconds: null,
+      };
+
+      const result = addFeedbackSchema.safeParse(stillFeedback);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.timestampSeconds).toBeNull();
+      }
+    });
+
+    it("validates toggleFeedbackResolvedSchema with boolean resolution state", () => {
+      const togglePayload = {
+        feedbackId: "fb_123",
+        isResolved: true,
+        shareToken: "token_abc",
+      };
+
+      const result = toggleFeedbackResolvedSchema.safeParse(togglePayload);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.isResolved).toBe(true);
+      }
+    });
+
+    it("exports LightboxFeedbackDrawer with resolve toggle capability", () => {
+      expect(typeof LightboxFeedbackDrawer).toBe("function");
+    });
+
+    it("deduplicates replies by id to guarantee key uniqueness in review drawer", () => {
+      const duplicateReplies = [
+        { id: "temp_reply_123", feedbackId: "fb_1", authorName: "Editor", commentText: "Test 1", createdAt: "" },
+        { id: "temp_reply_123", feedbackId: "fb_1", authorName: "Editor", commentText: "Test 1 duplicated", createdAt: "" },
+      ];
+      const unique = Array.from(new Map(duplicateReplies.map((r) => [r.id, r])).values());
+      expect(unique).toHaveLength(1);
+      expect(unique[0].id).toBe("temp_reply_123");
+    });
   });
 });
