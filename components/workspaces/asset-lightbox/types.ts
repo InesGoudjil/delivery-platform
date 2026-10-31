@@ -58,6 +58,7 @@ export interface LightboxAssetItem {
   image?: string | null;
   downloadUrl?: string | null;
   status?: string | null;
+  isApproved?: boolean;
   category?: string | null;
   versionNumber?: number;
   versionId?: string;
@@ -79,6 +80,10 @@ export interface AssetLightboxModalProps {
   feedbackList?: FeedbackItem[];
   onAddFeedback?: (feedback: FeedbackItem) => void;
   onAddReply?: (feedbackId: string, reply: FeedbackReplyItem) => void;
+  onReconcileFeedbackId?: (tempId: string, realId: string) => void;
+  onReconcileReplyId?: (feedbackId: string, tempReplyId: string, realReplyId: string) => void;
+  onToggleResolve?: (feedbackId: string, currentResolved: boolean) => void;
+  onToggleFeedbackResolved?: (feedbackId: string, currentResolved: boolean) => void;
   onToggleApproval?: (itemId: string, currentStatus: string) => void;
 
   // Management Actions

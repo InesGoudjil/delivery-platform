@@ -205,9 +205,10 @@ export function DeliveryAssetsGallery({
                   {item.status === "approved" && (
                     <Badge
                       variant="sage"
-                      className="text-[9px] px-1.5 py-0.5 font-bold uppercase rounded-md shadow-md border-none"
+                      className="bg-emerald-500/80 border-emerald-400/50 text-black hover:text-black opacity-100"
+                      // className="text-[9px] bg-green-950 px-1.5 py-0.5 font-bold uppercase rounded-md shadow-md border-none"
                     >
-                      ✓ Approved
+                            <Check className="size-3.5 stroke-[2.5]" color="white"/>
                     </Badge>
                   )}
                 </>

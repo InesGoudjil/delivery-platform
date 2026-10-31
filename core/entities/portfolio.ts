@@ -23,6 +23,7 @@ export interface PortfolioHeroCover {
   loop?: boolean;
   muted?: boolean;
   showSoundToggle?: boolean;
+  showHeroText?: boolean;
 }
 
 export interface PortfolioAppearance {

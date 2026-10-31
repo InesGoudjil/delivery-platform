@@ -79,7 +79,7 @@ export function DeliveryAssetCard({
       aspectRatio={asset.aspectRatio}
       numericRatio={numericRatio}
       isMasonry={isMasonry}
-      thumbnailScale={"Fill"}
+      thumbnailScale={thumbnailScale}
       onClick={() => onSelect(asset)}
       showInfo={showCardInfo}
       footerMode={showCardInfo ? "card" : "none"}

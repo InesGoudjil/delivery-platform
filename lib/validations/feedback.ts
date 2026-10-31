@@ -8,7 +8,7 @@ export const addFeedbackSchema = z.object({
     .trim()
     .min(1, "Feedback comment cannot be empty")
     .max(2000, "Comment cannot exceed 2000 characters"),
-  timestampSeconds: z.number().nonnegative().optional(),
+  timestampSeconds: z.number().nonnegative().nullable().optional(),
   parentId: z.string().trim().optional(),
   shareToken: z.string().trim().optional(),
   deliveryId: z.string().trim().optional(),

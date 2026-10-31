@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
-import { Clock, CheckCircle2, Download } from "lucide-react";
+import { Clock, CheckCircle2, Check, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
@@ -17,7 +17,11 @@ import { formatTimecode } from "@/lib/timecode";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 import { parseAspectRatio, type ParsedAspectRatio } from "@/lib/media-ratios";
 import { getDownloadFilename, triggerDirectDownload } from "@/lib/download";
-import { addFeedbackAction, addFeedbackReplyAction } from "@/app/actions/feedback";
+import {
+  addFeedbackAction,
+  addFeedbackReplyAction,
+  toggleFeedbackResolvedAction,
+} from "@/app/actions/feedback";
 
 import {
   AssetLightboxModalProps,
@@ -40,6 +44,10 @@ export function AssetLightboxModal({
   feedbackList,
   onAddFeedback,
   onAddReply,
+  onReconcileFeedbackId,
+  onReconcileReplyId,
+  onToggleResolve,
+  onToggleFeedbackResolved,
   onToggleApproval,
   onDeleteAsset,
   onEditAsset,
@@ -209,14 +217,15 @@ export function AssetLightboxModal({
     currentVersion?.versionNumber || activeItem.versionNumber || 1;
   const targetVersionId = currentVersion?.id || activeItem.versionId;
 
-  // Source all feedback: prefer activeItem.feedback if populated, otherwise feedbackList prop
+  // Source all feedback: prefer feedbackList prop if provided, otherwise activeItem.feedback
   const allAssetFeedback =
-    activeItem.feedback && activeItem.feedback.length > 0
-      ? activeItem.feedback
-      : feedbackList || [];
+    feedbackList !== undefined
+      ? feedbackList
+      : activeItem.feedback || [];
 
   // Filter feedback for currently selected version
   const currentVersionFeedback = allAssetFeedback.filter((f) => {
+    if (allVersions.length <= 1) return true;
     if (f.assetVersionId && targetVersionId) {
       return f.assetVersionId === targetVersionId;
     }
@@ -272,43 +281,59 @@ export function AssetLightboxModal({
       : "-- MB";
 
   // Handlers
-  const handleSendFeedback = async (text: string) => {
+  const handleSendFeedback = async (text: string, attachTime: boolean = true) => {
     if (!onAddFeedback) return;
-    const capturedTime = isStill
+    const capturedTime = isStill || !attachTime
       ? null
       : cutPlayerRef.current?.getCurrentTime() ?? currentCutTime;
     const roundedTime =
       capturedTime !== null ? Math.round(capturedTime * 100) / 100 : null;
 
+    const targetVerId =
+      targetVersionId ||
+      currentVersion?.id ||
+      activeItem.versionId ||
+      (allVersions.length > 0 ? allVersions[0].id : undefined);
+
     const tempFeedback: FeedbackItem = {
-      id: `temp_${Date.now()}`,
-      assetVersionId: targetVersionId,
+      id: `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      assetVersionId: targetVerId,
       authorName: authorName || "Filmmaker",
       commentText: text,
       timestampSeconds: roundedTime,
+      isResolved: false,
       createdAt: new Date().toISOString(),
     };
 
     onAddFeedback(tempFeedback);
     setActiveCommentId(tempFeedback.id);
     triggerToast(
-      isStill
-        ? `Note added to V${activeVersionNumber} still photo`
+      isStill || roundedTime === null
+        ? `Note added to V${activeVersionNumber}${isStill ? " still photo" : ""}`
         : `Note tagged at [${formatTimecode(roundedTime || 0, 24)}] on V${activeVersionNumber}`
     );
 
-    if (targetVersionId) {
-      addFeedbackAction({
-        assetVersionId: targetVersionId,
-        authorName: authorName || "Filmmaker",
-        commentText: text,
-        timestampSeconds: roundedTime,
-        shareToken,
-        deliveryId,
-      }).catch((err) => {
+    if (targetVerId) {
+      try {
+        const res = await addFeedbackAction({
+          assetVersionId: targetVerId,
+          authorName: authorName || "Filmmaker",
+          commentText: text,
+          timestampSeconds: roundedTime,
+          shareToken,
+          deliveryId,
+        });
+
+        if (res?.error) {
+          console.error("Error saving feedback note:", res.error);
+          toast.error(res.error || "Failed to save feedback note");
+        } else if (res?.success && res.feedback) {
+          onReconcileFeedbackId?.(tempFeedback.id, res.feedback.id);
+        }
+      } catch (err: any) {
         console.error("Error saving feedback note:", err);
         toast.error("Failed to save feedback note");
-      });
+      }
     }
   };
 
@@ -316,7 +341,7 @@ export function AssetLightboxModal({
     if (!onAddReply) return;
     const author = authorName || "Filmmaker";
     const tempReply: FeedbackReplyItem = {
-      id: `temp_reply_${Date.now()}`,
+      id: `temp_reply_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       feedbackId,
       authorName: author,
       commentText: text,
@@ -327,15 +352,48 @@ export function AssetLightboxModal({
     triggerToast("Reply posted");
 
     try {
-      await addFeedbackReplyAction({
+      const res = await addFeedbackReplyAction({
         feedbackId,
         authorName: author,
         commentText: text,
         shareToken,
+        deliveryId,
       });
+
+      if (res?.error) {
+        console.error("Error saving feedback reply:", res.error);
+        toast.error(res.error || "Failed to persist reply");
+      } else if (res?.success && res.reply) {
+        onReconcileReplyId?.(feedbackId, tempReply.id, res.reply.id);
+      }
     } catch (err: any) {
       console.error("Error saving feedback reply:", err);
       toast.error("Failed to persist reply");
+    }
+  };
+
+  const handleToggleResolve = async (feedbackId: string, currentResolved: boolean) => {
+    const nextResolved = !currentResolved;
+
+    if (onToggleResolve) {
+      onToggleResolve(feedbackId, currentResolved);
+    } else if (onToggleFeedbackResolved) {
+      onToggleFeedbackResolved(feedbackId, currentResolved);
+    } else {
+      try {
+        const res = await toggleFeedbackResolvedAction(
+          feedbackId,
+          nextResolved,
+          shareToken,
+          deliveryId
+        );
+        if (res?.error) {
+          toast.error(res.error || "Failed to update resolution status");
+        }
+      } catch (err: any) {
+        console.error("Failed to toggle resolve:", err);
+        toast.error("Failed to update resolution status");
+      }
     }
   };
 
@@ -465,11 +523,16 @@ export function AssetLightboxModal({
     triggerToast(`Downloading ${activeItem.title}`);
   };
 
-  const isApproved = activeItem.status === "approved";
+  const isApproved =
+    activeItem.status === "approved" || Boolean(activeItem.isApproved);
   const hasApprovalSection =
     showApproval !== undefined
       ? showApproval
-      : Boolean(onToggleApproval || activeItem.status);
+      : Boolean(
+          onToggleApproval ||
+            activeItem.status ||
+            activeItem.isApproved !== undefined
+        );
 
   return (
     <UniversalDialogRoot
@@ -477,38 +540,43 @@ export function AssetLightboxModal({
       onOpenChange={(open) => !open && onClose()}
     >
       <UniversalDialogContent
-        size="2xl"
+        size="3xl"
         showCloseButton={false}
         overlayClassName="bg-black/85 backdrop-blur-md"
-        className="w-full max-w-[620px] max-h-[92vh] overflow-y-auto custom-scrollbar flex flex-col p-5 sm:p-6 bg-[#141418]/95 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-3xl text-white outline-none overscroll-contain gap-4"
+        className="w-full sm:max-w-3xl max-h-[92vh] overflow-hidden flex flex-col p-0 bg-[#141418]/95 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-3xl text-white outline-none"
       >
-        {/* 1. Top Minimalist Header */}
-        <LightboxHeader
-          title={activeItem.title}
-          isStill={isStill}
-          fileSizeText={fileSizeText}
-          activeVersionNumber={activeVersionNumber}
-          hasVersions={allVersions.length > 0}
-          category={activeItem.category}
-          displayAspectRatio={displayAspectRatio}
-          timecode={activeItem.tc}
-          status={activeItem.status}
-          onBack={onBack}
-          onClose={onClose}
-          headerExtra={headerExtra}
-          showShareLink={showShareLink}
-          onShareLink={() => {
-            if (typeof window !== "undefined") {
-              navigator.clipboard.writeText(window.location.href);
-              triggerToast("Link copied to clipboard");
-            }
-          }}
-          onDeleteAsset={
-            onDeleteAsset ? () => setShowDeleteConfirm(true) : undefined
-          }
-        />
+        <div className="flex flex-col h-full max-h-[92vh] w-full overflow-hidden">
+          {/* 1. Top Minimalist Header */}
+          <div className="p-5 sm:p-6 pb-2 shrink-0">
+            <LightboxHeader
+              title={activeItem.title}
+              isStill={isStill}
+              fileSizeText={fileSizeText}
+              activeVersionNumber={activeVersionNumber}
+              hasVersions={allVersions.length > 0}
+              category={activeItem.category}
+              displayAspectRatio={displayAspectRatio}
+              timecode={activeItem.tc}
+              status={activeItem.status}
+              onBack={onBack}
+              onClose={onClose}
+              headerExtra={headerExtra}
+              showShareLink={showShareLink}
+              onShareLink={() => {
+                if (typeof window !== "undefined") {
+                  navigator.clipboard.writeText(window.location.href);
+                  triggerToast("Link copied to clipboard");
+                }
+              }}
+              onDeleteAsset={
+                onDeleteAsset ? () => setShowDeleteConfirm(true) : undefined
+              }
+            />
+          </div>
 
-        {/* 2. Media Player Stage */}
+          {/* Scrollable Stage & Feedback Content */}
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-5 sm:px-6 pb-6 pt-1 flex flex-col gap-4">
+            {/* 2. Media Player Stage */}
         <div className="w-full shrink-0">
           <LightboxPlayerStage
             keyId={currentVersion?.id || String(activeItem.id)}
@@ -588,82 +656,75 @@ export function AssetLightboxModal({
           </div>
         )}
 
-        {/* 4. Status Bar & Download Action Row */}
+        {/* 4. Action Buttons Row (Download & Approve) */}
         {(hasApprovalSection || showDownload) && (
-          <div
-            className={`flex items-center gap-3 pt-1 flex-wrap ${
-              hasApprovalSection ? "justify-between" : "justify-end"
-            }`}
-          >
-            {/* Approval Status Badge / Toggle */}
-            {hasApprovalSection && (
-              <div className="flex items-center gap-2">
-                {onToggleApproval && activeItem.status ? (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onToggleApproval(String(activeItem.id), activeItem.status!)
-                          }
-                          className={`flex items-center gap-2 text-xs sm:text-sm font-medium cursor-pointer transition-colors ${
-                            isApproved
-                              ? "text-emerald-400 hover:text-emerald-300"
-                              : "text-zinc-300 hover:text-white"
-                          }`}
-                        >
-                          {isApproved ? (
-                            <>
-                              <CheckCircle2 className="size-4 text-emerald-400" />
-                              <span>Approved · click to undo</span>
-                            </>
-                          ) : (
-                            <>
-                              <Clock className="size-4 text-primary" />
-                              <span>Awaiting client approval</span>
-                            </>
-                          )}
-                        </button>
-                      }
-                    />
-                    <TooltipContent>
-                      {isApproved
-                        ? "Click to request revisions on this cut"
-                        : "Approve this asset version"}
-                    </TooltipContent>
-                  </Tooltip>
-                ) : (
-                  <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-zinc-300">
-                    {isApproved ? (
-                      <>
-                        <CheckCircle2 className="size-4 text-emerald-400" />
-                        <span className="text-emerald-400">Approved</span>
-                      </>
-                    ) : (
-                      <>
-                        <Clock className="size-4 text-primary" />
-                        <span>Awaiting client approval</span>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
+          <div className="flex items-center gap-2.5 sm:gap-3 pt-1 flex-wrap">
             {/* Download Button */}
             {showDownload && (
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
                 onClick={handleDownload}
-                className="rounded-full border border-white/20 bg-white/5 hover:bg-white/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5 cursor-pointer transition-colors h-auto shadow-sm"
+                className="relative overflow-hidden inline-flex items-center justify-center gap-2 font-bold text-xs sm:text-sm tracking-wider uppercase rounded-2xl px-5 sm:px-6 py-2.5 sm:py-3 text-white transition-all duration-200 cursor-pointer shadow-lg hover:scale-[1.02] active:scale-[0.98] border border-[rgba(var(--acc2-rgb,255,138,69),0.55)] bg-gradient-to-b from-[rgba(var(--acc2-rgb,255,138,69),0.55)] via-[rgba(var(--acc-rgb,245,85,29),0.48)] to-[rgba(var(--acc-dk-rgb,175,50,15),0.6)] backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_8px_20px_-6px_rgba(var(--acc-rgb,245,85,29),0.55)] h-auto"
               >
-                <Download className="size-3.5 text-zinc-300" />
+                <Download className="size-4 shrink-0" />
                 <span>DOWNLOAD</span>
               </Button>
             )}
+
+            {/* Approval Button */}
+            {hasApprovalSection &&
+              (onToggleApproval ? (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        type="button"
+                        onClick={() =>
+                          onToggleApproval(
+                            String(activeItem.id),
+                            activeItem.status || (isApproved ? "approved" : "in_review")
+                          )
+                        }
+                        className={`inline-flex items-center justify-center gap-2 font-bold text-xs sm:text-sm tracking-wider uppercase rounded-2xl px-5 sm:px-6 py-2.5 sm:py-3 transition-all duration-200 cursor-pointer backdrop-blur-md shadow-md hover:scale-[1.02] active:scale-[0.98] h-auto ${
+                          isApproved
+                            ? "bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 hover:bg-amber-500/15 hover:border-amber-500/40 hover:text-amber-300"
+                            : "bg-white/[0.07] hover:bg-white/[0.12] border border-white/20 hover:border-white/30 text-white"
+                        }`}
+                      >
+                        <Check className="size-4 stroke-[2.5] shrink-0" />
+                        <span>
+                          {isApproved ? "Approved · tap to undo" : "Approve this asset"}
+                        </span>
+                      </Button>
+                    }
+                  />
+                  <TooltipContent>
+                    {isApproved
+                      ? "Click to request revisions on this cut"
+                      : "Approve this asset version"}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <div
+                  className={`inline-flex items-center justify-center gap-2 font-bold text-xs sm:text-sm tracking-wider uppercase rounded-2xl px-5 sm:px-6 py-2.5 sm:py-3 backdrop-blur-md shadow-md ${
+                    isApproved
+                      ? "bg-emerald-500/15 border border-emerald-500/40 text-emerald-400"
+                      : "bg-white/[0.05] border border-white/10 text-zinc-400"
+                  }`}
+                >
+                  {isApproved ? (
+                    <>
+                      <Check className="size-4 stroke-[2.5] shrink-0" />
+                      <span>Approved</span>
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="size-4 stroke-[2.5] shrink-0 text-primary" />
+                      <span>Awaiting client approval</span>
+                    </>
+                  )}
+                </div>
+              ))}
           </div>
         )}
 
@@ -671,6 +732,7 @@ export function AssetLightboxModal({
         {hasFeedbackMode && (
           <div className="w-full">
             <LightboxFeedbackDrawer
+              assetTitle={activeItem.title}
               isStill={isStill}
               activeVersionNumber={activeVersionNumber}
               feedbackList={currentVersionFeedback}
@@ -688,6 +750,7 @@ export function AssetLightboxModal({
               }}
               onAddFeedback={handleSendFeedback}
               onAddReply={handleSendReply}
+              onToggleResolve={handleToggleResolve}
             />
           </div>
         )}
@@ -698,6 +761,8 @@ export function AssetLightboxModal({
             {footerExtra}
           </div>
         )}
+          </div>
+        </div>
       </UniversalDialogContent>
 
       <DeleteConfirmDialog

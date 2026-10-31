@@ -11,11 +11,13 @@ import {
   Upload,
   Layers,
   Monitor,
+  Type,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { AppImage } from "@/components/ui/app-image";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -68,6 +70,7 @@ export function CoverBannerSection({
   const currentAspectRatio = heroCover.aspectRatio || "asset";
   const overlayOpacity = heroCover.overlayOpacity ?? 50;
   const isVideo = heroCover.type === "video";
+  const showHeroText = heroCover.showHeroText ?? true;
 
   // Compute live aspect ratio
   let ratioValue = 21 / 9;
@@ -247,12 +250,21 @@ export function CoverBannerSection({
                 </Badge>
               </div>
 
-              {/* Overlaid Headline */}
-              <div className="absolute bottom-4 left-4 right-4 z-10 pointer-events-none">
-                <TypographyH3 className="text-lg sm:text-2xl text-white tracking-tight uppercase drop-shadow-md max-w-xl font-heading">
-                  {heroCover.title || brandName}
-                </TypographyH3>
-              </div>
+              {/* Overlaid Headline & Category */}
+              {showHeroText && (
+                <div className="absolute bottom-4 left-4 right-4 z-10 pointer-events-none space-y-1.5">
+                  {(heroCover.category || (isVideo ? "Featured Film" : "Featured Still")) && (
+                    <div>
+                      <Badge variant="orange" className="text-[10px] uppercase font-bold px-2 py-0.5 shadow-md">
+                        {heroCover.category || (isVideo ? "Featured Film" : "Featured Still")}
+                      </Badge>
+                    </div>
+                  )}
+                  <TypographyH3 className="text-lg sm:text-2xl text-white tracking-tight uppercase drop-shadow-md max-w-xl font-heading">
+                    {heroCover.title || brandName}
+                  </TypographyH3>
+                </div>
+              )}
             </AspectRatio>
           </TiltCard>
         </div>
@@ -349,13 +361,47 @@ export function CoverBannerSection({
                 })}
               </div>
             </div>
+
+            {/* Hero Text & Badge Visibility Switch */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Type className="size-3.5 text-primary" />
+                  Hero Text & Badge
+                </label>
+                <Switch
+                  checked={showHeroText}
+                  onCheckedChange={(checked) =>
+                    onHeroCoverChange({
+                      ...heroCover,
+                      showHeroText: checked,
+                    })
+                  }
+                  className="cursor-pointer"
+                />
+              </div>
+              <div className="h-9 px-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between text-xs">
+                <TypographySpan className="text-zinc-300 font-medium">
+                  {showHeroText ? "Headline & category visible" : "Headline & category hidden"}
+                </TypographySpan>
+                <Badge
+                  variant={showHeroText ? "orange" : "outline"}
+                  className="text-[10px] uppercase font-bold px-2 py-0.5"
+                >
+                  {showHeroText ? "Visible" : "Hidden"}
+                </Badge>
+              </div>
+            </div>
           </div>
 
           {/* Headline & Category Inputs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/[0.08]">
             <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                Hero Headline Text
+              <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center justify-between">
+                <span>Hero Headline Text</span>
+                {!showHeroText && (
+                  <span className="text-[10px] text-zinc-500 font-normal lowercase">(hidden on hero)</span>
+                )}
               </label>
               <Input
                 type="text"
@@ -367,13 +413,19 @@ export function CoverBannerSection({
                   })
                 }
                 placeholder={brandName}
-                className="h-9 rounded-xl bg-white/5 border-white/10 text-white text-xs px-3.5"
+                className={cn(
+                  "h-9 rounded-xl bg-white/5 border-white/10 text-white text-xs px-3.5 transition-opacity",
+                  !showHeroText && "opacity-60"
+                )}
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                Category / Badge Text
+              <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center justify-between">
+                <span>Category / Badge Text</span>
+                {!showHeroText && (
+                  <span className="text-[10px] text-zinc-500 font-normal lowercase">(hidden on hero)</span>
+                )}
               </label>
               <Input
                 type="text"
@@ -385,7 +437,10 @@ export function CoverBannerSection({
                   })
                 }
                 placeholder={isVideo ? "Featured Film" : "Featured Still"}
-                className="h-9 rounded-xl bg-white/5 border-white/10 text-white text-xs px-3.5"
+                className={cn(
+                  "h-9 rounded-xl bg-white/5 border-white/10 text-white text-xs px-3.5 transition-opacity",
+                  !showHeroText && "opacity-60"
+                )}
               />
             </div>
           </div>
@@ -400,6 +455,9 @@ export function CoverBannerSection({
                   {heroCover.title || brandName}
                 </strong>{" "}
                 ({heroCover.category || (isVideo ? "Featured Film" : "Featured Still")})
+                {!showHeroText && (
+                  <span className="ml-2 text-zinc-500 font-normal text-[11px]">[Text Hidden]</span>
+                )}
               </span>
             </div>
             <TypographySpan className="text-[11px]  text-zinc-500">

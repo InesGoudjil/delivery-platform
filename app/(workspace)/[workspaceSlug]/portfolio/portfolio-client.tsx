@@ -96,17 +96,23 @@ export function PortfolioClient({
   const [isPending, startTransition] = useTransition();
 
   // 1. Hero Cover Asset Configuration
-  const initialHeroCover: PortfolioHeroCover = portfolio.appearance?.heroCover || {
-    assetId: availableAssets[0]?.id || null,
-    type: availableAssets[0]?.type || "video",
-    mediaUrl: portfolio.coverAssetUrl || availableAssets[0]?.url || "",
-    thumbnailUrl: portfolio.coverAssetUrl || availableAssets[0]?.thumbnailUrl || "",
-    title: portfolio.title || workspace.brandName,
-    category: availableAssets[0]?.category || "Featured Film",
-    aspectRatio: "21:9",
-    overlayOpacity: 50,
-    videoBehavior: "ambient_loop",
-  };
+  const initialHeroCover: PortfolioHeroCover = portfolio.appearance?.heroCover
+    ? {
+        ...portfolio.appearance.heroCover,
+        showHeroText: portfolio.appearance.heroCover.showHeroText ?? true,
+      }
+    : {
+        assetId: availableAssets[0]?.id || null,
+        type: availableAssets[0]?.type || "video",
+        mediaUrl: portfolio.coverAssetUrl || availableAssets[0]?.url || "",
+        thumbnailUrl: portfolio.coverAssetUrl || availableAssets[0]?.thumbnailUrl || "",
+        title: portfolio.title || workspace.brandName,
+        category: availableAssets[0]?.category || "Featured Film",
+        aspectRatio: "21:9",
+        overlayOpacity: 50,
+        videoBehavior: "ambient_loop",
+        showHeroText: true,
+      };
 
   const [heroCover, setHeroCover] = useState<PortfolioHeroCover>(initialHeroCover);
   const [savedHeroCover, setSavedHeroCover] = useState<PortfolioHeroCover>(initialHeroCover);
@@ -210,6 +216,7 @@ export function PortfolioClient({
       aspectRatio: heroCover.aspectRatio || "asset",
       overlayOpacity: heroCover.overlayOpacity ?? 50,
       videoBehavior: "ambient_loop",
+      showHeroText: heroCover.showHeroText ?? true,
     };
 
     setHeroCover(updatedCover);

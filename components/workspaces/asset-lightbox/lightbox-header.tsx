@@ -102,12 +102,6 @@ export function LightboxHeader({
                 <span className="text-zinc-400 font-normal">{category}</span>
               </>
             )}
-            {displayAspectRatio && (
-              <>
-                <span className="text-zinc-500">·</span>
-                <span className="text-zinc-400 font-normal">{displayAspectRatio}</span>
-              </>
-            )}
           </div>
 
           {/* Large Bold Title */}

@@ -137,11 +137,14 @@ export function DeliveryRoomClient(props: DeliveryRoomProps) {
               feedbackList={room.activeAsset?.feedback || []}
               onAddFeedback={room.handleAddFeedback}
               onAddReply={room.handleAddReply}
+              onReconcileFeedbackId={room.handleReconcileFeedbackId}
+              onReconcileReplyId={room.handleReconcileReplyId}
+              onToggleResolve={room.handleToggleResolve}
               onToggleApproval={room.handleToggleAssetApproval}
               authorName={room.commentAuthor}
               showFeedback={true}
               showVersions={Boolean(
-                room.activeAsset?.versions && room.activeAsset.versions.length > 0
+                room.activeAsset?.versions && room.activeAsset.versions.length > 1
               )}
               showDownload={
                 room.isGlobalDownloadUnlocked || Boolean(room.activeAsset?.isApproved)

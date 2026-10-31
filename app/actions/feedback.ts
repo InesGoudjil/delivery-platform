@@ -68,6 +68,7 @@ export async function addFeedbackAction(params: AddFeedbackParams) {
       timestampSeconds,
       parentId,
       shareToken,
+      deliveryId,
     } = validated.data;
 
     const adminServices = await getServerAdminServices();
@@ -76,8 +77,8 @@ export async function addFeedbackAction(params: AddFeedbackParams) {
 
     // Verify access
     let deliveryContext: any = null;
-    if (shareToken) {
-      const authCtx = await verifyDeliveryAccessContext(shareToken);
+    if (shareToken || deliveryId) {
+      const authCtx = await verifyDeliveryAccessContext(shareToken, deliveryId);
       if (!authCtx.isAuthorized) {
         return { error: "Passcode verification required to leave feedback on this cut." };
       }
@@ -171,15 +172,15 @@ export async function addFeedbackReplyAction(params: AddFeedbackReplyParams) {
       return { error: validated.error };
     }
 
-    const { feedbackId, commentText, authorName, shareToken } = validated.data;
+    const { feedbackId, commentText, authorName, shareToken, deliveryId } = validated.data;
 
     const adminServices = await getServerAdminServices();
     const userServices = await getServerServices();
     const user = await userServices.auth.getCurrentUser();
 
     // Verify access
-    if (shareToken) {
-      const { isAuthorized } = await verifyDeliveryAccessContext(shareToken);
+    if (shareToken || deliveryId) {
+      const { isAuthorized } = await verifyDeliveryAccessContext(shareToken, deliveryId);
       if (!isAuthorized) {
         return { error: "Passcode verification required to reply to feedback." };
       }

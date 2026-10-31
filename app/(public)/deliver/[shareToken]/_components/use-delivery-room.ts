@@ -10,6 +10,7 @@ import {
   unapproveAllAssetsAction,
   recordClientDownloadAction,
 } from "@/app/actions/deliveries";
+import { toggleFeedbackResolvedAction } from "@/app/actions/feedback";
 import type { LightboxAssetItem } from "@/components/workspaces/asset-lightbox-modal";
 import type {
   DeliveryRoomProps,
@@ -270,9 +271,11 @@ export function useDeliveryRoom({
     setAssets((prev) =>
       prev.map((a) => {
         if (a.id === activeAsset.id) {
+          const existing = a.feedback || [];
+          if (existing.some((f) => f.id === newFeedback.id)) return a;
           return {
             ...a,
-            feedback: [...a.feedback, newFeedback],
+            feedback: [...existing, newFeedback],
           };
         }
         return a;
@@ -287,19 +290,83 @@ export function useDeliveryRoom({
         if (a.id === activeAsset.id) {
           return {
             ...a,
-            feedback: a.feedback.map((f) =>
-              f.id === feedbackId
-                ? {
-                    ...f,
-                    replies: [...(f.replies || []), reply],
-                  }
-                : f
-            ),
+            feedback: a.feedback.map((f) => {
+              if (f.id !== feedbackId) return f;
+              const existingReplies = f.replies || [];
+              if (existingReplies.some((r) => r.id === reply.id)) return f;
+              return {
+                ...f,
+                replies: [...existingReplies, reply],
+              };
+            }),
           };
         }
         return a;
       })
     );
+  };
+
+  const handleReconcileFeedbackId = (tempId: string, realId: string) => {
+    setAssets((prev) =>
+      prev.map((a) => ({
+        ...a,
+        feedback: a.feedback.map((f) => (f.id === tempId ? { ...f, id: realId } : f)),
+      }))
+    );
+  };
+
+  const handleReconcileReplyId = (
+    feedbackId: string,
+    tempReplyId: string,
+    realReplyId: string
+  ) => {
+    setAssets((prev) =>
+      prev.map((a) => ({
+        ...a,
+        feedback: a.feedback.map((f) =>
+          f.id === feedbackId
+            ? {
+                ...f,
+                replies: (f.replies || []).map((r) =>
+                  r.id === tempReplyId ? { ...r, id: realReplyId } : r
+                ),
+              }
+            : f
+        ),
+      }))
+    );
+  };
+
+  const handleToggleResolve = async (feedbackId: string, currentResolved: boolean) => {
+    const nextResolved = !currentResolved;
+    setAssets((prev) =>
+      prev.map((a) => ({
+        ...a,
+        feedback: a.feedback.map((f) =>
+          f.id === feedbackId ? { ...f, isResolved: nextResolved } : f
+        ),
+      }))
+    );
+
+    const res = await toggleFeedbackResolvedAction(
+      feedbackId,
+      nextResolved,
+      delivery.shareToken,
+      delivery.id
+    );
+
+    if (res?.error) {
+      toast.error(res.error);
+      // Revert if error
+      setAssets((prev) =>
+        prev.map((a) => ({
+          ...a,
+          feedback: a.feedback.map((f) =>
+            f.id === feedbackId ? { ...f, isResolved: currentResolved } : f
+          ),
+        }))
+      );
+    }
   };
 
   // WhatsApp Share & Message Creator
@@ -519,6 +586,9 @@ export function useDeliveryRoom({
     handleUnapproveAll,
     handleAddFeedback,
     handleAddReply,
+    handleReconcileFeedbackId,
+    handleReconcileReplyId,
+    handleToggleResolve,
     handleWhatsAppShare,
     handleMessageCreator,
     notifyCreatorOfDownload,

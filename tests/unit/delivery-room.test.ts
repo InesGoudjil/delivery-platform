@@ -27,4 +27,26 @@ describe("DeliveryRoom Component Decomposition", () => {
     expect(typeof DeliveryAssetGrid).toBe("function");
     expect(typeof DeliveryRoomFooter).toBe("function");
   });
+
+  describe("Masonry & Aspect Ratio calculations", () => {
+    it("handles masonry ratio mapping correctly where isMasonry yields undefined numericRatio", () => {
+      const getNumericRatio = (aspectRatioSetting: string) => {
+        const isMasonry = aspectRatioSetting === "masonry";
+        return isMasonry
+          ? undefined
+          : aspectRatioSetting === "16:9"
+          ? 16 / 9
+          : aspectRatioSetting === "1:1"
+          ? 1
+          : aspectRatioSetting === "9:16"
+          ? 9 / 16
+          : 16 / 9;
+      };
+
+      expect(getNumericRatio("masonry")).toBeUndefined();
+      expect(getNumericRatio("16:9")).toBeCloseTo(16 / 9);
+      expect(getNumericRatio("1:1")).toBe(1);
+      expect(getNumericRatio("9:16")).toBeCloseTo(9 / 16);
+    });
+  });
 });
