@@ -43,8 +43,8 @@ function renderHeroWithProvider(profile: FilmmakerProfile) {
         profile,
         projects: [],
         assets: [],
-      },
-      React.createElement(PortfolioHero, { profile })
+        children: React.createElement(PortfolioHero, { profile }),
+      }
     )
   );
 }

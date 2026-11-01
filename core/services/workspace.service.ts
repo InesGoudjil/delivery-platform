@@ -56,7 +56,7 @@ export class WorkspaceService {
       ownerId,
       brandName: baseName,
       slug: uniqueSlug,
-      accentColor: '#f5551d',
+      accentColor: '#F5551D',
       defaultLanguage: 'ar',
       accountType,
     });

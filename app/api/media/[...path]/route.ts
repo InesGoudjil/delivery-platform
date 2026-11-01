@@ -4,6 +4,7 @@ import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getServerServices } from "@/core/server";
 import { env } from "@/lib/env";
+import { hasValidDeliveryPasscodeCookie } from "@/lib/security/delivery-token";
 
 const FALLBACK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" fill="none">
   <rect width="1280" height="720" fill="#0e0e11"/>
@@ -265,9 +266,8 @@ export async function GET(
               // Unprotected public delivery cut
               isAuthorized = true;
             } else {
-              // Check client verified cookie
-              const accessCookie = req.cookies.get(`delivery_access_${delivery.shareToken}`)?.value;
-              if (accessCookie === "verified") {
+              // Check client cryptographically signed cookie
+              if (hasValidDeliveryPasscodeCookie(req.cookies, delivery.shareToken)) {
                 isAuthorized = true;
               } else {
                 // Check query params (?passphrase=... or ?code=...)

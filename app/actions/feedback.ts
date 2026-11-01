@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { getServerServices, getServerAdminServices } from "@/core/server";
 import { requireUser, requireWorkspaceMember } from "@/core/security/guards";
+import { hasValidDeliveryPasscodeCookie } from "@/lib/security/delivery-token";
 import {
   addFeedbackSchema,
   addFeedbackReplySchema,
@@ -45,8 +46,7 @@ async function verifyDeliveryAccessContext(shareToken?: string, deliveryId?: str
     }
 
     const cookieStore = await cookies();
-    const access = cookieStore.get(`delivery_access_${delivery.shareToken}`)?.value;
-    if (access === "verified") {
+    if (hasValidDeliveryPasscodeCookie(cookieStore, delivery.shareToken)) {
       return { isAuthorized: true, delivery, user, adminServices };
     }
   }

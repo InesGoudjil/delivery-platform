@@ -120,7 +120,7 @@ export class SupabaseWorkspaceRepository implements IWorkspaceRepository {
         slug: dto.slug,
         logo_url: dto.logoUrl,
         custom_domain: dto.customDomain,
-        accent_color: dto.accentColor || '#000000',
+        accent_color: dto.accentColor || '#f5551d',
         default_language: dto.defaultLanguage ?? 'ar',
         account_type: dto.accountType ?? 'individual',
       })

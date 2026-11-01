@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { createHash } from "crypto";
 import { getServerServices, getServerAdminServices } from "@/core/server";
 import { presignDeliveryAssets } from "@/lib/media-server";
+import { hasValidDeliveryPasscodeCookie } from "@/lib/security/delivery-token";
 import { DeliveryRoomClient, DeliveryAssetItem } from "./delivery-room-client";
 import { DeliveryExpiredScreen } from "./_components/delivery-expired-screen";
 
@@ -127,7 +128,7 @@ export default async function ClientDeliveryPage(props: PageProps) {
 
   // 5. Check passcode cookie verification or creator ownership
   const cookieStore = await cookies();
-  const accessCookie = cookieStore.get(`delivery_access_${shareToken}`)?.value;
+  const hasAccessCookie = hasValidDeliveryPasscodeCookie(cookieStore, shareToken);
   const isPasscodeProtected = Boolean(fullDetails.passcodeHash);
 
   // Check if current user is owner or member of the workspace
@@ -166,7 +167,7 @@ export default async function ClientDeliveryPage(props: PageProps) {
   }
 
   // Do not silently bypass for workspace members, so creators can test the exact client dialog!
-  const isInitiallyUnlocked = accessCookie === "verified" || queryPassphraseMatched;
+  const isInitiallyUnlocked = hasAccessCookie || queryPassphraseMatched;
 
   // 6. Current user info if filmmaker / team member is inspecting
   let userProfile = null;

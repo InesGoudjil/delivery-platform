@@ -361,8 +361,26 @@ export function ShowcaseGrid({
         </MediaGrid>
 
         {filteredProjects.length === 0 && (
-          <div className="py-12 text-center text-zinc-500 text-xs italic">
-            No {activeTab} yet. Click the upload button above to add your first {activeTab.slice(0, -1)}.
+          <div className="py-16 text-center space-y-3 bg-[#0c0c0e]/40 rounded-xl border border-white/5 my-2">
+            <div className="size-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mx-auto text-zinc-500">
+              {activeTab === "films" ? (
+                <Film className="size-5" />
+              ) : activeTab === "stills" ? (
+                <ImageIcon className="size-5" />
+              ) : (
+                <FolderKanban className="size-5" />
+              )}
+            </div>
+            <div className="space-y-1">
+              <p className="text-zinc-300 font-medium text-sm">
+                No {activeTab} in portfolio showcase yet
+              </p>
+              <p className="text-zinc-500 text-xs max-w-sm mx-auto">
+                {activeTab === "projects"
+                  ? "Publish an approved delivery to your portfolio or create a new showcase project above."
+                  : `Upload standalone ${activeTab} using the upload button above to feature your work.`}
+              </p>
+            </div>
           </div>
         )}
 

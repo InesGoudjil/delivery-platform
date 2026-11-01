@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { createHash } from "crypto";
 import { getServerServices, getServerAdminServices } from "@/core/server";
 import { requireUser, requireWorkspaceMember, requireDeliveryAccess } from "@/core/security/guards";
+import { setDeliveryPasscodeCookie, hasValidDeliveryPasscodeCookie } from "@/lib/security/delivery-token";
 import { presignDeliveryAssets } from "@/lib/media-server";
 import { resolveThumbnailUrl, resolveMediaUrl } from "@/lib/media";
 import type { DeliveryAppearanceSettings } from "@/core/entities/delivery";
@@ -48,7 +49,7 @@ async function requireDeliveryGuestOrMemberAccess(deliveryId: string) {
 
   if (delivery.passcodeHash) {
     const cookieStore = await cookies();
-    const verified = cookieStore.get(`delivery_access_${delivery.shareToken}`)?.value === "verified";
+    const verified = hasValidDeliveryPasscodeCookie(cookieStore, delivery.shareToken);
     if (!verified) {
       throw new Error("Passcode verification required to perform this action.");
     }
@@ -108,15 +109,8 @@ export async function verifyDeliveryPasscodeAction(
       isAuthorized = true;
     }
 
-    // Set HTTP-only cookie valid for 7 days across site
-    const cookieStore = await cookies();
-    cookieStore.set(`delivery_access_${shareToken}`, "verified", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-      path: "/",
-    });
+    // Set HTTP-only cryptographically signed token valid for 30 days across site
+    await setDeliveryPasscodeCookie(cleanShareToken);
 
     // Retrieve and map full assets & versions to return immediately upon unlock
     const fullDetails = await services.delivery.getDeliveryWithFullDetails(shareToken);
@@ -214,7 +208,7 @@ export async function verifyPassphraseWithTokenAction(shareToken: string, candid
 export async function checkDeliveryAccessAction(shareToken: string) {
   try {
     const cookieStore = await cookies();
-    const hasAccess = cookieStore.get(`delivery_access_${shareToken}`)?.value === "verified";
+    const hasAccess = hasValidDeliveryPasscodeCookie(cookieStore, shareToken);
     return { hasAccess };
   } catch {
     return { hasAccess: false };
@@ -852,8 +846,7 @@ export async function loadMoreDeliveryAssetsAction(params: {
         isAuthorized = true;
       } else {
         const cookieStore = await cookies();
-        const accessCookie = cookieStore.get(`delivery_access_${delivery.shareToken}`)?.value;
-        if (accessCookie === "verified") {
+        if (hasValidDeliveryPasscodeCookie(cookieStore, delivery.shareToken)) {
           isAuthorized = true;
         }
       }
@@ -1034,8 +1027,7 @@ export async function getDeliveryDownloadManifestAction(params: {
         isAuthorized = true;
       } else {
         const cookieStore = await cookies();
-        const accessCookie = cookieStore.get(`delivery_access_${delivery.shareToken}`)?.value;
-        if (accessCookie === "verified") {
+        if (hasValidDeliveryPasscodeCookie(cookieStore, delivery.shareToken)) {
           isAuthorized = true;
         }
       }

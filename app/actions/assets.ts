@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerServices } from "@/core/server";
+import { requireWorkspaceMember } from "@/core/security/guards";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 import {
   deleteAssetOptionsSchema,
@@ -50,27 +51,13 @@ export async function deleteAssetAction(
     const cleanOptions = validatedOptions?.data;
 
     const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-
-    if (!user) {
-      return { success: false, error: "Unauthorized. Please log in." };
-    }
-
     const asset = await services.asset.getAssetById(assetId.trim());
     if (!asset) {
       return { success: false, error: "Asset not found." };
     }
 
-    // Verify workspace membership/ownership
-    const isMember = await services.member
-      .isMember(asset.workspaceId, user.id)
-      .catch(() => false);
-    if (!isMember) {
-      return {
-        success: false,
-        error: "You do not have permission to delete this asset.",
-      };
-    }
+    // Verify workspace membership/role hierarchy (minimum: editor)
+    await requireWorkspaceMember(asset.workspaceId, "editor");
 
     // Check if asset is pinned in the portfolio appearance and unpin it
     try {
@@ -133,26 +120,13 @@ export async function restoreAssetAction(
 ) {
   try {
     const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-
-    if (!user) {
-      return { success: false, error: "Unauthorized. Please log in." };
-    }
-
     const asset = await services.asset.getAssetById(assetId);
     if (!asset) {
       return { success: false, error: "Asset not found." };
     }
 
-    const isMember = await services.member
-      .isMember(asset.workspaceId, user.id)
-      .catch(() => false);
-    if (!isMember) {
-      return {
-        success: false,
-        error: "You do not have permission to restore this asset.",
-      };
-    }
+    // Verify workspace membership/role hierarchy (minimum: editor)
+    await requireWorkspaceMember(asset.workspaceId, "editor");
 
     await services.asset.restoreAsset(assetId);
 
@@ -191,27 +165,13 @@ export async function permanentDeleteAssetAction(
 ) {
   try {
     const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-
-    if (!user) {
-      return { success: false, error: "Unauthorized. Please log in." };
-    }
-
     const asset = await services.asset.getAssetById(assetId);
     if (!asset) {
       return { success: false, error: "Asset not found." };
     }
 
-    // Verify workspace membership/ownership
-    const isMember = await services.member
-      .isMember(asset.workspaceId, user.id)
-      .catch(() => false);
-    if (!isMember) {
-      return {
-        success: false,
-        error: "You do not have permission to delete this asset.",
-      };
-    }
+    // Verify workspace membership/role hierarchy (strictly admin or owner for permanent purge)
+    await requireWorkspaceMember(asset.workspaceId, "admin");
 
     // If projectId was provided and we want to detach from junction, detach it
     if (options?.projectId) {
@@ -334,22 +294,7 @@ export async function listTrashAssetsAction(
 ): Promise<{ success: boolean; error?: string; assets: TrashedAssetDTO[] }> {
   try {
     const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-
-    if (!user) {
-      return { success: false, error: "Unauthorized. Please log in.", assets: [] };
-    }
-
-    const isMember = await services.member
-      .isMember(workspaceId, user.id)
-      .catch(() => false);
-    if (!isMember) {
-      return {
-        success: false,
-        error: "You do not have permission to view trash.",
-        assets: [],
-      };
-    }
+    await requireWorkspaceMember(workspaceId, "viewer");
 
     const trashed = await services.asset.listTrashAssets(workspaceId);
 
@@ -406,21 +351,8 @@ export async function emptyTrashAction(
 ) {
   try {
     const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-
-    if (!user) {
-      return { success: false, error: "Unauthorized. Please log in." };
-    }
-
-    const isMember = await services.member
-      .isMember(workspaceId, user.id)
-      .catch(() => false);
-    if (!isMember) {
-      return {
-        success: false,
-        error: "You do not have permission to empty trash.",
-      };
-    }
+    // Verify workspace membership/role hierarchy (strictly admin or owner to empty trash)
+    await requireWorkspaceMember(workspaceId, "admin");
 
     const trashed = await services.asset.listTrashAssets(workspaceId);
     let count = 0;
@@ -475,6 +407,8 @@ export async function deletePortfolioItemAction(
       if (!project) {
         const delivery = await services.delivery.getDeliveryById(itemId).catch(() => null);
         if (delivery) {
+          await requireWorkspaceMember(delivery.workspaceId, "editor");
+
           await services.delivery.deleteDelivery(delivery.id);
           if (workspaceSlug) {
             revalidatePath(`/${workspaceSlug}/portfolio`);
@@ -487,16 +421,8 @@ export async function deletePortfolioItemAction(
         return { success: false, error: "Project not found." };
       }
 
-      // Verify membership
-      const isMember = await services.member
-        .isMember(project.workspaceId, user.id)
-        .catch(() => false);
-      if (!isMember) {
-        return {
-          success: false,
-          error: "You do not have permission to delete this project.",
-        };
-      }
+      // Verify membership/role hierarchy (minimum: editor)
+      await requireWorkspaceMember(project.workspaceId, "editor");
 
       // Clean up featured pinned item if needed
       try {
@@ -565,15 +491,8 @@ export async function deleteDeliveryAction(
       return { success: false, error: "Delivery not found." };
     }
 
-    const isMember = await services.member
-      .isMember(delivery.workspaceId, user.id)
-      .catch(() => false);
-    if (!isMember) {
-      return {
-        success: false,
-        error: "You do not have permission to delete this delivery.",
-      };
-    }
+    // Verify workspace membership/role hierarchy (minimum: editor)
+    await requireWorkspaceMember(delivery.workspaceId, "editor");
 
     // Delete associated assets and storage files (moves to workspace Trash)
     try {
@@ -669,15 +588,7 @@ export async function updateAssetAction(
       if (!project) {
         const delivery = await services.delivery.getDeliveryById(itemId.trim()).catch(() => null);
         if (delivery) {
-          const isMember = await services.member
-            .isMember(delivery.workspaceId, user.id)
-            .catch(() => false);
-          if (!isMember) {
-            return {
-              success: false,
-              error: "You do not have permission to update this project.",
-            };
-          }
+          await requireWorkspaceMember(delivery.workspaceId, "editor");
           const updatedDelivery = await services.delivery.updateDelivery(delivery.id, {
             ...(data.title !== undefined && { title: data.title.trim() }),
             ...(data.description !== undefined && { description: data.description.trim() }),
@@ -693,15 +604,7 @@ export async function updateAssetAction(
         return { success: false, error: "Project not found." };
       }
 
-      const isMember = await services.member
-        .isMember(project.workspaceId, user.id)
-        .catch(() => false);
-      if (!isMember) {
-        return {
-          success: false,
-          error: "You do not have permission to update this project.",
-        };
-      }
+      await requireWorkspaceMember(project.workspaceId, "editor");
 
       const updatedProject = await services.project.updateProject(itemId, {
         ...(data.title !== undefined && { title: data.title.trim() }),
@@ -727,15 +630,7 @@ export async function updateAssetAction(
     if (!asset) {
       const project = await services.project.getProjectById(itemId);
       if (project) {
-        const isMember = await services.member
-          .isMember(project.workspaceId, user.id)
-          .catch(() => false);
-        if (!isMember) {
-          return {
-            success: false,
-            error: "You do not have permission to update this project.",
-          };
-        }
+        await requireWorkspaceMember(project.workspaceId, "editor");
 
         const updatedProject = await services.project.updateProject(itemId, {
           ...(data.title !== undefined && { title: data.title.trim() }),
@@ -757,16 +652,8 @@ export async function updateAssetAction(
       return { success: false, error: "Asset not found." };
     }
 
-    // Verify asset ownership
-    const isMember = await services.member
-      .isMember(asset.workspaceId, user.id)
-      .catch(() => false);
-    if (!isMember) {
-      return {
-        success: false,
-        error: "You do not have permission to update this asset.",
-      };
-    }
+    // Verify asset ownership and role hierarchy (minimum: editor)
+    await requireWorkspaceMember(asset.workspaceId, "editor");
 
     // Update asset table
     const assetUpdates: any = {};
@@ -845,15 +732,7 @@ export async function setActiveVersionAction(
       return { success: false, error: "Asset not found." };
     }
 
-    const isMember = await services.member
-      .isMember(asset.workspaceId, user.id)
-      .catch(() => false);
-    if (!isMember) {
-      return {
-        success: false,
-        error: "You do not have permission to modify this asset.",
-      };
-    }
+    await requireWorkspaceMember(asset.workspaceId, "editor");
 
     await services.asset.setActiveVersion(assetId, versionId);
 
