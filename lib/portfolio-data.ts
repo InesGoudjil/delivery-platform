@@ -83,26 +83,3 @@ export interface FilmmakerProfile {
     image: string;
   };
 }
-
-export const DEFAULT_PROFILE_TEMPLATE: FilmmakerProfile = {
-  name: "Filmmaker",
-  handle: "portfolio",
-  title: "Filmmaker & Director",
-  avatar: "/images/about-img.png",
-  bio: "Filmmaker and creative director based across the Gulf. Directing commercial campaigns, brand documentaries, and luxury visual storytelling — story first, craft you don't notice.",
-  tagline: "Commercial Films & Luxury Visuals",
-  heroImage: "/images/hero.jpg",
-  stats: {
-    filmsDelivered: "80+",
-    experienceYears: "6 Years",
-    based: "UAE",
-  },
-  experience: [],
-  whatsappNumber: "+971501234567",
-  email: "hello@cinespace.film",
-  cta: {
-    title: "EVERY FRAME,\nCONSIDERED.",
-    subtitle: "Brand films, weddings, and launch content — made across the Gulf.",
-    image: "/images/cta.jpg",
-  },
-};

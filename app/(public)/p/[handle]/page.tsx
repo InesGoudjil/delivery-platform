@@ -6,10 +6,8 @@ import {
   PortfolioProject,
   FilmmakerProfile,
   PortfolioExperienceItem,
-  DEFAULT_PROFILE_TEMPLATE,
   PublicFeaturedItem,
 } from "@/lib/portfolio-data";
-import { DEMO_PORTFOLIO_PROJECTS, DEMO_PORTFOLIO_ASSETS } from "@/lib/demo-portfolio";
 import { PortfolioProvider } from "./_components/portfolio-context";
 import { PortfolioHeader } from "./_components/portfolio-header";
 import { PortfolioHero } from "./_components/portfolio-hero";
@@ -45,9 +43,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
     const title = workspace?.brandName
       ? `${workspace.brandName} — Portfolio`
-      : portfolio?.title || "Pedro Concreato — Portfolio";
+      : portfolio?.title || `${handle.charAt(0).toUpperCase() + handle.slice(1)} — Portfolio`;
     const description =
-      portfolio?.bio || "Commercial films & luxury visual portfolio across the Gulf.";
+      portfolio?.bio || `${title} showcase and visual portfolio.`;
     const coverUrl =
       resolveMediaUrl(
         portfolio?.appearance?.heroCover?.thumbnailUrl ||
@@ -66,8 +64,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   } catch {
     return {
-      title: "Pedro Concreato — Portfolio | CineSpace",
-      description: "Commercial films & luxury visual portfolio across the Gulf.",
+      title: `${handle.charAt(0).toUpperCase() + handle.slice(1)} — Portfolio | CineSpace`,
+      description: "Visual portfolio and commercial showcase.",
     };
   }
 }
@@ -290,14 +288,8 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
   }));
 
   // 8. Dynamic Projects & Assets Resolution
-  let finalProjects = realProjects;
-  let finalAssets = realAssets;
-
-  // Authentic demo fallback ONLY for the default Pedro demo handle if no DB media exists
-  if (finalProjects.length === 0 && finalAssets.length === 0 && handle.toLowerCase() === "pedro") {
-    finalProjects = DEMO_PORTFOLIO_PROJECTS;
-    finalAssets = DEMO_PORTFOLIO_ASSETS;
-  }
+  const finalProjects = realProjects;
+  const finalAssets = realAssets;
 
   // 9. Build Ordered Featured Items List from Appearance Settings
   const featuredItemIds: string[] = Array.isArray(portfolio?.appearance?.featuredItemIds)
@@ -364,8 +356,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
 
   // 10. Profile, Branding, and Cover Resolution
   const brandName =
-    workspace?.brandName ||
-    (handle.toLowerCase() === "pedro" ? "Pedro Concreato" : handle.charAt(0).toUpperCase() + handle.slice(1));
+    workspace?.brandName || (handle.charAt(0).toUpperCase() + handle.slice(1));
 
   // Distinct Brand Logo (Workspace level)
   const brandLogo = workspace?.logoUrl ? resolveMediaUrl(workspace.logoUrl) : null;
@@ -394,6 +385,9 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     (finalAssets.length > 0 ? finalAssets[0].image : "") ||
     "/images/hero.jpg";
 
+  const filmsCount = finalAssets.filter((a) => a.kind === "film").length;
+  const projectsCount = finalProjects.length;
+
   const profile: FilmmakerProfile = {
     name: brandName,
     handle: workspace?.slug || handle,
@@ -403,22 +397,22 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     heroCover: heroCover,
     bio:
       portfolio?.bio ||
-      `${brandName} is a filmmaker and creative director based between Dubai and Sharjah. Over six years he's shot brand films, weddings, and launch content across the Gulf — story first, craft you don't notice. He shoots, directs, and grades his own work, and cares as much about how a film is delivered as how it's made.`,
-    tagline: "Commercial Films & Luxury Visuals across the Gulf",
+      `${brandName} is a creative production studio specializing in commercial visual storytelling and cinematic delivery.`,
+    tagline: "Commercial Films & Visual Storytelling",
     heroImage: coverSelected,
     featuredProjectId: heroCover?.assetId || featuredItems[0]?.id || finalProjects[0]?.id || finalAssets[0]?.id || undefined,
     stats: {
-      filmsDelivered: portfolio?.stats?.projects || `${finalAssets.filter((a) => a.kind === "film").length || "80+"}`,
-      experienceYears: portfolio?.stats?.years || "6 Years",
-      based: portfolio?.stats?.location || "UAE",
+      filmsDelivered: portfolio?.stats?.projects || (filmsCount > 0 ? `${filmsCount}` : projectsCount > 0 ? `${projectsCount}` : "0"),
+      experienceYears: portfolio?.stats?.years || "—",
+      based: portfolio?.stats?.location || "Global",
     },
     experience: realExperiences,
-    whatsappNumber: portfolio?.whatsappNumber || "+971501234567",
+    whatsappNumber: portfolio?.whatsappNumber || "",
     email: `${workspace?.slug || handle}@cinespace.film`,
     cta: {
-      title: "EVERY FRAME,\nCONSIDERED.",
-      subtitle: "Brand films, weddings, and launch content — made across the Gulf.",
-      image: "/images/cta.jpg",
+      title: "LET'S CREATE\nTOGETHER.",
+      subtitle: "Brand films, commercial campaigns, and launch content.",
+      image: "/images/hero.jpg",
     },
   };
 

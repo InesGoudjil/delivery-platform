@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import {
   IStorageProvider,
   CreateUploadUrlParams,
@@ -373,12 +374,67 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
   }
 
   /**
-   * Verifies the Cloudflare webhook signature
+   * Verifies the Cloudflare webhook signature using HMAC-SHA256 and timestamp drift validation.
    */
   verifyWebhookSignature(rawBody: string, headers: Record<string, string>): boolean {
-    if (!this.webhookSecret) return true; // If no secret configured, bypass in dev
-    // In production, Cloudflare sends `Webhook-Signature: time=...,sig1=...`
-    const signatureHeader = headers["webhook-signature"] || headers["Webhook-Signature"];
-    return Boolean(signatureHeader);
+    if (!this.webhookSecret) {
+      if (process.env.NODE_ENV === "production") {
+        console.error("[Cloudflare Stream] Missing webhook secret in production environment");
+        return false;
+      }
+      return true; // Dev fallback
+    }
+
+    const signatureHeader =
+      headers["webhook-signature"] || headers["Webhook-Signature"];
+    if (!signatureHeader) {
+      return false;
+    }
+
+    // Header format: time=<unix_timestamp>,sig1=<hex_signature>
+    const parts = signatureHeader.split(",");
+    let timestampStr = "";
+    let signatureHex = "";
+
+    for (const part of parts) {
+      const [key, val] = part.trim().split("=");
+      if (key === "time") timestampStr = val;
+      if (key === "sig1") signatureHex = val;
+    }
+
+    if (!timestampStr || !signatureHex) {
+      return false;
+    }
+
+    const timestamp = parseInt(timestampStr, 10);
+    if (isNaN(timestamp)) {
+      return false;
+    }
+
+    // Verify timestamp within 300 seconds (5 min) drift window to prevent replay attacks
+    const currentEpoch = Math.floor(Date.now() / 1000);
+    if (Math.abs(currentEpoch - timestamp) > 300) {
+      console.warn("[Cloudflare Stream] Webhook rejected: timestamp drift exceeds 300 seconds");
+      return false;
+    }
+
+    // Compute HMAC-SHA256 of `${timestampStr}.${rawBody}`
+    const expectedHex = crypto
+      .createHmac("sha256", this.webhookSecret)
+      .update(`${timestampStr}.${rawBody}`)
+      .digest("hex");
+
+    try {
+      const expectedBuf = Buffer.from(expectedHex, "hex");
+      const actualBuf = Buffer.from(signatureHex, "hex");
+
+      if (expectedBuf.length !== actualBuf.length) {
+        return false;
+      }
+
+      return crypto.timingSafeEqual(expectedBuf, actualBuf);
+    } catch {
+      return false;
+    }
   }
 }

@@ -11,7 +11,7 @@ interface PortfolioAboutProps {
 }
 
 function formatExperienceDisplay(exp?: string | null): string {
-  if (!exp || !exp.trim()) return "6 YRS";
+  if (!exp || !exp.trim() || exp === "—") return "—";
   const val = exp.trim();
   const lower = val.toLowerCase();
 
@@ -59,34 +59,50 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
       />
 
       {/* 👤 Left Portrait: Desktop (Anchored flush to bottom and left with seamless fade) */}
-      <div className="hidden lg:block absolute inset-y-0 left-0 w-[45%] overflow-hidden pointer-events-none select-none">
-        <img
-          src={profile.avatar}
-          alt={profile.name}
-          className="w-full h-full object-cover object-[center_12%]"
-          style={{
-            maskImage:
-              "linear-gradient(to right, black 40%, rgba(0, 0, 0, 0.45) 70%, transparent 95%)",
-            WebkitMaskImage:
-              "linear-gradient(to right, black 40%, rgba(0, 0, 0, 0.45) 70%, transparent 95%)",
-          }}
-        />
-      </div>
+      {profile.avatar ? (
+        <div className="hidden lg:block absolute inset-y-0 left-0 w-[45%] overflow-hidden pointer-events-none select-none">
+          <img
+            src={profile.avatar}
+            alt={profile.name}
+            className="w-full h-full object-cover object-[center_12%]"
+            style={{
+              maskImage:
+                "linear-gradient(to right, black 40%, rgba(0, 0, 0, 0.45) 70%, transparent 95%)",
+              WebkitMaskImage:
+                "linear-gradient(to right, black 40%, rgba(0, 0, 0, 0.45) 70%, transparent 95%)",
+            }}
+          />
+        </div>
+      ) : (
+        <div className="hidden lg:flex absolute inset-y-0 left-0 w-[45%] items-center justify-center pointer-events-none select-none">
+          <div className="size-36 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-heading font-black text-4xl text-white/30">
+            {profile.name.slice(0, 2).toUpperCase()}
+          </div>
+        </div>
+      )}
 
       {/* 👤 Left Portrait: Mobile (Stacked on top with downward fade) */}
-      <div className="lg:hidden relative w-full h-[360px] sm:h-[420px] overflow-hidden pointer-events-none select-none">
-        <img
-          src={profile.avatar}
-          alt={profile.name}
-          className="w-full h-full object-cover object-[center_15%]"
-          style={{
-            maskImage:
-              "linear-gradient(to bottom, black 50%, rgba(0, 0, 0, 0.3) 80%, transparent 100%)",
-            WebkitMaskImage:
-              "linear-gradient(to bottom, black 50%, rgba(0, 0, 0, 0.3) 80%, transparent 100%)",
-          }}
-        />
-      </div>
+      {profile.avatar ? (
+        <div className="lg:hidden relative w-full h-[360px] sm:h-[420px] overflow-hidden pointer-events-none select-none">
+          <img
+            src={profile.avatar}
+            alt={profile.name}
+            className="w-full h-full object-cover object-[center_15%]"
+            style={{
+              maskImage:
+                "linear-gradient(to bottom, black 50%, rgba(0, 0, 0, 0.3) 80%, transparent 100%)",
+              WebkitMaskImage:
+                "linear-gradient(to bottom, black 50%, rgba(0, 0, 0, 0.3) 80%, transparent 100%)",
+            }}
+          />
+        </div>
+      ) : (
+        <div className="lg:hidden relative w-full h-44 flex items-center justify-center pointer-events-none select-none">
+          <div className="size-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-heading font-black text-2xl text-white/30">
+            {profile.name.slice(0, 2).toUpperCase()}
+          </div>
+        </div>
+      )}
 
       {/* 📄 Right Content Column */}
       <div className="relative z-10 lg:ml-[42%] p-6 sm:p-10 lg:py-12 lg:pr-14 lg:pl-6 space-y-6">

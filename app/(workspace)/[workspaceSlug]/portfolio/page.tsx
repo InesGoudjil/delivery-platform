@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { getServerServices } from "@/core/server";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 import { PortfolioClient, PortfolioItem } from "./portfolio-client";
-import { DEMO_PORTFOLIO_ASSETS } from "@/lib/demo-portfolio";
 import { SelectableCoverAsset } from "@/lib/portfolio-data";
 
 export default async function PortfolioPage({
@@ -181,19 +180,7 @@ export default async function PortfolioPage({
     }
   }
 
-  const finalAvailableAssets: SelectableCoverAsset[] =
-    availableAssets.length > 0
-      ? availableAssets
-      : DEMO_PORTFOLIO_ASSETS.map((demo) => ({
-          id: String(demo.id),
-          title: demo.title,
-          type: demo.kind === "still" ? "still" : "video",
-          url: demo.videoUrl || demo.image,
-          thumbnailUrl: demo.image,
-          aspectRatio: "16:9",
-          duration: demo.tc,
-          category: demo.cat,
-        }));
+  const finalAvailableAssets: SelectableCoverAsset[] = availableAssets;
 
   return (
     <PortfolioClient

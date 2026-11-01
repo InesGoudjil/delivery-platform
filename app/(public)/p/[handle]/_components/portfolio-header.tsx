@@ -9,6 +9,7 @@ interface PortfolioHeaderProps {
 }
 
 export function PortfolioHeader({ profile }: PortfolioHeaderProps) {
+  console.log("profile",profile)
   return (
     <header className="sticky top-0 z-40 bg-[#0a0a0b]/80 backdrop-blur-md border-b border-white/5 transition-all">
       <div className="w-full px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
@@ -26,7 +27,7 @@ export function PortfolioHeader({ profile }: PortfolioHeaderProps) {
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              {profile.avatar && (
+              {/* {profile.avatar && (
                 <div className="size-9 rounded-full overflow-hidden border border-white/20 shadow-md shrink-0 bg-black">
                   <img
                     src={profile.avatar}
@@ -34,7 +35,7 @@ export function PortfolioHeader({ profile }: PortfolioHeaderProps) {
                     className="w-full h-full object-cover"
                   />
                 </div>
-              )}
+              )} */}
               <div className="flex items-center gap-1.5">
                 <TypographySpan className="font-heading font-extrabold text-xl sm:text-2xl tracking-tight text-white group-hover:text-zinc-200 transition-colors">
                   {profile.name}

@@ -11,7 +11,8 @@ export class MemberService {
     private readonly featuresRepo: IWorkspaceFeaturesRepository,
     private readonly workspaceRepo?: IWorkspaceRepository,
     private readonly userProfileRepo?: IUserProfileRepository,
-    private readonly notificationService?: NotificationService
+    private readonly notificationService?: NotificationService,
+    private readonly systemMemberRepo?: IWorkspaceMemberRepository
   ) {}
 
   async listMembers(workspaceId: string): Promise<EnrichedWorkspaceMember[]> {
@@ -201,8 +202,9 @@ export class MemberService {
       throw new Error('This invitation has expired');
     }
 
-    // Add user as workspace member
-    const member = await this.memberRepo.addMember(invite.workspaceId, userId, invite.role);
+    // Add user as workspace member using privileged client repo if provided
+    const memberRepoToUse = this.systemMemberRepo || this.memberRepo;
+    const member = await memberRepoToUse.addMember(invite.workspaceId, userId, invite.role);
     await this.invitationRepo.updateStatus(invite.id, 'accepted');
 
     return member;

@@ -126,7 +126,8 @@ export function createCoreServices(
   const workspaceFeaturesRepo = new SupabaseWorkspaceFeaturesRepository(systemClient);
   const userProfileRepo = new SupabaseUserProfileRepository(supabase);
   const workspaceMemberRepo = new SupabaseWorkspaceMemberRepository(supabase);
-  const workspaceInvitationRepo = new SupabaseWorkspaceInvitationRepository(supabase);
+  const systemWorkspaceMemberRepo = new SupabaseWorkspaceMemberRepository(systemClient);
+  const workspaceInvitationRepo = new SupabaseWorkspaceInvitationRepository(systemClient);
   const planRepo = new SupabasePlanRepository(systemClient);
   const subscriptionRepo = new SupabaseSubscriptionRepository(systemClient);
   const clientRepo = new SupabaseClientRepository(supabase);
@@ -169,7 +170,8 @@ export function createCoreServices(
     workspaceFeaturesRepo,
     workspaceRepo,
     userProfileRepo,
-    notificationService
+    notificationService,
+    systemWorkspaceMemberRepo
   );
   const subscriptionService = new SubscriptionService(
     subscriptionRepo,

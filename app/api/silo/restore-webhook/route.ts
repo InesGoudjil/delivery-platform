@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
     }
 
-    // Optional webhook secret check if configured
+    // Webhook authentication check
     if (env.SILO_WEBHOOK_SECRET) {
       const authHeader = req.headers.get("authorization") || req.headers.get("x-silo-secret");
       const urlSecret = req.nextUrl.searchParams.get("secret");
@@ -25,17 +25,35 @@ export async function POST(req: NextRequest) {
       if (!matched) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
+    } else if (process.env.NODE_ENV === "production") {
+      console.error("[Silo Webhook] SILO_WEBHOOK_SECRET is not configured in production");
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
     }
 
-    // Handle AWS SNS Subscription Confirmation automatically
+    // Handle AWS SNS Subscription Confirmation with strict SSRF mitigation
     if (body.Type === "SubscriptionConfirmation" && body.SubscribeURL) {
-      console.log("[Silo Webhook] Confirming AWS SNS Subscription via:", body.SubscribeURL);
       try {
-        await fetch(body.SubscribeURL);
+        const parsedUrl = new URL(body.SubscribeURL);
+
+        // Strict protocol check: HTTPS only
+        if (parsedUrl.protocol !== "https:") {
+          console.error("[Silo Webhook] SSRF attempt blocked: non-https SubscribeURL:", body.SubscribeURL);
+          return NextResponse.json({ error: "Invalid SubscribeURL protocol" }, { status: 400 });
+        }
+
+        // Strict hostname validation: strictly match AWS SNS domain pattern
+        const isAwsSns = /^sns\.[a-z0-9-]+\.amazonaws\.com$/i.test(parsedUrl.hostname);
+        if (!isAwsSns) {
+          console.error("[Silo Webhook] SSRF attempt blocked: untrusted hostname:", parsedUrl.hostname);
+          return NextResponse.json({ error: "Untrusted SubscribeURL host" }, { status: 400 });
+        }
+
+        console.log("[Silo Webhook] Confirming AWS SNS Subscription via:", parsedUrl.href);
+        await fetch(parsedUrl.href);
         return NextResponse.json({ success: true, message: "Subscription confirmed" });
-      } catch (subErr) {
+      } catch (subErr: any) {
         console.error("[Silo Webhook] Failed to confirm SNS subscription:", subErr);
-        return NextResponse.json({ error: "Subscription confirmation failed" }, { status: 500 });
+        return NextResponse.json({ error: subErr.message || "Subscription confirmation failed" }, { status: 500 });
       }
     }
 

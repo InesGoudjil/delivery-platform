@@ -123,7 +123,7 @@ describe("app/actions/deliveries", () => {
       const cookieStore = await cookies();
       expect(cookieStore.set).toHaveBeenCalledWith(
         "delivery_access_token_abc123",
-        "verified",
+        expect.stringMatching(/^v1:\d+:[a-f0-9]{64}$/),
         expect.any(Object)
       );
     });
@@ -146,12 +146,22 @@ describe("app/actions/deliveries", () => {
       expect(result.hasAccess).toBe(false);
     });
 
-    it("returns hasAccess: true when cookie is verified", async () => {
+    it("returns hasAccess: true when cookie is verified with valid signature", async () => {
+      const { generateDeliveryAccessToken } = await import("@/lib/security/delivery-token");
+      const validToken = generateDeliveryAccessToken("token_abc123");
+      const cookieStore = await cookies();
+      vi.mocked(cookieStore.get).mockReturnValue({ name: "delivery_access_token_abc123", value: validToken });
+
+      const result = await checkDeliveryAccessAction("token_abc123");
+      expect(result.hasAccess).toBe(true);
+    });
+
+    it("returns hasAccess: false when cookie is forged static 'verified'", async () => {
       const cookieStore = await cookies();
       vi.mocked(cookieStore.get).mockReturnValue({ name: "delivery_access_token_abc123", value: "verified" });
 
       const result = await checkDeliveryAccessAction("token_abc123");
-      expect(result.hasAccess).toBe(true);
+      expect(result.hasAccess).toBe(false);
     });
   });
 });

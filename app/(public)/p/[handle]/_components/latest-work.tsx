@@ -32,7 +32,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
 
   // State for active category tab: "projects" | "films" | "stills"
   const [activeTab, setActiveTab] = useState<"projects" | "films" | "stills">(
-    projects.length > 0 ? "projects" : films.length > 0 ? "films" : "stills"
+    projects.length > 0 ? "projects" : films.length > 0 ? "films" : stills.length > 0 ? "stills" : "projects"
   );
 
   const PAGE_SIZE = 12;
