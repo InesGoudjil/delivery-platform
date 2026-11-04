@@ -10,6 +10,9 @@ import {
   updateAssetOptionsSchema,
   safeValidate,
 } from "@/lib/validations";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ actionGroup: "assets" });
 
 export interface DeleteAssetOptions {
   deliveryId?: string;
@@ -79,7 +82,7 @@ export async function deleteAssetAction(
         }
       }
     } catch (portErr) {
-      console.warn("Portfolio featuredItem cleanup notice:", portErr);
+      log.warn({ err: portErr, assetId }, "Portfolio featuredItem cleanup notice");
     }
 
     // Soft delete (archive) the asset
@@ -103,7 +106,7 @@ export async function deleteAssetAction(
 
     return { success: true };
   } catch (error: any) {
-    console.error("deleteAssetAction error:", error);
+    log.error({ err: error, assetId }, "deleteAssetAction error");
     return {
       success: false,
       error: error.message || "Failed to move asset to trash.",
@@ -147,7 +150,7 @@ export async function restoreAssetAction(
 
     return { success: true };
   } catch (error: any) {
-    console.error("restoreAssetAction error:", error);
+    log.error({ err: error, assetId }, "restoreAssetAction error");
     return {
       success: false,
       error: error.message || "Failed to restore asset.",
@@ -178,7 +181,7 @@ export async function permanentDeleteAssetAction(
       try {
         await services.project.detachAssetFromProject(options.projectId, assetId);
       } catch (e) {
-        console.warn("Detach from project warning:", e);
+        log.warn({ err: e, projectId: options.projectId, assetId }, "Detach from project warning");
       }
     }
 
@@ -210,7 +213,7 @@ export async function permanentDeleteAssetAction(
             try {
               await services.storage.deleteAsset(target);
             } catch (storageErr) {
-              console.warn("Storage deletion notice:", storageErr);
+              log.warn({ err: storageErr, target }, "Storage deletion notice");
             }
           }
         }
@@ -227,11 +230,11 @@ export async function permanentDeleteAssetAction(
             });
           }
         } catch (wsErr) {
-          console.warn("Workspace storage quota update notice:", wsErr);
+          log.warn({ err: wsErr, workspaceId: asset.workspaceId }, "Workspace storage quota update notice");
         }
       }
     } catch (verErr) {
-      console.warn("Version listing for cleanup notice:", verErr);
+      log.warn({ err: verErr, assetId }, "Version listing for cleanup notice");
     }
 
     // Check if asset is pinned in the portfolio appearance
@@ -254,7 +257,7 @@ export async function permanentDeleteAssetAction(
         }
       }
     } catch (portErr) {
-      console.warn("Portfolio featuredItem cleanup notice:", portErr);
+      log.warn({ err: portErr, assetId }, "Portfolio featuredItem cleanup notice");
     }
 
     // Delete the asset from database (cascades to asset_versions and feedback)
@@ -278,7 +281,7 @@ export async function permanentDeleteAssetAction(
 
     return { success: true };
   } catch (error: any) {
-    console.error("permanentDeleteAssetAction error:", error);
+    log.error({ err: error, assetId }, "permanentDeleteAssetAction error");
     return {
       success: false,
       error: error.message || "Failed to permanently delete asset.",
@@ -333,7 +336,7 @@ export async function listTrashAssetsAction(
 
     return { success: true, assets: enriched };
   } catch (error: any) {
-    console.error("listTrashAssetsAction error:", error);
+    log.error({ err: error, workspaceId }, "listTrashAssetsAction error");
     return {
       success: false,
       error: error.message || "Failed to load trash assets.",
@@ -376,7 +379,7 @@ export async function emptyTrashAction(
 
     return { success: true, count };
   } catch (error: any) {
-    console.error("emptyTrashAction error:", error);
+    log.error({ err: error, workspaceId }, "emptyTrashAction error");
     return {
       success: false,
       error: error.message || "Failed to empty trash.",
@@ -441,7 +444,7 @@ export async function deletePortfolioItemAction(
           }
         }
       } catch (portErr) {
-        console.warn("Portfolio featured cleanup notice:", portErr);
+        log.warn({ err: portErr, itemId }, "Portfolio featured cleanup notice");
       }
 
       // Delete the project
@@ -463,7 +466,7 @@ export async function deletePortfolioItemAction(
       });
     }
   } catch (error: any) {
-    console.error("deletePortfolioItemAction error:", error);
+    log.error({ err: error, itemId }, "deletePortfolioItemAction error");
     return {
       success: false,
       error: error.message || "Failed to delete portfolio item.",
@@ -504,7 +507,7 @@ export async function deleteDeliveryAction(
         });
       }
     } catch (e) {
-      console.warn("Delivery asset cleanup notice:", e);
+      log.warn({ err: e, deliveryId }, "Delivery asset cleanup notice");
     }
 
     // Detach all assets from this delivery so they remain preserved in workspace Trash
@@ -512,7 +515,7 @@ export async function deleteDeliveryAction(
     try {
       await services.asset.detachAllFromDelivery(deliveryId);
     } catch (detachErr) {
-      console.warn("Delivery asset detachment notice:", detachErr);
+      log.warn({ err: detachErr, deliveryId }, "Delivery asset detachment notice");
     }
 
     // Delete delivery entity
@@ -526,7 +529,7 @@ export async function deleteDeliveryAction(
 
     return { success: true };
   } catch (error: any) {
-    console.error("deleteDeliveryAction error:", error);
+    log.error({ err: error, deliveryId }, "deleteDeliveryAction error");
     return {
       success: false,
       error: error.message || "Failed to delete delivery.",
@@ -703,7 +706,7 @@ export async function updateAssetAction(
       },
     };
   } catch (error: any) {
-    console.error("updateAssetAction error:", error);
+    log.error({ err: error, itemId }, "updateAssetAction error");
     return {
       success: false,
       error: error.message || "Failed to update asset.",
@@ -764,7 +767,7 @@ export async function setActiveVersionAction(
 
     return { success: true };
   } catch (error: any) {
-    console.error("setActiveVersionAction error:", error);
+    log.error({ err: error, assetId, versionId }, "setActiveVersionAction error");
     return {
       success: false,
       error: error.message || "Failed to set active version.",

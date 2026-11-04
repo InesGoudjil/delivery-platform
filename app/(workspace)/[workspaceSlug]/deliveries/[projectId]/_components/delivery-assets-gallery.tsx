@@ -30,6 +30,7 @@ import {
   TypographySpan,
 } from "@/components/ui/typography";
 import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
+import { useOptionalEntitlements } from "@/components/providers/entitlements-provider";
 import type { GalleryItem, AppearanceSettings } from "./types";
 
 interface DeliveryAssetsGalleryProps {
@@ -85,7 +86,10 @@ export function DeliveryAssetsGallery({
 
   const { cardSize, aspectRatioSetting, thumbnailScale, showCardInfo, watermarkMedia } = appearance;
   const isMasonry = aspectRatioSetting === "masonry";
-  console.log("items",appearance)
+
+  const entitlements = useOptionalEntitlements();
+  const canWatermark = entitlements?.can.watermark ?? false;
+  const isWatermarkActive = canWatermark && Boolean(watermarkMedia);
 
   return (
     <div className="space-y-6">
@@ -189,7 +193,7 @@ export function DeliveryAssetsGallery({
               textAlign="center"
               footerMode="overlay"
               watermarkMedia={
-                watermarkMedia
+                isWatermarkActive
                   ? { enabled: true, text: "WATERMARK ACTIVE", opacity: 0.16 }
                   : undefined
               }

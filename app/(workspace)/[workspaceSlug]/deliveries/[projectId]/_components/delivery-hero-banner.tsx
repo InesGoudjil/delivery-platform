@@ -14,10 +14,18 @@ import {
   RefreshCw,
   CheckCircle2,
   Trash2,
+  MoreHorizontal,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { TypographyH1, TypographyKicker, TypographySpan } from "@/components/ui/typography";
 import { cn } from "@/lib/utils";
 
@@ -130,8 +138,130 @@ export function DeliveryHeroBanner({
           </div>
         </div>
 
-        {/* Action Buttons Row */}
-        <div className="flex flex-wrap items-center gap-3 pt-4">
+        {/* Mobile View: Consolidated Primary Actions & "More" Menu */}
+        <div className="flex sm:hidden flex-col gap-2.5 pt-3 w-full">
+          <div className="flex items-center gap-2 w-full">
+            <Button
+              onClick={onOpenShareDialog}
+              className="flex-1 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs h-11 shadow-lg shadow-primary/20 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+            >
+              <Share2 className="size-4 shrink-0" />
+              <TypographySpan>SHARE LINK</TypographySpan>
+            </Button>
+
+            <Button
+              asChild
+              variant="outline"
+              className="flex-1 rounded-full border-border/60 bg-background/50 backdrop-blur-md hover:bg-muted text-foreground font-extrabold text-xs h-11 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+            >
+              <a
+                href={`https://wa.me/${
+                  clientPhone ? clientPhone.replace(/[^0-9]/g, "") : ""
+                }?text=${encodeURIComponent(
+                  `Hi ${clientName}, your review cut for ${projectTitle} is ready: ${
+                    typeof window !== "undefined" ? window.location.origin : ""
+                  }${shareUrl}`
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <MessageCircle className="size-4 text-emerald-400 shrink-0" />
+                <TypographySpan>{clientPhone ? "WHATSAPP" : "SEND"}</TypographySpan>
+              </a>
+            </Button>
+
+            {/* Mobile More Actions (•••) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-full border-border/60 bg-background/50 backdrop-blur-md hover:bg-muted text-foreground size-11 shrink-0 cursor-pointer active:scale-95 flex items-center justify-center"
+                  aria-label="More delivery options"
+                >
+                  <MoreHorizontal className="size-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-56 rounded-2xl bg-popover border border-border text-popover-foreground p-2 shadow-2xl backdrop-blur-xl z-50 animate-in fade-in zoom-in-95 duration-150"
+              >
+                <DropdownMenuItem
+                  onClick={onOpenEditDialog}
+                  className="flex items-center gap-2.5 p-2.5 rounded-xl text-xs font-semibold cursor-pointer"
+                >
+                  <Pencil className="size-4 text-primary shrink-0" />
+                  <span>Edit Delivery</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={onOpenPublishDialog}
+                  className="flex items-center gap-2.5 p-2.5 rounded-xl text-xs font-semibold cursor-pointer"
+                >
+                  <Sparkles className="size-4 text-amber-400 shrink-0" />
+                  <span>Publish to Portfolio</span>
+                </DropdownMenuItem>
+
+                {onOpenDownloadDialog && (
+                  <DropdownMenuItem
+                    onClick={onOpenDownloadDialog}
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl text-xs font-semibold cursor-pointer"
+                  >
+                    <Download className="size-4 text-primary shrink-0" />
+                    <span>Download Package</span>
+                  </DropdownMenuItem>
+                )}
+
+                <DropdownMenuItem asChild>
+                  <Link
+                    href={shareUrl}
+                    target="_blank"
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl text-xs font-semibold cursor-pointer"
+                  >
+                    <ExternalLink className="size-4 text-zinc-400 shrink-0" />
+                    <span>Open Public View</span>
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="bg-border my-1" />
+
+                {projectStatus === "archived" || siloStatus === "archived" ? (
+                  <DropdownMenuItem
+                    onClick={() => onRestoreFromSilo?.("Bulk")}
+                    disabled={isSiloActionPending}
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl text-xs font-semibold text-blue-400 cursor-pointer"
+                  >
+                    <ArchiveRestore className="size-4 text-blue-400 shrink-0" />
+                    <span>Restore from Silo</span>
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onClick={onArchive}
+                    disabled={isSiloActionPending}
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl text-xs font-semibold cursor-pointer"
+                  >
+                    <Lock className="size-4 text-zinc-400 shrink-0" />
+                    <span>Archive to Silo</span>
+                  </DropdownMenuItem>
+                )}
+
+                {onDeleteDelivery && (
+                  <DropdownMenuItem
+                    onClick={onDeleteDelivery}
+                    disabled={isDeletingDelivery}
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl text-xs font-semibold text-destructive focus:bg-destructive/15 focus:text-destructive cursor-pointer"
+                  >
+                    <Trash2 className="size-4 text-destructive shrink-0" />
+                    <span>Delete Delivery</span>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Desktop View: Full Action Buttons Row */}
+        <div className="hidden sm:flex flex-wrap items-center gap-3 pt-4">
           {/* SHARE A LINK Button -> Opens Share Dialog */}
           <Button
             onClick={onOpenShareDialog}

@@ -5,6 +5,9 @@ import {
   CreateWaitlistEntryDTO,
   WaitlistPositionResult,
 } from "@/core/entities/waitlist";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ repository: "WaitlistRepository" });
 
 export interface IWaitlistRepository {
   create(dto: CreateWaitlistEntryDTO): Promise<WaitlistEntry>;
@@ -137,7 +140,7 @@ export class SupabaseWaitlistRepository implements IWaitlistRepository {
       .eq("id", referrerId);
 
     if (error) {
-      console.error(`Failed to increment referral count for ${referrerId}:`, error);
+      log.error({ err: error, referrerId }, "Failed to increment referral count");
     }
   }
 

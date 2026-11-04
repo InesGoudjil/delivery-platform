@@ -1,5 +1,8 @@
 import { getServerServices } from "@/core/server";
 import { UsersClient, AdminUserListItem } from "./users-client";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ page: "AdminUsersPage" });
 
 export default async function AdminUsersPage() {
   const services = await getServerServices();
@@ -31,7 +34,7 @@ export default async function AdminUsersPage() {
       );
     }
   } catch (err) {
-    console.warn("Error fetching profiles in admin users:", err);
+    log.warn({ err }, "Error fetching profiles in admin users");
   }
   // Showcase fallback data if database is fresh
 

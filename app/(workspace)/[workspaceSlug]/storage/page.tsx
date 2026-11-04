@@ -10,6 +10,9 @@ import {
   Sparkles,
 } from "lucide-react";
 import { getServerServices, getServerAdminServices } from "@/core/server";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ page: "StoragePage" });
 import {
   Card,
   CardHeader,
@@ -73,7 +76,7 @@ export default async function StoragePage({
         storageUpgradeSuccess = true;
       }
     } catch (err: any) {
-      console.warn("[StoragePage] Checkout session sync error:", err.message);
+      log.warn({ err, sessionId: session_id }, "Checkout session sync error");
     }
   }
 

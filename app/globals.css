@@ -303,6 +303,9 @@ h6,
   html {
     @apply font-sans;
   }
+  html, body {
+    overflow-x: clip;
+  }
 
   /* Minimalist WebKit scrollbar styling */
   *::-webkit-scrollbar {
@@ -333,6 +336,35 @@ h6,
 }
 
 @layer utilities {
+  /* Mobile Safe Area Inset Helpers */
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+  }
+  .pt-safe {
+    padding-top: max(0.75rem, env(safe-area-inset-top, 0.75rem));
+  }
+  .mb-safe {
+    margin-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+  }
+  .min-h-screen-safe {
+    min-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Expanded touch target for Video.js time scrubber slider */
+  .media-time-slider {
+    touch-action: none;
+    position: relative;
+  }
+  .media-time-slider::before {
+    content: "";
+    position: absolute;
+    top: -12px;
+    bottom: -12px;
+    left: 0;
+    right: 0;
+    cursor: pointer;
+  }
+
   /* Scrollbar hiding utilities */
   .no-scrollbar::-webkit-scrollbar,
   .scrollbar-none::-webkit-scrollbar {

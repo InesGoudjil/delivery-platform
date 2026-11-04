@@ -19,6 +19,9 @@ import { PortfolioModals } from "./_components/portfolio-modals";
 import { AmbientBackground } from "@/components/ui/ambient-background";
 import { AccentThemeProvider } from "@/components/theme/accent-theme-provider";
 import { notFound } from "next/navigation";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ page: "PublicPortfolio" });
 
 interface PageProps {
   params: Promise<{ handle: string }>;
@@ -106,7 +109,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
       );
     }
   } catch (err: any) {
-    console.warn("Notice resolving workspace/portfolio:", err?.message || err);
+    log.warn({ err, handle }, "Notice resolving workspace/portfolio");
   }
 
   // 3. Fetch Real Projects and Standalone Assets from DB
@@ -128,7 +131,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
       standaloneAssets = unassigned;
       workspaceFeatures = features;
     } catch (err: any) {
-      console.warn("Notice fetching database assets/projects:", err?.message || err);
+      log.warn({ err, workspaceId: workspace.id }, "Notice fetching database assets/projects");
     }
   }
 
@@ -370,7 +373,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
         ownerAvatarUrl = resolveMediaUrl(ownerProfile.avatarUrl);
       }
     } catch (e) {
-      console.warn("Could not load owner profile avatar:", e);
+      log.warn({ err: e, ownerId: workspace.ownerId }, "Could not load owner profile avatar");
     }
   }
 

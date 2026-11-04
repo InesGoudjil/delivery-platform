@@ -3,6 +3,9 @@ import { Plan } from "@/core/entities/plan";
 import { Subscription } from "@/core/entities/subscription";
 import { Workspace } from "@/core/entities/workspace";
 import { WorkspacesClient, AdminWorkspaceListItem } from "./workspaces-client";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ page: "AdminWorkspacesPage" });
 
 export default async function AdminWorkspacesPage() {
   const services = await getServerServices();
@@ -53,7 +56,7 @@ export default async function AdminWorkspacesPage() {
       );
     }
   } catch (err) {
-    console.warn("Admin workspaces page error:", err);
+    log.warn({ err }, "Admin workspaces page error");
   }
 
 

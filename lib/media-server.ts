@@ -1,4 +1,7 @@
 import { IStorageProvider } from "@/core/providers/storage";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ service: "MediaServer" });
 
 /**
  * Server-side helper that generates a direct, short-lived presigned GET URL (default 2 hours)
@@ -34,7 +37,7 @@ export async function presignPrivateMediaUrl(
         );
       }
     } catch (err) {
-      console.error("[Media Server] Failed to resolve Stream download URL:", err);
+      log.error({ err, streamUid }, "Failed to resolve Stream download URL");
     }
     return `/api/media/${streamUid}?download=true&filename=${encodeURIComponent(downloadFilename)}`;
   }
@@ -71,7 +74,7 @@ export async function presignPrivateMediaUrl(
         return await storageProvider.getSecurePlaybackUrl(key, false, expiresInSeconds);
       }
     } catch (err) {
-      console.error("[Media Server] Failed to presign R2 URL:", err);
+      log.error({ err, key, isPrivateKey }, "Failed to presign R2 URL");
     }
   }
 

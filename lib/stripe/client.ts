@@ -1,5 +1,8 @@
 import Stripe from 'stripe';
 import { env } from '@/lib/env';
+import { createScopedLogger } from '@/lib/logger';
+
+const log = createScopedLogger({ module: 'stripe/client' });
 
 /**
  * Returns an initialized Stripe client instance or null if secret key is missing.
@@ -32,7 +35,7 @@ export async function createStripeProductAndPrice(
   const stripe = getStripeClient();
 
   if (!stripe) {
-    console.warn('[Stripe] Secret key unconfigured or placeholder. Generating fallback mock Stripe IDs.');
+    log.warn('Secret key unconfigured or placeholder. Generating fallback mock Stripe IDs.');
     const mockId = `price_mock_${Date.now()}`;
     return { stripeProductId: `prod_mock_${Date.now()}`, stripePriceId: mockId };
   }
@@ -59,7 +62,7 @@ export async function createStripeProductAndPrice(
       stripePriceId: price.id,
     };
   } catch (err: any) {
-    console.error('[Stripe] Failed to create product/price:', err);
+    log.error({ err, name }, 'Failed to create product/price in Stripe');
     throw new Error(`Stripe Error: ${err.message}`);
   }
 }
@@ -84,6 +87,6 @@ export async function archiveStripeProductAndPrice(stripePriceId?: string | null
       await stripe.products.update(price.product, { active: false });
     }
   } catch (err: any) {
-    console.warn('[Stripe] Failed to archive product/price:', err.message);
+    log.warn({ err, stripePriceId }, 'Failed to archive product/price in Stripe');
   }
 }

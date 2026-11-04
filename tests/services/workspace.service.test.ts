@@ -33,7 +33,15 @@ describe("core/services/WorkspaceService", () => {
   const starterPlan = {
     id: "plan_starter",
     slug: "starter",
+    currency: "USD",
     features: { client_links: 1, team_seats: 1 },
+  };
+
+  const studioPlan = {
+    id: "plan_studio",
+    slug: "studio",
+    currency: "USD",
+    features: { client_links: -1, team_seats: 5 },
   };
 
   beforeEach(() => {
@@ -67,9 +75,11 @@ describe("core/services/WorkspaceService", () => {
     };
 
     planRepo = {
-      findBySlug: vi.fn().mockImplementation((slug) =>
-        Promise.resolve(slug === "starter" ? starterPlan : null) as any
-      ),
+      findBySlug: vi.fn().mockImplementation((slug) => {
+        if (slug === "starter") return Promise.resolve(starterPlan);
+        if (slug === "studio") return Promise.resolve(studioPlan);
+        return Promise.resolve(null);
+      }),
     };
 
     memberRepo = {
@@ -107,10 +117,8 @@ describe("core/services/WorkspaceService", () => {
           planId: "plan_starter",
         })
       );
-      expect(featuresRepo.upsertFeatures).toHaveBeenCalledWith(
-        "ws_new",
-        starterPlan.features
-      );
+      // Redundant snapshot copy to workspace_features is omitted (SSOT via subscriptions -> plans)
+      expect(featuresRepo.upsertFeatures).not.toHaveBeenCalled();
     });
 
     it("resolves slug collisions by appending a counter", async () => {
@@ -147,6 +155,36 @@ describe("core/services/WorkspaceService", () => {
       expect(list).toHaveLength(2);
       expect(list.map((w) => w.id)).toContain("ws_owned");
       expect(list.map((w) => w.id)).toContain("ws_collab");
+    });
+  });
+
+  describe("createTeamWorkspace and checkTeamWorkspaceEligibility", () => {
+    it("allows user to create a team workspace with a 14-day studio trial", async () => {
+      const eligibility = await service.checkTeamWorkspaceEligibility("user_123");
+      expect(eligibility.eligible).toBe(true);
+      expect(eligibility.maxSeats).toBe(5);
+
+      const teamWs = await service.createTeamWorkspace("user_123", "Acme Production");
+      expect(teamWs.id).toBe("ws_new");
+      expect(workspaceRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ownerId: "user_123",
+          brandName: "Acme Production",
+          accountType: "studio",
+        })
+      );
+
+      // Verify trial subscription is provisioned, NOT a fake active subscription
+      expect(subscriptionRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspaceId: "ws_new",
+          planId: "plan_studio",
+          status: "trialing",
+        })
+      );
+
+      // Redundant snapshot copy to workspace_features is omitted (SSOT via subscriptions -> plans)
+      expect(featuresRepo.upsertFeatures).not.toHaveBeenCalled();
     });
   });
 });

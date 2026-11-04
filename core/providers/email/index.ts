@@ -1,9 +1,12 @@
 import { Resend } from "resend";
 import { env } from "@/lib/env";
+import { createScopedLogger } from "@/lib/logger";
 import {
   renderWaitlistWelcomeEmail,
   renderWaitlistInviteEmail,
 } from "./templates";
+
+const log = createScopedLogger({ provider: "ZeptoMailEmailProvider" });
 
 export * from "./templates";
 
@@ -214,11 +217,7 @@ export class ZeptoMailEmailProvider implements IEmailProvider {
           } else if (data?.message) {
             errorMsg = data.message;
           }
-          console.error("[ZeptoMailEmailProvider] Failed to send email:", {
-            status: response.status,
-            error: errorMsg,
-            response: data,
-          });
+          log.error({ status: response.status, error: errorMsg, response: data }, "Failed to send email");
           return { success: false, error: errorMsg };
         }
 
@@ -229,7 +228,7 @@ export class ZeptoMailEmailProvider implements IEmailProvider {
 
         return { success: true, messageId };
       } catch (err: any) {
-        console.error("[ZeptoMailEmailProvider] Unexpected error during send:", err);
+        log.error({ err }, "Unexpected error during email send");
         return {
           success: false,
           error: err?.message || "Failed to send email via Zoho ZeptoMail",
@@ -239,8 +238,8 @@ export class ZeptoMailEmailProvider implements IEmailProvider {
 
     // 2. Migration fallback: If ZeptoMail token is not set, use Resend if available
     if (this.resendFallback) {
-      console.warn(
-        "[ZeptoMailEmailProvider] ZEPTOMAIL_API_TOKEN is not set. Temporarily dispatching via Resend fallback."
+      log.warn(
+        "ZEPTOMAIL_API_TOKEN is not set. Temporarily dispatching via Resend fallback."
       );
       try {
         const fromStr = fromName ? `${fromName} <${fromAddress}>` : fromAddress;
@@ -254,19 +253,13 @@ export class ZeptoMailEmailProvider implements IEmailProvider {
         });
 
         if (error) {
-          console.error(
-            "[ZeptoMailEmailProvider:ResendFallback] Error from Resend API:",
-            error
-          );
+          log.error({ error }, "Error from Resend API during fallback send");
           return { success: false, error: error.message };
         }
 
         return { success: true, messageId: data?.id };
       } catch (err: any) {
-        console.error(
-          "[ZeptoMailEmailProvider:ResendFallback] Unexpected error:",
-          err
-        );
+        log.error({ err }, "Unexpected error during Resend fallback send");
         return {
           success: false,
           error: err?.message || "Failed to send email via Resend fallback",
@@ -276,8 +269,14 @@ export class ZeptoMailEmailProvider implements IEmailProvider {
 
     // 3. Mock mode: If neither ZeptoMail nor Resend credentials are set
     const mockId = `mock_zepto_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    console.log(
-      `[ZeptoMailEmailProvider:Mock] Sent email:\n  To: ${toList.map((t) => t.email_address.address).join(", ")}\n  From: ${fromName ? `${fromName} <${fromAddress}>` : fromAddress}\n  Subject: ${params.subject}\n  MessageId: ${mockId}`
+    log.info(
+      {
+        to: toList.map((t) => t.email_address.address),
+        from: fromName ? `${fromName} <${fromAddress}>` : fromAddress,
+        subject: params.subject,
+        messageId: mockId,
+      },
+      "Sent email in mock mode"
     );
     return { success: true, messageId: mockId };
   }

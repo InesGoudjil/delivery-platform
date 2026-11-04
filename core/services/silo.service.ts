@@ -9,6 +9,9 @@ import {
 } from "@/core/providers/storage/silo-glacier.provider";
 import { NotificationService } from "./notification.service";
 import { SubscriptionService } from "./subscription.service";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ service: "SiloService" });
 
 export interface ArchiveDeliveryResult {
   success: boolean;
@@ -127,7 +130,7 @@ export class SiloService {
         try {
           await this.activeStorage.deleteAsset(rawKey);
         } catch (delErr) {
-          console.warn("[SiloService] Non-critical warning deleting active copy:", delErr);
+          log.warn({ delErr, rawKey }, "Non-critical warning deleting active copy");
         }
 
         // 4. Update AssetVersion record
@@ -348,7 +351,7 @@ export class SiloService {
               thawedDays: 7,
             })
             .catch((err) => {
-              console.error("[SiloService] Failed to dispatch restore notification:", err);
+              log.error({ err, deliveryId }, "Failed to dispatch restore notification");
             });
         }
       }

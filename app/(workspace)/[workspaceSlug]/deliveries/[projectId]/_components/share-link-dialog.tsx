@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { UniversalDialog } from "@/components/ui/universal-dialog";
 import { TypographyMuted, TypographySpan } from "@/components/ui/typography";
+import { useOptionalEntitlements } from "@/components/providers/entitlements-provider";
 import Link from "next/link";
 import {
   updateDeliverySecurityAction,
@@ -100,9 +101,10 @@ export function ShareLinkDialog({
 
   const shareUrl = `/deliver/${currentToken}`;
 
-  const canPasswordProtect = features ? Boolean(features.password_protected) : false;
-  const canWhatsApp = features ? Boolean(features.whatsapp_delivery) : false;
-  const canNotifyDownloads = features ? Boolean(features.download_notifications) : false;
+  const entitlements = useOptionalEntitlements();
+  const canPasswordProtect = entitlements?.can.passwordProtect ?? (features ? Boolean(features.password_protected) : false);
+  const canWhatsApp = entitlements?.can.sendWhatsApp ?? (features ? Boolean(features.whatsapp_delivery) : false);
+  const canNotifyDownloads = entitlements?.can.receiveDownloadNotifications ?? (features ? Boolean(features.download_notifications) : false);
 
   const [sharePassphrase, setSharePassphrase] = useState(initialPasscodeProtected);
   const [passphraseValue, setPassphraseValue] = useState("");

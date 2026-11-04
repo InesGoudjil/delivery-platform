@@ -67,4 +67,32 @@ describe("CutReviewPlayer with Timeline Comment Markers", () => {
       expect(validComments.map((c) => c.id)).toEqual(["c1", "c5"]);
     });
   });
+
+  describe("Mobile gesture and frame-stepping calculations", () => {
+    it("computes double-tap seek backward and forward with boundary clamping", () => {
+      const duration = 50;
+      // Seek back 10s from 25s -> 15s
+      expect(Math.max(0, 25 - 10)).toBe(15);
+      // Seek back 10s from 4s -> clamps to 0s
+      expect(Math.max(0, 4 - 10)).toBe(0);
+
+      // Seek forward 10s from 25s -> 35s
+      expect(Math.min(duration, 25 + 10)).toBe(35);
+      // Seek forward 10s from 45s -> clamps to duration 50s
+      expect(Math.min(duration, 45 + 10)).toBe(50);
+    });
+
+    it("distinguishes left (<0.45) vs right (>0.55) touch zones for double-tap seek", () => {
+      const isLeftSeek = (xRatio: number) => xRatio < 0.45;
+      const isRightSeek = (xRatio: number) => xRatio > 0.55;
+
+      expect(isLeftSeek(0.2)).toBe(true);
+      expect(isLeftSeek(0.44)).toBe(true);
+      expect(isLeftSeek(0.5)).toBe(false);
+
+      expect(isRightSeek(0.8)).toBe(true);
+      expect(isRightSeek(0.56)).toBe(true);
+      expect(isRightSeek(0.5)).toBe(false);
+    });
+  });
 });

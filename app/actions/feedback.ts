@@ -13,6 +13,9 @@ import {
   type AddFeedbackInput,
   type AddFeedbackReplyInput,
 } from "@/lib/validations";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ actionGroup: "feedback" });
 
 type AddFeedbackParams = AddFeedbackInput;
 type AddFeedbackReplyParams = AddFeedbackReplyInput;
@@ -146,11 +149,11 @@ export async function addFeedbackAction(params: AddFeedbackParams) {
                 timestampSeconds,
                 origin,
               })
-              .catch((err) => console.warn("[Feedback] Failed to dispatch note notification:", err));
+              .catch((err) => log.warn({ err }, "Failed to dispatch note notification"));
           }
         }
       } catch (notifyErr) {
-        console.warn("[Feedback] Notification warning:", notifyErr);
+        log.warn({ err: notifyErr }, "Feedback notification warning");
       }
     }
 

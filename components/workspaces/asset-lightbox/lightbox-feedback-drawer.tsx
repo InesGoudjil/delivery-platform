@@ -95,7 +95,7 @@ export function LightboxFeedbackDrawer({
           No comments yet — leave the first note.
         </p>
       ) : (
-        <div className="space-y-2.5 max-h-[220px] overflow-y-auto custom-scrollbar pr-1">
+        <div className="space-y-2.5 max-h-[320px] sm:max-h-[220px] overflow-y-auto custom-scrollbar pr-1">
           {Array.from(new Map(feedbackList.map((f) => [f.id, f])).values()).map((f) => {
             const isTimecoded =
               !isStill &&
@@ -174,9 +174,9 @@ export function LightboxFeedbackDrawer({
                           setReplyInputText("");
                         }
                       }}
-                      className="text-[10px] text-zinc-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
+                      className="text-xs sm:text-[10px] text-zinc-400 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer py-1 px-1.5 -ml-1.5 rounded-lg active:bg-white/5"
                     >
-                      <CornerDownRight className="size-3" />
+                      <CornerDownRight className="size-3.5 sm:size-3" />
                       <span>{replyingToId === f.id ? "Cancel" : "Reply"}</span>
                     </button>
                   ) : (
@@ -192,7 +192,7 @@ export function LightboxFeedbackDrawer({
                         e.stopPropagation();
                         onToggleResolve(f.id, Boolean(f.isResolved));
                       }}
-                      className={`h-6 text-[10px] px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                      className={`h-7 sm:h-6 text-xs sm:text-[10px] px-2.5 sm:px-2 py-1 sm:py-0.5 rounded-lg cursor-pointer transition-colors active:scale-95 ${
                         f.isResolved
                           ? "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
                           : "text-zinc-400 hover:text-white hover:bg-white/10"
@@ -200,7 +200,7 @@ export function LightboxFeedbackDrawer({
                     >
                       {f.isResolved ? (
                         <span className="flex items-center gap-1">
-                          <Check className="size-2.5" />
+                          <Check className="size-3 sm:size-2.5" />
                           <span>Resolved</span>
                         </span>
                       ) : (
@@ -254,16 +254,16 @@ export function LightboxFeedbackDrawer({
                         }
                       }}
                       autoFocus
-                      className="flex-1 bg-black/60 border border-white/15 rounded-lg px-2.5 py-1 text-xs text-white h-7.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      className="flex-1 bg-black/60 border border-white/15 rounded-lg px-3 sm:px-2.5 py-1.5 sm:py-1 text-base sm:text-xs text-white h-9 sm:h-7.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     />
                     <Button
                       type="button"
                       size="sm"
                       disabled={!replyInputText.trim()}
                       onClick={() => handleSendReply(f.id)}
-                      className="h-7.5 px-2.5 text-xs bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg cursor-pointer"
+                      className="h-9 sm:h-7.5 px-3 sm:px-2.5 text-xs bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg cursor-pointer shrink-0 active:scale-95"
                     >
-                      <Send className="size-3" />
+                      <Send className="size-3.5 sm:size-3" />
                     </Button>
                   </div>
                 )}
@@ -280,7 +280,7 @@ export function LightboxFeedbackDrawer({
             <button
               type="button"
               onClick={() => setAttachTime((prev) => !prev)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer w-fit ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer w-fit min-h-[32px] active:scale-95 ${
                 attachTime
                   ? "text-primary border-primary/50 bg-primary/10"
                   : "text-zinc-400 border-white/10 hover:text-white"
@@ -295,7 +295,7 @@ export function LightboxFeedbackDrawer({
             </button>
           )}
 
-          <div className="bg-[#0d0d12] border border-white/10 rounded-full pl-4 pr-1.5 py-1.5 flex items-center gap-2 transition-all focus-within:border-primary/50">
+          <div className="bg-[#0d0d12] border border-white/10 rounded-full pl-4 pr-1.5 py-1.5 sm:py-1 flex items-center gap-2 transition-all focus-within:border-primary/50 min-h-[44px]">
             <input
               type="text"
               placeholder={
@@ -308,16 +308,16 @@ export function LightboxFeedbackDrawer({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               disabled={isSubmitting}
-              className="bg-transparent text-xs text-white placeholder:text-zinc-500 focus:outline-none flex-1 py-1"
+              className="bg-transparent text-base sm:text-xs text-white placeholder:text-zinc-500 focus:outline-none flex-1 py-1"
             />
 
             <button
               type="submit"
               disabled={!inputText.trim() || isSubmitting}
-              className="size-7 sm:size-8 rounded-full bg-primary hover:bg-primary/90 text-white flex items-center justify-center shadow-md shadow-primary/20 shrink-0 cursor-pointer transition-all active:scale-95 disabled:opacity-40"
+              className="size-9 sm:size-8 rounded-full bg-primary hover:bg-primary/90 text-white flex items-center justify-center shadow-md shadow-primary/20 shrink-0 cursor-pointer transition-all active:scale-95 disabled:opacity-40"
               title="Send comment"
             >
-              <Send className="size-3.5 fill-current ml-0.5" />
+              <Send className="size-4 sm:size-3.5 fill-current ml-0.5" />
             </button>
           </div>
         </form>

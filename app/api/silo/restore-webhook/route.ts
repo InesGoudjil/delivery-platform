@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerAdminServices } from "@/core/server";
 import { env } from "@/lib/env";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ route: "api/silo/restore-webhook" });
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,7 +29,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
     } else if (process.env.NODE_ENV === "production") {
-      console.error("[Silo Webhook] SILO_WEBHOOK_SECRET is not configured in production");
+      log.error("SILO_WEBHOOK_SECRET is not configured in production");
       return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
     }
 
@@ -37,22 +40,22 @@ export async function POST(req: NextRequest) {
 
         // Strict protocol check: HTTPS only
         if (parsedUrl.protocol !== "https:") {
-          console.error("[Silo Webhook] SSRF attempt blocked: non-https SubscribeURL:", body.SubscribeURL);
+          log.error({ subscribeUrl: body.SubscribeURL }, "SSRF attempt blocked: non-https SubscribeURL");
           return NextResponse.json({ error: "Invalid SubscribeURL protocol" }, { status: 400 });
         }
 
         // Strict hostname validation: strictly match AWS SNS domain pattern
         const isAwsSns = /^sns\.[a-z0-9-]+\.amazonaws\.com$/i.test(parsedUrl.hostname);
         if (!isAwsSns) {
-          console.error("[Silo Webhook] SSRF attempt blocked: untrusted hostname:", parsedUrl.hostname);
+          log.error({ hostname: parsedUrl.hostname }, "SSRF attempt blocked: untrusted hostname");
           return NextResponse.json({ error: "Untrusted SubscribeURL host" }, { status: 400 });
         }
 
-        console.log("[Silo Webhook] Confirming AWS SNS Subscription via:", parsedUrl.href);
+        log.info({ href: parsedUrl.href }, "Confirming AWS SNS Subscription");
         await fetch(parsedUrl.href);
         return NextResponse.json({ success: true, message: "Subscription confirmed" });
       } catch (subErr: any) {
-        console.error("[Silo Webhook] Failed to confirm SNS subscription:", subErr);
+        log.error({ err: subErr }, "Failed to confirm SNS subscription");
         return NextResponse.json({ error: subErr.message || "Subscription confirmation failed" }, { status: 500 });
       }
     }
@@ -118,7 +121,7 @@ export async function POST(req: NextRequest) {
       processed: results,
     });
   } catch (err: any) {
-    console.error("[Silo Webhook] Unexpected error handling restore event:", err);
+    log.error({ err }, "Unexpected error handling restore event");
     return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
   }
 }

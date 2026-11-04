@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getServerServices } from '@/core/server';
 import { stripeCheckoutSchema, safeValidate } from '@/lib/validations';
+import { createScopedLogger } from '@/lib/logger';
+
+const log = createScopedLogger({ route: 'api/stripe/checkout' });
 
 export async function POST(req: Request) {
   try {
@@ -47,7 +50,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: session.url });
   } catch (err: any) {
-    console.error('[Stripe Checkout Error]:', err);
+    log.error({ err }, 'Stripe checkout route error');
     return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });
   }
 }

@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { createScopedLogger } from "@/lib/logger";
 import {
   IStorageProvider,
   CreateUploadUrlParams,
@@ -6,6 +7,8 @@ import {
   PlaybackInfo,
   StorageAssetStatus,
 } from "./storage.provider";
+
+const log = createScopedLogger({ provider: "CloudflareStream" });
 
 export interface CloudflareStreamConfig {
   accountId: string;
@@ -219,9 +222,9 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
 
       return downloadUrl;
     } catch (err: any) {
-      console.warn(
-        `[CloudflareStream] Failed to enable MP4 download for ${cleanUid}:`,
-        err?.message || err
+      log.warn(
+        { err, cleanUid },
+        "Failed to enable MP4 download"
       );
       return fallbackUrl;
     }
@@ -252,7 +255,7 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
     try {
       status = await this.getAssetStatus(cleanUid);
     } catch (err: any) {
-      console.warn(`[CloudflareStream] Failed to get asset status for ${cleanUid}:`, err?.message || err);
+      log.warn({ err, cleanUid }, "Failed to get asset status");
     }
 
     if (status.status === "ready") {
@@ -343,7 +346,7 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
         errorMessage: result.status?.errorReasonText,
       };
     } catch (err: any) {
-      console.warn(`[CloudflareStream] Network error querying status for ${cleanUid}:`, err?.message || err);
+      log.warn({ err, cleanUid }, "Network error querying status");
       return {
         providerUid: cleanUid,
         status: "processing",
@@ -379,7 +382,7 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
   verifyWebhookSignature(rawBody: string, headers: Record<string, string>): boolean {
     if (!this.webhookSecret) {
       if (process.env.NODE_ENV === "production") {
-        console.error("[Cloudflare Stream] Missing webhook secret in production environment");
+        log.error("Missing webhook secret in production environment");
         return false;
       }
       return true; // Dev fallback
@@ -414,7 +417,7 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
     // Verify timestamp within 300 seconds (5 min) drift window to prevent replay attacks
     const currentEpoch = Math.floor(Date.now() / 1000);
     if (Math.abs(currentEpoch - timestamp) > 300) {
-      console.warn("[Cloudflare Stream] Webhook rejected: timestamp drift exceeds 300 seconds");
+      log.warn("Webhook rejected: timestamp drift exceeds 300 seconds");
       return false;
     }
 

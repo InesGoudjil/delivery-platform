@@ -9,7 +9,6 @@ interface PortfolioHeaderProps {
 }
 
 export function PortfolioHeader({ profile }: PortfolioHeaderProps) {
-  console.log("profile",profile)
   return (
     <header className="sticky top-0 z-40 bg-[#0a0a0b]/80 backdrop-blur-md border-b border-white/5 transition-all">
       <div className="w-full px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">

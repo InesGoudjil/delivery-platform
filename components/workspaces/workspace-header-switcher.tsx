@@ -70,12 +70,12 @@ export function WorkspaceHeaderSwitcher({
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 gap-2 rounded-full px-2.5 bg-muted/60 hover:bg-muted text-foreground border border-border transition-all cursor-pointer font-sans"
+          className="h-8 gap-1.5 sm:gap-2 rounded-full px-2 sm:px-2.5 bg-muted/60 hover:bg-muted text-foreground border border-border transition-all cursor-pointer font-sans shrink min-w-0"
         >
           <div className="flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-[9px] shrink-0">
             {initials}
           </div>
-          <TypographySpan variant="small" className="truncate text-xs font-bold max-w-[130px]">
+          <TypographySpan variant="small" className="truncate text-xs font-bold max-w-[80px] sm:max-w-[130px]">
             {activeWorkspace.name}
           </TypographySpan>
           <ChevronsUpDown className="size-3 text-muted-foreground shrink-0" />

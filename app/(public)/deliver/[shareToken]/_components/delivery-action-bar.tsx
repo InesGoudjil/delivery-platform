@@ -46,14 +46,14 @@ export function DeliveryActionBar({
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+        <div className="flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto justify-end flex-wrap sm:flex-nowrap">
           <Button
             variant="outline"
             onClick={onMessageCreator}
-            className="rounded-full bg-white/10 hover:bg-white/15 text-white border-white/15 font-bold text-xs tracking-wider uppercase px-5 py-2.5 transition-colors cursor-pointer h-auto gap-2"
+            className="flex-1 sm:flex-none rounded-full bg-white/10 hover:bg-white/15 text-white border-white/15 font-bold text-xs tracking-wider uppercase px-4 sm:px-5 py-3 sm:py-2.5 transition-all cursor-pointer min-h-[44px] sm:h-auto gap-2 justify-center active:scale-95"
           >
-            <MessageCircle className="size-4" />
-            <TypographySpan>MESSAGE {brandFirstName}</TypographySpan>
+            <MessageCircle className="size-4 shrink-0" />
+            <TypographySpan className="truncate">MESSAGE {brandFirstName}</TypographySpan>
           </Button>
 
           {allApproved ? (
@@ -61,30 +61,30 @@ export function DeliveryActionBar({
               variant="outline"
               onClick={onUnapproveAll}
               disabled={isApprovingAll}
-              className="group rounded-full bg-[#86b98f]/20 hover:bg-amber-500/20 text-[#86b98f] hover:text-amber-300 border-[#86b98f]/40 hover:border-amber-500/40 font-bold text-xs tracking-wider uppercase px-5 py-2.5 transition-colors cursor-pointer h-auto gap-2"
+              className="flex-1 sm:flex-none group rounded-full bg-[#86b98f]/20 hover:bg-amber-500/20 text-[#86b98f] hover:text-amber-300 border-[#86b98f]/40 hover:border-amber-500/40 font-bold text-xs tracking-wider uppercase px-4 sm:px-5 py-3 sm:py-2.5 transition-all cursor-pointer min-h-[44px] sm:h-auto gap-2 justify-center active:scale-95"
             >
               {isApprovingAll ? (
-                <Loader2 className="size-4 animate-spin" />
+                <Loader2 className="size-4 animate-spin shrink-0" />
               ) : (
                 <>
-                  <Check className="size-4 group-hover:hidden" />
-                  <RotateCcw className="size-3.5 hidden group-hover:block" />
+                  <Check className="size-4 group-hover:hidden shrink-0" />
+                  <RotateCcw className="size-3.5 hidden group-hover:block shrink-0" />
                 </>
               )}
-              <TypographySpan>PROJECT APPROVED · UNDO</TypographySpan>
+              <TypographySpan className="truncate">APPROVED · UNDO</TypographySpan>
             </Button>
           ) : (
             <Button
               onClick={onApproveAll}
               disabled={isApprovingAll}
-              className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs tracking-wider uppercase px-6 py-2.5 shadow-md shadow-primary/20 transition-all duration-200 hover:scale-[1.02] cursor-pointer h-auto gap-2"
+              className="flex-1 sm:flex-none rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs tracking-wider uppercase px-5 sm:px-6 py-3 sm:py-2.5 shadow-md shadow-primary/20 transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer min-h-[44px] sm:h-auto gap-2 justify-center"
             >
               {isApprovingAll ? (
-                <Loader2 className="size-4 animate-spin" />
+                <Loader2 className="size-4 animate-spin shrink-0" />
               ) : (
-                <Check className="size-4" />
+                <Check className="size-4 shrink-0" />
               )}
-              <TypographySpan>APPROVE ALL</TypographySpan>
+              <TypographySpan className="truncate">APPROVE ALL</TypographySpan>
             </Button>
           )}
         </div>

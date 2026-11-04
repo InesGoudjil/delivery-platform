@@ -1,6 +1,9 @@
 import { Feedback, FeedbackReply } from '@/core/entities/feedback';
 import { IFeedbackRepository, CreateFeedbackDTO, CreateFeedbackReplyDTO } from '@/core/repositories/feedback.repository';
 import { NotificationService } from './notification.service';
+import { createScopedLogger } from '@/lib/logger';
+
+const log = createScopedLogger({ service: 'FeedbackService' });
 
 export interface FeedbackThread extends Feedback {
   replies: FeedbackReply[];
@@ -39,7 +42,7 @@ export class FeedbackService {
   }) {
     if (!this.notificationService) return;
     return this.notificationService.notifyNewFeedback(params).catch((err) => {
-      console.error("[FeedbackService] Failed to notify new feedback:", err);
+      log.error({ err, deliveryId: params.deliveryId }, "Failed to notify new feedback");
     });
   }
 

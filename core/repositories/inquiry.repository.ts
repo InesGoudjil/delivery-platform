@@ -1,6 +1,9 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database.types';
 import { Inquiry, CreateInquiryInput, InquiryStatus } from '@/core/entities/inquiry';
+import { createScopedLogger } from '@/lib/logger';
+
+const log = createScopedLogger({ repository: 'InquiryRepository' });
 
 export interface IInquiryRepository {
   create(input: CreateInquiryInput): Promise<Inquiry>;
@@ -50,7 +53,7 @@ export class SupabaseInquiryRepository implements IInquiryRepository {
         .single();
 
       if (error) {
-        console.warn('[SupabaseInquiryRepository] Error inserting inquiry (falling back):', error.message);
+        log.warn({ err: error }, 'Error inserting inquiry (falling back)');
         // Fallback entity so flow never breaks if table has not been migrated yet
         return {
           id: `inq_${Date.now()}`,
@@ -71,7 +74,7 @@ export class SupabaseInquiryRepository implements IInquiryRepository {
 
       return this.mapRowToEntity(data);
     } catch (err: any) {
-      console.warn('[SupabaseInquiryRepository] Unexpected error inserting inquiry:', err.message);
+      log.warn({ err }, 'Unexpected error inserting inquiry');
       return {
         id: `inq_${Date.now()}`,
         type: input.type,
@@ -99,7 +102,7 @@ export class SupabaseInquiryRepository implements IInquiryRepository {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.warn('[SupabaseInquiryRepository] Error listing inquiries:', error.message);
+        log.warn({ err: error, workspaceId }, 'Error listing inquiries');
         return [];
       }
 

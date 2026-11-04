@@ -125,45 +125,45 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
         </p>
 
         {/* 3 Stat Badges */}
-        <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-xl">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-xl">
           {/* Stat 1: Films delivered */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col items-start gap-1 backdrop-blur-sm">
+          <div className="p-3 sm:p-5 rounded-xl sm:rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col items-start gap-1 backdrop-blur-sm">
             <Film
-              className="size-4 mb-0.5 transition-colors duration-500"
+              className="size-3.5 sm:size-4 mb-0.5 transition-colors duration-500"
               style={{ color: extracted.hex }}
             />
-            <div className="font-heading font-black text-xl sm:text-2xl text-white tracking-tight">
+            <div className="font-heading font-black text-lg sm:text-2xl text-white tracking-tight">
               {profile.stats.filmsDelivered}
             </div>
-            <div className="text-[11px] sm:text-xs text-zinc-400 font-sans">
+            <div className="text-[10px] sm:text-xs text-zinc-400 font-sans">
               Films delivered
             </div>
           </div>
 
           {/* Stat 2: Experience */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col items-start gap-1 backdrop-blur-sm">
+          <div className="p-3 sm:p-5 rounded-xl sm:rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col items-start gap-1 backdrop-blur-sm">
             <Briefcase
-              className="size-4 mb-0.5 transition-colors duration-500"
+              className="size-3.5 sm:size-4 mb-0.5 transition-colors duration-500"
               style={{ color: extracted.hex }}
             />
-            <div className="font-heading font-black text-xl sm:text-2xl text-white tracking-tight">
+            <div className="font-heading font-black text-lg sm:text-2xl text-white tracking-tight">
               {formatExperienceDisplay(profile.stats.experienceYears)}
             </div>
-            <div className="text-[11px] sm:text-xs text-zinc-400 font-sans">
+            <div className="text-[10px] sm:text-xs text-zinc-400 font-sans">
               Experience
             </div>
           </div>
 
           {/* Stat 3: Based */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col items-start gap-1 backdrop-blur-sm">
+          <div className="p-3 sm:p-5 rounded-xl sm:rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col items-start gap-1 backdrop-blur-sm">
             <MapPin
-              className="size-4 mb-0.5 transition-colors duration-500"
+              className="size-3.5 sm:size-4 mb-0.5 transition-colors duration-500"
               style={{ color: extracted.hex }}
             />
-            <div className="font-heading font-black text-xl sm:text-2xl text-white tracking-tight">
+            <div className="font-heading font-black text-lg sm:text-2xl text-white tracking-tight">
               {profile.stats.based}
             </div>
-            <div className="text-[11px] sm:text-xs text-zinc-400 font-sans">
+            <div className="text-[10px] sm:text-xs text-zinc-400 font-sans">
               Based
             </div>
           </div>
@@ -174,7 +174,7 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
           <button
             type="button"
             onClick={() => setIsContactOpen(true)}
-            className="inline-flex items-center gap-2.5 px-6 py-3 rounded-full text-white text-xs sm:text-sm font-black tracking-wider uppercase transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] cursor-pointer border"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3 min-h-[44px] rounded-full text-white text-xs sm:text-sm font-black tracking-wider uppercase transition-all duration-300 active:scale-95 cursor-pointer border touch-manipulation"
             style={{
               background: `linear-gradient(135deg, rgba(${extracted.rgbString}, 0.85) 0%, rgba(${extracted.rgbString}, 0.5) 100%)`,
               borderColor: `rgba(${extracted.rgbString}, 0.45)`,

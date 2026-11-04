@@ -1,6 +1,9 @@
 import { Metadata } from "next";
 import { getServerServices } from "@/core/server";
 import { WaitlistScreen } from "@/components/waitlist/WaitlistScreen";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ page: "WaitlistPage" });
 
 export const metadata: Metadata = {
   title: "Join the Waitlist — CineSpace",
@@ -20,7 +23,7 @@ export default async function WaitlistPage(props: {
     const metrics = await services.waitlist.getDashboardMetrics();
     totalCount = metrics.total;
   } catch (err) {
-    console.warn("Could not fetch waitlist metrics for count:", err);
+    log.warn({ err }, "Could not fetch waitlist metrics for count");
   }
 
   return (

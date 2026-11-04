@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useOptionalEntitlements } from "@/components/providers/entitlements-provider";
 import { deleteDeliveryAction } from "@/app/actions/deliveries";
 import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
 import { DeliveriesHeader } from "./_components/deliveries-header";
@@ -48,8 +49,11 @@ export function DeliveriesClient({
     setItems(deliveries);
   }, [deliveries]);
 
-  const canSendWhatsApp = features ? Boolean(features.whatsapp_delivery) : true;
-
+  const entitlements = useOptionalEntitlements();
+  const canSendWhatsApp = entitlements
+    ? entitlements.can.sendWhatsApp
+    : Boolean(features?.whatsapp_delivery);
+    
   const executeDeleteDelivery = async (target: DeliveryProjectItem) => {
     const previousItems = items;
     setDeletingId(target.id);

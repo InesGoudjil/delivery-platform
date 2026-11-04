@@ -35,7 +35,7 @@ export type {
 };
 
 export function DeliveryRoomClient(props: DeliveryRoomProps) {
-  const { delivery, workspace, clientName, isWorkspaceMember } = props;
+  const { delivery, workspace, clientName, isWorkspaceMember, whiteLabel } = props;
   const room = useDeliveryRoom(props);
 
   return (
@@ -125,7 +125,10 @@ export function DeliveryRoomClient(props: DeliveryRoomProps) {
               />
 
               {/* Studio Branding Footer */}
-              <DeliveryRoomFooter />
+              <DeliveryRoomFooter
+                whiteLabel={whiteLabel}
+                brandName={workspace?.brandName}
+              />
             </div>
 
             {/* 📹 Interactive Video Review Lightbox Modal */}
@@ -151,7 +154,7 @@ export function DeliveryRoomClient(props: DeliveryRoomProps) {
               }
               onDownload={room.handleLightboxDownload}
               watermarkMedia={
-                (delivery.appearance?.watermarkMedia ?? delivery.isWatermarked ?? true) &&
+                Boolean(delivery.appearance?.watermarkMedia ?? delivery.isWatermarked) &&
                 !room.activeAsset?.isApproved
               }
               watermarkText={workspace?.brandName || "STUDIO PREVIEW"}

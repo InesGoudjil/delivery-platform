@@ -122,7 +122,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                 type="button"
                 variant={isActive ? "default" : "ghost"}
                 onClick={() => setActiveTab(tab)}
-                className={`px-6 sm:px-8 py-2 rounded-full text-xs font-bold tracking-wide capitalize transition-all duration-200 cursor-pointer h-auto ${
+                className={`px-5 sm:px-8 py-2 min-h-[38px] rounded-full text-xs font-bold tracking-wide capitalize transition-all duration-200 cursor-pointer h-auto active:scale-95 touch-manipulation ${
                   isActive
                     ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md"
                     : "text-zinc-400 hover:text-white hover:bg-transparent"

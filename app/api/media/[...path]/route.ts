@@ -5,6 +5,9 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getServerServices } from "@/core/server";
 import { env } from "@/lib/env";
 import { hasValidDeliveryPasscodeCookie } from "@/lib/security/delivery-token";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ route: "api/media" });
 
 const FALLBACK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" fill="none">
   <rect width="1280" height="720" fill="#0e0e11"/>
@@ -145,7 +148,7 @@ export async function GET(
             }
           }
         } catch (err) {
-          console.warn(`[Media Proxy] Failed to enable Cloudflare Stream MP4 download for ${key}:`, err);
+          log.warn({ err, key }, "Failed to enable Cloudflare Stream MP4 download");
         }
       }
 
@@ -283,7 +286,7 @@ export async function GET(
           }
         }
       } catch (authErr) {
-        console.warn("[Media Proxy Auth] Error checking media authorization:", authErr);
+        log.warn({ err: authErr, key }, "Error checking media authorization");
       }
 
       if (!isAuthorized) {
@@ -348,7 +351,7 @@ export async function GET(
       headers,
     });
   } catch (err: any) {
-    console.warn(`[Media Proxy] Error resolving R2 key "${key}":`, err?.message || err);
+    log.warn({ err, key }, "Error resolving R2 key");
     return createFallbackResponse();
   }
 }

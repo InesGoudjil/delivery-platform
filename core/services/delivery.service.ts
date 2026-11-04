@@ -10,6 +10,9 @@ import { IFeedbackRepository } from "@/core/repositories/feedback.repository";
 import { IProjectRepository } from "@/core/repositories/i-project-repository";
 import { SubscriptionService } from "./subscription.service";
 import { NotificationService } from "./notification.service";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ service: "DeliveryService" });
 
 export interface DeliveryWithDetails extends Delivery {
   client?: Client | null;
@@ -243,7 +246,7 @@ export class DeliveryService {
           origin: options.origin,
         })
         .catch((err) => {
-          console.error("[DeliveryService] Failed to dispatch cut approval email:", err);
+          log.error({ err, deliveryId: id }, "Failed to dispatch cut approval email");
         });
     }
 

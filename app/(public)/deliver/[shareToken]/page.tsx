@@ -62,6 +62,8 @@ export default async function ClientDeliveryPage(props: PageProps) {
   const logoUrl = workspace?.logoUrl || null;
   const accentColor = workspace?.accentColor || "#f5551d";
   const isWhiteLabel = Boolean(workspaceFeatures?.white_label);
+  const canWatermark = Boolean(workspaceFeatures?.watermark);
+  const effectiveWatermark = canWatermark && Boolean(fullDetails.appearance?.watermarkMedia ?? fullDetails.isWatermarked);
   const brandingLocation = portfolio?.stats?.location || null;
 
   // Calculate delivery asset stats based strictly on the assets present on this delivery alone
@@ -195,8 +197,11 @@ export default async function ClientDeliveryPage(props: PageProps) {
         shareToken: fullDetails.shareToken,
         status: fullDetails.status,
         isDownloadAllowed: fullDetails.isDownloadAllowed,
-        isWatermarked: fullDetails.isWatermarked,
-        appearance: fullDetails.appearance,
+        isWatermarked: effectiveWatermark,
+        appearance: {
+          ...fullDetails.appearance,
+          watermarkMedia: effectiveWatermark,
+        },
         approvedAt: fullDetails.approvedAt,
         approvedByName: fullDetails.approvedByName,
         expiresAt: fullDetails.expiresAt,

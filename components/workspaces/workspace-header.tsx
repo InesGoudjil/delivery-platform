@@ -121,12 +121,12 @@ export function WorkspaceHeader({
   }));
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border/40 bg-background/10 backdrop-blur-xl px-4 sm:px-6 lg:px-8 sticky top-0 z-40 text-foreground transition-colors duration-200">
+    <header className="flex h-16 shrink-0 items-center justify-between gap-2 sm:gap-4 border-b border-border/40 bg-background/10 backdrop-blur-xl px-3 sm:px-6 lg:px-8 sticky top-0 z-40 text-foreground transition-colors duration-200">
       {/* Left: Trigger + Logo + Workspace Switcher Pill */}
-      <div className="flex items-center gap-3.5">
-        <SidebarTrigger className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer" />
+      <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
+        <SidebarTrigger className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0" />
 
-        <BrandLogo href={`/${workspaceSlug}`} size="sm" />
+        <BrandLogo href={`/${workspaceSlug}`} size="sm" className="shrink-0" />
 
         <TypographySpan className="text-muted-foreground/30  text-sm hidden sm:inline">/</TypographySpan>
 
@@ -138,15 +138,16 @@ export function WorkspaceHeader({
       </div>
 
       {/* Right: Live Preview + Language + Theme + User Menu */}
-      <div className="flex items-center gap-3">
-        {/* LIVE PREVIEW Glowing Button */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* LIVE PREVIEW Glowing Button (compact on mobile, full on desktop) */}
         <Button
           asChild
-          className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs tracking-wider uppercase px-4 py-1.5 shadow-lg shadow-primary/25 border-0 transition-all duration-200 hover:scale-[1.02] cursor-pointer h-8 gap-1.5"
+          className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs tracking-wider uppercase px-2.5 sm:px-4 py-1.5 shadow-lg shadow-primary/25 border-0 transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer h-8 gap-1.5 shrink-0"
+          title="Open Live Portfolio Preview"
         >
           <Link href={`/p/${workspaceSlug}`} target="_blank" rel="noreferrer">
             <Play className="size-3 fill-current" />
-            <TypographySpan variant="kicker" className="text-xs font-bold tracking-wider text-primary-foreground">
+            <TypographySpan variant="kicker" className="text-xs font-bold tracking-wider text-primary-foreground hidden sm:inline">
               LIVE PREVIEW
             </TypographySpan>
           </Link>

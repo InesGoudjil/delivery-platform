@@ -58,6 +58,9 @@ describe("app/actions/deliveries", () => {
           Promise.resolve({ id: "client_new", ...dto })
         ),
       },
+      subscription: {
+        canCreateProject: vi.fn().mockResolvedValue({ allowed: true, currentCount: 0, maxAllowed: 1 }),
+      },
     };
 
     vi.spyOn(serverModule, "getServerAdminServices").mockResolvedValue(mockAdminServices);
@@ -100,6 +103,29 @@ describe("app/actions/deliveries", () => {
       expect(result.delivery?.title).toBe("Summer Commercial");
       expect(mockUserServices.client.createClient).toHaveBeenCalledOnce();
       expect(mockUserServices.delivery.createDelivery).toHaveBeenCalledOnce();
+    });
+
+    it("blocks delivery creation when active client link limit is reached", async () => {
+      vi.spyOn(guards, "requireWorkspaceMember").mockResolvedValue({
+        workspace: { id: "ws_test" },
+        role: "editor",
+        services: mockUserServices,
+        user: { id: "user_1" },
+      } as any);
+
+      mockUserServices.subscription.canCreateProject.mockResolvedValueOnce({
+        allowed: false,
+        reason: "Your current plan allows up to 1 active project link(s). Upgrade to Pro or Studio for unlimited client projects.",
+      });
+
+      const result = await createDeliveryAction(
+        "ws_test",
+        "Second Video",
+        "Cut 2"
+      );
+
+      expect(result.error).toContain("active project link(s)");
+      expect(mockUserServices.delivery.createDelivery).not.toHaveBeenCalled();
     });
   });
 

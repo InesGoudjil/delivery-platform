@@ -11,6 +11,9 @@ import {
   createPlanSchema,
   safeValidate,
 } from "@/lib/validations";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ actionGroup: "admin" });
 
 export async function updateUserRoleAction(userId: string, role: "admin" | "user") {
   try {
@@ -295,7 +298,7 @@ export async function deletePlanAction(planId: string) {
     // 1. Archive counterpart in Stripe API if present
     if (plan.stripePriceId) {
       await adminServices.stripe.archiveStripeProductAndPrice(plan.stripePriceId).catch((err) =>
-        console.warn("Stripe archive notice:", err.message)
+        log.warn({ err, stripePriceId: plan.stripePriceId }, "Stripe archive notice")
       );
     }
 

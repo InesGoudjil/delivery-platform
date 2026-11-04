@@ -4,6 +4,9 @@ import { Asset, AssetVersion } from "@/core/entities/asset";
 import { IPortfolioRepository, CreatePortfolioDTO } from "@/core/repositories/portfolio.repository";
 import { IProjectRepository } from "@/core/repositories/i-project-repository";
 import { IAssetRepository, IAssetVersionRepository } from "@/core/repositories/i-asset-repository";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ service: "PortfolioService" });
 
 export interface PublicPortfolioItem {
   id: string;
@@ -51,7 +54,7 @@ export class PortfolioService {
         socialLinks: {},
       });
     } catch (err: any) {
-      console.warn("Portfolio getOrCreate notice:", err.message);
+      log.warn({ err, workspaceId, slug }, "Portfolio getOrCreate fallback notice");
       return {
         id: `port_${workspaceId}`,
         workspaceId,

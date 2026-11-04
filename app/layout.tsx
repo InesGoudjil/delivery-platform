@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import "./globals.css";
 import localFont from "next/font/local";
@@ -82,6 +82,24 @@ export const metadata: Metadata = {
   title: "CineSpace — Deliver films like a studio.",
   description:
     "Your portfolio, client review, and delivery — in one place, built for filmmakers in the Gulf.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "CineSpace",
+  },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/images/logo.svg",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: "cover",
+  themeColor: "#070709",
 };
 
 export default function RootLayout({

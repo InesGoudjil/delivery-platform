@@ -15,6 +15,10 @@ import {
   resetPasswordSchema,
   changePasswordSchema,
 } from '@/lib/validations/auth';
+import { trackUserSession } from '@/lib/session-manager';
+import { createScopedLogger } from '@/lib/logger';
+
+const log = createScopedLogger({ actionGroup: 'auth' });
 
 export interface AuthState {
   error?: string | null;
@@ -167,6 +171,7 @@ export async function loginAction(prevState: AuthState | null, formData: FormDat
     const user = await services.auth.getCurrentUser();
     let workspace = null;
     if (user) {
+      await trackUserSession(user.id, services.session).catch(() => {});
       const userWorkspaces = await services.workspace.getUserWorkspaces(user.id);
       workspace = userWorkspaces[0] || await services.workspace.getOrCreateWorkspace(user.id, user.user_metadata?.full_name || 'My Studio').catch(() => null);
     }
@@ -244,12 +249,13 @@ export async function signupAction(prevState: AuthState | null, formData: FormDa
     }
 
     if (data.session && data.user) {
+      await trackUserSession(data.user.id, services.session).catch(() => {});
       const waitlistToken = formData.get('waitlist_token') as string | null;
       if (waitlistToken) {
         try {
           await services.waitlist.claimInvite(waitlistToken);
         } catch (e) {
-          console.warn("Could not claim waitlist token:", e);
+          log.warn({ err: e, waitlistToken }, "Could not claim waitlist token");
         }
       }
 
