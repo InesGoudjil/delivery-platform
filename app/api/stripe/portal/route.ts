@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getServerServices } from '@/core/server';
 import { stripePortalSchema, safeValidate } from '@/lib/validations';
+import { createScopedLogger } from '@/lib/logger';
+
+const log = createScopedLogger({ route: 'api/stripe/portal' });
 
 export async function POST(req: Request) {
   try {
@@ -30,7 +33,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: portalSession.url });
   } catch (err: any) {
-    console.error('[Stripe Portal Error]:', err);
+    log.error({ err }, 'Stripe billing portal route error');
     return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });
   }
 }

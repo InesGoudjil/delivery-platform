@@ -3,7 +3,28 @@
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { TypographySpan } from "@/components/ui/typography";
 
-export function DeliveryRoomFooter() {
+interface DeliveryRoomFooterProps {
+  whiteLabel?: boolean;
+  brandName?: string;
+}
+
+export function DeliveryRoomFooter({
+  whiteLabel = false,
+  brandName,
+}: DeliveryRoomFooterProps) {
+  if (whiteLabel) {
+    return (
+      <footer className="border-t border-white/10 mt-16 sm:mt-24 py-8 flex items-center justify-between text-xs text-[#aeaeb4]">
+        <TypographySpan className="font-medium text-white/60">
+          {brandName || "Private Review Room"}
+        </TypographySpan>
+        <TypographySpan className="text-white/40">
+          © {new Date().getFullYear()} All rights reserved
+        </TypographySpan>
+      </footer>
+    );
+  }
+
   return (
     <footer className="border-t border-white/10 mt-16 sm:mt-24 py-8 flex items-center justify-between text-xs text-[#aeaeb4]">
       <div className="flex items-center gap-2">

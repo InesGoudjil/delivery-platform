@@ -137,6 +137,177 @@ describe("core/services/SubscriptionService", () => {
     });
   });
 
+  describe("Single Source of Truth (SSOT) Entitlements & Lifecycle Resolution", () => {
+    it("dynamically resolves features from active subscription without requiring workspace_features copy", async () => {
+      // workspace_features is empty (no custom overrides)
+      vi.mocked(featuresRepo.findByWorkspaceId!).mockResolvedValue({ workspaceId: "ws_active_pro", features: {} } as any);
+      vi.mocked(subscriptionRepo.findByWorkspaceId!).mockResolvedValue({
+        id: "sub_pro",
+        workspaceId: "ws_active_pro",
+        planId: "plan_pro",
+        status: "active",
+      } as any);
+
+      const features = await service.getFeatures("ws_active_pro");
+      expect(features.watermark).toBe(true);
+      expect(features.password_protected).toBe(true);
+      expect(features.client_links).toBe(-1);
+    });
+
+    it("grants plan features when subscription is trialing and within trial period", async () => {
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 5);
+
+      vi.mocked(featuresRepo.findByWorkspaceId!).mockResolvedValue(null);
+      vi.mocked(subscriptionRepo.findByWorkspaceId!).mockResolvedValue({
+        id: "sub_trial",
+        workspaceId: "ws_trial",
+        planId: "plan_pro",
+        status: "trialing",
+        trialEndsAt: futureDate.toISOString(),
+      } as any);
+
+      const features = await service.getFeatures("ws_trial");
+      expect(features.watermark).toBe(true);
+      expect(features.password_protected).toBe(true);
+    });
+
+    it("automatically downgrades to Starter when trial has expired", async () => {
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 2);
+
+      vi.mocked(featuresRepo.findByWorkspaceId!).mockResolvedValue(null);
+      vi.mocked(subscriptionRepo.findByWorkspaceId!).mockResolvedValue({
+        id: "sub_expired_trial",
+        workspaceId: "ws_expired",
+        planId: "plan_pro",
+        status: "trialing",
+        trialEndsAt: pastDate.toISOString(),
+      } as any);
+
+      const features = await service.getFeatures("ws_expired");
+      expect(features.watermark).toBe(false);
+      expect(features.password_protected).toBe(false);
+      expect(features.client_links).toBe(1);
+    });
+
+    it("automatically downgrades to Starter when subscription is canceled or past_due", async () => {
+      vi.mocked(featuresRepo.findByWorkspaceId!).mockResolvedValue(null);
+
+      // Canceled
+      vi.mocked(subscriptionRepo.findByWorkspaceId!).mockResolvedValue({
+        id: "sub_canceled",
+        workspaceId: "ws_canceled",
+        planId: "plan_pro",
+        status: "canceled",
+      } as any);
+
+      let features = await service.getFeatures("ws_canceled");
+      expect(features.watermark).toBe(false);
+      expect(features.client_links).toBe(1);
+
+      // Past Due
+      vi.mocked(subscriptionRepo.findByWorkspaceId!).mockResolvedValue({
+        id: "sub_past_due",
+        workspaceId: "ws_past_due",
+        planId: "plan_pro",
+        status: "past_due",
+      } as any);
+
+      features = await service.getFeatures("ws_past_due");
+      expect(features.watermark).toBe(false);
+      expect(features.client_links).toBe(1);
+    });
+
+    it("merges custom workspace overrides over the active plan baseline", async () => {
+      // Pro plan has client_links: -1, storage_gb: undefined
+      // Custom override gives 10TB storage and disables watermarking
+      vi.mocked(subscriptionRepo.findByWorkspaceId!).mockResolvedValue({
+        id: "sub_pro",
+        workspaceId: "ws_custom",
+        planId: "plan_pro",
+        status: "active",
+      } as any);
+
+      vi.mocked(featuresRepo.findByWorkspaceId!).mockResolvedValue({
+        workspaceId: "ws_custom",
+        features: {
+          storage_gb: 10240,
+          custom_beta_flag: true,
+          watermark: false, // override
+        },
+      } as any);
+
+      const features = await service.getFeatures("ws_custom");
+      expect(features.storage_gb).toBe(10240);
+      expect(features.custom_beta_flag).toBe(true);
+      expect(features.watermark).toBe(false); // custom override took precedence
+      expect(features.password_protected).toBe(true); // inherited from Pro
+    });
+
+    it("reflects plan feature changes immediately without requiring database triggers", async () => {
+      vi.mocked(featuresRepo.findByWorkspaceId!).mockResolvedValue(null);
+      vi.mocked(subscriptionRepo.findByWorkspaceId!).mockResolvedValue({
+        id: "sub_pro",
+        workspaceId: "ws_dynamic",
+        planId: "plan_pro",
+        status: "active",
+      } as any);
+
+      const initialFeatures = await service.getFeatures("ws_dynamic");
+      expect(initialFeatures.watermark).toBe(true);
+
+      // Admin updates Pro plan in DB
+      const updatedProPlan: Plan = {
+        ...proPlan,
+        features: {
+          ...proPlan.features,
+          white_label: true,
+        },
+      };
+      vi.mocked(planRepo.findById!).mockResolvedValue(updatedProPlan);
+
+      const updatedFeatures = await service.getFeatures("ws_dynamic");
+      expect(updatedFeatures.white_label).toBe(true);
+    });
+  });
+
+  describe("getEntitlements", () => {
+    it("returns strongly-typed limits and boolean capabilities for Starter plan", async () => {
+      vi.mocked(featuresRepo.findByWorkspaceId!).mockResolvedValue(null);
+      vi.mocked(subscriptionRepo.findByWorkspaceId!).mockResolvedValue(null);
+
+      const entitlements = await service.getEntitlements("ws_starter");
+      expect(entitlements.planSlug).toBe("starter");
+      expect(entitlements.limits.clientLinksMax).toBe(1);
+      expect(entitlements.limits.portfolioVideosMax).toBe(4);
+      expect(entitlements.limits.teamSeatsMax).toBe(1);
+      expect(entitlements.can.watermark).toBe(false);
+      expect(entitlements.can.whiteLabel).toBe(false);
+      expect(entitlements.can.sendWhatsApp).toBe(false);
+      expect(entitlements.can.receiveDownloadNotifications).toBe(false);
+    });
+
+    it("returns strongly-typed limits and boolean capabilities for Pro plan", async () => {
+      vi.mocked(featuresRepo.findByWorkspaceId!).mockResolvedValue(null);
+      vi.mocked(subscriptionRepo.findByWorkspaceId!).mockResolvedValue({
+        id: "sub_pro",
+        workspaceId: "ws_pro",
+        planId: "plan_pro",
+        status: "active",
+      } as any);
+
+      const entitlements = await service.getEntitlements("ws_pro");
+      expect(entitlements.planSlug).toBe("pro");
+      expect(entitlements.limits.clientLinksMax).toBe(-1); // unlimited
+      expect(entitlements.limits.portfolioVideosMax).toBe(-1);
+      expect(entitlements.can.watermark).toBe(true);
+      expect(entitlements.can.passwordProtect).toBe(true);
+      expect(entitlements.can.useSiloArchive).toBe(true);
+      expect(entitlements.isActive).toBe(true);
+    });
+  });
+
   describe("canAddPortfolioVideo", () => {
     it("allows adding showcase film when below Starter limit (4)", async () => {
       const result = await service.canAddPortfolioVideo("ws_1", 3);

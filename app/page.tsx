@@ -1,5 +1,8 @@
 import LandingPage from "@/components/landing/LandingPage";
 import { getServerServices } from "@/core/server";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ page: "Home" });
 
 export default async function Home(props: {
   searchParams?: Promise<{ ref?: string }>;
@@ -16,7 +19,7 @@ export default async function Home(props: {
     try {
       availablePlans = await services.subscription.listAvailablePlans();
     } catch (err: any) {
-      console.warn("[Home Page] Could not fetch plans from DB:", err?.message || err);
+      log.warn({ err }, "Could not fetch plans from DB");
     }
 
     const displayPlans = (availablePlans || [])
@@ -33,6 +36,7 @@ export default async function Home(props: {
         stripePriceId: p.stripePriceId,
         features: p.features,
       }));
+
 
     return (
       <LandingPage

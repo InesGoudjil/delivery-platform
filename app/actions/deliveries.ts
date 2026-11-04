@@ -24,6 +24,9 @@ import {
   type DeliveryAppearanceInput,
   type UpdateDeliverySecurityInput,
 } from "@/lib/validations";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ actionGroup: "deliveries" });
 
 async function requireDeliveryGuestOrMemberAccess(deliveryId: string) {
   const adminServices = await getServerAdminServices();
@@ -244,6 +247,16 @@ export async function createDeliveryAction(
     } = validated.data;
 
     const { services, user } = await requireWorkspaceMember(cleanWorkspaceId, "editor");
+
+    // Enforce active client delivery link quota based on subscription plan
+    const eligibility = await services.subscription.canCreateProject(cleanWorkspaceId);
+    if (!eligibility.allowed) {
+      return {
+        error:
+          eligibility.reason ||
+          "Active client delivery link limit reached. Please upgrade your subscription plan.",
+      };
+    }
 
     let clientId: string | undefined = undefined;
     if (cleanClientNameOrId || cleanClientEmail || cleanClientPhone) {
@@ -513,6 +526,22 @@ export async function updateDeliveryDetailsAction(
           phoneNumber: clientPhone || null,
         });
         clientId = newClient.id;
+      }
+    }
+
+    // Prevent unarchiving beyond active client link quota
+    if (
+      delivery.status === "archived" &&
+      validated.data.status !== undefined &&
+      validated.data.status !== "archived"
+    ) {
+      const eligibility = await services.subscription.canCreateProject(delivery.workspaceId);
+      if (!eligibility.allowed) {
+        return {
+          error:
+            eligibility.reason ||
+            "Cannot restore delivery: your current plan's active client link limit has been reached. Please upgrade your plan.",
+        };
       }
     }
 
@@ -977,7 +1006,7 @@ export async function loadMoreDeliveryAssetsAction(params: {
       approvedCount: pageData.approvedCount,
     };
   } catch (err: any) {
-    console.error("[loadMoreDeliveryAssetsAction] Error:", err);
+    log.error({ err, params }, "loadMoreDeliveryAssetsAction error");
     return {
       success: false,
       error: err?.message || "Failed to load more assets",
@@ -1115,7 +1144,7 @@ export async function getDeliveryDownloadManifestAction(params: {
       totalCount: downloadItems.length,
     };
   } catch (err: any) {
-    console.error("[getDeliveryDownloadManifestAction] Error:", err);
+    log.error({ err, params }, "getDeliveryDownloadManifestAction error");
     return {
       success: false,
       error: err?.message || "Failed to load complete delivery package",
@@ -1137,6 +1166,12 @@ export async function recordClientDownloadAction(params: {
     const core = await import("@/core/server").then((m) => m.getServerCore());
     const delivery = await core.services.delivery.getDeliveryById(validated.data.deliveryId);
     if (!delivery || !delivery.notifyOnDownload) {
+      return { success: true, notified: false };
+    }
+
+    // Verify workspace plan permits download notifications
+    const canNotifyPlan = await core.services.subscription.isDownloadNotificationAllowed(delivery.workspaceId);
+    if (!canNotifyPlan) {
       return { success: true, notified: false };
     }
 
@@ -1204,7 +1239,7 @@ export async function recordClientDownloadAction(params: {
 
     return { success: true, notified: true };
   } catch (err: any) {
-    console.warn("[recordClientDownloadAction] Warning:", err?.message || err);
+    log.warn({ err, deliveryId: params.deliveryId }, "recordClientDownloadAction notice");
     return { success: false };
   }
 }

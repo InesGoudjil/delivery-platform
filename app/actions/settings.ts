@@ -63,6 +63,26 @@ export async function updateWorkspaceNotificationSettingsAction(
 
     await requireWorkspaceMember(workspace.id, "admin");
 
+    if (dto.notifyDownloads === true) {
+      const canDownloadNotif = await services.subscription.isDownloadNotificationAllowed(workspace.id);
+      if (!canDownloadNotif) {
+        return {
+          success: false,
+          error: "File download notifications are available on Pro and Studio plans. Please upgrade your plan.",
+        };
+      }
+    }
+
+    if (dto.whatsappEnabled === true || (dto.whatsappNumber && dto.whatsappNumber.trim() !== "")) {
+      const canWhatsApp = await services.subscription.canDeliverWhatsApp(workspace.id);
+      if (!canWhatsApp) {
+        return {
+          success: false,
+          error: "WhatsApp notifications and delivery alerts are available on Basic, Pro, and Studio plans. Please upgrade your plan.",
+        };
+      }
+    }
+
     const updated = await services.settings.upsert(workspace.id, {
       notifyApprovals: dto.notifyApprovals,
       notifyComments: dto.notifyComments,

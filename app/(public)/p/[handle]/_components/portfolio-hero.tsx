@@ -98,7 +98,7 @@ export function PortfolioHero({
 
         {/* Interactive sound toggle button if ambient video */}
         {isAmbientVideo && (
-          <div className="absolute top-5 right-5 z-20">
+          <div className="absolute top-4 right-4 sm:top-5 sm:right-5 z-20">
             <Button
               type="button"
               size="sm"
@@ -107,7 +107,7 @@ export function PortfolioHero({
                 e.stopPropagation();
                 setIsMuted((prev) => !prev);
               }}
-              className="h-8 px-3 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border-white/20 text-white  text-xs gap-1.5 shadow-xl transition-all cursor-pointer"
+              className="min-h-[38px] px-3.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border-white/20 text-white text-xs gap-1.5 shadow-xl transition-all cursor-pointer active:scale-95 touch-manipulation"
             >
               {isMuted ? (
                 <>

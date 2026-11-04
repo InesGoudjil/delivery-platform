@@ -12,6 +12,9 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "@/lib/env";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ provider: "AwsSiloGlacierProvider" });
 
 export type GlacierTier = "Bulk" | "Standard";
 export type GlacierStorageClass = "DEEP_ARCHIVE" | "GLACIER";
@@ -252,7 +255,7 @@ export class AwsSiloGlacierProvider implements ISiloStorageProvider {
           })
         );
       } catch (abortErr) {
-        console.warn("[AwsSiloGlacierProvider] Notice: Multipart abort error:", abortErr);
+        log.warn({ err: abortErr, key, uploadId }, "Multipart abort error");
       }
       throw err;
     }

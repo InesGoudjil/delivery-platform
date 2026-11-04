@@ -5,6 +5,9 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { createCoreServices } from '@/core/container';
 import { sendServerEvent } from '@/lib/meta';
 import { capturePurchase, flushServerEvents } from '@/lib/posthog';
+import { createScopedLogger } from '@/lib/logger';
+
+const log = createScopedLogger({ route: 'api/webhooks/stripe' });
 
 export async function POST(req: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -25,7 +28,7 @@ export async function POST(req: Request) {
   try {
     event = services.stripe.constructWebhookEvent(body, signature, webhookSecret);
   } catch (err: any) {
-    console.error(`[Stripe Webhook Error]: Signature verification failed: ${err.message}`);
+    log.error({ err }, 'Stripe webhook signature verification failed');
     return NextResponse.json({ error: `Webhook Signature Error: ${err.message}` }, { status: 400 });
   }
 
@@ -64,7 +67,7 @@ export async function POST(req: Request) {
               stripeCustomerId: customerId,
               status: 'paid',
             });
-            console.log(`[Stripe Webhook] Successfully updated subscription for workspace: ${workspaceId}`);
+            log.info({ workspaceId }, 'Successfully updated subscription for workspace');
 
             // Fire server-side Purchase to Meta CAPI. Stripe is the
             // single source of truth for amount and currency here.
@@ -134,7 +137,7 @@ export async function POST(req: Request) {
               stripeSub.id,
               customerId
             );
-            console.log(`[Stripe Webhook] Updated subscription status to '${stripeSub.status}' for workspace: ${targetWorkspaceId}`);
+            log.info({ targetWorkspaceId, status: stripeSub.status }, 'Updated subscription status for workspace');
           }
         }
         break;
@@ -153,7 +156,7 @@ export async function POST(req: Request) {
 
         if (targetWorkspaceId) {
           await services.subscription.cancelSubscription(targetWorkspaceId);
-          console.log(`[Stripe Webhook] Canceled subscription for workspace: ${targetWorkspaceId}`);
+          log.info({ targetWorkspaceId }, 'Canceled subscription for workspace');
         }
         break;
       }
@@ -183,7 +186,7 @@ export async function POST(req: Request) {
             targetWorkspaceId = stripeSub.metadata?.workspace_id;
             planId = stripeSub.metadata?.plan_id;
           } catch (e) {
-            console.error('[Stripe Webhook] Failed to retrieve subscription metadata for invoice:', e);
+            log.error({ err: e, stripeSubId }, 'Failed to retrieve subscription metadata for invoice');
           }
         }
 
@@ -200,7 +203,7 @@ export async function POST(req: Request) {
             pdfUrl,
             status: 'paid',
           });
-          console.log(`[Stripe Webhook] Logged invoice ${stripeInvoiceId} for workspace ${targetWorkspaceId}`);
+          log.info({ stripeInvoiceId, targetWorkspaceId }, 'Logged invoice for workspace');
 
           // Fire server-side Purchase for renewals. Use the
           // stripeInvoiceId to make a stable eventId that differs
@@ -234,13 +237,13 @@ export async function POST(req: Request) {
             source: 'invoice',
           });
         } else {
-          console.warn(`[Stripe Webhook] Could not resolve workspaceId for invoice ${stripeInvoiceId}`);
+          log.warn({ stripeInvoiceId }, 'Could not resolve workspaceId for invoice');
         }
         break;
       }
 
       default:
-        console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
+        log.info({ eventType: event.type }, 'Unhandled stripe webhook event type');
     }
 
     revalidatePath("/[workspaceSlug]", "layout");
@@ -250,7 +253,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ received: true });
   } catch (err: any) {
-    console.error(`[Stripe Webhook Handler Error]:`, err);
+    log.error({ err }, 'Stripe webhook handler error');
     return NextResponse.json({ error: err.message || 'Server error processing webhook' }, { status: 500 });
   } finally {
     // Flush queued PostHog events before the serverless function

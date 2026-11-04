@@ -5265,7 +5265,7 @@ button.on .ar-mix {
   z-index: 80;
   padding: 20px;
 }
-.modal {
+.overlay > .modal {
   width: 100%;
   max-width: 400px;
   position: relative;

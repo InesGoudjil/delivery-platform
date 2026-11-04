@@ -16,7 +16,10 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import Link from "next/link";
+import { useOptionalEntitlements } from "@/components/providers/entitlements-provider";
 import {
   TypographyH1,
   TypographyH3,
@@ -54,6 +57,9 @@ function formatRelativeTime(dateString?: string): string {
 export default function NotificationsPage() {
   const params = useParams();
   const workspaceSlug = (params?.workspaceSlug as string) || "studio";
+  const entitlements = useOptionalEntitlements();
+  const canNotifyDownloads = entitlements?.can.receiveDownloadNotifications ?? true;
+  const canWhatsApp = entitlements?.can.sendWhatsApp ?? true;
 
   // Notification Preferences State
   const [notifyApproval, setNotifyApproval] = useState(true);
@@ -222,16 +228,31 @@ export default function NotificationsPage() {
         {/* Master File Downloads */}
         <div className="p-6 flex items-center justify-between gap-4">
           <div className="space-y-0.5">
-            <TypographySmall className="text-sm font-bold font-heading text-card-foreground">
-              Master File Download Alerts
-            </TypographySmall>
+            <div className="flex items-center gap-2">
+              <TypographySmall className="text-sm font-bold font-heading text-card-foreground">
+                Master File Download Alerts
+              </TypographySmall>
+              {!canNotifyDownloads && (
+                <Badge variant="orange" className="text-[9px] px-1.5 py-0.5 font-bold">
+                  PRO
+                </Badge>
+              )}
+            </div>
             <TypographyMuted className="text-xs text-muted-foreground">
               Get notified when a client initiates a full ProRes master file download.
             </TypographyMuted>
+            {!canNotifyDownloads && (
+              <Link
+                href={`/${workspaceSlug}/subscription`}
+                className="text-[10px] text-primary hover:underline block pt-0.5"
+              >
+                Upgrade to Pro to enable download alerts &rarr;
+              </Link>
+            )}
           </div>
           <Switch
-            disabled={isLoadingSettings}
-            checked={notifyDownloads}
+            disabled={isLoadingSettings || !canNotifyDownloads}
+            checked={canNotifyDownloads && notifyDownloads}
             onCheckedChange={(checked) =>
               handleTogglePreference("notifyDownloads", checked, "Master file download")
             }
@@ -265,15 +286,28 @@ export default function NotificationsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="inline-block size-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className={`inline-block size-2.5 rounded-full ${canWhatsApp ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/40"}`} />
               <TypographyH3 className="text-base font-bold font-heading text-card-foreground flex items-center gap-2">
-                <MessageCircle className="size-4 text-emerald-400" />
+                <MessageCircle className={`size-4 ${canWhatsApp ? "text-emerald-400" : "text-muted-foreground"}`} />
                 CineSpace WhatsApp Gateway
               </TypographyH3>
+              {!canWhatsApp && (
+                <Badge variant="orange" className="text-[9px] px-1.5 py-0.5 font-bold">
+                  BASIC
+                </Badge>
+              )}
             </div>
             <TypographyMuted className="text-xs text-muted-foreground">
               Instant alerts and share links dispatched directly to your mobile phone.
             </TypographyMuted>
+            {!canWhatsApp && (
+              <Link
+                href={`/${workspaceSlug}/subscription`}
+                className="text-[10px] text-primary hover:underline block pt-0.5"
+              >
+                Upgrade to Basic or higher to enable WhatsApp delivery &rarr;
+              </Link>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -281,14 +315,14 @@ export default function NotificationsPage() {
               type="text"
               placeholder="+971 50 123 4567"
               value={whatsAppNumber}
-              disabled={isLoadingSettings || isUpdatingPhone}
+              disabled={isLoadingSettings || isUpdatingPhone || !canWhatsApp}
               onChange={(e) => setWhatsAppNumber(e.target.value)}
               className="bg-muted border border-border rounded-xl px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary w-48 disabled:opacity-50"
             />
             <Button
-              disabled={isUpdatingPhone || isLoadingSettings}
+              disabled={isUpdatingPhone || isLoadingSettings || !canWhatsApp}
               onClick={handleUpdateWhatsAppNumber}
-              className="rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-black cursor-pointer"
+              className="rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-black cursor-pointer disabled:opacity-50"
             >
               {isUpdatingPhone ? <Loader2 className="size-3 animate-spin" /> : "Save"}
             </Button>

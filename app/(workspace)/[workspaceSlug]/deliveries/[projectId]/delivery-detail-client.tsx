@@ -25,6 +25,7 @@ import { EditAssetDialog, type EditableAssetItem } from "@/components/workspaces
 import { TrashBinDialog } from "@/components/workspaces/trash-bin-dialog";
 import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useOptionalEntitlements } from "@/components/providers/entitlements-provider";
 
 // Modular Subcomponents
 import { DeliveryHeroBanner } from "./_components/delivery-hero-banner";
@@ -118,6 +119,9 @@ export function DeliveryDetailClient({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [isSavingAsset, startSavingAsset] = useTransition();
+
+  const entitlements = useOptionalEntitlements();
+  const canWatermark = entitlements?.can.watermark ?? (features ? Boolean(features.watermark) : false);
 
   // 1. Consolidated Dialog Discriminator (Replaces 4 boolean useStates)
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
@@ -376,7 +380,7 @@ export function DeliveryDetailClient({
     aspectRatioSetting: project.appearance?.aspectRatioSetting || "masonry",
     thumbnailScale: project.appearance?.thumbnailScale || "Fill",
     showCardInfo: project.appearance?.showCardInfo ?? true,
-    watermarkMedia: project.appearance?.watermarkMedia ?? true,
+    watermarkMedia: canWatermark ? (project.appearance?.watermarkMedia ?? true) : false,
   });
 
   // 9. Lightbox ID with Browser History Sync (Supports Back button and Deep Linking)
@@ -1022,7 +1026,7 @@ export function DeliveryDetailClient({
         <DeliveryAppearanceCard
           settings={appearance}
           onChangeSettings={handleAppearanceChange}
-          canWatermark={features ? Boolean(features.watermark) : false}
+          canWatermark={canWatermark}
           workspaceSlug={workspace.slug}
         />
 
@@ -1202,7 +1206,7 @@ export function DeliveryDetailClient({
           onEditAsset={handleOpenEditAsset}
           authorName={workspace.brandName || "Filmmaker"}
           triggerToast={triggerToast}
-          watermarkMedia={appearance.watermarkMedia}
+          watermarkMedia={canWatermark && appearance.watermarkMedia}
           watermarkText={workspace.brandName || "STUDIO PREVIEW"}
           workspaceId={workspace.id}
           projectId={project.id}

@@ -3,6 +3,9 @@ import { Plan } from "@/core/entities/plan";
 import { Subscription } from "@/core/entities/subscription";
 import { Workspace } from "@/core/entities/workspace";
 import { SubscriptionsClient, AdminPlanItem, AdminSubscriptionListItem } from "./subscriptions-client";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ page: "AdminSubscriptionsPage" });
 
 export default async function AdminSubscriptionsPage() {
   const services = await getServerServices();
@@ -64,7 +67,7 @@ export default async function AdminSubscriptionsPage() {
       };
     });
   } catch (err) {
-    console.warn("Error fetching admin subscriptions page:", err);
+    log.warn({ err }, "Error fetching admin subscriptions page");
   }
 
 

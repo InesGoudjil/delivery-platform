@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { TypographyH3, TypographyMuted, TypographySpan } from "@/components/ui/typography";
+import { useOptionalEntitlements } from "@/components/providers/entitlements-provider";
 import type { AppearanceSettings } from "./types";
 
 interface DeliveryAppearanceCardProps {
@@ -34,9 +35,12 @@ interface DeliveryAppearanceCardProps {
 export function DeliveryAppearanceCard({
   settings,
   onChangeSettings,
-  canWatermark = true,
+  canWatermark: propCanWatermark,
   workspaceSlug,
 }: DeliveryAppearanceCardProps) {
+  const entitlements = useOptionalEntitlements();
+  const canWatermark = entitlements?.can.watermark ?? propCanWatermark ?? false;
+
   const {
     cardSize,
     aspectRatioSetting,
@@ -78,7 +82,7 @@ export function DeliveryAppearanceCard({
 
       <CardContent className="space-y-4 pt-4 text-xs font-medium">
         {/* Card size row */}
-        <div className="flex items-center justify-between py-2 border-b border-border/40">
+        <div className="flex items-center justify-between py-2 border-b border-border/40 gap-2 flex-wrap sm:flex-nowrap">
           <TypographySpan variant="muted">Card size</TypographySpan>
           <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40">
             {(["S", "M", "L"] as const).map((size) => (
@@ -88,7 +92,7 @@ export function DeliveryAppearanceCard({
                 variant={cardSize === size ? "default" : "ghost"}
                 size="sm"
                 onClick={() => update({ cardSize: size })}
-                className={`h-7 px-3 text-xs font-bold rounded-lg cursor-pointer transition-all ${
+                className={`h-8 sm:h-7 px-3 text-xs font-bold rounded-lg cursor-pointer transition-all active:scale-95 ${
                   cardSize === size
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -101,7 +105,7 @@ export function DeliveryAppearanceCard({
         </div>
 
         {/* Aspect ratio row */}
-        <div className="flex items-center justify-between py-2 border-b border-border/40">
+        <div className="flex items-center justify-between py-2 border-b border-border/40 gap-2 flex-wrap sm:flex-nowrap">
           <TypographySpan variant="muted">Aspect ratio</TypographySpan>
           <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40">
             <Button
@@ -109,7 +113,7 @@ export function DeliveryAppearanceCard({
               variant={aspectRatioSetting === "16:9" ? "default" : "ghost"}
               size="icon-xs"
               onClick={() => update({ aspectRatioSetting: "16:9" })}
-              className={`rounded-lg cursor-pointer transition-all ${
+              className={`size-8 sm:size-7 rounded-lg cursor-pointer transition-all active:scale-95 ${
                 aspectRatioSetting === "16:9"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -123,7 +127,7 @@ export function DeliveryAppearanceCard({
               variant={aspectRatioSetting === "1:1" ? "default" : "ghost"}
               size="icon-xs"
               onClick={() => update({ aspectRatioSetting: "1:1" })}
-              className={`rounded-lg cursor-pointer transition-all ${
+              className={`size-8 sm:size-7 rounded-lg cursor-pointer transition-all active:scale-95 ${
                 aspectRatioSetting === "1:1"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -137,7 +141,7 @@ export function DeliveryAppearanceCard({
               variant={aspectRatioSetting === "9:16" ? "default" : "ghost"}
               size="icon-xs"
               onClick={() => update({ aspectRatioSetting: "9:16" })}
-              className={`rounded-lg cursor-pointer transition-all ${
+              className={`size-8 sm:size-7 rounded-lg cursor-pointer transition-all active:scale-95 ${
                 aspectRatioSetting === "9:16"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -151,7 +155,7 @@ export function DeliveryAppearanceCard({
               variant={aspectRatioSetting === "masonry" ? "default" : "ghost"}
               size="icon-xs"
               onClick={() => update({ aspectRatioSetting: "masonry" })}
-              className={`rounded-lg cursor-pointer transition-all ${
+              className={`size-8 sm:size-7 rounded-lg cursor-pointer transition-all active:scale-95 ${
                 aspectRatioSetting === "masonry"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -166,7 +170,7 @@ export function DeliveryAppearanceCard({
         </div>
 
         {/* Thumbnail scale row */}
-        <div className="flex items-center justify-between py-2 border-b border-border/40">
+        <div className="flex items-center justify-between py-2 border-b border-border/40 gap-2 flex-wrap sm:flex-nowrap">
           <TypographySpan variant="muted">
             Thumbnail scale
           </TypographySpan>
@@ -178,7 +182,7 @@ export function DeliveryAppearanceCard({
                 variant={thumbnailScale === scale ? "default" : "ghost"}
                 size="sm"
                 onClick={() => update({ thumbnailScale: scale })}
-                className={`h-7 px-3.5 text-xs font-bold rounded-lg cursor-pointer transition-all ${
+                className={`h-8 sm:h-7 px-3.5 text-xs font-bold rounded-lg cursor-pointer transition-all active:scale-95 ${
                   thumbnailScale === scale
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"

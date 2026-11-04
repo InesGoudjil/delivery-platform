@@ -1,5 +1,8 @@
 import { getServerServices } from "@/core/server";
 import { WaitlistClient } from "./waitlist-client";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ page: "AdminWaitlistPage" });
 
 export default async function AdminWaitlistPage() {
   const services = await getServerServices();
@@ -11,7 +14,7 @@ export default async function AdminWaitlistPage() {
     metrics = await services.waitlist.getDashboardMetrics();
     entries = await services.waitlist.listPending(100);
   } catch (err) {
-    console.warn("Failed to load waitlist entries in admin:", err);
+    log.warn({ err }, "Failed to load waitlist entries in admin");
   }
 
   return <WaitlistClient metrics={metrics} entries={entries} />;

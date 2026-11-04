@@ -114,7 +114,7 @@ export function DeliveryAssetCard({
         </>
       }
       topRight={
-        <>
+        <div className="flex items-center gap-1.5 p-0.5">
           {(isGlobalDownloadUnlocked || asset.isApproved) && (
             <Tooltip>
               <TooltipTrigger
@@ -127,9 +127,9 @@ export function DeliveryAssetCard({
                       e.stopPropagation();
                       onDownload(asset);
                     }}
-                    className="size-7 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white/90 hover:text-white hover:bg-white/20 hover:border-white/40 flex items-center justify-center shadow-md transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 p-0"
+                    className="size-9 sm:size-7.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white/90 hover:text-white hover:bg-white/20 hover:border-white/40 flex items-center justify-center shadow-md transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 p-0 active:scale-90 touch-manipulation"
                   >
-                    <Download className="size-3.5" />
+                    <Download className="size-4 sm:size-3.5" />
                   </Button>
                 }
               />
@@ -151,16 +151,16 @@ export function DeliveryAssetCard({
                     e.stopPropagation();
                     onToggleApproval(asset.id);
                   }}
-                  className={`size-7 rounded-full p-0 flex items-center justify-center shadow-md font-bold transition-all cursor-pointer ${
+                  className={`size-9 sm:size-7.5 rounded-full p-0 flex items-center justify-center shadow-md font-bold transition-all cursor-pointer active:scale-90 touch-manipulation ${
                     asset.isApproved
                       ? "bg-[#86b98f] hover:bg-amber-400 text-black opacity-100"
                       : "bg-black/60 backdrop-blur-md border border-white/20 text-white/80 hover:text-black hover:bg-[#86b98f] hover:border-[#86b98f] opacity-0 group-hover:opacity-100 max-sm:opacity-100"
                   }`}
                 >
                   {isApproving ? (
-                    <Loader2 className="size-3.5 animate-spin" />
+                    <Loader2 className="size-4 sm:size-3.5 animate-spin" />
                   ) : (
-                    <Check className="size-3.5 stroke-[3]" />
+                    <Check className="size-4 sm:size-3.5 stroke-[3]" />
                   )}
                 </Button>
               }
@@ -171,7 +171,7 @@ export function DeliveryAssetCard({
                 : "Click to approve cut"}
             </TooltipContent>
           </Tooltip>
-        </>
+        </div>
       }
       bottomRight={
         !isPhoto && durationLabel ? (
@@ -201,11 +201,11 @@ export function DeliveryAssetCard({
                     ? "Click to unapprove"
                     : "Click to approve"
                 }
-                className="h-auto p-0 hover:bg-transparent cursor-pointer focus:outline-none"
+                className="h-8 p-1 hover:bg-transparent cursor-pointer focus:outline-none active:scale-95 touch-manipulation"
               >
                 <Badge
                   variant="outline"
-                  className={`text-[10px] shrink-0 font-medium transition-colors ${
+                  className={`text-[10px] shrink-0 font-medium transition-colors py-1 px-2 ${
                     asset.isApproved
                       ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10 hover:bg-amber-500/15 hover:text-amber-300 hover:border-amber-500/30"
                       : "border-amber-500/30 text-amber-400 bg-amber-500/10 hover:bg-emerald-500/15 hover:text-emerald-300 hover:border-emerald-500/30"
@@ -223,14 +223,14 @@ export function DeliveryAssetCard({
                   e.stopPropagation();
                   onDownload(asset);
                 }}
-                className="size-6 rounded-md text-[#aeaeb4] hover:text-white hover:bg-white/10 transition-colors p-0 cursor-pointer disabled:opacity-30"
+                className="size-8 sm:size-7 rounded-lg text-[#aeaeb4] hover:text-white hover:bg-white/10 transition-colors p-0 cursor-pointer disabled:opacity-30 active:scale-95 touch-manipulation flex items-center justify-center"
                 title={
                   isGlobalDownloadUnlocked || asset.isApproved
                     ? `Download ${asset.title}`
                     : "Approve cut to unlock download"
                 }
               >
-                <Download className="size-3" />
+                <Download className="size-3.5 sm:size-3" />
               </Button>
             </div>
           </div>

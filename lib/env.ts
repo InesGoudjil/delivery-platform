@@ -47,6 +47,10 @@ const envSchema = z.object({
   // App & Storage Options
   STORAGE_PROVIDER: z.enum(["cloudflare", "mock", "auto"]).default("auto"),
   NEXT_PUBLIC_APP_URL: z.string().optional().default("http://localhost:3000"),
+  LOG_LEVEL: z
+    .enum(["trace", "debug", "info", "warn", "error", "fatal", "silent"])
+    .optional()
+    .default(process.env.NODE_ENV === "production" ? "info" : "debug"),
 
   // Zoho ZeptoMail Configuration
   ZEPTOMAIL_API_TOKEN: z.string().optional().default(""),

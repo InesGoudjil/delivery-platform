@@ -1,7 +1,7 @@
 import { Subscription, SubscriptionStatus } from '@/core/entities/subscription';
 import { Plan, PlanSlug, SEED_PLANS } from '@/core/entities/plan';
 import { Invoice, InvoiceStatus } from '@/core/entities/invoice';
-import { WorkspaceFeatureConfig, WorkspaceFeatures } from '@/core/entities/workspace';
+import { WorkspaceFeatureConfig, WorkspaceFeatures, WorkspaceEntitlements } from '@/core/entities/workspace';
 import { ISubscriptionRepository } from '@/core/repositories/subscription.repository';
 import { IPlanRepository } from '@/core/repositories/plan.repository';
 import { IWorkspaceFeaturesRepository } from '@/core/repositories/workspace.repository';
@@ -102,24 +102,130 @@ export class SubscriptionService {
   }
 
   async getCurrentPlan(workspaceId: string): Promise<Plan | null> {
+    const starterPlan = (await this.planRepo.findBySlug('starter')) || ({
+      id: 'plan_starter',
+      name: 'Starter',
+      slug: 'starter',
+      priceCents: 0,
+      currency: 'USD',
+      billingInterval: 'month',
+      sortOrder: 1,
+      isActive: true,
+      features: SEED_PLANS.starter.features as WorkspaceFeatureConfig,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as Plan);
+
     const sub = await this.subscriptionRepo.findByWorkspaceId(workspaceId);
-    if (!sub) return this.planRepo.findBySlug('starter');
-    return this.planRepo.findById(sub.planId);
+    if (!sub) return starterPlan;
+
+    // Check expiration for trials
+    if (sub.status === 'trialing') {
+      if (sub.trialEndsAt && new Date(sub.trialEndsAt) < new Date()) {
+        return starterPlan;
+      }
+    }
+
+    // Inactive subscriptions forfeit high-tier features
+    if (sub.status === 'canceled' || sub.status === 'past_due') {
+      return starterPlan;
+    }
+
+    if (sub.status === 'active' || sub.status === 'trialing') {
+      const plan = await this.planRepo.findById(sub.planId);
+      if (plan && plan.isActive) {
+        return plan;
+      }
+    }
+
+    return starterPlan;
   }
 
   async getFeatures(workspaceId: string): Promise<WorkspaceFeatureConfig> {
-    const featuresRecord = await this.featuresRepo.findByWorkspaceId(workspaceId);
-    if (featuresRecord && featuresRecord.features && Object.keys(featuresRecord.features).length > 0) {
-      return featuresRecord.features;
-    }
-
     const plan = await this.getCurrentPlan(workspaceId);
-    if (plan?.features && Object.keys(plan.features).length > 0) {
-      return plan.features;
+    const baselineFeatures: WorkspaceFeatureConfig =
+      plan?.features && Object.keys(plan.features).length > 0
+        ? plan.features
+        : (SEED_PLANS.starter.features as WorkspaceFeatureConfig);
+
+    // Check for custom workspace overrides (if any exist)
+    const overridesRecord = await this.featuresRepo.findByWorkspaceId(workspaceId);
+    if (overridesRecord && overridesRecord.features && Object.keys(overridesRecord.features).length > 0) {
+      return {
+        ...baselineFeatures,
+        ...overridesRecord.features,
+      };
     }
 
-    const starter = await this.planRepo.findBySlug('starter');
-    return starter?.features || (SEED_PLANS.starter.features as WorkspaceFeatureConfig);
+    return baselineFeatures;
+  }
+
+  async getEntitlements(workspaceId: string): Promise<WorkspaceEntitlements> {
+    const plan = await this.getCurrentPlan(workspaceId);
+    const sub = await this.subscriptionRepo.findByWorkspaceId(workspaceId);
+    const features = await this.getFeatures(workspaceId);
+
+    const storageGb = Number(
+      features.storage_gb ??
+        (plan?.slug === 'studio' ? 2048 : plan?.slug === 'pro' ? 500 : plan?.slug === 'basic' ? 100 : 2)
+    );
+    const storageBytesMax = storageGb * 1024 * 1024 * 1024;
+    const clientLinksMax =
+      features.client_links !== undefined
+        ? Number(features.client_links)
+        : plan?.slug === 'starter'
+        ? 1
+        : plan?.slug === 'basic'
+        ? 20
+        : -1;
+    const teamSeatsMax =
+      features.team_seats !== undefined
+        ? Number(features.team_seats)
+        : plan?.slug === 'studio'
+        ? 5
+        : plan?.slug === 'enterprise'
+        ? 25
+        : 1;
+    const portfolioVideosMax =
+      features.portfolio_videos !== undefined
+        ? Number(features.portfolio_videos)
+        : plan?.slug === 'starter'
+        ? 4
+        : -1;
+
+    const isTrial = sub?.status === 'trialing';
+    const isActive = sub
+      ? sub.status === 'active' ||
+        (isTrial && (!sub.trialEndsAt || new Date(sub.trialEndsAt) >= new Date()))
+      : true;
+
+    return {
+      workspaceId,
+      planSlug: plan?.slug || 'starter',
+      planName: plan?.name || 'Starter',
+      subscriptionStatus: sub?.status || 'active',
+      isTrial,
+      isActive,
+      features,
+      limits: {
+        storageGbMax: storageGb,
+        storageBytesMax,
+        clientLinksMax,
+        teamSeatsMax,
+        portfolioVideosMax,
+      },
+      can: {
+        watermark: Boolean(features.watermark),
+        passwordProtect: Boolean(features.password_protected),
+        customBranding: Boolean(features.branding),
+        whiteLabel: Boolean(features.white_label),
+        sendWhatsApp: Boolean(features.whatsapp_delivery),
+        receiveDownloadNotifications: Boolean(features.download_notifications),
+        useSiloArchive: Boolean(features.silo_archive),
+        bilingual: Array.isArray(features.languages) && features.languages.length > 1,
+        prioritySupport: Boolean(features.priority_support),
+      },
+    };
   }
 
   async startTrial(workspaceId: string, planSlug: PlanSlug = 'starter'): Promise<Subscription> {
@@ -137,7 +243,6 @@ export class SubscriptionService {
       trialEndsAt: trialEnd.toISOString(),
     });
 
-    await this.featuresRepo.upsertFeatures(workspaceId, plan.features);
     return subscription;
   }
 
@@ -184,8 +289,6 @@ export class SubscriptionService {
       });
     }
 
-    // Sync features for workspace
-    await this.featuresRepo.upsertFeatures(workspaceId, plan.features);
     return sub;
   }
 
@@ -223,7 +326,6 @@ export class SubscriptionService {
       });
     }
 
-    await this.featuresRepo.upsertFeatures(workspaceId, plan.features);
     return sub;
   }
 

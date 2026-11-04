@@ -12,7 +12,13 @@ import "@videojs/react/video/skin.css";
 import { resolveAdapterType } from "@videojs/react";
 import { Video, VideoPlayer, VideoSkin, usePlayer } from "@videojs/react/video";
 import { HlsJsVideo } from "@videojs/react/media/hlsjs-video";
-import { Image as ImageIcon } from "lucide-react";
+import {
+  Image as ImageIcon,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
+  RotateCw,
+} from "lucide-react";
 
 import { formatTimecode, stepByFrames } from "@/lib/timecode";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
@@ -176,6 +182,93 @@ function CutReviewPlayerInner({
   const activeRatio = detectedRatio || aspectRatio || "16:9";
   const bounding = getMediaBoundingStyles(activeRatio);
 
+  const [seekRipple, setSeekRipple] = useState<{
+    side: "left" | "right";
+    seconds: number;
+    key: number;
+  } | null>(null);
+  const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null);
+  const rippleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleStepFrame = (direction: 1 | -1) => {
+    pause();
+    const cur = videoRef.current ? videoRef.current.currentTime : (currentTime ?? 0);
+    const dur =
+      videoRef.current && Number.isFinite(videoRef.current.duration) && videoRef.current.duration > 0
+        ? videoRef.current.duration
+        : (duration ?? 0);
+    const nextTime = stepByFrames(cur, direction, dur, fps);
+    seek(nextTime);
+    if (videoRef.current) {
+      videoRef.current.currentTime = nextTime;
+    }
+    onTimeChange?.(nextTime, formatTimecode(nextTime, fps));
+  };
+
+  const triggerDoubleTapSeek = (xRatio: number) => {
+    const cur = videoRef.current ? videoRef.current.currentTime : (currentTime ?? 0);
+    const dur = effectiveDuration;
+    const now = Date.now();
+
+    if (xRatio < 0.45) {
+      const target = Math.max(0, cur - 10);
+      seek(target);
+      if (videoRef.current) videoRef.current.currentTime = target;
+      onTimeChange?.(target, formatTimecode(target, fps));
+      setSeekRipple({ side: "left", seconds: 10, key: now });
+      if (rippleTimerRef.current) clearTimeout(rippleTimerRef.current);
+      rippleTimerRef.current = setTimeout(() => setSeekRipple(null), 650);
+    } else if (xRatio > 0.55) {
+      const target = Math.min(dur, cur + 10);
+      seek(target);
+      if (videoRef.current) videoRef.current.currentTime = target;
+      onTimeChange?.(target, formatTimecode(target, fps));
+      setSeekRipple({ side: "right", seconds: 10, key: now });
+      if (rippleTimerRef.current) clearTimeout(rippleTimerRef.current);
+      rippleTimerRef.current = setTimeout(() => setSeekRipple(null), 650);
+    }
+  };
+
+  const handleVideoTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (isImageCut) return;
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clientX = touch.clientX;
+    const clientY = touch.clientY;
+    const xRatio = (clientX - rect.left) / rect.width;
+    const yRatio = (clientY - rect.top) / rect.height;
+
+    // Ignore taps in the bottom 25% where controls/scrubber live
+    if (yRatio > 0.75) return;
+
+    const now = Date.now();
+    const lastTap = lastTapRef.current;
+
+    if (
+      lastTap &&
+      now - lastTap.time < 350 &&
+      Math.abs(clientX - lastTap.x) < 60 &&
+      Math.abs(clientY - lastTap.y) < 60
+    ) {
+      lastTapRef.current = null;
+      triggerDoubleTapSeek(xRatio);
+    } else {
+      lastTapRef.current = { time: now, x: clientX, y: clientY };
+    }
+  };
+
+  const handleVideoDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isImageCut) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xRatio = (e.clientX - rect.left) / rect.width;
+    const yRatio = (e.clientY - rect.top) / rect.height;
+
+    if (yRatio > 0.75) return;
+    triggerDoubleTapSeek(xRatio);
+  };
+
   useImperativeHandle(forwardedRef, () => ({
     seekTo: (seconds: number) => {
       seek(seconds);
@@ -201,17 +294,7 @@ function CutReviewPlayerInner({
       return duration ?? 0;
     },
     stepFrame: (direction: 1 | -1) => {
-      const cur = videoRef.current ? videoRef.current.currentTime : (currentTime ?? 0);
-      const dur =
-        videoRef.current && Number.isFinite(videoRef.current.duration) && videoRef.current.duration > 0
-          ? videoRef.current.duration
-          : (duration ?? 0);
-      const nextTime = stepByFrames(cur, direction, dur, fps);
-      seek(nextTime);
-      if (videoRef.current) {
-        videoRef.current.currentTime = nextTime;
-      }
-      onTimeChange?.(nextTime, formatTimecode(nextTime, fps));
+      handleStepFrame(direction);
     },
   }));
 
@@ -354,7 +437,7 @@ function CutReviewPlayerInner({
               style={{
                 left: `${leftPercent}%`,
               }}
-              className="pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2 group/marker z-30 flex items-center justify-center p-2 -m-2 focus:outline-none cursor-pointer"
+              className="pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2 group/marker z-30 flex items-center justify-center min-w-[36px] min-h-[36px] -m-3 focus:outline-none cursor-pointer touch-manipulation"
               aria-label={`Comment by ${comment.authorName || "Reviewer"} at ${formatTimecode(comment.timestampSeconds, fps)}`}
             >
               {/* Timeline Marker Dot */}
@@ -369,10 +452,11 @@ function CutReviewPlayerInner({
                 )}
               />
 
-              {/* Hover Tooltip Card */}
+              {/* Hover & Active Tooltip Card */}
               <div
                 className={cn(
-                  "pointer-events-none absolute bottom-full mb-2.5 hidden group-hover/marker:flex flex-col items-start gap-1 p-2 rounded-lg bg-black/95 backdrop-blur-md border border-white/20 shadow-2xl text-left min-w-[140px] max-w-[240px] z-50 animate-in fade-in zoom-in-95 duration-100 select-none",
+                  "pointer-events-none absolute bottom-full mb-2.5 flex-col items-start gap-1 p-2 rounded-lg bg-black/95 backdrop-blur-md border border-white/20 shadow-2xl text-left min-w-[140px] max-w-[240px] z-50 animate-in fade-in zoom-in-95 duration-100 select-none",
+                  isActive ? "flex" : "hidden group-hover/marker:flex",
                   tooltipPositionClass
                 )}
               >
@@ -472,6 +556,72 @@ function CutReviewPlayerInner({
             }}
           />
         )}
+
+        {/* Double-Tap Seek Layer (Top 75% zone above bottom controls) */}
+        {!isImageCut && (
+          <div
+            className="absolute inset-x-0 top-0 bottom-16 z-20 pointer-events-auto cursor-pointer"
+            onTouchEnd={handleVideoTouchEnd}
+            onDoubleClick={handleVideoDoubleClick}
+          />
+        )}
+
+        {/* Animated Double-Tap Seek Ripple Indicator */}
+        {seekRipple && (
+          <div
+            key={seekRipple.key}
+            className={cn(
+              "pointer-events-none absolute top-1/2 -translate-y-1/2 z-40 flex flex-col items-center justify-center size-20 rounded-full bg-black/85 backdrop-blur-md border border-white/20 text-white shadow-2xl animate-in fade-in zoom-in-75 duration-150",
+              seekRipple.side === "left" ? "left-6 sm:left-12" : "right-6 sm:right-12"
+            )}
+          >
+            {seekRipple.side === "left" ? (
+              <>
+                <RotateCcw className="size-6 text-primary" />
+                <span className="font-mono text-xs font-bold text-white mt-1">-10s</span>
+              </>
+            ) : (
+              <>
+                <RotateCw className="size-6 text-primary" />
+                <span className="font-mono text-xs font-bold text-white mt-1">+10s</span>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Frame-Stepping Quick Controls */}
+        {!isImageCut && (
+          <div className="absolute top-3 right-3 z-30 flex items-center gap-1 bg-black/75 backdrop-blur-md border border-white/15 rounded-full p-1 shadow-lg pointer-events-auto">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleStepFrame(-1);
+              }}
+              className="size-7 rounded-full bg-white/5 hover:bg-white/20 active:scale-90 text-white/90 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              title="Step back 1 frame (Left Arrow)"
+              aria-label="Step back 1 frame"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <span className="font-mono text-[9px] font-bold text-zinc-300 tracking-wider px-1 select-none">
+              FRAME
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleStepFrame(1);
+              }}
+              className="size-7 rounded-full bg-white/5 hover:bg-white/20 active:scale-90 text-white/90 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              title="Step forward 1 frame (Right Arrow)"
+              aria-label="Step forward 1 frame"
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
+        )}
+
         {showWatermark && (
           <WatermarkOverlay text={watermarkText} variant="player" showBadge />
         )}

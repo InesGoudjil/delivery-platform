@@ -125,12 +125,20 @@ export class AuthService {
       };
     }
   }
-
   async signOut(): Promise<void> {
     try {
       await this.supabase.auth.signOut();
     } catch {
       // Ignore signout network errors
+    }
+  }
+
+  async signOutOthers(): Promise<{ error: Error | null }> {
+    try {
+      const { error } = await this.supabase.auth.signOut({ scope: 'others' });
+      return { error };
+    } catch (err: any) {
+      return { error: err };
     }
   }
 }

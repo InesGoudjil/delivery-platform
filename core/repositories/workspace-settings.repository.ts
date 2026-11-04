@@ -5,6 +5,9 @@ import {
   UpdateWorkspaceSettingsDTO,
   DEFAULT_WORKSPACE_SETTINGS,
 } from "@/core/entities/workspace-settings";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ repository: "WorkspaceSettingsRepository" });
 
 export interface IWorkspaceSettingsRepository {
   findByWorkspaceId(workspaceId: string): Promise<WorkspaceSettings | null>;
@@ -41,7 +44,7 @@ export class SupabaseWorkspaceSettingsRepository implements IWorkspaceSettingsRe
       .maybeSingle();
 
     if (error) {
-      console.warn(`[WorkspaceSettingsRepository] Error finding settings: ${error.message}`);
+      log.warn({ err: error, workspaceId }, "Error finding workspace settings");
       return null;
     }
 
@@ -74,7 +77,7 @@ export class SupabaseWorkspaceSettingsRepository implements IWorkspaceSettingsRe
       .single();
 
     if (error) {
-      console.warn(`[WorkspaceSettingsRepository] Error creating default settings: ${error.message}`);
+      log.warn({ err: error, workspaceId }, "Error creating default workspace settings");
       return {
         workspaceId,
         ...DEFAULT_WORKSPACE_SETTINGS,

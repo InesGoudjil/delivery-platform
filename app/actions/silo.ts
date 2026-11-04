@@ -8,6 +8,9 @@ import {
   restoreDeliveryFromSiloSchema,
   safeValidate,
 } from "@/lib/validations";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ actionGroup: "silo" });
 
 export async function archiveDeliveryToSiloAction(deliveryId: string) {
   try {
@@ -52,7 +55,7 @@ export async function archiveDeliveryToSiloAction(deliveryId: string) {
       deliveryId: validated.data.deliveryId,
     };
   } catch (err: any) {
-    console.error("[archiveDeliveryToSiloAction] Error:", err);
+    log.error({ err, deliveryId }, "archiveDeliveryToSiloAction error");
     return { success: false, error: err.message || "Failed to archive to The Silo." };
   }
 }
@@ -104,7 +107,7 @@ export async function restoreDeliveryFromSiloAction(
       deliveryId: validated.data.deliveryId,
     };
   } catch (err: any) {
-    console.error("[restoreDeliveryFromSiloAction] Error:", err);
+    log.error({ err, deliveryId }, "restoreDeliveryFromSiloAction error");
     return { success: false, error: err.message || "Failed to request Silo restore." };
   }
 }
@@ -154,7 +157,7 @@ export async function checkDeliverySiloStatusAction(deliveryId: string) {
       deliveryId: deliveryId.trim(),
     };
   } catch (err: any) {
-    console.error("[checkDeliverySiloStatusAction] Error:", err);
+    log.error({ err, deliveryId }, "checkDeliverySiloStatusAction error");
     return { success: false, error: err.message || "Failed to check Silo status." };
   }
 }
@@ -182,7 +185,7 @@ export async function getDeliverySiloDownloadUrlsAction(deliveryId: string) {
       downloads,
     };
   } catch (err: any) {
-    console.error("[getDeliverySiloDownloadUrlsAction] Error:", err);
+    log.error({ err, deliveryId }, "getDeliverySiloDownloadUrlsAction error");
     return { success: false, error: err.message || "Failed to generate Silo download links." };
   }
 }

@@ -283,22 +283,22 @@ export function PortfolioModals() {
         <UniversalDialogContent
           size="5xl"
           showCloseButton={false}
-          className="max-w-6xl max-h-[90vh] p-0 overflow-hidden bg-[#121214] border-white/15 rounded-3xl"
+          className="max-w-6xl max-h-[90vh] p-0 overflow-hidden bg-[#121214] border-white/15 rounded-3xl max-sm:!fixed max-sm:!inset-0 max-sm:!h-[100dvh] max-sm:!max-h-[100dvh] max-sm:!w-full max-sm:!rounded-none max-sm:!border-0 max-sm:!top-0 max-sm:!left-0"
         >
           {selectedProject && (
-            <div className="relative w-full flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="relative w-full flex flex-col max-h-[90vh] max-sm:max-h-[100dvh] max-sm:h-[100dvh] overflow-hidden">
             {/* Top Close Button */}
             <Button
               variant="ghost"
               size="icon-xs"
               onClick={() => setSelectedProject(null)}
-              className="absolute top-4 right-4 z-30 size-9 rounded-full bg-black/60 hover:bg-white/20 text-white cursor-pointer border border-white/10"
+              className="absolute top-4 right-4 z-30 size-10 sm:size-9 rounded-full bg-black/60 hover:bg-white/20 text-white cursor-pointer border border-white/10 active:scale-95 touch-manipulation"
             >
               <X className="size-5" />
             </Button>
 
             {/* Project Hero Header */}
-            <div className="relative w-full h-64 sm:h-80 shrink-0 overflow-hidden">
+            <div className="relative w-full h-56 sm:h-80 shrink-0 overflow-hidden">
               <div
                 className="absolute inset-0 bg-cover bg-center"
                 style={{ backgroundImage: `url(${selectedProject.coverImage})` }}
@@ -382,8 +382,8 @@ export function PortfolioModals() {
             </div>
 
             {/* Modal Bottom Inquire */}
-            <div className="p-4 bg-[#0a0a0b] border-t border-white/10 flex items-center justify-between">
-              <TypographySpan className="text-xs text-zinc-400 ">
+            <div className="p-4 bg-[#0a0a0b] border-t border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-safe">
+              <TypographySpan className="text-xs text-zinc-400">
                 Location: {selectedProject.location}
               </TypographySpan>
               <Button
@@ -392,9 +392,9 @@ export function PortfolioModals() {
                     `Hi ${profile.name}! I was looking at the "${selectedProject.title}" project on your portfolio and would like to discuss a project inquiry.`
                   )
                 }
-                className="px-5 py-2 h-auto rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-primary/25"
+                className="w-full sm:w-auto px-5 py-2.5 min-h-[44px] rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-primary/25 active:scale-95 touch-manipulation"
               >
-                <MessageCircle className="size-3.5" />
+                <MessageCircle className="size-4" />
                 <TypographySpan>Inquire About Project</TypographySpan>
               </Button>
             </div>
@@ -428,7 +428,7 @@ export function PortfolioModals() {
                 variant="ghost"
                 size="icon-xs"
                 onClick={() => setIsContactOpen(false)}
-                className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+                className="size-9 sm:size-8 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer active:scale-95 touch-manipulation"
               >
                 <X className="size-4" />
               </Button>
@@ -448,7 +448,7 @@ export function PortfolioModals() {
                 <div className="pt-4">
                   <Button
                     onClick={() => handleWhatsAppChat()}
-                    className="px-6 py-2.5 h-auto rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 mx-auto cursor-pointer shadow-lg shadow-primary/25"
+                    className="w-full sm:w-auto px-6 py-2.5 min-h-[44px] rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 mx-auto cursor-pointer shadow-lg shadow-primary/25 active:scale-95 touch-manipulation"
                   >
                     <MessageCircle className="size-4" />
                     <TypographySpan>Open WhatsApp Chat Directly</TypographySpan>
@@ -460,7 +460,7 @@ export function PortfolioModals() {
                 {/* Instant WhatsApp Shortcut Banner */}
                 <div
                   onClick={() => handleWhatsAppChat()}
-                  className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between cursor-pointer hover:bg-emerald-500/15 transition-colors group"
+                  className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between cursor-pointer hover:bg-emerald-500/15 transition-colors group active:scale-[0.99] touch-manipulation"
                 >
                   <div className="flex items-center gap-3">
                     <div className="size-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
@@ -499,7 +499,7 @@ export function PortfolioModals() {
                       value={clientName}
                       onChange={(e) => setClientName(e.target.value)}
                       placeholder="e.g. Prestige Motors / Sarah Smith"
-                      className="w-full px-3.5 py-2 rounded-xl bg-black/50 border border-white/10 text-white text-xs focus:outline-none focus:border-primary"
+                      className="w-full px-3.5 py-2.5 sm:py-2 rounded-xl bg-black/50 border border-white/10 text-white text-base sm:text-xs focus:outline-none focus:border-primary"
                     />
                   </div>
 
@@ -513,7 +513,7 @@ export function PortfolioModals() {
                       value={clientContact}
                       onChange={(e) => setClientContact(e.target.value)}
                       placeholder="email@company.com or phone"
-                      className="w-full px-3.5 py-2 rounded-xl bg-black/50 border border-white/10 text-white text-xs focus:outline-none focus:border-primary"
+                      className="w-full px-3.5 py-2.5 sm:py-2 rounded-xl bg-black/50 border border-white/10 text-white text-base sm:text-xs focus:outline-none focus:border-primary"
                     />
                   </div>
 
@@ -527,14 +527,14 @@ export function PortfolioModals() {
                       value={projectDetails}
                       onChange={(e) => setProjectDetails(e.target.value)}
                       placeholder="Tell us about the project scope, dates, and deliverable format..."
-                      className="w-full px-3.5 py-2 rounded-xl bg-black/50 border border-white/10 text-white text-xs focus:outline-none focus:border-primary resize-none"
+                      className="w-full px-3.5 py-2.5 sm:py-2 rounded-xl bg-black/50 border border-white/10 text-white text-base sm:text-xs focus:outline-none focus:border-primary resize-none"
                     />
                   </div>
 
                   <Button
                     type="submit"
                     disabled={isSubmittingContact}
-                    className="w-full py-2.5 h-auto rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-primary/25 disabled:opacity-50"
+                    className="w-full py-2.5 min-h-[44px] rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-primary/25 disabled:opacity-50 active:scale-95 touch-manipulation"
                   >
                     {isSubmittingContact ? (
                       <Loader2 className="size-3.5 animate-spin" />

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, AlertTriangle, FolderPlus, Loader2 } from "lucide-react";
+import { useOptionalEntitlements } from "@/components/providers/entitlements-provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -43,7 +44,8 @@ export function DeliveriesHeader({
   const [creating, setCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const clientLinksLimit = features?.client_links ?? 1;
+  const entitlements = useOptionalEntitlements();
+  const clientLinksLimit = entitlements?.limits.clientLinksMax ?? features?.client_links ?? 1;
   const isUnlimited = clientLinksLimit === -1;
   const isAtLimit = !isUnlimited && activeCount >= clientLinksLimit;
 

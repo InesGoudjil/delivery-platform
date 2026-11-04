@@ -14,6 +14,9 @@ import {
   type SubmitContactFormInput,
   type SubmitPartnershipInput,
 } from "@/lib/validations";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ actionGroup: "inquiries" });
 
 /**
  * Server Action: Submit a client lead/inquiry from a filmmaker's public portfolio.
@@ -55,7 +58,7 @@ export async function submitPortfolioInquiryAction(input: SubmitPortfolioInquiry
           ownerEmail = userData.user.email;
         }
       } catch (e: any) {
-        console.warn("[submitPortfolioInquiryAction] Could not resolve owner email from auth:", e.message);
+        log.warn({ err: e, ownerId: workspace.ownerId }, "Could not resolve owner email from auth");
       }
     }
 
@@ -100,7 +103,7 @@ export async function submitPortfolioInquiryAction(input: SubmitPortfolioInquiry
 
     return { success: true, inquiryId: inquiryRecord.id };
   } catch (err: any) {
-    console.error("[submitPortfolioInquiryAction] Error:", err);
+    log.error({ err }, "submitPortfolioInquiryAction error");
     return { success: false, error: err.message || "Failed to submit project inquiry." };
   }
 }
@@ -154,7 +157,7 @@ export async function submitContactFormAction(input: SubmitContactFormInput) {
 
     return { success: true, inquiryId: inquiryRecord.id };
   } catch (err: any) {
-    console.error("[submitContactFormAction] Error:", err);
+    log.error({ err }, "submitContactFormAction error");
     return { success: false, error: err.message || "Failed to submit contact message." };
   }
 }
@@ -218,7 +221,7 @@ export async function submitPartnershipAction(input: SubmitPartnershipInput) {
 
     return { success: true, inquiryId: inquiryRecord.id };
   } catch (err: any) {
-    console.error("[submitPartnershipAction] Error:", err);
+    log.error({ err }, "submitPartnershipAction error");
     return { success: false, error: err.message || "Failed to submit partnership application." };
   }
 }

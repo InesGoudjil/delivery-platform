@@ -65,6 +65,10 @@ describe("app/actions/settings", () => {
       notification: {
         listWorkspaceLogs: vi.fn().mockResolvedValue(mockLogs),
       },
+      subscription: {
+        isDownloadNotificationAllowed: vi.fn().mockResolvedValue(true),
+        canDeliverWhatsApp: vi.fn().mockResolvedValue(true),
+      },
     };
 
     vi.spyOn(serverModule, "getServerServices").mockResolvedValue(mockServices);
@@ -121,6 +125,30 @@ describe("app/actions/settings", () => {
 
       expect(res.success).toBe(false);
       expect(res.error).toContain("Forbidden");
+    });
+
+    it("blocks enabling download notifications when plan does not include the feature", async () => {
+      mockServices.subscription.isDownloadNotificationAllowed.mockResolvedValueOnce(false);
+
+      const res = await updateWorkspaceNotificationSettingsAction("cinespace", {
+        notifyDownloads: true,
+      });
+
+      expect(res.success).toBe(false);
+      expect(res.error).toContain("Pro and Studio");
+      expect(mockServices.settings.upsert).not.toHaveBeenCalled();
+    });
+
+    it("blocks enabling WhatsApp delivery when plan does not include the feature", async () => {
+      mockServices.subscription.canDeliverWhatsApp.mockResolvedValueOnce(false);
+
+      const res = await updateWorkspaceNotificationSettingsAction("cinespace", {
+        whatsappEnabled: true,
+      });
+
+      expect(res.success).toBe(false);
+      expect(res.error).toContain("Basic, Pro, and Studio");
+      expect(mockServices.settings.upsert).not.toHaveBeenCalled();
     });
   });
 

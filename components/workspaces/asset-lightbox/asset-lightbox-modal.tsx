@@ -543,11 +543,11 @@ export function AssetLightboxModal({
         size="3xl"
         showCloseButton={false}
         overlayClassName="bg-black/85 backdrop-blur-md"
-        className="w-full sm:max-w-3xl max-h-[92vh] overflow-hidden flex flex-col p-0 bg-[#141418]/95 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-3xl text-white outline-none"
+        className="max-sm:!fixed max-sm:!inset-0 max-sm:!h-[100dvh] max-sm:!max-h-[100dvh] max-sm:!w-full max-sm:!max-w-none max-sm:!rounded-none max-sm:!border-0 max-sm:!translate-x-0 max-sm:!translate-y-0 max-sm:!top-0 max-sm:!left-0 w-full sm:max-w-3xl max-h-[92vh] overflow-hidden flex flex-col p-0 bg-[#141418]/95 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-3xl text-white outline-none"
       >
-        <div className="flex flex-col h-full max-h-[92vh] w-full overflow-hidden">
+        <div className="flex flex-col h-full max-h-[92vh] max-sm:h-full max-sm:max-h-[100dvh] w-full overflow-hidden">
           {/* 1. Top Minimalist Header */}
-          <div className="p-5 sm:p-6 pb-2 shrink-0">
+          <div className="p-4 sm:p-6 pb-2 shrink-0 pt-safe">
             <LightboxHeader
               title={activeItem.title}
               isStill={isStill}
@@ -575,7 +575,7 @@ export function AssetLightboxModal({
           </div>
 
           {/* Scrollable Stage & Feedback Content */}
-          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-5 sm:px-6 pb-6 pt-1 flex flex-col gap-4">
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-4 sm:px-6 pb-safe pb-8 pt-1 flex flex-col gap-4">
             {/* 2. Media Player Stage */}
         <div className="w-full shrink-0">
           <LightboxPlayerStage
@@ -658,13 +658,13 @@ export function AssetLightboxModal({
 
         {/* 4. Action Buttons Row (Download & Approve) */}
         {(hasApprovalSection || showDownload) && (
-          <div className="flex items-center gap-2.5 sm:gap-3 pt-1 flex-wrap">
+          <div className="flex items-center gap-2.5 sm:gap-3 pt-1 flex-wrap w-full">
             {/* Download Button */}
             {showDownload && (
               <Button
                 type="button"
                 onClick={handleDownload}
-                className="relative overflow-hidden inline-flex items-center justify-center gap-2 font-bold text-xs sm:text-sm tracking-wider uppercase rounded-2xl px-5 sm:px-6 py-2.5 sm:py-3 text-white transition-all duration-200 cursor-pointer shadow-lg hover:scale-[1.02] active:scale-[0.98] border border-[rgba(var(--acc2-rgb,255,138,69),0.55)] bg-gradient-to-b from-[rgba(var(--acc2-rgb,255,138,69),0.55)] via-[rgba(var(--acc-rgb,245,85,29),0.48)] to-[rgba(var(--acc-dk-rgb,175,50,15),0.6)] backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_8px_20px_-6px_rgba(var(--acc-rgb,245,85,29),0.55)] h-auto"
+                className="flex-1 sm:flex-none relative overflow-hidden inline-flex items-center justify-center gap-2 font-bold text-xs sm:text-sm tracking-wider uppercase rounded-xl sm:rounded-2xl px-5 sm:px-6 py-3 text-white transition-all duration-200 cursor-pointer shadow-lg hover:scale-[1.02] active:scale-[0.98] border border-[rgba(var(--acc2-rgb,255,138,69),0.55)] bg-gradient-to-b from-[rgba(var(--acc2-rgb,255,138,69),0.55)] via-[rgba(var(--acc-rgb,245,85,29),0.48)] to-[rgba(var(--acc-dk-rgb,175,50,15),0.6)] backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_8px_20px_-6px_rgba(var(--acc-rgb,245,85,29),0.55)] min-h-[44px] h-auto"
               >
                 <Download className="size-4 shrink-0" />
                 <span>DOWNLOAD</span>
@@ -685,7 +685,7 @@ export function AssetLightboxModal({
                             activeItem.status || (isApproved ? "approved" : "in_review")
                           )
                         }
-                        className={`inline-flex items-center justify-center gap-2 font-bold text-xs sm:text-sm tracking-wider uppercase rounded-2xl px-5 sm:px-6 py-2.5 sm:py-3 transition-all duration-200 cursor-pointer backdrop-blur-md shadow-md hover:scale-[1.02] active:scale-[0.98] h-auto ${
+                        className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 font-bold text-xs sm:text-sm tracking-wider uppercase rounded-xl sm:rounded-2xl px-5 sm:px-6 py-3 transition-all duration-200 cursor-pointer backdrop-blur-md shadow-md hover:scale-[1.02] active:scale-[0.98] min-h-[44px] h-auto ${
                           isApproved
                             ? "bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 hover:bg-amber-500/15 hover:border-amber-500/40 hover:text-amber-300"
                             : "bg-white/[0.07] hover:bg-white/[0.12] border border-white/20 hover:border-white/30 text-white"
@@ -706,7 +706,7 @@ export function AssetLightboxModal({
                 </Tooltip>
               ) : (
                 <div
-                  className={`inline-flex items-center justify-center gap-2 font-bold text-xs sm:text-sm tracking-wider uppercase rounded-2xl px-5 sm:px-6 py-2.5 sm:py-3 backdrop-blur-md shadow-md ${
+                  className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 font-bold text-xs sm:text-sm tracking-wider uppercase rounded-xl sm:rounded-2xl px-5 sm:px-6 py-3 backdrop-blur-md shadow-md min-h-[44px] ${
                     isApproved
                       ? "bg-emerald-500/15 border border-emerald-500/40 text-emerald-400"
                       : "bg-white/[0.05] border border-white/10 text-zinc-400"

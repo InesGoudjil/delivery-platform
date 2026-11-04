@@ -10,6 +10,9 @@ import { IPlanRepository } from "@/core/repositories/plan.repository";
 import { Asset, AssetVersion, AssetType, TranscodingStatus } from "@/core/entities/asset";
 import { isPlaceholderUrl } from "@/lib/media";
 import { env } from "@/lib/env";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ service: "AssetUploadService" });
 
 export interface RequestAssetUploadDTO {
   workspaceId: string;
@@ -101,20 +104,27 @@ export class AssetUploadService {
     // 3. Validate Storage Quota against Active Plan & Workspace Features
     let storageLimitGB = 2; // Default baseline for Starter plan
 
+    const subscription = await this.subscriptionRepo.findByWorkspaceId(resolvedWorkspaceId);
+    let plan: any = null;
+    if (subscription && (subscription.status === "active" || subscription.status === "trialing")) {
+      if (subscription.status === "trialing" && subscription.trialEndsAt && new Date(subscription.trialEndsAt) < new Date()) {
+        plan = await this.planRepo.findBySlug("starter");
+      } else {
+        plan = await this.planRepo.findById(subscription.planId);
+      }
+    } else {
+      plan = await this.planRepo.findBySlug("starter");
+    }
+
+    if (plan?.features?.storage_gb) {
+      storageLimitGB = Number(plan.features.storage_gb);
+    }
+
+    // Check optional custom workspace overrides
     if (this.featuresRepo) {
       const featuresRecord = await this.featuresRepo.findByWorkspaceId(resolvedWorkspaceId);
       if (featuresRecord?.features?.storage_gb) {
         storageLimitGB = Number(featuresRecord.features.storage_gb);
-      }
-    }
-
-    if (storageLimitGB === 2) {
-      const subscription = await this.subscriptionRepo.findByWorkspaceId(resolvedWorkspaceId);
-      if (subscription) {
-        const plan = await this.planRepo.findById(subscription.planId);
-        if (plan && plan.features && plan.features.storage_gb) {
-          storageLimitGB = Number(plan.features.storage_gb);
-        }
       }
     }
 
@@ -423,9 +433,9 @@ export class AssetUploadService {
           }
         }
       } catch (streamIngestErr: any) {
-        console.warn(
-          `[AssetUploadService] Cloudflare Stream copy ingestion failed for ${dto.providerUid}:`,
-          streamIngestErr?.message || streamIngestErr
+        log.warn(
+          { streamIngestErr, providerUid: dto.providerUid },
+          "Cloudflare Stream copy ingestion failed"
         );
       }
     }

@@ -3,6 +3,9 @@ import { Plan } from "@/core/entities/plan";
 import { Subscription } from "@/core/entities/subscription";
 import { Workspace } from "@/core/entities/workspace";
 import { AdminDashboardClient, AdminWorkspaceItem } from "./admin-dashboard-client";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ page: "AdminDashboard" });
 
 export default async function AdminDashboardPage() {
   const services = await getServerServices();
@@ -68,7 +71,7 @@ export default async function AdminDashboardPage() {
       );
     }
   } catch (err) {
-    console.warn("Admin stats notice:", err);
+    log.warn({ err }, "Admin stats notice");
   }
 
 

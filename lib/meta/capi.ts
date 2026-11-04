@@ -1,5 +1,8 @@
 import { createHash } from "crypto";
 import { env } from "@/lib/env";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ module: "meta/capi" });
 
 /**
  * Server-side Meta Conversions API helper.
@@ -189,9 +192,9 @@ export async function sendServerEvents(
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      console.error(
-        `[meta-capi] non-2xx response (${res.status}):`,
-        text.slice(0, 500)
+      log.error(
+        { status: res.status, body: text.slice(0, 500) },
+        "Meta CAPI non-2xx response"
       );
       return { ok: false, error: `HTTP ${res.status}` };
     }
@@ -202,7 +205,7 @@ export async function sendServerEvents(
       error?: { message?: string };
     };
     if (json.error) {
-      console.error("[meta-capi] api error:", json.error.message);
+      log.error({ error: json.error }, "Meta CAPI api error");
       return { ok: false, error: json.error.message };
     }
     return {
@@ -211,7 +214,7 @@ export async function sendServerEvents(
       fbtrace_id: json.fbtrace_id,
     };
   } catch (err: any) {
-    console.error("[meta-capi] fetch failed:", err?.message || err);
+    log.error({ err }, "Meta CAPI fetch failed");
     return { ok: false, error: err?.message || "fetch failed" };
   }
 }

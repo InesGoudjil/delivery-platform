@@ -13,6 +13,9 @@ import {
   EyeOff,
   Smartphone,
   Laptop,
+  Tablet,
+  Globe,
+  Clock,
   AlertCircle,
   Loader2,
   Copy,
@@ -45,6 +48,12 @@ import {
   getWorkspaceSettingsAction,
   updateWorkspaceSecuritySettingsAction,
 } from "@/app/actions/settings";
+import {
+  getActiveSessionsAction,
+  revokeSessionAction,
+  revokeAllOtherSessionsAction,
+} from "@/app/actions/sessions";
+import { UserSession } from "@/core/entities/user-session";
 
 interface TOTPEnrollData {
   id: string;
@@ -93,8 +102,9 @@ export default function SecurityPage() {
   const [isPending, startTransition] = useTransition();
 
   // Session state
-  const [deviceInfo, setDeviceInfo] = useState<{ browser: string; os: string } | null>(null);
-  const [lastSignIn, setLastSignIn] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<UserSession[]>([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
+  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
   const [isSigningOutOthers, setIsSigningOutOthers] = useState(false);
 
   // Load 2FA status, user session info, and workspace settings
@@ -118,31 +128,13 @@ export default function SecurityPage() {
           setIsLoading2FA(false);
         }
 
-        // 2. Fetch User & Device Info
-        const { data: userData } = await supabase.auth.getUser();
-        if (mounted && userData.user) {
-          if (userData.user.last_sign_in_at) {
-            setLastSignIn(new Date(userData.user.last_sign_in_at).toLocaleString());
+        // 2. Fetch Active Device Sessions
+        const sessionsRes = await getActiveSessionsAction();
+        if (mounted) {
+          if (sessionsRes.success && sessionsRes.data) {
+            setSessions(sessionsRes.data);
           }
-
-          // Parse browser & OS from navigator
-          if (typeof window !== "undefined") {
-            const ua = window.navigator.userAgent;
-            let browser = "Web Browser";
-            if (ua.includes("Chrome") && !ua.includes("Edg")) browser = "Google Chrome";
-            else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Apple Safari";
-            else if (ua.includes("Firefox")) browser = "Mozilla Firefox";
-            else if (ua.includes("Edg")) browser = "Microsoft Edge";
-
-            let os = "Desktop";
-            if (ua.includes("Mac OS")) os = "macOS";
-            else if (ua.includes("Windows")) os = "Windows";
-            else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS";
-            else if (ua.includes("Android")) os = "Android";
-            else if (ua.includes("Linux")) os = "Linux";
-
-            setDeviceInfo({ browser, os });
-          }
+          setIsLoadingSessions(false);
         }
 
         // 3. Fetch Workspace Link Expiration Defaults
@@ -151,8 +143,11 @@ export default function SecurityPage() {
           setExpirationDays(settingsRes.data.defaultLinkExpirationDays ?? null);
         }
       } catch (err) {
-        console.warn("[SecurityPage] Error loading security data:", err);
-        if (mounted) setIsLoading2FA(false);
+        console.warn("Error loading security data:", err);
+        if (mounted) {
+          setIsLoading2FA(false);
+          setIsLoadingSessions(false);
+        }
       }
     }
 
@@ -277,16 +272,35 @@ export default function SecurityPage() {
   const handleSignOutOtherSessions = async () => {
     setIsSigningOutOthers(true);
     try {
-      const { error } = await supabase.auth.signOut({ scope: "others" });
-      if (error) {
-        toast.error(error.message || "Failed to sign out other sessions");
-      } else {
+      const res = await revokeAllOtherSessionsAction();
+      if (res.success) {
+        setSessions((prev) => prev.filter((s) => s.isCurrent));
         toast.success("All other active sessions have been signed out.");
+      } else {
+        toast.error(res.error || "Failed to sign out other sessions");
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to sign out other sessions");
     } finally {
       setIsSigningOutOthers(false);
+    }
+  };
+
+  // Revoke a specific session
+  const handleRevokeSession = async (sessionId: string) => {
+    setRevokingSessionId(sessionId);
+    try {
+      const res = await revokeSessionAction(sessionId);
+      if (res.success) {
+        setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+        toast.success("Device session signed out successfully");
+      } else {
+        toast.error(res.error || "Failed to sign out device");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to sign out device");
+    } finally {
+      setRevokingSessionId(null);
     }
   };
 
@@ -549,45 +563,125 @@ export default function SecurityPage() {
             </div>
           </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isSigningOutOthers}
-            onClick={handleSignOutOtherSessions}
-            className="rounded-xl text-xs font-semibold border-border text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
-          >
-            {isSigningOutOthers ? (
-              <>
-                <Loader2 className="size-3 mr-1.5 animate-spin" /> Signing out...
-              </>
-            ) : (
-              <>
-                <LogOut className="size-3 mr-1.5" /> Sign Out Other Devices
-              </>
-            )}
-          </Button>
+          {sessions.filter((s) => !s.isCurrent).length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isSigningOutOthers}
+              onClick={handleSignOutOtherSessions}
+              className="rounded-xl text-xs font-semibold border-border text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+            >
+              {isSigningOutOthers ? (
+                <>
+                  <Loader2 className="size-3 mr-1.5 animate-spin" /> Signing out...
+                </>
+              ) : (
+                <>
+                  <LogOut className="size-3 mr-1.5" /> Sign Out Other Devices
+                </>
+              )}
+            </Button>
+          )}
         </div>
 
-        {/* Current Device Card */}
-        <div className="p-4 rounded-xl bg-muted/60 border border-border flex items-center justify-between text-xs">
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-foreground">
-                {deviceInfo ? `${deviceInfo.browser} on ${deviceInfo.os}` : "Current Session"}
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <span className="size-1.5 rounded-full bg-emerald-400" />
-                This Device
-              </span>
-            </div>
-            {lastSignIn && (
-              <TypographyMuted className="text-[11px] text-muted-foreground">
-                Signed in at: {lastSignIn}
-              </TypographyMuted>
-            )}
+        {/* Sessions List */}
+        {isLoadingSessions ? (
+          <div className="p-6 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+            <Loader2 className="size-4 animate-spin text-primary" />
+            <span>Loading active sessions...</span>
           </div>
-        </div>
+        ) : sessions.length === 0 ? (
+          <div className="p-4 rounded-xl bg-muted/60 border border-border text-xs text-muted-foreground">
+            No active sessions found.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {sessions.map((sess) => {
+              const DeviceIcon =
+                sess.deviceType === "mobile"
+                  ? Smartphone
+                  : sess.deviceType === "tablet"
+                  ? Tablet
+                  : Laptop;
+
+              return (
+                <div
+                  key={sess.id}
+                  className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition-colors ${
+                    sess.isCurrent
+                      ? "bg-primary/5 border-primary/20"
+                      : "bg-muted/40 border-border hover:bg-muted/70"
+                  }`}
+                >
+                  <div className="flex items-start sm:items-center gap-3">
+                    <div
+                      className={`p-2 rounded-xl border shrink-0 ${
+                        sess.isCurrent
+                          ? "bg-primary/10 border-primary/20 text-primary"
+                          : "bg-muted border-border text-muted-foreground"
+                      }`}
+                    >
+                      <DeviceIcon className="size-4" />
+                    </div>
+
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-foreground">
+                          {sess.browser} on {sess.os}
+                        </span>
+                        {sess.isCurrent && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <span className="size-1.5 rounded-full bg-emerald-400" />
+                            This Device
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
+                        {sess.city && (
+                          <span className="flex items-center gap-1">
+                            <Globe className="size-3" />
+                            {sess.city}
+                            {sess.country ? `, ${sess.country}` : ""}
+                          </span>
+                        )}
+                        {sess.ipAddress && <span>IP: {sess.ipAddress}</span>}
+                        <span className="flex items-center gap-1">
+                          <Clock className="size-3" />
+                          {sess.isCurrent
+                            ? "Active now"
+                            : `Last active ${new Date(sess.lastActiveAt).toLocaleDateString()} ${new Date(
+                                sess.lastActiveAt
+                              ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {!sess.isCurrent && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={revokingSessionId === sess.id}
+                      onClick={() => handleRevokeSession(sess.id)}
+                      className="rounded-xl text-xs font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer h-8 px-3 shrink-0 self-end sm:self-center"
+                    >
+                      {revokingSessionId === sess.id ? (
+                        <>
+                          <Loader2 className="size-3 mr-1 animate-spin" /> Revoking...
+                        </>
+                      ) : (
+                        "Revoke"
+                      )}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* 2FA Enrollment Modal */}

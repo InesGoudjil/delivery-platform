@@ -5,6 +5,9 @@ import { IPlanRepository } from '@/core/repositories/plan.repository';
 import { IWorkspaceMemberRepository } from '@/core/repositories/workspace-member.repository';
 import { IWorkspaceRepository } from '@/core/repositories/workspace.repository';
 import { SubscriptionService } from './subscription.service';
+import { createScopedLogger } from '@/lib/logger';
+
+const log = createScopedLogger({ service: 'StripeService' });
 
 export interface CreateCheckoutSessionInput {
   workspaceId: string;
@@ -68,7 +71,7 @@ export class StripeService {
           isValid = true;
         }
       } catch (err: any) {
-        console.warn(`[StripeService] Customer ID ${customerId} not found or invalid in Stripe:`, err.message);
+        log.warn({ err, customerId }, 'Customer ID not found or invalid in Stripe');
       }
     }
 
@@ -309,7 +312,7 @@ export class StripeService {
           status: 'paid',
         });
 
-        console.log(`[StripeService] Successfully added ${deltaGB} GB storage to workspace ${workspaceId}`);
+        log.info({ deltaGB, workspaceId }, 'Successfully added storage to workspace');
         return { success: true, planName: '+1 TB Storage' };
       }
 
@@ -345,13 +348,13 @@ export class StripeService {
           status: 'paid',
         });
 
-        console.log(`[StripeService] Successfully synchronized session ${sessionId} for workspace ${workspaceId}`);
+        log.info({ sessionId, workspaceId, planName: targetPlan.name }, 'Successfully synchronized session for workspace');
         return { success: true, planName: targetPlan.name };
       }
 
       return { success: false };
     } catch (err: any) {
-      console.warn(`[StripeService] Failed to sync session ${sessionId}:`, err.message);
+      log.warn({ err, sessionId }, 'Failed to sync checkout session');
       return { success: false };
     }
   }

@@ -119,18 +119,18 @@ export function NewWorkspaceClient({
             <span className="text-primary font-bold">New Workspace</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold font-heading text-foreground">
-            {isEligible ? "Create a Team Workspace" : "Team Workspaces (Studio Plan)"}
+            {isEligible ? "Create a Team Workspace" : "Workspace Limit Reached"}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isEligible
-              ? "Your Studio subscription includes team seats. Invite your assistant editors, colorists, and post producers to collaborate."
-              : "Collaborative workspaces with multi-member team seats require the Studio Plan."}
+              ? "Set up a collaborative studio workspace equipped with 5 team collaborator seats alongside your personal workspace (includes a 14-day free trial)."
+              : "You have reached the maximum number of team workspaces allowed on your account."}
           </p>
         </div>
 
         <div className="hidden sm:flex items-center gap-2">
           <Badge variant={isEligible ? "default" : "outline"} className="px-3 py-1  text-xs">
-            {isEligible ? "Studio Plan Active (5 Seats)" : `Current: ${currentPlanName} (Solo 1 Seat)`}
+            {isEligible ? "14-Day Studio Trial (5 Seats)" : `Current: ${currentPlanName}`}
           </Badge>
         </div>
       </div>
@@ -271,13 +271,13 @@ export function NewWorkspaceClient({
             <CardHeader>
               <div className="flex items-center gap-2 text-xs  text-primary font-semibold mb-1">
                 <ShieldCheck className="size-4" />
-                <span>Studio Tier Feature Unlocked</span>
+                <span>Collaborative Studio Features</span>
               </div>
               <CardTitle className="text-xl font-bold font-heading text-card-foreground">
                 Set up your Team Workspace
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                This will create a dedicated workspace equipped with 5 team collaborator seats alongside your personal workspace.
+                This creates a dedicated workspace with 5 team collaborator seats alongside your personal workspace. Includes a 14-day free trial of the Studio tier.
               </CardDescription>
             </CardHeader>
 

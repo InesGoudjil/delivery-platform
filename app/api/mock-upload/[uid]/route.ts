@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ route: "api/mock-upload" });
 
 const MOCK_STORAGE_DIR = "/tmp/cut-mock-uploads";
 const SAFE_UID_REGEX = /^[a-zA-Z0-9_-]{8,64}$/;
@@ -33,7 +36,7 @@ async function saveUploadedBuffer(uid: string, buffer: Buffer, contentType: stri
     await fs.writeFile(filePath, buffer);
     await fs.writeFile(metaPath, JSON.stringify({ contentType, createdAt: Date.now() }));
   } catch (err) {
-    console.error("Error persisting mock file to disk:", err);
+    log.error({ err, uid }, "Error persisting mock file to disk");
   }
 }
 
@@ -140,7 +143,7 @@ export async function POST(
       await saveUploadedBuffer(uid, buffer, detectedType);
     }
   } catch (err) {
-    console.error("Failed to parse POST upload body:", err);
+    log.error({ err, uid }, "Failed to parse POST upload body");
   }
 
   return NextResponse.json({
@@ -165,7 +168,7 @@ export async function PUT(
       await saveUploadedBuffer(uid, buffer, contentType);
     }
   } catch (err) {
-    console.error("Failed to save PUT uploaded file:", err);
+    log.error({ err, uid }, "Failed to save PUT uploaded file");
   }
 
   return new NextResponse(null, { status: 200 });
