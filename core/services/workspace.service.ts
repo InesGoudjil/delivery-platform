@@ -1,8 +1,12 @@
 import { Workspace, WorkspaceFeatures, WorkspaceFeatureConfig, AccountType, Language } from '@/core/entities/workspace';
+import { Plan } from '@/core/entities/plan';
 import { IWorkspaceRepository, IWorkspaceFeaturesRepository } from '@/core/repositories/workspace.repository';
 import { ISubscriptionRepository } from '@/core/repositories/subscription.repository';
 import { IPlanRepository } from '@/core/repositories/plan.repository';
 import { IWorkspaceMemberRepository } from '@/core/repositories/workspace-member.repository';
+import { createScopedLogger } from '@/lib/logger';
+
+const log = createScopedLogger({ service: 'WorkspaceService' });
 
 export class WorkspaceService {
   constructor(
@@ -56,12 +60,12 @@ export class WorkspaceService {
       ownerId,
       brandName: baseName,
       slug: uniqueSlug,
-      accentColor: '#f5551d',
+      accentColor: '#F5551D',
       defaultLanguage: 'ar',
       accountType,
     });
 
-    // Auto-create starter subscription and feature configuration if not already provisioned
+    // Auto-create starter subscription if not already provisioned
     const starterPlan = await this.planRepo.findBySlug('starter');
     if (starterPlan) {
       await this.subscriptionRepo.create({
@@ -70,7 +74,6 @@ export class WorkspaceService {
         status: 'trialing',
         currency: 'USD',
       });
-      await this.featuresRepo.upsertFeatures(newWorkspace.id, starterPlan.features);
     }
 
     if (this.memberRepo) {
@@ -95,7 +98,7 @@ export class WorkspaceService {
           memberWorkspaces = await this.workspaceRepo.listByIds(memberWorkspaceIds);
         }
       } catch (err: any) {
-        console.warn('[WorkspaceService] Error fetching member workspaces:', err.message);
+        log.warn({ err, userId }, 'Error fetching member workspaces');
       }
     }
 
@@ -115,25 +118,23 @@ export class WorkspaceService {
     reason?: string;
   }> {
     const owned = await this.workspaceRepo.listByOwnerId(userId);
-    for (const ws of owned) {
-      const features = await this.getWorkspaceFeatures(ws.id);
-      const seats = features.team_seats ?? 1;
-      if (seats > 1) {
-        const sub = await this.subscriptionRepo.findByWorkspaceId(ws.id);
-        const plan = sub ? await this.planRepo.findById(sub.planId) : await this.planRepo.findBySlug('studio');
-        return {
-          eligible: true,
-          maxSeats: seats,
-          planName: plan?.name || 'Studio',
-          planSlug: plan?.slug || 'studio',
-        };
-      }
+    const MAX_TEAM_WORKSPACES = 5;
+    const teamWorkspaces = owned.filter((w) => w.accountType === 'studio');
+
+    if (teamWorkspaces.length >= MAX_TEAM_WORKSPACES) {
+      return {
+        eligible: false,
+        maxSeats: 1,
+        reason: `You have reached the maximum limit of ${MAX_TEAM_WORKSPACES} team workspaces.`,
+      };
     }
 
+    const studioPlan = await this.planRepo.findBySlug('studio');
     return {
-      eligible: false,
-      maxSeats: 1,
-      reason: 'Creating a Team Workspace requires a subscription with team seats (Studio plan).',
+      eligible: true,
+      maxSeats: studioPlan?.features?.team_seats ?? 5,
+      planName: 'Studio (14-Day Free Trial)',
+      planSlug: 'studio',
     };
   }
 
@@ -146,7 +147,7 @@ export class WorkspaceService {
   ): Promise<Workspace> {
     const eligibility = await this.checkTeamWorkspaceEligibility(ownerId);
     if (!eligibility.eligible) {
-      throw new Error(eligibility.reason || 'You need a Studio subscription with team seats to create a team workspace.');
+      throw new Error(eligibility.reason || 'Cannot create team workspace at this time.');
     }
 
     const baseName = brandName.trim();
@@ -177,15 +178,19 @@ export class WorkspaceService {
       await this.memberRepo.addMember(newWorkspace.id, ownerId, 'owner').catch(() => {});
     }
 
+    // Provision a clean 14-day trial of the Studio tier for the new Team Workspace
     const studioPlan = (await this.planRepo.findBySlug('studio')) || (await this.planRepo.findBySlug('starter'));
     if (studioPlan) {
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+
       await this.subscriptionRepo.create({
         workspaceId: newWorkspace.id,
         planId: studioPlan.id,
-        status: 'active',
-        currency: 'USD',
+        status: 'trialing',
+        currency: studioPlan.currency || 'USD',
+        trialEndsAt: trialEndsAt.toISOString(),
       });
-      await this.featuresRepo.upsertFeatures(newWorkspace.id, studioPlan.features);
     }
 
     return newWorkspace;
@@ -206,17 +211,26 @@ export class WorkspaceService {
   }
 
   async getWorkspaceFeatures(workspaceId: string): Promise<WorkspaceFeatureConfig> {
-    const featuresRecord = await this.featuresRepo.findByWorkspaceId(workspaceId);
-    if (featuresRecord) return featuresRecord.features;
-
-    // Fallback to active subscription plan features
     const sub = await this.subscriptionRepo.findByWorkspaceId(workspaceId);
-    if (sub) {
-      const plan = await this.planRepo.findById(sub.planId);
-      if (plan) return plan.features;
+    let plan: Plan | null = null;
+    if (sub && (sub.status === 'active' || sub.status === 'trialing')) {
+      if (sub.status === 'trialing' && sub.trialEndsAt && new Date(sub.trialEndsAt) < new Date()) {
+        plan = await this.planRepo.findBySlug('starter');
+      } else {
+        plan = await this.planRepo.findById(sub.planId);
+      }
+    } else {
+      plan = await this.planRepo.findBySlug('starter');
     }
 
-    return {};
+    const baseline = plan?.features || {};
+    const featuresRecord = await this.featuresRepo.findByWorkspaceId(workspaceId);
+    const overrides = featuresRecord?.features || {};
+
+    return {
+      ...baseline,
+      ...overrides,
+    };
   }
 
   async updateWorkspaceFeatures(
@@ -233,4 +247,9 @@ export class WorkspaceService {
     const updatedUsed = Math.max(0, (ws.storageUsedBytes || 0) + addedBytes);
     return this.workspaceRepo.update(workspaceId, { storageUsedBytes: updatedUsed });
   }
+
+  async updateWorkspace(workspaceId: string, data: Partial<Workspace>): Promise<Workspace> {
+    return this.workspaceRepo.update(workspaceId, data);
+  }
 }
+

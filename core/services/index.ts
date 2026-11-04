@@ -13,3 +13,5 @@ export * from "./feedback.service";
 export * from "./notification.service";
 export * from "./stripe.service";
 export * from "./waitlist.service";
+export * from "./silo.service";
+export * from "./session.service";

@@ -2,6 +2,7 @@ export interface AssetVersionItem {
   id: string;
   versionNumber: number;
   rawFileUrl: string;
+  downloadUrl?: string | null;
   hlsManifestUrl?: string | null;
   thumbnailUrl?: string | null;
   durationSeconds?: number | null;
@@ -11,13 +12,23 @@ export interface AssetVersionItem {
   createdAt: string;
 }
 
+export interface FeedbackReplyItem {
+  id: string;
+  feedbackId: string;
+  authorName: string;
+  commentText: string;
+  createdAt: string;
+}
+
 export interface FeedbackItem {
   id: string;
+  assetVersionId?: string;
   authorName: string;
   commentText: string;
   timestampSeconds?: number | null;
   createdAt: string;
   isResolved?: boolean;
+  replies?: FeedbackReplyItem[];
 }
 
 export interface GalleryItem {
@@ -33,8 +44,11 @@ export interface GalleryItem {
   src: string;
   status: "approved" | "review";
   rawUrl?: string;
+  downloadUrl?: string;
+  fileSizeBytes?: number;
   hlsUrl?: string | null;
   videoUrl?: string;
+  feedback?: FeedbackItem[];
 }
 
 export interface AppearanceSettings {
@@ -73,6 +87,10 @@ export interface DeliveryDetailClientProps {
     isDownloadAllowed: boolean;
     passcodeProtected: boolean;
     clientName: string;
+    clientEmail?: string | null;
+    clientPhone?: string | null;
+    expiresAt?: string | null;
+    appearance?: AppearanceSettings | null;
     createdAt: string;
     updatedAt: string;
   };
@@ -84,6 +102,11 @@ export interface DeliveryDetailClientProps {
     isApproved?: boolean;
     versions: AssetVersionItem[];
     activeVersion?: AssetVersionItem | null;
+    feedback?: FeedbackItem[];
   }>;
+  initialTotalAssetsCount?: number;
+  initialApprovedCount?: number;
+  initialHasMore?: boolean;
   initialFeedback: FeedbackItem[];
+  features?: Record<string, any>;
 }

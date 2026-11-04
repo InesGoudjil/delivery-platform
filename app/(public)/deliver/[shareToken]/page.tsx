@@ -2,8 +2,11 @@ import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import { createHash } from "crypto";
-import { getServerServices } from "@/core/server";
+import { getServerServices, getServerAdminServices } from "@/core/server";
+import { presignDeliveryAssets } from "@/lib/media-server";
+import { hasValidDeliveryPasscodeCookie } from "@/lib/security/delivery-token";
 import { DeliveryRoomClient, DeliveryAssetItem } from "./delivery-room-client";
+import { DeliveryExpiredScreen } from "./_components/delivery-expired-screen";
 
 interface PageProps {
   params: Promise<{ shareToken: string }>;
@@ -13,8 +16,8 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { shareToken } = await params;
   try {
-    const services = await getServerServices();
-    const delivery = await services.delivery.getDeliveryByShareToken(shareToken);
+    const services = await getServerAdminServices();
+    const delivery = await services.delivery.getDeliveryByShareToken(shareToken, { allowExpired: true });
     if (!delivery) {
       return {
         title: "Review Room | CineSpace",
@@ -37,26 +40,40 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ClientDeliveryPage(props: PageProps) {
   const { shareToken } = await props.params;
-  const services = await getServerServices();
-  const user = await services.auth.getCurrentUser();
+  const adminServices = await getServerAdminServices();
+  const userServices = await getServerServices();
+  const user = await userServices.auth.getCurrentUser();
 
   // 1. Fetch full delivery details (delivery, client, assets, versions, feedback)
-  const fullDetails = await services.delivery.getDeliveryWithFullDetails(shareToken);
+  const fullDetails = await adminServices.delivery.getDeliveryWithFullDetails(shareToken);
 
   if (!fullDetails) {
     notFound();
   }
 
-  // 2. Fetch workspace identity & subscription features for custom branding & studio header
-  const [workspace, workspaceFeatures] = await Promise.all([
-    services.workspace.getWorkspaceById(fullDetails.workspaceId),
-    services.subscription.getFeatures(fullDetails.workspaceId),
+  // 2. Fetch workspace identity, features, and portfolio branding
+  const [workspace, workspaceFeatures, portfolio] = await Promise.all([
+    adminServices.workspace.getWorkspaceById(fullDetails.workspaceId),
+    adminServices.subscription.getFeatures(fullDetails.workspaceId),
+    adminServices.portfolio.getPortfolioByWorkspace(fullDetails.workspaceId).catch(() => null),
   ]);
   const brandName = workspace?.brandName || "Studio Workspace";
   const workspaceSlug = workspace?.slug || "studio";
   const logoUrl = workspace?.logoUrl || null;
   const accentColor = workspace?.accentColor || "#f5551d";
   const isWhiteLabel = Boolean(workspaceFeatures?.white_label);
+  const canWatermark = Boolean(workspaceFeatures?.watermark);
+  const effectiveWatermark = canWatermark && Boolean(fullDetails.appearance?.watermarkMedia ?? fullDetails.isWatermarked);
+  const brandingLocation = portfolio?.stats?.location || null;
+
+  // Calculate delivery asset stats based strictly on the assets present on this delivery alone
+  const initialAssetCount = (fullDetails.assets || []).length;
+  const initialTotalSizeBytes = (fullDetails.assets || []).reduce((acc, asset) => {
+    const activeVer =
+      asset.versions?.find((v) => v.isActiveVersion) ||
+      asset.versions?.[0];
+    return acc + (Number(activeVer?.fileSizeBytes) || 0);
+  }, 0);
 
   // 3. Resolve client name
   const clientName = fullDetails.client?.name || null;
@@ -67,6 +84,7 @@ export default async function ClientDeliveryPage(props: PageProps) {
       id: v.id,
       versionNumber: v.versionNumber,
       rawFileUrl: v.rawFileUrl,
+      downloadUrl: v.rawFileUrl,
       hlsManifestUrl: v.hlsManifestUrl || null,
       thumbnailUrl: v.thumbnailUrl || null,
       fileSizeBytes: v.fileSizeBytes || null,
@@ -88,13 +106,20 @@ export default async function ClientDeliveryPage(props: PageProps) {
       timestampSeconds: f.timestampSeconds ? Number(f.timestampSeconds) : null,
       isResolved: f.isResolved,
       createdAt: f.createdAt,
+      replies: (f.replies || []).map((r) => ({
+        id: r.id,
+        feedbackId: r.feedbackId,
+        authorName: r.authorName,
+        commentText: r.commentText,
+        createdAt: r.createdAt,
+      })),
     }));
 
     return {
       id: asset.id,
       title: asset.title,
       type: asset.type,
-      aspectRatio: "16:9",
+      aspectRatio: asset.aspectRatio || undefined,
       isApproved: asset.isApproved,
       sortOrder: asset.sortOrder,
       versions: mappedVersions,
@@ -105,13 +130,32 @@ export default async function ClientDeliveryPage(props: PageProps) {
 
   // 5. Check passcode cookie verification or creator ownership
   const cookieStore = await cookies();
-  const accessCookie = cookieStore.get(`delivery_access_${shareToken}`)?.value;
+  const hasAccessCookie = hasValidDeliveryPasscodeCookie(cookieStore, shareToken);
   const isPasscodeProtected = Boolean(fullDetails.passcodeHash);
 
   // Check if current user is owner or member of the workspace
   const isWorkspaceMember = user
-    ? await services.member.isMember(fullDetails.workspaceId, user.id).catch(() => false)
+    ? await adminServices.member.isMember(fullDetails.workspaceId, user.id).catch(() => false)
     : false;
+
+  // Check if link has expired
+  const isExpired = fullDetails.expiresAt ? new Date(fullDetails.expiresAt) < new Date() : false;
+
+  if (isExpired && !isWorkspaceMember) {
+    return (
+      <DeliveryExpiredScreen
+        title={fullDetails.title}
+        expiresAt={fullDetails.expiresAt}
+        workspace={{
+          brandName,
+          slug: workspaceSlug,
+          logoUrl,
+          accentColor,
+        }}
+        portfolioUrl={portfolio ? `/p/${portfolio.slug || workspaceSlug}` : undefined}
+      />
+    );
+  }
 
   // Also support auto-unlock via deep link query param (?passphrase=... or ?code=...)
   const resolvedSearchParams = props.searchParams ? await props.searchParams : undefined;
@@ -125,12 +169,12 @@ export default async function ClientDeliveryPage(props: PageProps) {
   }
 
   // Do not silently bypass for workspace members, so creators can test the exact client dialog!
-  const isInitiallyUnlocked = accessCookie === "verified" || queryPassphraseMatched;
+  const isInitiallyUnlocked = hasAccessCookie || queryPassphraseMatched;
 
   // 6. Current user info if filmmaker / team member is inspecting
   let userProfile = null;
   if (user) {
-    const profile = await services.profile.getProfile(user.id);
+    const profile = await adminServices.profile.getProfile(user.id);
     userProfile = {
       id: user.id,
       name: profile?.fullName || user.email?.split("@")[0] || null,
@@ -139,7 +183,9 @@ export default async function ClientDeliveryPage(props: PageProps) {
   }
 
   // 7. Media access gate: Only send assets/streams/comments if public or unlocked
-  const deliveredAssets = (isPasscodeProtected && !isInitiallyUnlocked) ? [] : mappedAssets;
+  const deliveredAssets = (isPasscodeProtected && !isInitiallyUnlocked)
+    ? []
+    : await presignDeliveryAssets(mappedAssets, adminServices.storage, 7200);
 
   return (
     <DeliveryRoomClient
@@ -151,7 +197,11 @@ export default async function ClientDeliveryPage(props: PageProps) {
         shareToken: fullDetails.shareToken,
         status: fullDetails.status,
         isDownloadAllowed: fullDetails.isDownloadAllowed,
-        isWatermarked: fullDetails.isWatermarked,
+        isWatermarked: effectiveWatermark,
+        appearance: {
+          ...fullDetails.appearance,
+          watermarkMedia: effectiveWatermark,
+        },
         approvedAt: fullDetails.approvedAt,
         approvedByName: fullDetails.approvedByName,
         expiresAt: fullDetails.expiresAt,
@@ -166,6 +216,9 @@ export default async function ClientDeliveryPage(props: PageProps) {
         accentColor,
       }}
       clientName={clientName}
+      brandingLocation={brandingLocation}
+      initialTotalSizeBytes={initialTotalSizeBytes}
+      initialAssetCount={initialAssetCount}
       initialAssets={deliveredAssets}
       isPasscodeProtected={isPasscodeProtected}
       isInitiallyUnlocked={isInitiallyUnlocked}

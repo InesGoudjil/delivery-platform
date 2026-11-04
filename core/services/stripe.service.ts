@@ -5,6 +5,9 @@ import { IPlanRepository } from '@/core/repositories/plan.repository';
 import { IWorkspaceMemberRepository } from '@/core/repositories/workspace-member.repository';
 import { IWorkspaceRepository } from '@/core/repositories/workspace.repository';
 import { SubscriptionService } from './subscription.service';
+import { createScopedLogger } from '@/lib/logger';
+
+const log = createScopedLogger({ service: 'StripeService' });
 
 export interface CreateCheckoutSessionInput {
   workspaceId: string;
@@ -12,6 +15,14 @@ export interface CreateCheckoutSessionInput {
   userId: string;
   userEmail?: string | null;
   planId: string;
+  origin: string;
+}
+
+export interface CreateStorageCheckoutSessionInput {
+  workspaceId: string;
+  workspaceSlug?: string;
+  userId: string;
+  userEmail?: string | null;
   origin: string;
 }
 
@@ -60,7 +71,7 @@ export class StripeService {
           isValid = true;
         }
       } catch (err: any) {
-        console.warn(`[StripeService] Customer ID ${customerId} not found or invalid in Stripe:`, err.message);
+        log.warn({ err, customerId }, 'Customer ID not found or invalid in Stripe');
       }
     }
 
@@ -147,16 +158,103 @@ export class StripeService {
         workspace_slug: pathSlug,
         plan_id: plan.id,
         user_id: input.userId,
+        email: input.userEmail || '',
       },
       subscription_data: {
         metadata: {
           workspace_id: input.workspaceId,
           workspace_slug: pathSlug,
           plan_id: plan.id,
+          email: input.userEmail || '',
         },
       },
       success_url: `${input.origin}/${pathSlug}/subscription?billing=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${input.origin}/${pathSlug}/subscription?billing=cancel`,
+    });
+
+    return { url: session.url };
+  }
+
+  /**
+   * Creates a Stripe Checkout Session specifically for upgrading Cloudflare R2 storage (+1 TB at $15/mo).
+   */
+  async createStorageAddonCheckoutSession(
+    input: CreateStorageCheckoutSessionInput
+  ): Promise<{ url: string | null }> {
+    // 1. Verify workspace permission (owner or admin member)
+    const member = await this.memberRepo.findByWorkspaceAndUserId(input.workspaceId, input.userId);
+    let isOwner = member && ['owner', 'admin'].includes(member.role);
+
+    if (!isOwner && this.workspaceRepo) {
+      const workspace = await this.workspaceRepo.findById(input.workspaceId);
+      if (workspace && workspace.ownerId === input.userId) {
+        isOwner = true;
+      }
+    }
+
+    if (!isOwner) {
+      throw new Error('Permission denied for this workspace. Only owners or admins can upgrade storage.');
+    }
+
+    let slug = input.workspaceSlug;
+    if (!slug && this.workspaceRepo) {
+      const ws = await this.workspaceRepo.findById(input.workspaceId);
+      slug = ws?.slug;
+    }
+    const pathSlug = slug || input.workspaceId;
+
+    const stripe = getStripeClient();
+    if (!stripe) {
+      throw new Error("Stripe is not configured in this environment.");
+    }
+
+    const customerId = await this.getOrCreateValidCustomer(
+      stripe,
+      input.workspaceId,
+      input.userId,
+      input.userEmail
+    );
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: '+1 TB High-Speed Storage Add-on',
+              description: '1 TB additional high-speed Cloudflare R2 edge capacity for your CineSpace workspace',
+            },
+            unit_amount: 1500, // $15.00
+            recurring: {
+              interval: 'month',
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      client_reference_id: input.workspaceId,
+      metadata: {
+        workspace_id: input.workspaceId,
+        workspace_slug: pathSlug,
+        type: 'storage_addon',
+        storage_gb_delta: '1024',
+        user_id: input.userId,
+        email: input.userEmail || '',
+      },
+      subscription_data: {
+        metadata: {
+          workspace_id: input.workspaceId,
+          workspace_slug: pathSlug,
+          type: 'storage_addon',
+          storage_gb_delta: '1024',
+          email: input.userEmail || '',
+        },
+      },
+      success_url: `${input.origin}/${pathSlug}/storage?billing=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${input.origin}/${pathSlug}/storage?billing=cancel`,
     });
 
     return { url: session.url };
@@ -189,7 +287,36 @@ export class StripeService {
       const customerId =
         typeof session.customer === 'string' ? session.customer : session.customer?.id;
 
-      if (!workspaceId || !stripeSubId) {
+      if (!workspaceId) {
+        return { success: false };
+      }
+
+      // Check if session is for +1 TB Storage Add-on
+      if (session.metadata?.type === 'storage_addon') {
+        const deltaGB = parseInt(session.metadata?.storage_gb_delta || '1024', 10);
+        const currentFeatures = await subscriptionService.getFeatures(workspaceId);
+        const currentStorageGB = currentFeatures.storage_gb || 2;
+        const newStorageGB = currentStorageGB + deltaGB;
+
+        await subscriptionService.updateWorkspaceFeatures(workspaceId, {
+          ...currentFeatures,
+          storage_gb: newStorageGB,
+        });
+
+        await subscriptionService.recordInvoice({
+          workspaceId,
+          amountCents: 1500,
+          currency: 'USD',
+          description: '+1 TB Storage Add-on ($15/mo)',
+          stripeCustomerId: customerId || undefined,
+          status: 'paid',
+        });
+
+        log.info({ deltaGB, workspaceId }, 'Successfully added storage to workspace');
+        return { success: true, planName: '+1 TB Storage' };
+      }
+
+      if (!stripeSubId) {
         return { success: false };
       }
 
@@ -221,13 +348,13 @@ export class StripeService {
           status: 'paid',
         });
 
-        console.log(`[StripeService] Successfully synchronized session ${sessionId} for workspace ${workspaceId}`);
+        log.info({ sessionId, workspaceId, planName: targetPlan.name }, 'Successfully synchronized session for workspace');
         return { success: true, planName: targetPlan.name };
       }
 
       return { success: false };
     } catch (err: any) {
-      console.warn(`[StripeService] Failed to sync session ${sessionId}:`, err.message);
+      log.warn({ err, sessionId }, 'Failed to sync checkout session');
       return { success: false };
     }
   }

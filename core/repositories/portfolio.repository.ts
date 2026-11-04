@@ -48,7 +48,7 @@ export class SupabasePortfolioRepository implements IPortfolioRepository {
       appearance: row.appearance ? { ...defaultAppearance, ...row.appearance } : defaultAppearance,
       experience: Array.isArray(row.experience) ? row.experience : [],
       whatsappNumber: row.whatsapp_number || null,
-      stats: row.stats || { projects: "80+", years: "6", location: "UAE" },
+      stats: row.stats || { projects: "0", years: "—", location: "—" },
       layoutTemplate: row.layout_template || "grid",
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -100,7 +100,7 @@ export class SupabasePortfolioRepository implements IPortfolioRepository {
         social_links: dto.socialLinks || {},
         is_published: dto.isPublished ?? true,
         whatsapp_number: dto.whatsappNumber ?? null,
-        stats: dto.stats || { projects: "80+", years: "6", location: "UAE" },
+        stats: dto.stats || { projects: "0", years: "—", location: "—" },
         layout_template: dto.layoutTemplate || "grid",
       })
       .select()

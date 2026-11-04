@@ -2,7 +2,7 @@ import React from "react";
 
 export default function DeliveriesLoading() {
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-200">
+    <div className="w-full space-y-8 animate-in fade-in duration-200">
       {/* Header Skeleton */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
         <div className="space-y-2">
@@ -17,7 +17,7 @@ export default function DeliveriesLoading() {
       <div className="h-10 w-72 bg-[#141416] border border-white/10 rounded-full animate-pulse" />
 
       {/* Delivery Cards Grid Skeleton */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[1, 2, 4].map((i) => (
           <div
             key={i}

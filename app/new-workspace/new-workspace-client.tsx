@@ -12,13 +12,12 @@ import {
   ShieldCheck,
   Loader2,
   Lock,
-  Zap,
   ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { createTeamWorkspaceAction, switchWorkspacePlanAction } from "@/app/actions/workspaces";
+import { createTeamWorkspaceAction } from "@/app/actions/workspaces";
 
 interface PlanFeatureItem {
   id: string;
@@ -60,7 +59,6 @@ export function NewWorkspaceClient({
   const [accentColor, setAccentColor] = useState("#f5551d");
   const [defaultLanguage, setDefaultLanguage] = useState<"ar" | "en">("en");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUpgrading, setIsUpgrading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,19 +100,6 @@ export function NewWorkspaceClient({
     }
   };
 
-  const handleQuickUpgrade = async () => {
-    setIsUpgrading(true);
-    setErrorMsg(null);
-    const res = await switchWorkspacePlanAction(primaryWorkspaceId, "studio");
-    if (!res.success) {
-      setErrorMsg(res.error || "Failed to upgrade plan.");
-      setIsUpgrading(false);
-      return;
-    }
-    router.refresh();
-    setIsUpgrading(false);
-  };
-
   const studioPlan = plans.find((p) => p.slug === "studio") || {
     name: "Studio",
     priceCents: 6900,
@@ -126,7 +111,7 @@ export function NewWorkspaceClient({
       {/* Top Header Breadcrumb */}
       <div className="flex items-center justify-between border-b border-border pb-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">
+          <div className="flex items-center gap-2 text-xs  text-muted-foreground uppercase tracking-wider mb-1">
             <Link href={`/${primaryWorkspaceSlug}`} className="hover:text-foreground transition-colors">
               Workspaces
             </Link>
@@ -134,18 +119,18 @@ export function NewWorkspaceClient({
             <span className="text-primary font-bold">New Workspace</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold font-heading text-foreground">
-            {isEligible ? "Create a Team Workspace" : "Team Workspaces (Studio Plan)"}
+            {isEligible ? "Create a Team Workspace" : "Workspace Limit Reached"}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isEligible
-              ? "Your Studio subscription includes team seats. Invite your assistant editors, colorists, and post producers to collaborate."
-              : "Collaborative workspaces with multi-member team seats require the Studio Plan."}
+              ? "Set up a collaborative studio workspace equipped with 5 team collaborator seats alongside your personal workspace (includes a 14-day free trial)."
+              : "You have reached the maximum number of team workspaces allowed on your account."}
           </p>
         </div>
 
         <div className="hidden sm:flex items-center gap-2">
-          <Badge variant={isEligible ? "default" : "outline"} className="px-3 py-1 font-mono text-xs">
-            {isEligible ? "Studio Plan Active (5 Seats)" : `Current: ${currentPlanName} (Solo 1 Seat)`}
+          <Badge variant={isEligible ? "default" : "outline"} className="px-3 py-1  text-xs">
+            {isEligible ? "14-Day Studio Trial (5 Seats)" : `Current: ${currentPlanName}`}
           </Badge>
         </div>
       </div>
@@ -194,7 +179,7 @@ export function NewWorkspaceClient({
                   <Check className="size-4 text-primary shrink-0 mt-0.5" />
                   <div>
                     <span className="font-bold">2,048 GB (2 TB) High-Speed Storage</span>
-                    <p className="text-muted-foreground text-[11px]">Ample space for 4K ProRes cuts and project master exports</p>
+                    <p className="text-muted-foreground text-[11px]">Ample space for ProRes cuts and project master exports</p>
                   </div>
                 </div>
 
@@ -217,7 +202,7 @@ export function NewWorkspaceClient({
 
               {/* Plans Comparison Snapshot */}
               <div className="p-4 rounded-xl bg-background/80 border border-border space-y-3">
-                <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider font-semibold">
+                <div className="text-xs  text-muted-foreground uppercase tracking-wider font-semibold">
                   Plans Seat &amp; Team Comparison
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -242,12 +227,12 @@ export function NewWorkspaceClient({
                               </span>
                             )}
                           </div>
-                          <div className="text-sm font-mono font-bold text-foreground mt-1">
+                          <div className="text-sm  font-bold text-foreground mt-1">
                             ${(p.priceCents / 100).toFixed(0)}
                             <span className="text-[10px] text-muted-foreground font-normal"> /mo</span>
                           </div>
                         </div>
-                        <div className="mt-2 pt-2 border-t border-border/50 text-[11px] font-mono">
+                        <div className="mt-2 pt-2 border-t border-border/50 text-[11px] ">
                           <span className={isStudio ? "text-primary font-bold" : "text-muted-foreground"}>
                             {seats} {seats > 1 ? "Team Seats" : "Seat (Solo)"}
                           </span>
@@ -260,33 +245,11 @@ export function NewWorkspaceClient({
             </CardContent>
 
             <CardFooter className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-6 border-t border-border">
-              <div className="text-xs text-muted-foreground font-mono">
+              <div className="text-xs text-muted-foreground ">
                 Studio Plan: ${(studioPlan.priceCents / 100).toFixed(0)}/mo • Cancel anytime
               </div>
 
               <div className="flex flex-col sm:flex-row items-center gap-2.5">
-                {/* 1-Click Fast Upgrade for Development / Demo testing */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleQuickUpgrade}
-                  disabled={isUpgrading}
-                  className="rounded-full text-xs font-semibold cursor-pointer w-full sm:w-auto"
-                  title="Instantly switch your workspace to Studio plan in development test mode"
-                >
-                  {isUpgrading ? (
-                    <>
-                      <Loader2 className="size-3.5 mr-1.5 animate-spin" />
-                      Upgrading...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="size-3.5 mr-1.5 text-amber-400" />
-                      1-Click Upgrade (Demo)
-                    </>
-                  )}
-                </Button>
-
                 <Button
                   asChild
                   size="sm"
@@ -306,15 +269,15 @@ export function NewWorkspaceClient({
         <div className="space-y-6">
           <Card className="border border-border bg-card shadow-lg">
             <CardHeader>
-              <div className="flex items-center gap-2 text-xs font-mono text-primary font-semibold mb-1">
+              <div className="flex items-center gap-2 text-xs  text-primary font-semibold mb-1">
                 <ShieldCheck className="size-4" />
-                <span>Studio Tier Feature Unlocked</span>
+                <span>Collaborative Studio Features</span>
               </div>
               <CardTitle className="text-xl font-bold font-heading text-card-foreground">
                 Set up your Team Workspace
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                This will create a dedicated workspace equipped with 5 team collaborator seats alongside your personal workspace.
+                This creates a dedicated workspace with 5 team collaborator seats alongside your personal workspace. Includes a 14-day free trial of the Studio tier.
               </CardDescription>
             </CardHeader>
 
@@ -342,14 +305,14 @@ export function NewWorkspaceClient({
                     Workspace URL Slug
                   </label>
                   <div className="flex items-center rounded-xl border border-border bg-muted overflow-hidden px-3 py-2 text-xs">
-                    <span className="text-muted-foreground font-mono mr-1">app.cutgrid.com/</span>
+                    <span className="text-muted-foreground  mr-1">app.cutgrid.com/</span>
                     <input
                       type="text"
                       required
                       placeholder="my-team-studio"
                       value={slug}
                       onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                      className="bg-transparent border-none text-foreground font-mono focus:outline-none flex-1"
+                      className="bg-transparent border-none text-foreground  focus:outline-none flex-1"
                     />
                   </div>
                 </div>
@@ -370,7 +333,7 @@ export function NewWorkspaceClient({
                         type="text"
                         value={accentColor}
                         onChange={(e) => setAccentColor(e.target.value)}
-                        className="bg-muted border border-border rounded-lg px-2.5 py-1.5 text-xs font-mono text-foreground focus:outline-none flex-1"
+                        className="bg-muted border border-border rounded-lg px-2.5 py-1.5 text-xs  text-foreground focus:outline-none flex-1"
                       />
                     </div>
                   </div>

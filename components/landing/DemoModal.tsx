@@ -12,6 +12,7 @@ import {
   TypographyMuted,
 } from "@/components/ui/typography";
 import { SAMPLE_PROJECTS, type ProjectDemo } from "./FeaturesSection";
+import { motion, AnimatePresence } from "@/components/ui/motion";
 
 interface DemoModalProps {
   isOpen: boolean;
@@ -41,8 +42,6 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
     },
   ]);
 
-  if (!isOpen) return null;
-
   const handleAddComment = () => {
     if (!commentInput.trim()) return;
     setComments((prev) => [
@@ -63,49 +62,67 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-      <div className="liquid-glass rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-6 text-[#f6f3ec] shadow-2xl relative border border-white/20">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <motion.div
+            className="liquid-glass rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-6 text-[#f6f3ec] shadow-2xl relative border border-white/20"
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          >
         <CardContent className="p-0 space-y-6">
           {/* Modal Header */}
           <div className="flex items-center justify-between border-b border-white/10 pb-4">
             <div className="flex items-center gap-3">
               <span className="font-heading font-black text-xl text-[#f6f3ec]">
-                Pedro Concreato<span className="text-[#f5551d]">.</span>
+                Pedro Concreato<span className="text-primary">.</span>
               </span>
-              <Badge variant="sage" className="font-mono text-xs gap-1.5 py-1">
+              <Badge variant="sage" className=" text-xs gap-1.5 py-1">
                 <Lock className="size-3" /> Private Link · Active Review
               </Badge>
             </div>
-            <button
+            <Button
+              variant="ghost"
+              size="icon-sm"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/10 text-[#9a9a9f] hover:text-[#f6f3ec] hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer"
+              className="rounded-full bg-white/10 text-[#9a9a9f] hover:text-[#f6f3ec] hover:bg-white/20"
             >
               <X className="size-4" />
-            </button>
+            </Button>
           </div>
 
           {/* Project Selection Tabs */}
           <div className="flex items-center justify-between gap-2 overflow-x-auto pb-2">
             <div className="flex gap-2">
               {SAMPLE_PROJECTS.map((proj) => (
-                <button
+                <Button
                   key={proj.id}
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     setActiveProject(proj);
                     setIsApproved(proj.status === "delivered");
                   }}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer h-auto ${
                     activeProject.id === proj.id
-                      ? "bg-[#f5551d] text-[#160a03]"
+                      ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
                       : "bg-white/5 text-[#9a9a9f] hover:bg-white/10"
                   }`}
                 >
                   {proj.title}
-                </button>
+                </Button>
               ))}
             </div>
             <TypographyMuted
-              className="text-xs text-[#5e5e64] shrink-0 font-mono hidden sm:inline"
+              className="text-xs text-[#5e5e64] shrink-0  hidden sm:inline"
             >
               Simulated Client Experience
             </TypographyMuted>
@@ -125,24 +142,25 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
                 >
                   {activeProject.title}
                 </Typography>
-                <span className="text-xs font-mono bg-black/60 px-2.5 py-1 rounded-md text-[#f5551d]">
+                <span className="text-xs  bg-black/60 px-2.5 py-1 rounded-md text-primary">
                   Version: {activeVersion}
                 </span>
               </div>
 
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => onShowToast("Playing simulated video cut...")}
-                className="self-center z-10 w-20 h-20 rounded-full bg-black/50 border-2 border-white/40 flex items-center justify-center hover:scale-110 hover:bg-[#f5551d] hover:border-[#f5551d] transition-all group cursor-pointer"
+                className="self-center z-10 w-20 h-20 rounded-full bg-black/50 border-2 border-white/40 flex items-center justify-center hover:scale-110 hover:bg-primary hover:border-primary transition-all group cursor-pointer p-0"
               >
-                <Play className="size-8 text-[#f6f3ec] group-hover:text-black ml-1 transition-colors" />
-              </button>
+                <Play className="size-8 text-[#f6f3ec] group-hover:text-primary-foreground ml-1 transition-colors" />
+              </Button>
 
-              <div className="flex items-center justify-between z-10 text-xs font-mono">
+              <div className="flex items-center justify-between z-10 text-xs ">
                 <span className="bg-black/60 px-2.5 py-1 rounded-md">
                   00:24 / {activeProject.tc}
                 </span>
                 <span className="bg-black/60 px-2.5 py-1 rounded-md text-[#86b98f]">
-                  4K Ultra-HD
+                  Ultra-HD
                 </span>
               </div>
             </div>
@@ -153,17 +171,19 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
                 Versions:
               </span>
               {["V1", "V2", "Final"].map((v) => (
-                <button
+                <Button
                   key={v}
+                  variant="ghost"
+                  size="xs"
                   onClick={() => setActiveVersion(v)}
-                  className={`px-3 py-1 rounded-full text-xs font-mono font-bold transition-all cursor-pointer ${
+                  className={`px-3 py-1 rounded-full text-xs  font-bold transition-all cursor-pointer h-auto ${
                     activeVersion === v
-                      ? "bg-[#f5551d] text-[#160a03]"
+                      ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
                       : "bg-white/5 text-[#9a9a9f] hover:bg-white/10"
                   }`}
                 >
                   {v}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -217,7 +237,7 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] shrink-0 ${
                       c.who === "me"
-                        ? "bg-[#f5551d] text-black"
+                        ? "bg-primary text-primary-foreground"
                         : "bg-white/10 text-[#f6f3ec]"
                     }`}
                   >
@@ -243,19 +263,21 @@ export function DemoModal({ isOpen, onClose, onShowToast }: DemoModalProps) {
                 onChange={(e) => setCommentInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
                 placeholder="Add a timecoded note on this cut..."
-                className="flex-1 bg-[#141416] border border-white/10 rounded-full px-4 py-2 text-xs text-[#f6f3ec] focus:outline-none focus:border-[#f5551d]"
+                className="flex-1 bg-[#141416] border border-white/10 rounded-full px-4 py-2 text-xs text-[#f6f3ec] focus:outline-none focus:border-primary"
               />
               <Button
                 onClick={handleAddComment}
                 size="icon"
-                className="rounded-full bg-[#f5551d] text-black hover:bg-[#ff8a45] shrink-0 cursor-pointer"
+                className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 cursor-pointer"
               >
                 <Send className="size-4" />
               </Button>
             </div>
           </div>
         </CardContent>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

@@ -1,29 +1,34 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import {
   Play,
-  Pause,
-  Film,
-  Image as ImageIcon,
   MessageCircle,
   X,
-  Volume2,
-  VolumeX,
   ArrowRight,
-  ArrowLeft,
-  Share2,
   Send,
   Check,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { PortfolioAsset, PortfolioProject } from "@/lib/portfolio-data";
+import { TypographySpan } from "@/components/ui/typography";
 import { usePortfolioModal } from "./portfolio-context";
+import { Button } from "@/components/ui/button";
+import { submitPortfolioInquiryAction } from "@/app/actions/inquiries";
+import { AssetLightboxModal } from "@/components/workspaces/asset-lightbox-modal";
+import { detectAspectRatioFromDimensions } from "@/lib/media-ratios";
+import {
+  UniversalDialogRoot,
+  UniversalDialogContent,
+} from "@/components/ui/universal-dialog";
 
 export function PortfolioModals() {
   const {
     profile,
     projects,
     assets,
+    appearance,
     activeStill,
     setActiveStill,
     activeFilm,
@@ -37,23 +42,43 @@ export function PortfolioModals() {
 
   // Contact form submission state
   const [contactSubmitted, setContactSubmitted] = useState(false);
+  const [clientName, setClientName] = useState("");
+  const [clientContact, setClientContact] = useState("");
+  const [projectDetails, setProjectDetails] = useState("");
+  const [isSubmittingContact, setIsSubmittingContact] = useState(false);
 
-  // Video player state
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const handleSubmitInquiry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clientName.trim() || !clientContact.trim() || !projectDetails.trim()) {
+      toast.error("Please fill in all inquiry fields.");
+      return;
+    }
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+    try {
+      setIsSubmittingContact(true);
+      const res = await submitPortfolioInquiryAction({
+        handle: profile.handle,
+        name: clientName,
+        emailOrPhone: clientContact,
+        details: projectDetails,
+      });
+
+      if (!res.success) {
+        toast.error(res.error || "Failed to submit inquiry.");
+        return;
+      }
+
+      setContactSubmitted(true);
+      toast.success("Inquiry sent successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit inquiry.");
+    } finally {
+      setIsSubmittingContact(false);
+    }
   };
 
   // Still navigation (next / prev)
-  const handleNextStill = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
+  const handleNextStill = () => {
     if (!activeStill) return;
     const stills = assets.filter((a) => a.kind === "still");
     const currentList = selectedProject
@@ -61,6 +86,7 @@ export function PortfolioModals() {
           (a) => selectedProject.assetIds.includes(a.id) && a.kind === "still"
         )
       : stills;
+    if (currentList.length <= 1) return;
     const currentIndex = currentList.findIndex((s) => s.id === activeStill.id);
     if (currentIndex < currentList.length - 1) {
       setActiveStill(currentList[currentIndex + 1]);
@@ -69,8 +95,7 @@ export function PortfolioModals() {
     }
   };
 
-  const handlePrevStill = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
+  const handlePrevStill = () => {
     if (!activeStill) return;
     const stills = assets.filter((a) => a.kind === "still");
     const currentList = selectedProject
@@ -78,6 +103,7 @@ export function PortfolioModals() {
           (a) => selectedProject.assetIds.includes(a.id) && a.kind === "still"
         )
       : stills;
+    if (currentList.length <= 1) return;
     const currentIndex = currentList.findIndex((s) => s.id === activeStill.id);
     if (currentIndex > 0) {
       setActiveStill(currentList[currentIndex - 1]);
@@ -86,285 +112,193 @@ export function PortfolioModals() {
     }
   };
 
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setActiveStill(null);
-        setActiveFilm(null);
-        setSelectedProject(null);
-        setIsContactOpen(false);
-      }
-      if (activeStill) {
-        if (e.key === "ArrowRight") handleNextStill();
-        if (e.key === "ArrowLeft") handlePrevStill();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeStill, selectedProject]);
+  // Film navigation (next / prev)
+  const handleNextFilm = () => {
+    if (!activeFilm) return;
+    const films = assets.filter((a) => a.kind === "film");
+    const currentList = selectedProject
+      ? assets.filter(
+          (a) => selectedProject.assetIds.includes(a.id) && a.kind === "film"
+        )
+      : films;
+    if (currentList.length <= 1) return;
+    const currentIndex = currentList.findIndex((f) => f.id === activeFilm.id);
+    if (currentIndex < currentList.length - 1) {
+      setActiveFilm(currentList[currentIndex + 1]);
+    } else {
+      setActiveFilm(currentList[0]);
+    }
+  };
+
+  const handlePrevFilm = () => {
+    if (!activeFilm) return;
+    const films = assets.filter((a) => a.kind === "film");
+    const currentList = selectedProject
+      ? assets.filter(
+          (a) => selectedProject.assetIds.includes(a.id) && a.kind === "film"
+        )
+      : films;
+    if (currentList.length <= 1) return;
+    const currentIndex = currentList.findIndex((f) => f.id === activeFilm.id);
+    if (currentIndex > 0) {
+      setActiveFilm(currentList[currentIndex - 1]);
+    } else {
+      setActiveFilm(currentList[currentList.length - 1]);
+    }
+  };
+
+  const hasMultipleStills =
+    assets.filter((a) => (selectedProject ? selectedProject.assetIds.includes(a.id) : true) && a.kind === "still")
+      .length > 1;
+
+  const hasMultipleFilms =
+    assets.filter((a) => (selectedProject ? selectedProject.assetIds.includes(a.id) : true) && a.kind === "film")
+      .length > 1;
 
   return (
     <>
-      {/* 🖼️ MODAL 1: STILL LIGHTBOX MODAL */}
-      {activeStill && (
-        <div
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-between p-4 sm:p-6 animate-in fade-in duration-200"
-          onClick={() => setActiveStill(null)}
-        >
-          {/* Top Bar */}
-          <div
-            className="w-full max-w-6xl flex items-center justify-between z-10 py-2 border-b border-white/10"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/10 border border-white/15 text-[10px] font-mono font-bold text-white uppercase tracking-wider">
-                <ImageIcon className="size-3 text-zinc-300" />
-                <span>STILL</span>
-              </span>
-              <h3 className="text-sm sm:text-base font-bold text-white font-heading truncate max-w-xs sm:max-w-md">
-                {activeStill.title}
-              </h3>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  if (typeof window !== "undefined") {
-                    navigator.clipboard.writeText(window.location.href);
-                  }
-                }}
-                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-                title="Share link"
-              >
-                <Share2 className="size-4" />
-              </button>
-              <button
-                onClick={() => setActiveStill(null)}
-                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-                title="Close (Esc)"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Center Image with Next / Prev buttons */}
-          <div
-            className="relative w-full max-w-5xl flex-1 flex items-center justify-center my-4 overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={handlePrevStill}
-              className="absolute left-2 sm:left-4 z-20 p-3 rounded-full bg-black/50 hover:bg-[#f5551d] text-white hover:text-black transition-all cursor-pointer backdrop-blur-md"
-              title="Previous (Left Arrow)"
-            >
-              <ArrowLeft className="size-5" />
-            </button>
-
-            <img
-              src={activeStill.image}
-              alt={activeStill.title}
-              className="max-h-[75vh] w-auto max-w-full object-contain rounded-xl shadow-2xl"
-            />
-
-            <button
-              onClick={handleNextStill}
-              className="absolute right-2 sm:right-4 z-20 p-3 rounded-full bg-black/50 hover:bg-[#f5551d] text-white hover:text-black transition-all cursor-pointer backdrop-blur-md"
-              title="Next (Right Arrow)"
-            >
-              <ArrowRight className="size-5" />
-            </button>
-          </div>
-
-          {/* Bottom Bar Details */}
-          <div
-            className="w-full max-w-6xl flex items-center justify-between z-10 py-2 border-t border-white/10 text-xs font-mono text-zinc-400"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <span>{activeStill.desc}</span>
-            <button
-              onClick={() =>
-                handleWhatsAppChat(
-                  `Hi ${profile.name}, I love your still "${activeStill.title}". I would like to inquire about a shoot.`
-                )
+      {/* 🖼️ STILL LIGHTBOX MODAL */}
+      <AssetLightboxModal
+        activeItem={
+          activeStill
+            ? {
+                ...activeStill,
+                id: String(activeStill.id),
+                type: "still",
+                kind: "still",
+                src: activeStill.image,
+                image: activeStill.image,
+                aspectRatio:
+                  typeof activeStill.ar === "number" && activeStill.ar > 0
+                    ? (() => {
+                        const detected = detectAspectRatioFromDimensions(activeStill.ar * 1000, 1000);
+                        return detected.id === "custom" ? detected.cssRatio : detected.id;
+                      })()
+                    : undefined,
               }
-              className="text-[#f5551d] hover:underline font-bold cursor-pointer"
-            >
-              Inquire About Shoot →
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 📹 MODAL 2: FILM VIDEO PLAYER MODAL */}
-      {activeFilm && (
-        <div
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
-          onClick={() => setActiveFilm(null)}
-        >
-          <div
-            className="relative w-full max-w-5xl rounded-3xl overflow-hidden border border-white/15 bg-[#121214] shadow-2xl flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10 bg-[#121214]">
-              <div className="flex items-center gap-3">
-                <div className="size-9 rounded-full bg-[#f5551d]/10 border border-[#f5551d]/30 flex items-center justify-center text-[#f5551d]">
-                  <Film className="size-4" />
-                </div>
-                <div>
-                  <h3 className="font-heading font-bold text-base sm:text-lg text-white">
-                    {activeFilm.title}
-                  </h3>
-                  <p className="text-xs text-zinc-400 font-mono">
-                    {activeFilm.resolution || "4K 60fps"} · {activeFilm.tc}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setActiveFilm(null)}
-                className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+            : null
+        }
+        onClose={() => setActiveStill(null)}
+        onBack={
+          selectedProject
+            ? () => {
+                setActiveStill(null);
+                setActiveFilm(null);
+              }
+            : undefined
+        }
+        onNext={hasMultipleStills ? handleNextStill : undefined}
+        onPrev={hasMultipleStills ? handlePrevStill : undefined}
+        showFeedback={false}
+        showApproval={false}
+        showVersions={false}
+        showDownload={false}
+        showShareLink={true}
+        footerExtra={
+          activeStill ? (
+            <div className="w-full flex items-center justify-between text-xs  text-zinc-400">
+              <TypographySpan className="truncate max-w-sm sm:max-w-md">{activeStill.desc}</TypographySpan>
+              <Button
+                variant="link"
+                size="xs"
+                onClick={() =>
+                  handleWhatsAppChat(
+                    `Hi ${profile.name}, I love your still "${activeStill.title}". I would like to inquire about a shoot.`
+                  )
+                }
+                className="h-auto p-0 text-primary hover:underline font-bold cursor-pointer shrink-0 ml-4"
               >
-                <X className="size-4" />
-              </button>
+                Inquire About Shoot →
+              </Button>
             </div>
+          ) : null
+        }
+      />
 
-            {/* Video Stage */}
-            <div className="relative aspect-video w-full bg-black flex items-center justify-center">
-              <video
-                ref={videoRef}
-                src={activeFilm.videoUrl}
-                poster={activeFilm.image}
-                autoPlay
-                playsInline
-                muted={isMuted}
-                onTimeUpdate={() => {
-                  if (videoRef.current) {
-                    setCurrentTime(videoRef.current.currentTime);
-                    setDuration(videoRef.current.duration || 0);
-                  }
-                }}
-                onEnded={() => setIsPlaying(false)}
-                className="w-full h-full object-contain"
-              />
-
-              {/* Play/Pause center overlay click */}
-              <div
-                onClick={() => {
-                  if (videoRef.current) {
-                    if (isPlaying) videoRef.current.pause();
-                    else videoRef.current.play();
-                    setIsPlaying(!isPlaying);
-                  }
-                }}
-                className="absolute inset-0 flex items-center justify-center cursor-pointer group"
-              >
-                {!isPlaying && (
-                  <div className="size-16 rounded-full bg-black/60 border border-white/25 backdrop-blur-md flex items-center justify-center text-white shadow-2xl">
-                    <Play className="size-8 fill-current ml-1" />
-                  </div>
-                )}
-              </div>
-
-              {/* Custom Video Controls Bar */}
-              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 flex items-center gap-4 text-white z-20">
-                <button
-                  onClick={() => {
-                    if (videoRef.current) {
-                      if (isPlaying) videoRef.current.pause();
-                      else videoRef.current.play();
-                      setIsPlaying(!isPlaying);
-                    }
-                  }}
-                  className="p-1 text-white hover:text-[#f5551d] transition-colors cursor-pointer"
-                >
-                  {isPlaying ? (
-                    <Pause className="size-5" />
-                  ) : (
-                    <Play className="size-5 fill-current" />
-                  )}
-                </button>
-
-                {/* Progress bar */}
-                <input
-                  type="range"
-                  min={0}
-                  max={duration || 100}
-                  value={currentTime}
-                  onChange={(e) => {
-                    const newTime = Number(e.target.value);
-                    setCurrentTime(newTime);
-                    if (videoRef.current) videoRef.current.currentTime = newTime;
-                  }}
-                  className="flex-1 accent-[#f5551d] h-1.5 rounded-full cursor-pointer bg-white/20"
-                />
-
-                <span className="text-xs font-mono text-zinc-300 shrink-0">
-                  {formatTime(currentTime)} / {formatTime(duration)}
-                </span>
-
-                <button
-                  onClick={() => {
-                    if (videoRef.current) {
-                      videoRef.current.muted = !isMuted;
-                      setIsMuted(!isMuted);
-                    }
-                  }}
-                  className="p-1 text-white hover:text-[#f5551d] transition-colors cursor-pointer"
-                >
-                  {isMuted ? (
-                    <VolumeX className="size-5" />
-                  ) : (
-                    <Volume2 className="size-5" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Footer / Inquiry Action */}
-            <div className="p-4 sm:p-6 bg-[#121214] border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <p className="text-xs text-zinc-300 font-sans max-w-lg">
-                {activeFilm.desc}
-              </p>
-
-              <button
+      {/* 📹 FILM LIGHTBOX MODAL */}
+      <AssetLightboxModal
+        activeItem={
+          activeFilm
+            ? {
+                ...activeFilm,
+                id: String(activeFilm.id),
+                type: "film",
+                kind: "film",
+                videoUrl: activeFilm.videoUrl,
+                poster: activeFilm.image,
+                image: activeFilm.image,
+                aspectRatio:
+                  typeof activeFilm.ar === "number" && activeFilm.ar > 0
+                    ? (() => {
+                        const detected = detectAspectRatioFromDimensions(activeFilm.ar * 1000, 1000);
+                        return detected.id === "custom" ? detected.cssRatio : detected.id;
+                      })()
+                    : undefined,
+              }
+            : null
+        }
+        onClose={() => setActiveFilm(null)}
+        onBack={
+          selectedProject
+            ? () => {
+                setActiveStill(null);
+                setActiveFilm(null);
+              }
+            : undefined
+        }
+        onNext={hasMultipleFilms ? handleNextFilm : undefined}
+        onPrev={hasMultipleFilms ? handlePrevFilm : undefined}
+        showFeedback={false}
+        showApproval={false}
+        showVersions={false}
+        showDownload={false}
+        showShareLink={true}
+        footerExtra={
+          activeFilm ? (
+            <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-sans text-zinc-300">
+              <p className="line-clamp-2 max-w-xl">{activeFilm.desc}</p>
+              <Button
                 onClick={() =>
                   handleWhatsAppChat(
                     `Hi ${profile.name}! I watched "${activeFilm.title}" on your portfolio and would like to inquire about a similar production.`
                   )
                 }
-                className="px-5 py-2.5 rounded-full bg-[#c85332] hover:bg-[#d95d3a] text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer"
+                className="px-5 py-2 h-auto rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer shadow-lg shadow-primary/25"
               >
                 <MessageCircle className="size-4" />
-                <span>Inquire About Similar Film</span>
-              </button>
+                <TypographySpan>Inquire About Similar Film</TypographySpan>
+              </Button>
             </div>
-          </div>
-        </div>
-      )}
+          ) : null
+        }
+      />
 
       {/* 📁 MODAL 3: PROJECT DETAILS & ASSETS MODAL */}
-      {selectedProject && (
-        <div
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
-          onClick={() => setSelectedProject(null)}
+      <UniversalDialogRoot
+        open={Boolean(selectedProject)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedProject(null);
+        }}
+      >
+        <UniversalDialogContent
+          size="5xl"
+          showCloseButton={false}
+          className="max-w-6xl max-h-[90vh] p-0 overflow-hidden bg-[#121214] border-white/15 rounded-3xl max-sm:!fixed max-sm:!inset-0 max-sm:!h-[100dvh] max-sm:!max-h-[100dvh] max-sm:!w-full max-sm:!rounded-none max-sm:!border-0 max-sm:!top-0 max-sm:!left-0"
         >
-          <div
-            className="relative w-full max-w-6xl max-h-[90vh] rounded-3xl overflow-hidden border border-white/15 bg-[#121214] shadow-2xl flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
+          {selectedProject && (
+            <div className="relative w-full flex flex-col max-h-[90vh] max-sm:max-h-[100dvh] max-sm:h-[100dvh] overflow-hidden">
             {/* Top Close Button */}
-            <button
+            <Button
+              variant="ghost"
+              size="icon-xs"
               onClick={() => setSelectedProject(null)}
-              className="absolute top-4 right-4 z-30 size-9 rounded-full bg-black/60 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer border border-white/10"
+              className="absolute top-4 right-4 z-30 size-10 sm:size-9 rounded-full bg-black/60 hover:bg-white/20 text-white cursor-pointer border border-white/10 active:scale-95 touch-manipulation"
             >
               <X className="size-5" />
-            </button>
+            </Button>
 
             {/* Project Hero Header */}
-            <div className="relative w-full h-64 sm:h-80 shrink-0 overflow-hidden">
+            <div className="relative w-full h-56 sm:h-80 shrink-0 overflow-hidden">
               <div
                 className="absolute inset-0 bg-cover bg-center"
                 style={{ backgroundImage: `url(${selectedProject.coverImage})` }}
@@ -373,12 +307,12 @@ export function PortfolioModals() {
 
               <div className="absolute bottom-6 left-6 right-6 z-10 space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 rounded-full bg-[#f5551d] text-black text-[11px] font-bold uppercase tracking-wider">
+                  <TypographySpan className="px-3 py-1 rounded-full bg-primary text-primary-foreground text-[11px] font-bold uppercase tracking-wider">
                     {selectedProject.client}
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-black/60 border border-white/15 text-zinc-300 text-[11px] font-mono">
+                  </TypographySpan>
+                  <TypographySpan className="px-3 py-1 rounded-full bg-black/60 border border-white/15 text-zinc-300 text-[11px] ">
                     {selectedProject.tc}
-                  </span>
+                  </TypographySpan>
                 </div>
                 <h2 className="font-heading font-black text-2xl sm:text-4xl text-white uppercase tracking-tight">
                   {selectedProject.title}
@@ -395,9 +329,9 @@ export function PortfolioModals() {
                 <h3 className="font-heading font-bold text-sm text-white uppercase tracking-wider">
                   Project Gallery
                 </h3>
-                <span className="text-xs text-zinc-400 font-mono">
+                <TypographySpan className="text-xs text-zinc-400 ">
                   {selectedProject.assetIds.length} Assets
-                </span>
+                </TypographySpan>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -420,17 +354,17 @@ export function PortfolioModals() {
                       <img
                         src={asset.image}
                         alt={asset.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className={`w-full h-full ${appearance?.thumbnailScale === "fit" ? "object-contain bg-black" : "object-cover"} group-hover:scale-105 transition-transform duration-300`}
                       />
 
                       {/* Tag */}
-                      <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded bg-black/60 backdrop-blur-md border border-white/10 text-[9px] font-mono font-bold text-white uppercase">
+                      <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded bg-black/60 backdrop-blur-md border border-white/10 text-[9px]  font-bold text-white uppercase">
                         {asset.kind === "film" ? "FILM" : "STILL"}
                       </div>
 
                       {asset.kind === "film" && (
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="size-8 rounded-full bg-black/60 border border-white/20 flex items-center justify-center text-white group-hover:bg-[#f5551d] group-hover:text-black transition-colors">
+                          <div className="size-8 rounded-full bg-black/60 border border-white/20 flex items-center justify-center text-white group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                             <Play className="size-3.5 fill-current ml-0.5" />
                           </div>
                         </div>
@@ -448,36 +382,39 @@ export function PortfolioModals() {
             </div>
 
             {/* Modal Bottom Inquire */}
-            <div className="p-4 bg-[#0a0a0b] border-t border-white/10 flex items-center justify-between">
-              <span className="text-xs text-zinc-400 font-mono">
+            <div className="p-4 bg-[#0a0a0b] border-t border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-safe">
+              <TypographySpan className="text-xs text-zinc-400">
                 Location: {selectedProject.location}
-              </span>
-              <button
+              </TypographySpan>
+              <Button
                 onClick={() =>
                   handleWhatsAppChat(
                     `Hi ${profile.name}! I was looking at the "${selectedProject.title}" project on your portfolio and would like to discuss a project inquiry.`
                   )
                 }
-                className="px-5 py-2 rounded-full bg-[#c85332] hover:bg-[#d95d3a] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2.5 min-h-[44px] rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-primary/25 active:scale-95 touch-manipulation"
               >
-                <MessageCircle className="size-3.5" />
-                <span>Inquire About Project</span>
-              </button>
+                <MessageCircle className="size-4" />
+                <TypographySpan>Inquire About Project</TypographySpan>
+              </Button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </UniversalDialogContent>
+      </UniversalDialogRoot>
 
       {/* 💬 MODAL 4: CONTACT & INQUIRY DRAWER */}
-      {isContactOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setIsContactOpen(false)}
+      <UniversalDialogRoot
+        open={isContactOpen}
+        onOpenChange={(open) => {
+          if (!open) setIsContactOpen(false);
+        }}
+      >
+        <UniversalDialogContent
+          size="lg"
+          showCloseButton={false}
+          className="max-w-lg p-6 sm:p-8 bg-[#141416] border-white/15 rounded-3xl"
         >
-          <div
-            className="relative w-full max-w-lg rounded-3xl border border-white/15 bg-[#141416] p-6 sm:p-8 space-y-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="space-y-0.5">
                 <h3 className="font-heading font-extrabold text-xl text-white">
@@ -487,12 +424,14 @@ export function PortfolioModals() {
                   Direct project inquiry with {profile.name}
                 </p>
               </div>
-              <button
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => setIsContactOpen(false)}
-                className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+                className="size-9 sm:size-8 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer active:scale-95 touch-manipulation"
               >
                 <X className="size-4" />
-              </button>
+              </Button>
             </div>
 
             {contactSubmitted ? (
@@ -507,13 +446,13 @@ export function PortfolioModals() {
                   Thank you! We will review your production requirements and get back to you shortly.
                 </p>
                 <div className="pt-4">
-                  <button
+                  <Button
                     onClick={() => handleWhatsAppChat()}
-                    className="px-6 py-2.5 rounded-full bg-[#f5551d] text-black text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 mx-auto cursor-pointer"
+                    className="w-full sm:w-auto px-6 py-2.5 min-h-[44px] rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 mx-auto cursor-pointer shadow-lg shadow-primary/25 active:scale-95 touch-manipulation"
                   >
                     <MessageCircle className="size-4" />
-                    <span>Open WhatsApp Chat Directly</span>
-                  </button>
+                    <TypographySpan>Open WhatsApp Chat Directly</TypographySpan>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -521,7 +460,7 @@ export function PortfolioModals() {
                 {/* Instant WhatsApp Shortcut Banner */}
                 <div
                   onClick={() => handleWhatsAppChat()}
-                  className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between cursor-pointer hover:bg-emerald-500/15 transition-colors group"
+                  className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between cursor-pointer hover:bg-emerald-500/15 transition-colors group active:scale-[0.99] touch-manipulation"
                 >
                   <div className="flex items-center gap-3">
                     <div className="size-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
@@ -539,69 +478,76 @@ export function PortfolioModals() {
                   <ArrowRight className="size-4 text-emerald-400 group-hover:translate-x-0.5 transition-transform" />
                 </div>
 
-                <div className="flex items-center gap-3 text-zinc-500 text-[11px] font-mono">
+                <div className="flex items-center gap-3 text-zinc-500 text-[11px] ">
                   <span className="flex-1 h-px bg-white/10" />
-                  <span>OR SEND DETAILS</span>
+                  <TypographySpan>OR SEND DETAILS</TypographySpan>
                   <span className="flex-1 h-px bg-white/10" />
                 </div>
 
                 {/* Form */}
                 <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    setContactSubmitted(true);
-                  }}
+                  onSubmit={handleSubmitInquiry}
                   className="space-y-3"
                 >
                   <div>
-                    <label className="block text-xs font-mono text-zinc-400 mb-1">
+                    <label className="block text-xs  text-zinc-400 mb-1">
                       Your Name / Company
                     </label>
                     <input
                       type="text"
                       required
+                      value={clientName}
+                      onChange={(e) => setClientName(e.target.value)}
                       placeholder="e.g. Prestige Motors / Sarah Smith"
-                      className="w-full px-3.5 py-2 rounded-xl bg-black/50 border border-white/10 text-white text-xs focus:outline-none focus:border-[#f5551d]"
+                      className="w-full px-3.5 py-2.5 sm:py-2 rounded-xl bg-black/50 border border-white/10 text-white text-base sm:text-xs focus:outline-none focus:border-primary"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-mono text-zinc-400 mb-1">
+                    <label className="block text-xs  text-zinc-400 mb-1">
                       Your Email / Phone
                     </label>
                     <input
                       type="text"
                       required
+                      value={clientContact}
+                      onChange={(e) => setClientContact(e.target.value)}
                       placeholder="email@company.com or phone"
-                      className="w-full px-3.5 py-2 rounded-xl bg-black/50 border border-white/10 text-white text-xs focus:outline-none focus:border-[#f5551d]"
+                      className="w-full px-3.5 py-2.5 sm:py-2 rounded-xl bg-black/50 border border-white/10 text-white text-base sm:text-xs focus:outline-none focus:border-primary"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-mono text-zinc-400 mb-1">
+                    <label className="block text-xs  text-zinc-400 mb-1">
                       Project Details
                     </label>
                     <textarea
                       rows={3}
                       required
+                      value={projectDetails}
+                      onChange={(e) => setProjectDetails(e.target.value)}
                       placeholder="Tell us about the project scope, dates, and deliverable format..."
-                      className="w-full px-3.5 py-2 rounded-xl bg-black/50 border border-white/10 text-white text-xs focus:outline-none focus:border-[#f5551d] resize-none"
+                      className="w-full px-3.5 py-2.5 sm:py-2 rounded-xl bg-black/50 border border-white/10 text-white text-base sm:text-xs focus:outline-none focus:border-primary resize-none"
                     />
                   </div>
 
-                  <button
+                  <Button
                     type="submit"
-                    className="w-full py-2.5 rounded-xl bg-[#c85332] hover:bg-[#d95d3a] text-white text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2"
+                    disabled={isSubmittingContact}
+                    className="w-full py-2.5 min-h-[44px] rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-primary/25 disabled:opacity-50 active:scale-95 touch-manipulation"
                   >
-                    <Send className="size-3.5" />
-                    Send Project Inquiry
-                  </button>
+                    {isSubmittingContact ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Send className="size-3.5" />
+                    )}
+                    {isSubmittingContact ? "Sending Inquiry..." : "Send Project Inquiry"}
+                  </Button>
                 </form>
               </div>
             )}
-          </div>
-        </div>
-      )}
+        </UniversalDialogContent>
+      </UniversalDialogRoot>
     </>
   );
 }

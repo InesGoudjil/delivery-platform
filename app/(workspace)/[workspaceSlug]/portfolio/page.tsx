@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerServices } from "@/core/server";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 import { PortfolioClient, PortfolioItem } from "./portfolio-client";
+import { SelectableCoverAsset } from "@/lib/portfolio-data";
 
 export default async function PortfolioPage({
   params,
@@ -29,11 +30,13 @@ export default async function PortfolioPage({
   );
 
 
-  // 2. Query showcase projects and standalone assets
-  const [dbProjects, standaloneAssets] = await Promise.all([
+  // 2. Query showcase projects, standalone assets, and plan features
+  const [dbProjects, standaloneAssets, features] = await Promise.all([
     services.project.listPortfolioProjects(portfolio.id),
     services.asset.listUnassignedAssets(workspace.id),
+    services.subscription.getFeatures(workspace.id),
   ]);
+
 
   const featuredItemIds: string[] = Array.isArray(portfolio.appearance?.featuredItemIds)
     ? portfolio.appearance.featuredItemIds
@@ -46,6 +49,12 @@ export default async function PortfolioPage({
       let assets = await services.asset.listAssets(deliveryIdToQuery);
       if (assets.length === 0 && p.id !== deliveryIdToQuery) {
         assets = await services.asset.listAssets(p.id);
+      }
+      if (assets.length === 0) {
+        const projectWithAssets = await services.project.getProjectWithAssets(p.id);
+        if (projectWithAssets?.assets && projectWithAssets.assets.length > 0) {
+          assets = projectWithAssets.assets;
+        }
       }
 
       const projectAssets = await Promise.all(
@@ -67,7 +76,7 @@ export default async function PortfolioPage({
             title: a.title,
             type: isStill ? ("still" as const) : ("film" as const),
             url: resolveMediaUrl(rawMedia),
-            thumbnailUrl: resolveMediaUrl(resolvedThumb),
+            thumbnailUrl: resolvedThumb,
             aspectRatio: a.aspectRatio || "16:9",
             duration: activeVersion?.durationSeconds
               ? `${Math.floor(activeVersion.durationSeconds / 60)}:${String(
@@ -125,9 +134,9 @@ export default async function PortfolioPage({
         category: isStill ? "Photo Gallery" : "Film Cut",
         type: itemType,
         assetCount: 1,
-        thumbnailUrl: resolveMediaUrl(resolvedThumb),
+        thumbnailUrl: resolvedThumb,
         mediaUrl: resolveMediaUrl(rawMedia || resolvedThumb),
-        aspectRatio: asset.aspectRatio || (isStill ? "1:1" : "16:9"),
+        aspectRatio: asset.aspectRatio || undefined,
         isFeatured,
       };
     })
@@ -140,12 +149,53 @@ export default async function PortfolioPage({
     allPortfolioItems.some((item) => item.id === id)
   );
 
+  // Build selectable cover assets for the Cover Banner & Showcase Hero stage
+  const availableAssets: SelectableCoverAsset[] = [];
+
+  for (const item of allPortfolioItems) {
+    if (item.type === "project" && item.projectAssets && item.projectAssets.length > 0) {
+      for (const asset of item.projectAssets) {
+        availableAssets.push({
+          id: asset.id,
+          title: asset.title,
+          type: asset.type === "still" ? "still" : "video",
+          url: asset.url,
+          thumbnailUrl: asset.thumbnailUrl,
+          aspectRatio: asset.aspectRatio || "16:9",
+          duration: asset.duration,
+          category: asset.category,
+          projectName: item.title,
+        });
+      }
+    } else {
+      availableAssets.push({
+        id: item.id,
+        title: item.title,
+        type: item.type === "still" ? "still" : "video",
+        url: item.mediaUrl || item.thumbnailUrl,
+        thumbnailUrl: item.thumbnailUrl,
+        aspectRatio: item.aspectRatio || "16:9",
+        category: item.category,
+      });
+    }
+  }
+
+  const finalAvailableAssets: SelectableCoverAsset[] = availableAssets;
+
   return (
     <PortfolioClient
-      workspace={workspace}
+      workspace={{
+        id: workspace.id,
+        brandName: workspace.brandName,
+        slug: workspace.slug,
+        logoUrl: workspace.logoUrl,
+        accentColor: workspace.accentColor,
+      }}
       portfolio={portfolio}
       initialProjects={allPortfolioItems}
       initialFeaturedIds={initialFeaturedIds}
+      features={features}
+      availableAssets={finalAvailableAssets}
     />
   );
 }

@@ -61,7 +61,7 @@ export default async function TermsPage() {
           You keep full ownership of your content. You grant CineSpace a limited licence to host, transcode, and deliver it as needed to provide the Services. You agree not to upload content that is illegal, infringing, or malicious. We comply with applicable copyright law — see our{" "}
           <Link
             href="/copyright"
-            className="text-white hover:text-[#f5551d] transition-colors underline underline-offset-2"
+            className="text-white hover:text-primary transition-colors underline underline-offset-2"
           >
             Copyright Policy
           </Link>{" "}

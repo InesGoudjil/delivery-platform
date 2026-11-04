@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { BrandLogo } from "@/components/ui/brand-logo";
 
 const InstagramIcon = () => (
   <svg className="size-4 fill-current" viewBox="0 0 24 24">
@@ -36,17 +37,11 @@ const YoutubeIcon = () => (
 export function FooterSection() {
   return (
     <footer className="w-full border-t border-white/10 bg-[#070709] pt-16 pb-12 text-left">
-      <div className="mx-auto max-w-7xl px-4 sm:px-8 space-y-12">
+      <div className="w-full px-4 sm:px-6 lg:px-8 space-y-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
           {/* Left Column: Logo, Description & Social Icons */}
           <div className="lg:col-span-6 space-y-6">
-            <Link
-              href="/"
-              className="flex items-center gap-1 text-2xl font-black tracking-tight text-white font-display"
-            >
-              <span>Cine</span>
-              <span className="text-[#f5551d]">Space</span>
-            </Link>
+            <BrandLogo href="/" size="lg" />
 
             <p className="text-sm text-[#aeaeb4] max-w-md leading-relaxed">
               The home for filmmakers who take delivery seriously. CineSpace turns your portfolio, client review, and final handoff into one branded link — no scattered folders, no WeTransfer clutter.

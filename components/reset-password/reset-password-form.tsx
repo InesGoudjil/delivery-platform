@@ -72,7 +72,7 @@ export function ResetPasswordForm({
     >
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-[#f5551d]/15 text-[#f5551d] flex items-center justify-center mb-2 shadow-inner">
+          <div className="w-12 h-12 rounded-2xl bg-primary/15 text-primary flex items-center justify-center mb-2 shadow-inner">
             <KeyRound className="size-6" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight font-heading">
@@ -111,10 +111,12 @@ export function ResetPasswordForm({
               autoComplete="new-password"
               autoFocus
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-xs"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? (
@@ -122,7 +124,7 @@ export function ResetPasswordForm({
               ) : (
                 <Eye className="size-4" />
               )}
-            </button>
+            </Button>
           </div>
           {fieldErrors.password && (
             <FieldError errors={[{ message: fieldErrors.password }]} />
@@ -155,10 +157,12 @@ export function ResetPasswordForm({
               className="pr-10"
               autoComplete="new-password"
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-xs"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               aria-label={
                 showConfirmPassword ? "Hide password" : "Show password"
               }
@@ -168,7 +172,7 @@ export function ResetPasswordForm({
               ) : (
                 <Eye className="size-4" />
               )}
-            </button>
+            </Button>
           </div>
           {fieldErrors.confirmPassword && (
             <FieldError errors={[{ message: fieldErrors.confirmPassword }]} />

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerServices } from "@/core/server";
+import { presignDeliveryAssets } from "@/lib/media-server";
 import {
   DeliveryDetailClient,
   AssetVersionItem,
@@ -25,8 +26,13 @@ export default async function DeliveryDetailPage({
     redirect("/");
   }
 
-  // 1. Fetch full delivery details (delivery, client, assets, versions, feedback)
-  const fullDetails = await services.delivery.getDeliveryWithFullDetails(projectId);
+  const INITIAL_PAGE_SIZE = 12;
+
+  // 1. Fetch delivery details with first page of assets, versions, and counts
+  const fullDetails = await services.delivery.getDeliveryWithFullDetails(projectId, {
+    page: 1,
+    limit: INITIAL_PAGE_SIZE,
+  });
 
   // 2. Fetch or prepare workspace portfolio for 1-click publishing
   const portfolio = await services.portfolio.getOrCreatePortfolio(
@@ -73,11 +79,18 @@ export default async function DeliveryDetailPage({
     } as any;
   }
 
-  // 3. Resolve client name
+  // 3. Resolve client details (name, email, phone)
   let clientName = project?.client?.name || (project as any).clientName || "Private Client";
-  if (!clientName && project.clientId) {
+  let clientEmail = project?.client?.email || "";
+  let clientPhone = project?.client?.phoneNumber || "";
+
+  if (project.clientId && (!project.client || !clientEmail || !clientPhone)) {
     const client = await services.client.getClientById(project.clientId);
-    if (client) clientName = client.name;
+    if (client) {
+      if (!clientName || clientName === "Private Client") clientName = client.name;
+      if (!clientEmail && client.email) clientEmail = client.email;
+      if (!clientPhone && client.phoneNumber) clientPhone = client.phoneNumber;
+    }
   }
 
   // 4. Map assets and feedback
@@ -89,6 +102,7 @@ export default async function DeliveryDetailPage({
     isApproved?: boolean;
     versions: AssetVersionItem[];
     activeVersion?: AssetVersionItem | null;
+    feedback?: FeedbackItem[];
   }> = [];
 
   let initialFeedback: FeedbackItem[] = [];
@@ -99,8 +113,14 @@ export default async function DeliveryDetailPage({
         id: v.id,
         versionNumber: v.versionNumber,
         rawFileUrl: v.rawFileUrl,
+        downloadUrl: v.rawFileUrl,
         hlsManifestUrl: v.hlsManifestUrl,
-        thumbnailUrl: v.thumbnailUrl || "/images/hero.jpg",
+        thumbnailUrl:
+          v.thumbnailUrl ||
+          (a.type === "photo_gallery" || (a.type as string) === "photo" || (a.type as string) === "still"
+            ? v.rawFileUrl
+            : null) ||
+          "/images/hero.jpg",
         durationSeconds: v.durationSeconds,
         fileSizeBytes: v.fileSizeBytes,
         transcodingStatus: v.transcodingStatus,
@@ -111,6 +131,16 @@ export default async function DeliveryDetailPage({
       const activeVersion =
         mappedVersions.find((v) => v.isActiveVersion) || mappedVersions[0] || null;
 
+      const mappedFeedback: FeedbackItem[] = (a.feedback || []).map((f) => ({
+        id: f.id,
+        assetVersionId: f.assetVersionId,
+        authorName: f.authorName,
+        commentText: f.commentText,
+        timestampSeconds: f.timestampSeconds ? Number(f.timestampSeconds) : null,
+        createdAt: f.createdAt,
+        isResolved: f.isResolved,
+      }));
+
       return {
         id: a.id,
         title: a.title,
@@ -119,20 +149,11 @@ export default async function DeliveryDetailPage({
         isApproved: a.isApproved,
         versions: mappedVersions,
         activeVersion,
+        feedback: mappedFeedback,
       };
     });
 
-    const primaryAsset = fullDetails.assets[0];
-    if (primaryAsset?.feedback && primaryAsset.feedback.length > 0) {
-      initialFeedback = primaryAsset.feedback.map((f) => ({
-        id: f.id,
-        authorName: f.authorName,
-        commentText: f.commentText,
-        timestampSeconds: f.timestampSeconds,
-        createdAt: f.createdAt,
-        isResolved: f.isResolved,
-      }));
-    }
+    initialFeedback = mappedAssets.flatMap((a) => a.feedback || []);
   } else {
     // If fallback or assets directly from asset repo
     const dbAssets = await services.asset.listAssets(project.id);
@@ -144,8 +165,14 @@ export default async function DeliveryDetailPage({
             id: v.id,
             versionNumber: v.versionNumber,
             rawFileUrl: v.rawFileUrl,
+            downloadUrl: v.rawFileUrl,
             hlsManifestUrl: v.hlsManifestUrl,
-            thumbnailUrl: v.thumbnailUrl || "/images/hero.jpg",
+            thumbnailUrl:
+              v.thumbnailUrl ||
+              (a.type === "photo_gallery" || (a.type as string) === "photo" || (a.type as string) === "still"
+                ? v.rawFileUrl
+                : null) ||
+              "/images/hero.jpg",
             durationSeconds: v.durationSeconds,
             fileSizeBytes: v.fileSizeBytes,
             transcodingStatus: v.transcodingStatus,
@@ -155,6 +182,21 @@ export default async function DeliveryDetailPage({
 
           const activeVersion = mappedVersions.find((v) => v.isActiveVersion) || mappedVersions[0] || null;
 
+          let assetFeedback: FeedbackItem[] = [];
+          if (mappedVersions.length > 0) {
+            const versionIds = mappedVersions.map((v) => v.id);
+            const feedbackRows = await services.feedback.listFeedbackForVersions(versionIds);
+            assetFeedback = feedbackRows.map((f) => ({
+              id: f.id,
+              assetVersionId: f.assetVersionId,
+              authorName: f.authorName,
+              commentText: f.commentText,
+              timestampSeconds: f.timestampSeconds ? Number(f.timestampSeconds) : null,
+              createdAt: f.createdAt,
+              isResolved: f.isResolved,
+            }));
+          }
+
           return {
             id: a.id,
             title: a.title,
@@ -163,47 +205,44 @@ export default async function DeliveryDetailPage({
             isApproved: a.isApproved,
             versions: mappedVersions,
             activeVersion,
+            feedback: assetFeedback,
           };
         })
       );
 
-      const primaryActiveVersion = mappedAssets[0]?.activeVersion;
-      if (primaryActiveVersion) {
-        const threads = await services.feedback.getThreadedFeedback(primaryActiveVersion.id);
-        initialFeedback = threads.map((f) => ({
-          id: f.id,
-          authorName: f.authorName,
-          commentText: f.commentText,
-          timestampSeconds: f.timestampSeconds,
-          createdAt: f.createdAt,
-          isResolved: f.isResolved,
-        }));
-      }
+      initialFeedback = mappedAssets.flatMap((a) => a.feedback || []);
     }
   }
 
   // If no feedback yet, provide sample cues
   if (initialFeedback.length === 0) {
-    initialFeedback = [
-      {
-        id: "fb_1",
-        authorName: clientName,
-        commentText: "Love this cut! Can we make the intro sequence a touch faster?",
-        timestampSeconds: 12,
-        createdAt: new Date(Date.now() - 3600 * 1000 * 2).toISOString(),
-      },
-      {
-        id: "fb_2",
-        authorName: workspace.brandName || "Filmmaker",
-        commentText: "On it — adjusting speed ramp on the sushi prep shot.",
-        timestampSeconds: 14,
-        createdAt: new Date(Date.now() - 3600 * 1000).toISOString(),
-      },
-    ];
+    // initialFeedback = [
+    //   {
+    //     id: "fb_1",
+    //     authorName: clientName,
+    //     commentText: "Love this cut! Can we make the intro sequence a touch faster?",
+    //     timestampSeconds: 12,
+    //     createdAt: new Date(Date.now() - 3600 * 1000 * 2).toISOString(),
+    //   },
+    //   {
+    //     id: "fb_2",
+    //     authorName: workspace.brandName || "Filmmaker",
+    //     commentText: "On it — adjusting speed ramp on the sushi prep shot.",
+    //     timestampSeconds: 14,
+    //     createdAt: new Date(Date.now() - 3600 * 1000).toISOString(),
+    //   },
+    // ];
+    initialFeedback = []
   }
 
+  // Batch presign private delivery assets so creator streams/views directly from Cloudflare R2
+  mappedAssets = await presignDeliveryAssets(mappedAssets, services.storage, 7200);
+
+  // Fetch workspace features to enforce plan tier controls
+  const workspaceFeatures = await services.subscription.getFeatures(workspace.id);
+
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-16 animate-in fade-in duration-200 text-foreground selection:bg-[#f5551d] selection:text-black">
+    <div className="w-full space-y-8 pb-16 animate-in fade-in duration-200 text-foreground selection:bg-primary selection:text-primary-foreground">
       <DeliveryNavHeader
         workspaceSlug={workspace.slug}
         shareToken={project.shareToken}
@@ -214,10 +253,16 @@ export default async function DeliveryDetailPage({
         project={{
           ...project,
           clientName,
+          clientEmail,
+          clientPhone,
           passcodeProtected: Boolean(project.passcodeHash),
         }}
         assets={mappedAssets}
+        initialTotalAssetsCount={fullDetails?.totalAssetsCount ?? mappedAssets.length}
+        initialApprovedCount={fullDetails?.approvedAssetsCount ?? mappedAssets.filter((a) => a.isApproved).length}
+        initialHasMore={fullDetails?.hasMore ?? false}
         initialFeedback={initialFeedback}
+        features={workspaceFeatures}
       />
     </div>
   );

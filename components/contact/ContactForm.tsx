@@ -3,6 +3,10 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Loader2, Send } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { submitContactFormAction } from "@/app/actions/inquiries";
+import { submitContactFormSchema, safeValidate } from "@/lib/validations";
 
 export function ContactForm() {
   const [fullName, setFullName] = useState("");
@@ -14,13 +18,35 @@ export function ContactForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !message) return;
 
-    setIsSubmitting(true);
-    // Simulate brief network submission
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setIsSubmitting(false);
-    setSubmitted(true);
+    const validated = safeValidate(submitContactFormSchema, {
+      fullName: fullName || undefined,
+      email,
+      reason: reason || undefined,
+      message,
+    });
+
+    if (!validated.success) {
+      toast.error(validated.error);
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const res = await submitContactFormAction(validated.data);
+
+      if (!res.success) {
+        toast.error(res.error || "Failed to send message.");
+        return;
+      }
+
+      setSubmitted(true);
+      toast.success("Message sent! We will get back to you shortly.");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send message.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -36,7 +62,7 @@ export function ContactForm() {
         <div className="mt-4">
           <Link
             href="/#partnership"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#ff7948] hover:text-[#f5551d] transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary/80 transition-colors"
           >
             <span>SEE PARTNERSHIP OPPORTUNITIES</span>
             <ArrowRight className="size-3.5" />
@@ -60,16 +86,18 @@ export function ContactForm() {
               Thank you for reaching out! A member of the CineSpace team will review your message and get back to you shortly.
             </p>
             <div className="pt-2">
-              <button
+              <Button
                 type="button"
+                variant="link"
+                size="xs"
                 onClick={() => {
                   setSubmitted(false);
                   setMessage("");
                 }}
-                className="text-xs font-semibold text-[#ff7948] hover:underline"
+                className="text-xs font-semibold text-primary hover:underline h-auto p-0"
               >
                 Send another message
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
@@ -88,7 +116,7 @@ export function ContactForm() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Your name"
-                className="w-full rounded-xl border border-white/10 bg-[#181820] px-4 py-3 text-sm text-white placeholder:text-[#5a5a64] focus:border-[#f5551d] focus:bg-[#1f1f2a] focus:outline-none transition-colors"
+                className="w-full rounded-xl border border-white/10 bg-[#181820] px-4 py-3 text-sm text-white placeholder:text-[#5a5a64] focus:border-primary focus:bg-[#1f1f2a] focus:outline-none transition-colors"
               />
             </div>
 
@@ -107,7 +135,7 @@ export function ContactForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@studio.com"
-                className="w-full rounded-xl border border-white/10 bg-[#181820] px-4 py-3 text-sm text-white placeholder:text-[#5a5a64] focus:border-[#f5551d] focus:bg-[#1f1f2a] focus:outline-none transition-colors"
+                className="w-full rounded-xl border border-white/10 bg-[#181820] px-4 py-3 text-sm text-white placeholder:text-[#5a5a64] focus:border-primary focus:bg-[#1f1f2a] focus:outline-none transition-colors"
               />
             </div>
 
@@ -124,7 +152,7 @@ export function ContactForm() {
                   id="reason"
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  className="w-full appearance-none rounded-xl border border-white/10 bg-[#181820] px-4 py-3 text-sm text-white focus:border-[#f5551d] focus:bg-[#1f1f2a] focus:outline-none transition-colors cursor-pointer"
+                  className="w-full appearance-none rounded-xl border border-white/10 bg-[#181820] px-4 py-3 text-sm text-white focus:border-primary focus:bg-[#1f1f2a] focus:outline-none transition-colors cursor-pointer"
                 >
                   <option value="" disabled className="bg-[#181820] text-[#71717a]">
                     Select a reason
@@ -174,16 +202,16 @@ export function ContactForm() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Tell us what's on your mind..."
-                className="w-full rounded-xl border border-white/10 bg-[#181820] px-4 py-3 text-sm text-white placeholder:text-[#5a5a64] focus:border-[#f5551d] focus:bg-[#1f1f2a] focus:outline-none transition-colors resize-y min-h-[120px]"
+                className="w-full rounded-xl border border-white/10 bg-[#181820] px-4 py-3 text-sm text-white placeholder:text-[#5a5a64] focus:border-primary focus:bg-[#1f1f2a] focus:outline-none transition-colors resize-y min-h-[120px]"
               />
             </div>
 
             {/* Submit Button */}
             <div className="pt-2">
-              <button
+              <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full rounded-xl bg-gradient-to-r from-[#f5551d] to-[#df430f] py-3.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-[#f5551d]/25 transition-all hover:opacity-95 hover:shadow-[#f5551d]/40 active:scale-[0.99] disabled:opacity-60 flex items-center justify-center gap-2"
+                className="w-full h-auto rounded-xl bg-primary text-primary-foreground py-3.5 text-xs font-bold uppercase tracking-wider shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:shadow-primary/40 active:scale-[0.99] disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <>
@@ -195,7 +223,7 @@ export function ContactForm() {
                     <span>SEND MESSAGE</span>
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </form>
         )}

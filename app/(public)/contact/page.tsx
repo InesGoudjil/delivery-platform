@@ -25,7 +25,7 @@ export default async function ContactPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased selection:bg-[#f5551d] selection:text-white flex flex-col justify-between relative">
+    <div className="min-h-screen bg-[#070709] text-[#f6f3ec] font-sans antialiased selection:bg-primary selection:text-primary-foreground flex flex-col justify-between relative">
       <AmbientBackground variant="hero" />
 
       <div className="relative z-10">

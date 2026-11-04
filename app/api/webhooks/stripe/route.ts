@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import Stripe from 'stripe';
 import { createAdminClient } from '@/lib/supabase/server';
 import { createCoreServices } from '@/core/container';
+import { sendServerEvent } from '@/lib/meta';
+import { capturePurchase, flushServerEvents } from '@/lib/posthog';
+import { createScopedLogger } from '@/lib/logger';
+
+const log = createScopedLogger({ route: 'api/webhooks/stripe' });
 
 export async function POST(req: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -22,7 +28,7 @@ export async function POST(req: Request) {
   try {
     event = services.stripe.constructWebhookEvent(body, signature, webhookSecret);
   } catch (err: any) {
-    console.error(`[Stripe Webhook Error]: Signature verification failed: ${err.message}`);
+    log.error({ err }, 'Stripe webhook signature verification failed');
     return NextResponse.json({ error: `Webhook Signature Error: ${err.message}` }, { status: 400 });
   }
 
@@ -61,7 +67,38 @@ export async function POST(req: Request) {
               stripeCustomerId: customerId,
               status: 'paid',
             });
-            console.log(`[Stripe Webhook] Successfully updated subscription for workspace: ${workspaceId}`);
+            log.info({ workspaceId }, 'Successfully updated subscription for workspace');
+
+            // Fire server-side Purchase to Meta CAPI. Stripe is the
+            // single source of truth for amount and currency here.
+            const purchaseEmail =
+              (session as any).customer_details?.email ||
+              session.metadata?.email ||
+              undefined;
+            await sendServerEvent({
+              eventName: 'Purchase',
+              eventId: `pur_${stripeSubId}_co`,
+              actionSource: 'system_generated',
+              userData: purchaseEmail ? { email: purchaseEmail } : {},
+              customData: {
+                content_name: targetPlan.name,
+                content_category: 'subscription',
+                content_type: 'subscription',
+                value: targetPlan.priceCents / 100,
+                currency: targetPlan.currency.toUpperCase(),
+              },
+            });
+
+            // PostHog: same Purchase but with a stable workspace group
+            // so the workspace's analytics roll up correctly.
+            capturePurchase({
+              email: purchaseEmail,
+              workspaceId,
+              planName: targetPlan.name,
+              value: targetPlan.priceCents / 100,
+              currency: targetPlan.currency.toUpperCase(),
+              source: 'checkout',
+            });
           }
         }
         break;
@@ -100,7 +137,7 @@ export async function POST(req: Request) {
               stripeSub.id,
               customerId
             );
-            console.log(`[Stripe Webhook] Updated subscription status to '${stripeSub.status}' for workspace: ${targetWorkspaceId}`);
+            log.info({ targetWorkspaceId, status: stripeSub.status }, 'Updated subscription status for workspace');
           }
         }
         break;
@@ -119,7 +156,7 @@ export async function POST(req: Request) {
 
         if (targetWorkspaceId) {
           await services.subscription.cancelSubscription(targetWorkspaceId);
-          console.log(`[Stripe Webhook] Canceled subscription for workspace: ${targetWorkspaceId}`);
+          log.info({ targetWorkspaceId }, 'Canceled subscription for workspace');
         }
         break;
       }
@@ -149,7 +186,7 @@ export async function POST(req: Request) {
             targetWorkspaceId = stripeSub.metadata?.workspace_id;
             planId = stripeSub.metadata?.plan_id;
           } catch (e) {
-            console.error('[Stripe Webhook] Failed to retrieve subscription metadata for invoice:', e);
+            log.error({ err: e, stripeSubId }, 'Failed to retrieve subscription metadata for invoice');
           }
         }
 
@@ -166,20 +203,61 @@ export async function POST(req: Request) {
             pdfUrl,
             status: 'paid',
           });
-          console.log(`[Stripe Webhook] Logged invoice ${stripeInvoiceId} for workspace ${targetWorkspaceId}`);
+          log.info({ stripeInvoiceId, targetWorkspaceId }, 'Logged invoice for workspace');
+
+          // Fire server-side Purchase for renewals. Use the
+          // stripeInvoiceId to make a stable eventId that differs
+          // from the checkout.session.completed one (so Meta dedupes
+          // correctly when both fire for the same payment).
+          const invoiceEmail =
+            (invoiceObj as any).customer_email ||
+            (invoiceObj as any).customer_details?.email ||
+            undefined;
+          await sendServerEvent({
+            eventName: 'Purchase',
+            eventId: `pur_${stripeInvoiceId}_inv`,
+            actionSource: 'system_generated',
+            userData: invoiceEmail ? { email: invoiceEmail } : {},
+            customData: {
+              content_name: currentPlan?.name || 'subscription',
+              content_category: 'subscription',
+              content_type: 'subscription',
+              value: (amountCents || 0) / 100,
+              currency: (currency || 'USD').toUpperCase(),
+            },
+          });
+
+          // PostHog: same Purchase for renewals.
+          capturePurchase({
+            email: invoiceEmail,
+            workspaceId: targetWorkspaceId,
+            planName: currentPlan?.name || 'subscription',
+            value: (amountCents || 0) / 100,
+            currency: (currency || 'USD').toUpperCase(),
+            source: 'invoice',
+          });
         } else {
-          console.warn(`[Stripe Webhook] Could not resolve workspaceId for invoice ${stripeInvoiceId}`);
+          log.warn({ stripeInvoiceId }, 'Could not resolve workspaceId for invoice');
         }
         break;
       }
 
       default:
-        console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
+        log.info({ eventType: event.type }, 'Unhandled stripe webhook event type');
     }
+
+    revalidatePath("/[workspaceSlug]", "layout");
+    revalidatePath("/[workspaceSlug]/subscription", "page");
+    revalidatePath("/[workspaceSlug]/storage", "page");
+    revalidatePath("/admin/subscriptions", "page");
 
     return NextResponse.json({ received: true });
   } catch (err: any) {
-    console.error(`[Stripe Webhook Handler Error]:`, err);
+    log.error({ err }, 'Stripe webhook handler error');
     return NextResponse.json({ error: err.message || 'Server error processing webhook' }, { status: 500 });
+  } finally {
+    // Flush queued PostHog events before the serverless function
+    // freezes. Best-effort; never throws.
+    await flushServerEvents();
   }
 }

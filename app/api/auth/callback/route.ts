@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getServerServices } from '@/core/server';
+import { trackUserSession } from '@/lib/session-manager';
+import { createScopedLogger } from '@/lib/logger';
+
+const log = createScopedLogger({ route: 'api/auth/callback' });
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -23,7 +27,7 @@ export async function GET(request: Request) {
           try {
             await services.waitlist.claimInvite(waitlistToken);
           } catch (e) {
-            console.warn('Could not claim waitlist token in OAuth callback:', e);
+            log.warn({ err: e, waitlistToken }, 'Could not claim waitlist token in OAuth callback');
           }
         }
 
@@ -43,13 +47,16 @@ export async function GET(request: Request) {
           request.headers.get('x-real-ip') ||
           undefined;
 
-        // 2. Sync OAuth user profile (name, avatar, last login)
+        // 2. Track device session
+        await trackUserSession(data.user.id, services.session).catch(() => {});
+
+        // 3. Sync OAuth user profile (name, avatar, last login)
         await services.profile.syncOAuthProfile(data.user.id, {
           fullName,
           avatarUrl,
           ip: clientIp,
         }).catch((err) => {
-          console.warn('Could not sync OAuth profile in callback:', err);
+          log.warn({ err, userId: data.user.id }, 'Could not sync OAuth profile in callback');
         });
 
         // 3. Route to workspace or invite token
@@ -67,7 +74,7 @@ export async function GET(request: Request) {
           }
         }
       } catch (err) {
-        console.error('Workspace setup error in OAuth callback:', err);
+        log.error({ err }, 'Workspace setup error in OAuth callback');
       }
 
       // 4. Sanitize targetPath to avoid open redirect vulnerabilities

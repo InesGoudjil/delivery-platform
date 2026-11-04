@@ -5,6 +5,9 @@ import {
   WaitlistEntry,
   WaitlistPositionResult,
 } from "@/core/entities/waitlist";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ service: "WaitlistService" });
 
 const DISPOSABLE_DOMAINS = new Set([
   "mailinator.com",
@@ -109,7 +112,7 @@ export class WaitlistService {
         referralLink,
       })
       .catch((err) => {
-        console.error(`[WaitlistService] Failed to send welcome email to ${email}:`, err);
+        log.error({ err, email }, "Failed to send welcome email");
       });
 
     return positionResult;

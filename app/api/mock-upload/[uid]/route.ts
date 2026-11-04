@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ route: "api/mock-upload" });
 
 const MOCK_STORAGE_DIR = "/tmp/cut-mock-uploads";
+const SAFE_UID_REGEX = /^[a-zA-Z0-9_-]{8,64}$/;
+
+function assertDevRoute(uid: string) {
+  if (process.env.NODE_ENV === "production") {
+    return new NextResponse(null, { status: 404 });
+  }
+  if (!SAFE_UID_REGEX.test(uid)) {
+    return new NextResponse("Invalid UID format", { status: 400 });
+  }
+  return null;
+}
 
 declare global {
   // eslint-disable-next-line no-var
@@ -22,7 +36,7 @@ async function saveUploadedBuffer(uid: string, buffer: Buffer, contentType: stri
     await fs.writeFile(filePath, buffer);
     await fs.writeFile(metaPath, JSON.stringify({ contentType, createdAt: Date.now() }));
   } catch (err) {
-    console.error("Error persisting mock file to disk:", err);
+    log.error({ err, uid }, "Error persisting mock file to disk");
   }
 }
 
@@ -54,6 +68,9 @@ export async function GET(
   { params }: { params: Promise<{ uid: string }> }
 ) {
   const { uid } = await params;
+  const guard = assertDevRoute(uid);
+  if (guard) return guard;
+
   const stored = await getUploadedBuffer(uid);
 
   if (stored && stored.buffer && stored.buffer.length > 0) {
@@ -65,10 +82,34 @@ export async function GET(
     });
   }
 
-  // If not found in store, fallback to sample video stream
-  return NextResponse.redirect(
-    "https://files.vidstack.io/sprite-fight/720p.mp4"
+  const rangeHeader = req.headers.get("range");
+  const acceptHeader = req.headers.get("accept") || "";
+  const isVideoPlaybackRequest =
+    Boolean(rangeHeader) ||
+    acceptHeader.includes("video") ||
+    req.nextUrl.searchParams.get("type") === "video" ||
+    req.nextUrl.searchParams.has("video");
+
+  if (isVideoPlaybackRequest) {
+    return NextResponse.redirect(
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      { status: 307 }
+    );
+  }
+
+  // Fallback 1x1 transparent PNG pixel
+  const dummyPixel = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+    "base64"
   );
+
+  return new NextResponse(dummyPixel, {
+    headers: {
+      "Content-Type": "image/png",
+      "Content-Length": dummyPixel.length.toString(),
+      "Cache-Control": "public, max-age=86400",
+    },
+  });
 }
 
 export async function POST(
@@ -76,6 +117,8 @@ export async function POST(
   { params }: { params: Promise<{ uid: string }> }
 ) {
   const { uid } = await params;
+  const guard = assertDevRoute(uid);
+  if (guard) return guard;
 
   try {
     const contentType = req.headers.get("content-type") || "";
@@ -100,7 +143,7 @@ export async function POST(
       await saveUploadedBuffer(uid, buffer, detectedType);
     }
   } catch (err) {
-    console.error("Failed to parse POST upload body:", err);
+    log.error({ err, uid }, "Failed to parse POST upload body");
   }
 
   return NextResponse.json({
@@ -115,6 +158,8 @@ export async function PUT(
   { params }: { params: Promise<{ uid: string }> }
 ) {
   const { uid } = await params;
+  const guard = assertDevRoute(uid);
+  if (guard) return guard;
 
   try {
     const contentType = req.headers.get("content-type") || "image/jpeg";
@@ -123,7 +168,7 @@ export async function PUT(
       await saveUploadedBuffer(uid, buffer, contentType);
     }
   } catch (err) {
-    console.error("Failed to save PUT uploaded file:", err);
+    log.error({ err, uid }, "Failed to save PUT uploaded file");
   }
 
   return new NextResponse(null, { status: 200 });
@@ -134,6 +179,9 @@ export async function PATCH(
   { params }: { params: Promise<{ uid: string }> }
 ) {
   const { uid } = await params;
+  const guard = assertDevRoute(uid);
+  if (guard) return guard;
+
   return new NextResponse(null, {
     status: 204,
     headers: {
@@ -147,6 +195,9 @@ export async function HEAD(
   { params }: { params: Promise<{ uid: string }> }
 ) {
   const { uid } = await params;
+  const guard = assertDevRoute(uid);
+  if (guard) return guard;
+
   return new NextResponse(null, {
     status: 200,
     headers: {

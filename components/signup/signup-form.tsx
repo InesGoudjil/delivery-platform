@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { signupSchema } from "@/lib/validations/auth";
 import { signupAction } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/client";
+import { trackCompleteRegistration } from "@/lib/meta/pixel";
 
 export function SignupForm({
   className,
@@ -144,6 +145,11 @@ export function SignupForm({
         setError(res.error);
       } else if (res?.success) {
         setSuccess(res.success);
+        // The auto-login branch redirects before reaching here; the
+        // form only sees the email-pending path. Fire a client pixel
+        // event so Meta gets both browser and server (CAPI) signals
+        // and dedupes by eventId.
+        trackCompleteRegistration({ status: "pending_email_confirmation" });
       }
     });
   };
@@ -166,7 +172,7 @@ export function SignupForm({
         {waitlistToken && (
           <>
             <input type="hidden" name="waitlist_token" value={waitlistToken} />
-            <div className="flex items-center justify-center gap-2 rounded-lg border border-[#f5551d]/30 bg-[#f5551d]/10 px-3 py-2 text-xs font-semibold text-[#f5551d] animate-in fade-in-50">
+            <div className="flex items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary animate-in fade-in-50">
               <CheckCircle2 className="size-4" />
               <span>Waitlist VIP Invitation Verified</span>
             </div>
@@ -255,10 +261,12 @@ export function SignupForm({
               className="pr-10"
               autoComplete="new-password"
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-xs"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? (
@@ -266,7 +274,7 @@ export function SignupForm({
               ) : (
                 <Eye className="size-4" />
               )}
-            </button>
+            </Button>
           </div>
           {fieldErrors.password && (
             <FieldError errors={[{ message: fieldErrors.password }]} />
@@ -298,10 +306,12 @@ export function SignupForm({
               className="pr-10"
               autoComplete="new-password"
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-xs"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               aria-label={
                 showConfirmPassword ? "Hide password" : "Show password"
               }
@@ -311,7 +321,7 @@ export function SignupForm({
               ) : (
                 <Eye className="size-4" />
               )}
-            </button>
+            </Button>
           </div>
           {fieldErrors.confirmPassword && (
             <FieldError errors={[{ message: fieldErrors.confirmPassword }]} />

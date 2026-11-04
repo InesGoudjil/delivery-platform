@@ -1,23 +1,215 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "crypto";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { getServerServices } from "@/core/server";
 import { env } from "@/lib/env";
+import { hasValidDeliveryPasscodeCookie } from "@/lib/security/delivery-token";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ route: "api/media" });
+
+const FALLBACK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" fill="none">
+  <rect width="1280" height="720" fill="#0e0e11"/>
+  <rect x="0.5" y="0.5" width="1279" height="719" stroke="#ffffff" stroke-opacity="0.08"/>
+  <g transform="translate(608, 328)">
+    <circle cx="32" cy="32" r="32" fill="#18181b" stroke="#ffffff" stroke-opacity="0.12"/>
+    <path d="M26 20L44 32L26 44V20Z" fill="#f5551d"/>
+  </g>
+  <text x="640" y="405" text-anchor="middle" fill="#71717a" font-family="system-ui, sans-serif" font-size="14" font-weight="600" letter-spacing="1">CINESPACE MEDIA</text>
+</svg>`;
+
+function createFallbackResponse() {
+  return new NextResponse(FALLBACK_SVG, {
+    status: 200,
+    headers: {
+      "Content-Type": "image/svg+xml",
+      "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+    },
+  });
+}
+
+function getContentType(key: string, s3ContentType?: string): string {
+  if (s3ContentType && s3ContentType !== "application/octet-stream") {
+    return s3ContentType;
+  }
+  const lowerKey = key.toLowerCase();
+  if (lowerKey.endsWith(".avif")) return "image/avif";
+  if (lowerKey.endsWith(".webp")) return "image/webp";
+  if (lowerKey.endsWith(".png")) return "image/png";
+  if (lowerKey.endsWith(".jpg") || lowerKey.endsWith(".jpeg")) return "image/jpeg";
+  if (lowerKey.endsWith(".gif")) return "image/gif";
+  if (lowerKey.endsWith(".svg")) return "image/svg+xml";
+  if (lowerKey.endsWith(".mp4")) return "video/mp4";
+  if (lowerKey.endsWith(".mov")) return "video/quicktime";
+  if (lowerKey.endsWith(".webm")) return "video/webm";
+  if (lowerKey.endsWith(".m3u8")) return "application/x-mpegURL";
+  if (lowerKey.endsWith(".ts")) return "video/MP2T";
+  if (lowerKey.endsWith(".mp3")) return "audio/mpeg";
+  if (lowerKey.endsWith(".wav")) return "audio/wav";
+  return s3ContentType || "application/octet-stream";
+}
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path: pathSegments } = await params;
-  let key = pathSegments.join("/");
+  let key = pathSegments
+    .map((seg) => {
+      try {
+        return decodeURIComponent(seg);
+      } catch {
+        return seg;
+      }
+    })
+    .join("/");
+
+  if (key === "placeholder.svg" || key === "fallback.svg") {
+    return createFallbackResponse();
+  }
+
+  const downloadParam = req.nextUrl.searchParams.get("download");
+  const filenameParam = req.nextUrl.searchParams.get("filename");
+  const isDownload =
+    downloadParam === "true" ||
+    (Boolean(downloadParam) && downloadParam !== "false") ||
+    Boolean(filenameParam);
+  const rawFilename =
+    filenameParam ||
+    (downloadParam && downloadParam !== "true" && downloadParam !== "false"
+      ? downloadParam
+      : null) ||
+    key.split("/").pop() ||
+    "download";
+  const safeFilename = rawFilename.replace(/[/\\?%*:|"<>]/g, "_").trim() || "download";
+  const cleanAscii = safeFilename.replace(/["\r\n]/g, "");
+
+  // 1. If key is a 32-char hex Cloudflare Stream UID, route to Stream MP4 download or thumbnail
+  if (/^[a-f0-9]{32}$/i.test(key)) {
+    const streamDomain = (env.CLOUDFLARE_STREAM_SUBDOMAIN || "videodelivery.net")
+      .replace(/^https?:\/\//, "")
+      .replace(/\/+$/, "");
+
+    if (isDownload) {
+      let mp4Url = `https://${streamDomain}/${key}/downloads/default.mp4`;
+      const cfAccountId = env.CLOUDFLARE_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID;
+      const cfApiToken =
+        env.CLOUDFLARE_API_TOKEN ||
+        process.env.CLOUDFLARE_API_TOKEN ||
+        process.env.CLOUDFLARE_STREAM_TOKEN;
+
+      // Ensure MP4 download is enabled on Cloudflare Stream (disabled by default -> 404 Not Found)
+      if (cfAccountId && cfApiToken) {
+        const downloadsEndpoint = `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/stream/${key}/downloads`;
+        try {
+          let cfRes = await fetch(downloadsEndpoint, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${cfApiToken}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (!cfRes.ok) {
+            cfRes = await fetch(downloadsEndpoint, {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${cfApiToken}`,
+              },
+            });
+          }
+
+          if (cfRes.ok) {
+            let cfJson = await cfRes.json();
+            let defaultDl = cfJson?.result?.default;
+            if (defaultDl?.url) {
+              mp4Url = defaultDl.url;
+            }
+            let status: string | undefined = defaultDl?.status;
+
+            // If Cloudflare Stream is still generating the MP4 file, poll up to 15s until ready
+            const deadline = Date.now() + 15000;
+            while (Date.now() < deadline && status && status !== "ready" && status !== "error") {
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+              const pollRes = await fetch(downloadsEndpoint, {
+                method: "GET",
+                headers: {
+                  Authorization: `Bearer ${cfApiToken}`,
+                },
+              });
+              if (!pollRes.ok) break;
+              cfJson = await pollRes.json();
+              defaultDl = cfJson?.result?.default;
+              if (defaultDl?.url) {
+                mp4Url = defaultDl.url;
+              }
+              status = defaultDl?.status;
+            }
+          }
+        } catch (err) {
+          log.warn({ err, key }, "Failed to enable Cloudflare Stream MP4 download");
+        }
+      }
+
+      // Cloudflare Stream automatically appends `.mp4` to `?filename=` and requires alphanumeric/underscore/hyphen characters
+      const streamBaseFilename =
+        cleanAscii
+          .replace(/\.[^.]+$/, "")
+          .replace(/[^a-zA-Z0-9_-]/g, "_")
+          .replace(/_+/g, "_")
+          .replace(/^_|_$/g, "")
+          .slice(0, 100) || "Deliverable";
+
+      const separator = mp4Url.includes("?") ? "&" : "?";
+      return NextResponse.redirect(
+        `${mp4Url}${separator}filename=${encodeURIComponent(streamBaseFilename)}`,
+        307
+      );
+    }
+
+    return NextResponse.redirect(
+      `https://${streamDomain}/${key}/thumbnails/thumbnail.jpg?time=1s&height=720`,
+      307
+    );
+  }
+
+  const publicBucket = env.CLOUDFLARE_R2_PUBLIC_BUCKET || env.CLOUDFLARE_R2_BUCKET;
+  const privateBucket = env.CLOUDFLARE_R2_PRIVATE_BUCKET || env.CLOUDFLARE_R2_BUCKET;
 
   // Strip bucket name prefix if included in the path segments
-  if (env.CLOUDFLARE_R2_BUCKET && key.startsWith(`${env.CLOUDFLARE_R2_BUCKET}/`)) {
-    key = key.slice(env.CLOUDFLARE_R2_BUCKET.length + 1);
+  if (publicBucket && key.startsWith(`${publicBucket}/`)) {
+    key = key.slice(publicBucket.length + 1);
+  }
+  if (privateBucket && key.startsWith(`${privateBucket}/`)) {
+    key = key.slice(privateBucket.length + 1);
+  }
+
+  const isPrivate = key.startsWith("private/") || (key.startsWith("workspaces/") && key.includes("/deliveries/"));
+  const targetBucket = isPrivate ? privateBucket : (publicBucket || privateBucket);
+
+  const r2PublicDomain = (
+    env.CLOUDFLARE_R2_PUBLIC_DOMAIN ||
+    process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_DOMAIN ||
+    ""
+  ).replace(/\/+$/, "");
+
+  const hasRealR2PublicDomain =
+    Boolean(r2PublicDomain) &&
+    !r2PublicDomain.includes("pub-xxxx") &&
+    !r2PublicDomain.includes("r2.cloudflarestorage.com");
+
+  // 2. Public Asset Direct CDN Offload (only when NOT requesting an attachment download):
+  // If the asset is public and a valid public domain is configured, issue an immediate 307 redirect
+  if (!isPrivate && !isDownload && hasRealR2PublicDomain) {
+    return NextResponse.redirect(`${r2PublicDomain}/${key}`, 307);
   }
 
   if (!env.isCloudflareR2Configured) {
-    return NextResponse.redirect(
-      "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1280&q=80"
-    );
+    if (!isPrivate && hasRealR2PublicDomain) {
+      return NextResponse.redirect(`${r2PublicDomain}/${key}`, 307);
+    }
+    return createFallbackResponse();
   }
 
   try {
@@ -28,49 +220,138 @@ export async function GET(
         accessKeyId: env.CLOUDFLARE_R2_ACCESS_KEY_ID!,
         secretAccessKey: env.CLOUDFLARE_R2_SECRET_ACCESS_KEY!,
       },
+      forcePathStyle: true,
+      requestChecksumCalculation: "WHEN_REQUIRED",
+      responseChecksumValidation: "WHEN_REQUIRED",
     });
 
+    // 2b. Public Asset Download Disposition Presigner:
+    // When a public R2 asset is requested with ?download=true, sign a GetObjectCommand with ResponseContentDisposition
+    if (!isPrivate && isDownload) {
+      const command = new GetObjectCommand({
+        Bucket: targetBucket,
+        Key: key,
+        ResponseContentDisposition: `attachment; filename="${cleanAscii}"; filename*=UTF-8''${encodeURIComponent(cleanAscii)}`,
+      });
+      const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 });
+      return NextResponse.redirect(presignedUrl, 307);
+    }
+
+    // 3. Private Asset Gated Dispatcher:
+    // Enforce workspace membership OR delivery passcode authorization before generating a presigned GET URL.
+    if (isPrivate) {
+      let isAuthorized = false;
+
+      try {
+        const services = await getServerServices();
+        const user = await services.auth.getCurrentUser();
+
+        // Extract workspaceId and deliveryId from key: (private/)workspaces/{workspaceId}/...
+        const segments = key.split("/");
+        const wsIdx = segments.indexOf("workspaces");
+        const workspaceId = wsIdx !== -1 && segments[wsIdx + 1] ? segments[wsIdx + 1] : null;
+        const delIdx = segments.indexOf("deliveries");
+        const deliveryId = delIdx !== -1 && segments[delIdx + 1] ? segments[delIdx + 1] : null;
+
+        // A. Workspace member check (creators and authorized team members)
+        if (user && workspaceId) {
+          const isMember = await services.member.isMember(workspaceId, user.id).catch(() => false);
+          if (isMember) {
+            isAuthorized = true;
+          }
+        }
+
+        // B. Client Delivery check (verified cookie or public/passcode access)
+        if (!isAuthorized && deliveryId) {
+          const delivery = await services.delivery.getDeliveryById(deliveryId);
+          if (delivery) {
+            if (!delivery.passcodeHash) {
+              // Unprotected public delivery cut
+              isAuthorized = true;
+            } else {
+              // Check client cryptographically signed cookie
+              if (hasValidDeliveryPasscodeCookie(req.cookies, delivery.shareToken)) {
+                isAuthorized = true;
+              } else {
+                // Check query params (?passphrase=... or ?code=...)
+                const queryCode = (req.nextUrl.searchParams.get("passphrase") || req.nextUrl.searchParams.get("code"))?.trim();
+                if (queryCode) {
+                  const hashed = createHash("sha256").update(queryCode).digest("hex");
+                  if (delivery.passcodeHash === queryCode || delivery.passcodeHash === hashed) {
+                    isAuthorized = true;
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (authErr) {
+        log.warn({ err: authErr, key }, "Error checking media authorization");
+      }
+
+      if (!isAuthorized) {
+        return new NextResponse("Unauthorized access to private media", { status: 401 });
+      }
+
+      const command = new GetObjectCommand({
+        Bucket: targetBucket,
+        Key: key,
+        ...(isDownload
+          ? {
+              ResponseContentDisposition: `attachment; filename="${cleanAscii}"; filename*=UTF-8''${encodeURIComponent(cleanAscii)}`,
+            }
+          : {}),
+      });
+
+      const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 });
+      return NextResponse.redirect(presignedUrl, 307);
+    }
+
+    // 4. Fallback direct proxy (only reached in local development without public domain)
+    const rangeHeader = req.headers.get("range");
+
     const command = new GetObjectCommand({
-      Bucket: env.CLOUDFLARE_R2_BUCKET,
+      Bucket: targetBucket,
       Key: key,
+      Range: rangeHeader || undefined,
     });
 
     const res = await s3Client.send(command);
 
     if (!res.Body) {
-      return NextResponse.redirect(
-        "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1280&q=80"
-      );
+      return createFallbackResponse();
     }
 
     const stream = res.Body.transformToWebStream();
+    const contentType = getContentType(key, res.ContentType);
 
     const headers = new Headers();
-    let contentType = res.ContentType;
-    if (!contentType || contentType === "application/octet-stream") {
-      const lowerKey = key.toLowerCase();
-      if (lowerKey.endsWith(".avif")) contentType = "image/avif";
-      else if (lowerKey.endsWith(".webp")) contentType = "image/webp";
-      else if (lowerKey.endsWith(".png")) contentType = "image/png";
-      else if (lowerKey.endsWith(".jpg") || lowerKey.endsWith(".jpeg")) contentType = "image/jpeg";
-      else if (lowerKey.endsWith(".mp4")) contentType = "video/mp4";
-      else if (lowerKey.endsWith(".mov")) contentType = "video/quicktime";
-      else if (lowerKey.endsWith(".webm")) contentType = "video/webm";
+    headers.set("Content-Type", contentType);
+    headers.set("Accept-Ranges", "bytes");
+
+    if (isDownload) {
+      headers.set("Content-Disposition", `attachment; filename="${encodeURIComponent(safeFilename)}"`);
     }
 
-    if (contentType) headers.set("Content-Type", contentType);
-    if (res.ContentLength) headers.set("Content-Length", res.ContentLength.toString());
-    if (res.ETag) headers.set("ETag", res.ETag);
+    if (res.ContentLength !== undefined) {
+      headers.set("Content-Length", res.ContentLength.toString());
+    }
+    if (res.ContentRange) {
+      headers.set("Content-Range", res.ContentRange);
+    }
+    if (res.ETag) {
+      headers.set("ETag", res.ETag);
+    }
+
     headers.set("Cache-Control", "public, max-age=31536000, immutable");
+    const status = rangeHeader && res.ContentRange ? 206 : 200;
 
     return new NextResponse(stream, {
-      status: 200,
+      status,
       headers,
     });
   } catch (err: any) {
-    console.error(`[Media Proxy] Error loading R2 key "${key}":`, err?.message || err);
-    return NextResponse.redirect(
-      "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1280&q=80"
-    );
+    log.warn({ err, key }, "Error resolving R2 key");
+    return createFallbackResponse();
   }
 }

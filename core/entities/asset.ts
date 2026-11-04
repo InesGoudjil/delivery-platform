@@ -29,5 +29,7 @@ export interface AssetVersion {
   durationSeconds?: number | null;
   transcodingStatus: TranscodingStatus;
   isActiveVersion: boolean;
+  siloArchiveKey?: string | null;
+  siloStorageClass?: string | null;
   createdAt: string;
 }

@@ -2,6 +2,9 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { updateSession } from './lib/supabase/middleware';
 
 export async function middleware(request: NextRequest) {
+  const requestId = request.headers.get('x-request-id') || crypto.randomUUID();
+  request.headers.set('x-request-id', requestId);
+
   const isWaitlistOnly =
     process.env.WAITLIST_ONLY === 'true' ||
     process.env.NEXT_PUBLIC_WAITLIST_ONLY === 'true';
@@ -65,11 +68,15 @@ export async function middleware(request: NextRequest) {
       // Redirect any other route (root '/', '/login', '/signup', '/admin', workspaces) to /waitlist
       const url = request.nextUrl.clone();
       url.pathname = '/waitlist';
-      return NextResponse.redirect(url);
+      const redirectRes = NextResponse.redirect(url);
+      redirectRes.headers.set('x-request-id', requestId);
+      return redirectRes;
     }
   }
 
-  return await updateSession(request);
+  const response = await updateSession(request);
+  response.headers.set('x-request-id', requestId);
+  return response;
 }
 
 export const config = {

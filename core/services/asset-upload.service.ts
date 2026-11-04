@@ -9,6 +9,10 @@ import { ISubscriptionRepository } from "@/core/repositories/subscription.reposi
 import { IPlanRepository } from "@/core/repositories/plan.repository";
 import { Asset, AssetVersion, AssetType, TranscodingStatus } from "@/core/entities/asset";
 import { isPlaceholderUrl } from "@/lib/media";
+import { env } from "@/lib/env";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ service: "AssetUploadService" });
 
 export interface RequestAssetUploadDTO {
   workspaceId: string;
@@ -19,7 +23,9 @@ export interface RequestAssetUploadDTO {
   filename: string;
   fileSizeBytes: number;
   assetType?: AssetType;
+  aspectRatio?: string;
   maxDurationSeconds?: number;
+  category?: string;
   metadata?: Record<string, string>;
 }
 
@@ -95,16 +101,30 @@ export class AssetUploadService {
       }
     }
 
-    // 3. Validate Storage Quota against Active Plan
-    const subscription = await this.subscriptionRepo.findByWorkspaceId(
-      resolvedWorkspaceId
-    );
-    let storageLimitGB = 50; // Default fallback 50 GB
+    // 3. Validate Storage Quota against Active Plan & Workspace Features
+    let storageLimitGB = 2; // Default baseline for Starter plan
 
-    if (subscription) {
-      const plan = await this.planRepo.findById(subscription.planId);
-      if (plan && plan.features && plan.features.storage_gb) {
-        storageLimitGB = plan.features.storage_gb;
+    const subscription = await this.subscriptionRepo.findByWorkspaceId(resolvedWorkspaceId);
+    let plan: any = null;
+    if (subscription && (subscription.status === "active" || subscription.status === "trialing")) {
+      if (subscription.status === "trialing" && subscription.trialEndsAt && new Date(subscription.trialEndsAt) < new Date()) {
+        plan = await this.planRepo.findBySlug("starter");
+      } else {
+        plan = await this.planRepo.findById(subscription.planId);
+      }
+    } else {
+      plan = await this.planRepo.findBySlug("starter");
+    }
+
+    if (plan?.features?.storage_gb) {
+      storageLimitGB = Number(plan.features.storage_gb);
+    }
+
+    // Check optional custom workspace overrides
+    if (this.featuresRepo) {
+      const featuresRecord = await this.featuresRepo.findByWorkspaceId(resolvedWorkspaceId);
+      if (featuresRecord?.features?.storage_gb) {
+        storageLimitGB = Number(featuresRecord.features.storage_gb);
       }
     }
 
@@ -143,6 +163,7 @@ export class AssetUploadService {
         deliveryId: resolvedDeliveryId,
         title: dto.title,
         type: assetType,
+        aspectRatio: dto.aspectRatio,
         sortOrder: existingAssets.length,
       });
     }
@@ -156,29 +177,88 @@ export class AssetUploadService {
 
     const storageAssetType: StorageAssetType = (asset.type || assetType) === "photo_gallery" ? "image" : "video";
 
-    // 6. Request Direct Upload URL from Storage Provider (Cloudflare Stream / R2 / Mock)
+    // 6. Context-Aware Privacy:
+    // If an asset is uploaded to a delivery project, it is PRIVATE (private bucket, no public URL).
+    // If it is standalone / portfolio / public showcase, it is PUBLIC (public bucket, CDN accessible).
+    const isPublic = Boolean(
+      dto.metadata?.isPublic === "true" ||
+      !resolvedDeliveryId
+    );
+
+    const resolvedCategory =
+      dto.category ||
+      (dto.metadata?.category as string) ||
+      (asset.category as string) ||
+      (storageAssetType === "video" ? "film" : "still");
+
+    // Request Direct Upload URL from Storage Provider (Cloudflare Stream / R2 / Mock)
     const directUpload = await this.storageProvider.createDirectUploadUrl({
       workspaceId: resolvedWorkspaceId,
-      projectId: resolvedDeliveryId || "standalone",
-      deliveryId: resolvedDeliveryId || "standalone",
+      projectId: resolvedDeliveryId ? resolvedDeliveryId : (dto.projectId || "standalone"),
+      deliveryId: resolvedDeliveryId || undefined,
       assetTitle: dto.title,
       assetType: storageAssetType,
       fileSizeBytes: dto.fileSizeBytes,
       filename: dto.filename,
+      isPublic,
+      category: resolvedCategory,
+      versionNumber: nextVersionNumber,
       maxDurationSeconds: dto.maxDurationSeconds,
       metadata: {
         assetId: asset.id,
+        isPublic: String(isPublic),
+        category: resolvedCategory,
+        versionNumber: String(nextVersionNumber),
         ...(dto.metadata || {}),
       },
     });
 
     // 7. Create Pending AssetVersion Record
     let cleanInitialUrl = directUpload.uploadUrl.split("?")[0];
-    if (directUpload.providerUid) {
+    let initialHlsUrl: string | null = null;
+    let initialThumbnailUrl: string | null = null;
+
+    const isStreamUid = Boolean(
+      directUpload.providerUid && /^[a-f0-9]{32}$/i.test(directUpload.providerUid)
+    );
+    const isStreamVideo =
+      storageAssetType === "video" &&
+      isStreamUid &&
+      !directUpload.uploadUrl.startsWith("/api/mock-upload");
+
+    if (isStreamVideo && directUpload.providerUid) {
+      const streamDomain = (env.CLOUDFLARE_STREAM_SUBDOMAIN || "videodelivery.net")
+        .replace(/^https?:\/\//, "")
+        .replace(/\/+$/, "");
+      cleanInitialUrl = `https://${streamDomain}/${directUpload.providerUid}/manifest/video.m3u8`;
+      initialHlsUrl = cleanInitialUrl;
+      initialThumbnailUrl = `https://${streamDomain}/${directUpload.providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`;
+    } else if (directUpload.providerUid) {
       if (directUpload.uploadUrl.startsWith("/api/mock-upload")) {
         cleanInitialUrl = `/api/mock-upload/${directUpload.providerUid}`;
+        initialThumbnailUrl =
+          storageAssetType === "video"
+            ? `https://files.vidstack.io/sprite-fight/poster.webp`
+            : cleanInitialUrl;
+      } else if (isPublic) {
+        const r2Domain = (
+          process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_DOMAIN ||
+          process.env.CLOUDFLARE_R2_PUBLIC_DOMAIN ||
+          ""
+        ).replace(/\/+$/, "");
+        const hasRealR2 =
+          Boolean(r2Domain) &&
+          !r2Domain.includes("pub-xxxx") &&
+          !r2Domain.includes("r2.cloudflarestorage.com");
+
+        cleanInitialUrl = hasRealR2
+          ? `${r2Domain}/${directUpload.providerUid}`
+          : directUpload.providerUid;
+        initialThumbnailUrl = cleanInitialUrl;
       } else {
-        cleanInitialUrl = `/api/media/${directUpload.providerUid}`;
+        // Private asset: store canonical key (e.g. private/workspaces/...)
+        cleanInitialUrl = directUpload.providerUid;
+        initialThumbnailUrl = directUpload.providerUid;
       }
     }
 
@@ -186,6 +266,8 @@ export class AssetUploadService {
       assetId: asset.id,
       versionNumber: nextVersionNumber,
       rawFileUrl: cleanInitialUrl,
+      hlsManifestUrl: initialHlsUrl,
+      thumbnailUrl: initialThumbnailUrl,
       fileSizeBytes: dto.fileSizeBytes,
       transcodingStatus: assetType === "photo_gallery" ? "ready" : "pending",
       isActiveVersion: true,
@@ -229,31 +311,142 @@ export class AssetUploadService {
     const playbackInfo = await this.storageProvider.getPlaybackInfo(dto.providerUid);
 
     // 2. Update AssetVersion record
-    let cleanRawUrl = (playbackInfo as any)?.rawDownloadUrl || version.rawFileUrl.split("?")[0];
+    let cleanRawUrl =
+      (playbackInfo as any)?.rawDownloadUrl ||
+      playbackInfo?.hlsManifestUrl ||
+      version.rawFileUrl?.split("?")[0] ||
+      "";
+
+    const r2Domain = (
+      process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_DOMAIN ||
+      process.env.CLOUDFLARE_R2_PUBLIC_DOMAIN ||
+      ""
+    ).replace(/\/+$/, "");
+    const hasRealR2 =
+      Boolean(r2Domain) &&
+      !r2Domain.includes("pub-xxxx") &&
+      !r2Domain.includes("r2.cloudflarestorage.com");
+
+    const isExplicitlyPrivate =
+      dto.providerUid.startsWith("private/") || Boolean(asset.deliveryId);
+
     if (cleanRawUrl.includes("workspaces/")) {
       const parts = cleanRawUrl.split("workspaces/");
-      cleanRawUrl = `/api/media/workspaces/${parts[1].split("?")[0]}`;
+      const keySuffix = parts[1].split("?")[0];
+      const key = dto.providerUid.includes("workspaces/")
+        ? dto.providerUid
+        : (isExplicitlyPrivate ? `private/workspaces/${keySuffix}` : `public/workspaces/${keySuffix}`);
+      cleanRawUrl = (!isExplicitlyPrivate && hasRealR2) ? `${r2Domain}/${key}` : key;
+    }
+
+    const isStreamUid = /^[a-f0-9]{32}$/i.test(dto.providerUid);
+    if (isStreamUid && (!cleanRawUrl || cleanRawUrl.startsWith("/api/media/"))) {
+      const streamDomain = (env.CLOUDFLARE_STREAM_SUBDOMAIN || "videodelivery.net")
+        .replace(/^https?:\/\//, "")
+        .replace(/\/+$/, "");
+      cleanRawUrl = `https://${streamDomain}/${dto.providerUid}/manifest/video.m3u8`;
     }
 
     const isImage =
       asset.type === "photo_gallery" ||
+      (asset.type as string) === "photo" ||
+      (asset.type as string) === "still" ||
       /\.(jpe?g|png|avif|webp|gif|svg|bmp)$/i.test(cleanRawUrl || "") ||
       /\.(jpe?g|png|avif|webp|gif|svg|bmp)$/i.test(dto.providerUid || "");
 
     let resolvedThumbnailUrl = playbackInfo?.thumbnailUrl || version.thumbnailUrl;
-    if (isImage) {
+
+    if (isStreamUid) {
+      if (
+        !resolvedThumbnailUrl ||
+        isPlaceholderUrl(resolvedThumbnailUrl) ||
+        resolvedThumbnailUrl.includes("workspaces/")
+      ) {
+        const streamDomain = (env.CLOUDFLARE_STREAM_SUBDOMAIN || "videodelivery.net")
+          .replace(/^https?:\/\//, "")
+          .replace(/\/+$/, "");
+        resolvedThumbnailUrl = `https://${streamDomain}/${dto.providerUid}/thumbnails/thumbnail.jpg?time=1s&height=720`;
+      }
+    } else if (isImage) {
+      // For images, the image file itself is always the thumbnail
+      resolvedThumbnailUrl = cleanRawUrl;
+    } else {
+      // For non-stream videos or other files in private or public storage
       if (!resolvedThumbnailUrl || isPlaceholderUrl(resolvedThumbnailUrl)) {
         resolvedThumbnailUrl = cleanRawUrl;
+      } else if (resolvedThumbnailUrl.includes("workspaces/")) {
+        const parts = resolvedThumbnailUrl.split("workspaces/");
+        const keySuffix = parts[1].split("?")[0];
+        const key = dto.providerUid.includes("workspaces/")
+          ? dto.providerUid
+          : (isExplicitlyPrivate ? `private/workspaces/${keySuffix}` : `public/workspaces/${keySuffix}`);
+        resolvedThumbnailUrl = (!isExplicitlyPrivate && hasRealR2) ? `${r2Domain}/${key}` : key;
+      }
+    }
+
+    const isVideo =
+      asset.type === "video" ||
+      (!isImage && /\.(mp4|mov|m4v|webm|mkv|avi)$/i.test(dto.providerUid || ""));
+
+    let resolvedHlsUrl = playbackInfo?.hlsManifestUrl || version.hlsManifestUrl;
+    let initialTranscodingStatus = playbackInfo?.status || "pending";
+
+    // Hybrid Pipeline (Option A): If a video master file is stored in Cloudflare R2, ingest it into Cloudflare Stream via copyFromUrl
+    if (
+      isVideo &&
+      dto.providerUid.includes("workspaces/") &&
+      typeof (this.storageProvider as any).copyFromUrl === "function"
+    ) {
+      try {
+        let presignedSourceUrl: string | null = null;
+        if (typeof this.storageProvider.getSecurePlaybackUrl === "function") {
+          presignedSourceUrl = await this.storageProvider.getSecurePlaybackUrl(
+            dto.providerUid,
+            !isExplicitlyPrivate,
+            86400 // 24 hours for Stream to ingest
+          );
+        }
+
+        if (presignedSourceUrl) {
+          const streamResult = await (this.storageProvider as any).copyFromUrl(
+            presignedSourceUrl,
+            {
+              name: asset.title || "Video Cut",
+              creator: workspaceId,
+              meta: {
+                assetId: asset.id,
+                versionId: version.id,
+                assetVersionId: version.id,
+                workspaceId: workspaceId || "",
+                r2Key: dto.providerUid,
+              },
+            }
+          );
+
+          if (streamResult?.uid) {
+            const streamDomain = (env.CLOUDFLARE_STREAM_SUBDOMAIN || "videodelivery.net")
+              .replace(/^https?:\/\//, "")
+              .replace(/\/+$/, "");
+            resolvedHlsUrl = `https://${streamDomain}/${streamResult.uid}/manifest/video.m3u8`;
+            resolvedThumbnailUrl = `https://${streamDomain}/${streamResult.uid}/thumbnails/thumbnail.jpg?time=1s&height=720`;
+            initialTranscodingStatus = streamResult.status === "ready" ? "ready" : "processing";
+          }
+        }
+      } catch (streamIngestErr: any) {
+        log.warn(
+          { streamIngestErr, providerUid: dto.providerUid },
+          "Cloudflare Stream copy ingestion failed"
+        );
       }
     }
 
     const updatedVersion = await this.assetVersionRepo.update(version.id, {
       rawFileUrl: cleanRawUrl,
-      hlsManifestUrl: playbackInfo?.hlsManifestUrl || version.hlsManifestUrl,
+      hlsManifestUrl: resolvedHlsUrl,
       thumbnailUrl: resolvedThumbnailUrl,
       durationSeconds: dto.durationSeconds ?? playbackInfo?.durationSeconds ?? version.durationSeconds,
       fileSizeBytes: dto.fileSizeBytes ?? version.fileSizeBytes,
-      transcodingStatus: mapStorageStatusToTranscodingStatus(playbackInfo?.status),
+      transcodingStatus: mapStorageStatusToTranscodingStatus(initialTranscodingStatus),
       isActiveVersion: true,
     });
 
@@ -283,7 +476,11 @@ export class AssetUploadService {
     const playbackInfo = await this.storageProvider.getPlaybackInfo(providerUid);
     if (!playbackInfo) return;
 
-    const assetVersionId = event?.data?.meta?.assetVersionId || event?.meta?.assetVersionId;
+    const assetVersionId =
+      event?.data?.meta?.assetVersionId ||
+      event?.meta?.assetVersionId ||
+      event?.data?.meta?.versionId ||
+      event?.meta?.versionId;
 
     if (assetVersionId) {
       await this.assetVersionRepo.update(assetVersionId, {

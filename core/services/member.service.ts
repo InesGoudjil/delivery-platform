@@ -3,6 +3,10 @@ import { IWorkspaceMemberRepository, IWorkspaceInvitationRepository } from '@/co
 import { IWorkspaceFeaturesRepository, IWorkspaceRepository } from '@/core/repositories/workspace.repository';
 import { IUserProfileRepository } from '@/core/repositories/user-profile.repository';
 import { NotificationService } from './notification.service';
+import type { SubscriptionService } from './subscription.service';
+import { createScopedLogger } from '@/lib/logger';
+
+const log = createScopedLogger({ service: 'MemberService' });
 
 export class MemberService {
   constructor(
@@ -11,7 +15,9 @@ export class MemberService {
     private readonly featuresRepo: IWorkspaceFeaturesRepository,
     private readonly workspaceRepo?: IWorkspaceRepository,
     private readonly userProfileRepo?: IUserProfileRepository,
-    private readonly notificationService?: NotificationService
+    private readonly notificationService?: NotificationService,
+    private readonly systemMemberRepo?: IWorkspaceMemberRepository,
+    private readonly subscriptionService?: SubscriptionService
   ) {}
 
   async listMembers(workspaceId: string): Promise<EnrichedWorkspaceMember[]> {
@@ -96,8 +102,14 @@ export class MemberService {
     remainingSeats: number;
     canInvite: boolean;
   }> {
-    const featuresRecord = await this.featuresRepo.findByWorkspaceId(workspaceId);
-    const maxSeats = featuresRecord?.features?.team_seats ?? 1;
+    let maxSeats = 1;
+    if (this.subscriptionService) {
+      const features = await this.subscriptionService.getFeatures(workspaceId);
+      maxSeats = features.team_seats ?? 1;
+    } else {
+      const featuresRecord = await this.featuresRepo.findByWorkspaceId(workspaceId);
+      maxSeats = featuresRecord?.features?.team_seats ?? 1;
+    }
 
     const activeMembers = await this.listMembers(workspaceId);
     const pendingInvites = await this.invitationRepo.listPendingByWorkspaceId(workspaceId);
@@ -167,7 +179,7 @@ export class MemberService {
           origin: options?.origin,
         })
         .catch((err) => {
-          console.error("[MemberService] Failed to dispatch member invitation email:", err);
+          log.error({ err, workspaceId, recipientEmail: cleanEmail }, "Failed to dispatch member invitation email");
         });
     }
 
@@ -201,8 +213,9 @@ export class MemberService {
       throw new Error('This invitation has expired');
     }
 
-    // Add user as workspace member
-    const member = await this.memberRepo.addMember(invite.workspaceId, userId, invite.role);
+    // Add user as workspace member using privileged client repo if provided
+    const memberRepoToUse = this.systemMemberRepo || this.memberRepo;
+    const member = await memberRepoToUse.addMember(invite.workspaceId, userId, invite.role);
     await this.invitationRepo.updateStatus(invite.id, 'accepted');
 
     return member;

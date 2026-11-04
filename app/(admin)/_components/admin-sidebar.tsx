@@ -62,22 +62,21 @@ export function AdminSidebar() {
         <div>
           <Link
             href="/admin"
-            className="flex items-center gap-2.5 group"
+            className="flex flex-col gap-1.5 group"
           >
-            <div className="size-8 rounded-xl bg-[#f5551d] text-black flex items-center justify-center font-black text-sm shadow-md shadow-[#f5551d]/20">
-              C
+            <div className="flex items-center gap-2">
+              <img
+                src="/images/logo.svg"
+                alt="CineSpace"
+                className="h-5 w-auto block object-contain select-none"
+              />
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/40 text-primary bg-primary/10 ">
+                ADMIN
+              </Badge>
             </div>
-            <div>
-              <div className="font-heading font-black text-lg tracking-tight text-foreground flex items-center gap-1.5">
-                CineSpace
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-[#f5551d]/40 text-[#f5551d] bg-[#f5551d]/10 font-mono">
-                  ADMIN
-                </Badge>
-              </div>
-              <p className="text-[10px] text-muted-foreground font-mono">
-                Platform Control Center
-              </p>
-            </div>
+            <p className="text-[10px] text-muted-foreground ">
+              Platform Control Center
+            </p>
           </Link>
         </div>
 
@@ -85,7 +84,7 @@ export function AdminSidebar() {
 
         {/* Navigation Items */}
         <nav className="space-y-1.5">
-          <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider px-3 mb-2">
+          <div className="text-[10px]  text-muted-foreground uppercase tracking-wider px-3 mb-2">
             MANAGEMENT
           </div>
           {navItems.map((item) => {
@@ -112,7 +111,7 @@ export function AdminSidebar() {
                 {item.badge && (
                   <span
                     className={cn(
-                      "text-[9px] font-mono px-1.5 py-0.5 rounded-full font-bold",
+                      "text-[9px]  px-1.5 py-0.5 rounded-full font-bold",
                       isActive
                         ? "bg-black/20 text-black"
                         : "bg-muted text-muted-foreground border border-border"
@@ -128,16 +127,16 @@ export function AdminSidebar() {
 
         {/* System Health Pulse Widget */}
         {/* <div className="p-3.5 rounded-2xl bg-muted/40 border border-border space-y-2">
-          <div className="flex items-center justify-between text-[11px] font-mono">
+          <div className="flex items-center justify-between text-[11px] ">
             <span className="text-muted-foreground flex items-center gap-1.5">
               <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Cloudflare Edge
+              Global Edge Network
             </span>
             <span className="text-emerald-400 font-bold">99.98%</span>
           </div>
-          <div className="flex items-center justify-between text-[11px] font-mono">
+          <div className="flex items-center justify-between text-[11px] ">
             <span className="text-muted-foreground flex items-center gap-1.5">
-              <span className="size-1.5 rounded-full bg-[#f5551d]" />
+              <span className="size-1.5 rounded-full bg-primary" />
               Stream Queue
             </span>
             <span className="text-foreground font-semibold">Ready</span>
@@ -156,7 +155,7 @@ export function AdminSidebar() {
           </Avatar>
           <div className="overflow-hidden">
             <p className="text-xs font-bold text-foreground truncate">Platform Admin</p>
-            <p className="text-[10px] text-muted-foreground font-mono truncate">super_admin@cinespace.film</p>
+            <p className="text-[10px] text-muted-foreground  truncate">super_admin@cinespace.film</p>
           </div>
         </div>
 

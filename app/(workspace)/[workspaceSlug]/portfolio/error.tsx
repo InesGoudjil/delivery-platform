@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
 
 export default function PortfolioError({
   error,
@@ -22,16 +23,16 @@ export default function PortfolioError({
           <AlertCircle className="size-6" />
         </div>
         <div className="space-y-1">
-          <h3 className="text-xl font-bold font-heading text-foreground">
+          <TypographyH3 className="text-xl font-bold font-heading text-foreground">
             Failed to Load Portfolio
-          </h3>
-          <p className="text-xs text-muted-foreground">
+          </TypographyH3>
+          <TypographyMuted className="text-xs text-muted-foreground">
             {error.message || "An error occurred while rendering your creator portfolio."}
-          </p>
+          </TypographyMuted>
         </div>
         <Button
           onClick={() => reset()}
-          className="rounded-xl bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] cursor-pointer h-9 px-5"
+          className="rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 cursor-pointer h-9 px-5"
         >
           <RefreshCw className="size-3.5 mr-2" /> Reload Portfolio
         </Button>

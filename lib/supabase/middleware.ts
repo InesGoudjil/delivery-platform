@@ -47,6 +47,26 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // 1.5 Session Revocation Enforcement
+  const sessionTokenId = request.cookies.get('cinespace_sid')?.value;
+  if (user && sessionTokenId) {
+    const { data: sessionRecord } = await supabase
+      .from('user_sessions')
+      .select('is_revoked')
+      .eq('session_token_id', sessionTokenId)
+      .maybeSingle();
+
+    if (sessionRecord?.is_revoked) {
+      await supabase.auth.signOut();
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = '/login';
+      redirectUrl.search = 'error=' + encodeURIComponent('Your session was revoked from another device.');
+      const res = NextResponse.redirect(redirectUrl);
+      res.cookies.delete('cinespace_sid');
+      return res;
+    }
+  }
+
   const url = request.nextUrl.clone();
   const pathname = url.pathname;
 
@@ -65,9 +85,14 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    const isAdmin =
-      user.user_metadata?.platform_role === 'admin' ||
-      user.user_metadata?.is_admin === true;
+    // Query actual user_profiles row in database instead of client user_metadata
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('platform_role')
+      .eq('id', user.id)
+      .single();
+
+    const isAdmin = profile?.platform_role === 'admin';
 
     if (!isAdmin) {
       url.pathname = '/';

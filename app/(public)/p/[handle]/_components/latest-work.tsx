@@ -1,16 +1,30 @@
 "use client";
 
-import React, { useState } from "react";
-import { Film, Image as ImageIcon, Layers, Play } from "lucide-react";
+import React, { useState, useCallback } from "react";
+import { Film, Image as ImageIcon, Layers, Play, Loader2, CheckCircle2 } from "lucide-react";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import {
+  MediaCard,
+  MediaGrid,
+  MediaBadge,
+  AssetCountBadge,
+  PlayButtonOverlay,
+  ZoomButtonOverlay,
+} from "@/components/workspaces/media-card";
 import { PortfolioProject, PortfolioAsset } from "@/lib/portfolio-data";
+import { PortfolioAppearance } from "@/core/entities/portfolio";
 import { usePortfolioModal } from "./portfolio-context";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { TypographyH2, TypographyH3, TypographyKicker, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 
 interface LatestWorkProps {
   projects: PortfolioProject[];
   assets: PortfolioAsset[];
+  appearance?: PortfolioAppearance;
 }
 
-export function LatestWork({ projects, assets }: LatestWorkProps) {
+export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
   const { setActiveStill, setActiveFilm, setSelectedProject } = usePortfolioModal();
 
   const films = assets.filter((a) => a.kind === "film");
@@ -18,47 +32,110 @@ export function LatestWork({ projects, assets }: LatestWorkProps) {
 
   // State for active category tab: "projects" | "films" | "stills"
   const [activeTab, setActiveTab] = useState<"projects" | "films" | "stills">(
-    projects.length > 0 ? "projects" : films.length > 0 ? "films" : "stills"
+    projects.length > 0 ? "projects" : films.length > 0 ? "films" : stills.length > 0 ? "stills" : "projects"
   );
+
+  const PAGE_SIZE = 12;
+  const [visibleCounts, setVisibleCounts] = useState<Record<"projects" | "films" | "stills", number>>({
+    projects: PAGE_SIZE,
+    films: PAGE_SIZE,
+    stills: PAGE_SIZE,
+  });
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  const visibleProjects = projects.slice(0, visibleCounts.projects);
+  const visibleFilms = films.slice(0, visibleCounts.films);
+  const visibleStills = stills.slice(0, visibleCounts.stills);
+
+  const hasMoreProjects = projects.length > visibleProjects.length;
+  const hasMoreFilms = films.length > visibleFilms.length;
+  const hasMoreStills = stills.length > visibleStills.length;
+
+  const currentHasMore =
+    activeTab === "projects"
+      ? hasMoreProjects
+      : activeTab === "films"
+      ? hasMoreFilms
+      : hasMoreStills;
+
+  const handleLoadMore = useCallback((tab: "projects" | "films" | "stills") => {
+    setIsLoadingMore(true);
+    setTimeout(() => {
+      setVisibleCounts((prev) => ({
+        ...prev,
+        [tab]: (prev[tab] || PAGE_SIZE) + PAGE_SIZE,
+      }));
+      setIsLoadingMore(false);
+    }, 200);
+  }, [PAGE_SIZE]);
+
+  const handleCurrentLoadMore = useCallback(() => {
+    if (isLoadingMore) return;
+    handleLoadMore(activeTab);
+  }, [activeTab, isLoadingMore, handleLoadMore]);
+
+  const { sentinelRef } = useInfiniteScroll({
+    hasMore: currentHasMore,
+    isLoading: isLoadingMore,
+    onLoadMore: handleCurrentLoadMore,
+    rootMargin: "300px",
+  });
+
+  const isMasonry =
+    appearance?.aspectRatio === "grid" ||
+    appearance?.aspectRatio === "masonry" ||
+    appearance?.aspectRatio === "4:3";
+
+  const cardSize = appearance?.cardSize || "M";
+
+  const numericRatio =
+    isMasonry
+      ? undefined
+      : appearance?.aspectRatio === "9:16"
+      ? 9 / 16
+      : appearance?.aspectRatio === "1:1"
+      ? 1
+      : 16 / 9;
+
+  const thumbScale = appearance?.thumbnailScale || "fill";
+  const thumbObjectFit = thumbScale === "fit" ? "contain" : "cover";
+  const showClient = appearance?.showClientInfo ?? true;
 
   return (
     <section className="space-y-8">
       {/* Section heading & Eyebrow */}
       <div className="text-center space-y-2">
-        <div className="text-[11px] font-mono font-bold tracking-widest text-[#f5551d] uppercase">
-          Our Portfolio
-        </div>
-        <h2 className="font-heading font-black text-3xl sm:text-4xl md:text-5xl text-white tracking-tight uppercase">
+        <TypographyKicker color="orange">Our Portfolio</TypographyKicker>
+        <TypographyH2 className="font-heading font-black text-3xl sm:text-4xl md:text-5xl text-white tracking-tight uppercase">
           Latest Work
-        </h2>
+        </TypographyH2>
       </div>
 
       {/* Filter Segmented Control Tabs */}
       <div className="flex justify-center">
-        <div className="inline-flex p-1 rounded-full bg-[#18181b] border border-white/10 shadow-inner">
+        <div className="inline-flex p-1 rounded-full bg-[#18181b] border border-white/10 shadow-inner gap-1">
           {(["projects", "films", "stills"] as const).map((tab) => {
             const isActive = activeTab === tab;
             return (
-              <button
+              <Button
                 key={tab}
                 type="button"
+                variant={isActive ? "default" : "ghost"}
                 onClick={() => setActiveTab(tab)}
-                className={`relative px-6 sm:px-8 py-2 rounded-full text-xs font-bold tracking-wide capitalize transition-all duration-200 cursor-pointer ${
+                className={`px-5 sm:px-8 py-2 min-h-[38px] rounded-full text-xs font-bold tracking-wide capitalize transition-all duration-200 cursor-pointer h-auto active:scale-95 touch-manipulation ${
                   isActive
-                    ? "bg-[#f5551d] text-black shadow-md"
-                    : "text-zinc-400 hover:text-white"
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md"
+                    : "text-zinc-400 hover:text-white hover:bg-transparent"
                 }`}
               >
                 {tab}
-              </button>
+              </Button>
             );
           })}
         </div>
       </div>
 
-      {/* ------------------------------------------------------------ */}
-      {/* TAB 1: PROJECTS (4-column grid matching screenshot 2)       */}
-      {/* ------------------------------------------------------------ */}
+      {/* TAB 1: PROJECTS */}
       {activeTab === "projects" && (
         projects.length === 0 ? (
           <div className="py-16 text-center space-y-3 bg-[#141416]/50 rounded-2xl border border-white/5">
@@ -68,45 +145,71 @@ export function LatestWork({ projects, assets }: LatestWorkProps) {
             <p className="text-zinc-400 font-sans text-sm">No featured projects published yet.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 animate-in fade-in duration-300">
-            {projects.map((proj) => (
-              <div
-                key={proj.id}
-                onClick={() => setSelectedProject(proj)}
-                className="group relative aspect-[16/11] rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300"
-              >
-                {/* Background cover image */}
-                <div
-                  className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                  style={{ backgroundImage: `url(${proj.coverImage})` }}
+          <div className="space-y-8">
+            <MediaGrid isMasonry={isMasonry} cardSize={cardSize} className="animate-in fade-in duration-300">
+              {visibleProjects.map((proj) => (
+                <MediaCard
+                  key={proj.id}
+                  title={proj.title}
+                  subtitle={proj.client}
+                  showInfo={showClient}
+                  showTitle={showClient}
+                  showSubtitle={showClient}
+                  src={proj.coverImage}
+                  type="project"
+                  isMasonry={isMasonry}
+                  numericRatio={isMasonry ? 16 / 11 : numericRatio}
+                  thumbnailScale={thumbScale}
+                  onClick={() => setSelectedProject(proj)}
+                  tiltIntensity={4}
+                  glareIntensity={0.12}
+                  topRight={<AssetCountBadge count={proj.tc} />}
+                  textAlign="center"
+                  footerMode="overlay"
                 />
+              ))}
+            </MediaGrid>
 
-                {/* Gradient shadow */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent group-hover:via-black/20 transition-all duration-300" />
-
-                {/* Top-right asset count badge */}
-                <div className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[11px] font-mono text-zinc-200">
-                  {proj.tc}
+            {/* Infinite Scroll Sentinel & Stats for Projects */}
+            {hasMoreProjects && (
+              <div
+                ref={sentinelRef}
+                className="flex flex-col items-center justify-center pt-8 pb-4 space-y-3"
+              >
+                <div
+                  onClick={() => handleLoadMore("projects")}
+                  className="flex items-center gap-2.5 px-6 py-2.5 rounded-full bg-[#141416]/90 border border-white/10 text-white shadow-xl cursor-pointer hover:border-primary/40 transition-all duration-300"
+                >
+                  <Loader2 className="size-4 animate-spin text-primary" />
+                  <TypographySpan className="text-xs font-bold uppercase tracking-wider">
+                    {isLoadingMore ? "Loading projects..." : "Loading more projects"}
+                  </TypographySpan>
+                  {projects.length - visibleProjects.length > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
+                    >
+                      +{projects.length - visibleProjects.length} more
+                    </Badge>
+                  )}
                 </div>
-
-                {/* Bottom title and client */}
-                <div className="absolute bottom-4 left-4 right-4 z-10 space-y-0.5">
-                  <h3 className="font-heading font-bold text-base text-white group-hover:text-[#f5551d] transition-colors truncate">
-                    {proj.title}
-                  </h3>
-                  <p className="text-xs text-zinc-400 font-mono truncate">
-                    {proj.client}
-                  </p>
-                </div>
+                <p className="text-[11px] text-zinc-400">
+                  Showing {visibleProjects.length} of {projects.length} projects
+                </p>
               </div>
-            ))}
+            )}
+
+            {projects.length <= visibleProjects.length && projects.length > PAGE_SIZE && (
+              <div className="text-center pt-2 pb-2 text-[11px]  text-zinc-500 flex items-center justify-center gap-2">
+                <CheckCircle2 className="size-3.5 text-emerald-400" />
+                <TypographySpan>All {projects.length} projects displayed</TypographySpan>
+              </div>
+            )}
           </div>
         )
       )}
 
-      {/* ------------------------------------------------------------ */}
-      {/* TAB 2: FILMS (Cinematic video cards with duration)          */}
-      {/* ------------------------------------------------------------ */}
+      {/* TAB 2: FILMS */}
       {activeTab === "films" && (
         films.length === 0 ? (
           <div className="py-16 text-center space-y-3 bg-[#141416]/50 rounded-2xl border border-white/5">
@@ -116,57 +219,81 @@ export function LatestWork({ projects, assets }: LatestWorkProps) {
             <p className="text-zinc-400 font-sans text-sm">No cinematic films published yet.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
-            {films.map((film) => (
-              <div
-                key={film.id}
-                onClick={() => setActiveFilm(film)}
-                className="group relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300"
-              >
-                {/* Thumbnail */}
-                <div className="relative aspect-video w-full overflow-hidden">
-                  <div
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                    style={{ backgroundImage: `url(${film.image})` }}
+          <div className="space-y-8">
+            <MediaGrid isMasonry={isMasonry} cardSize={cardSize} className="animate-in fade-in duration-300">
+              {visibleFilms.map((film) => {
+                const filmRatio = isMasonry ? (film.ar || undefined) : numericRatio;
+                return (
+                  <MediaCard
+                    key={film.id}
+                    title={film.title}
+                    subtitle={film.desc}
+                    showInfo={showClient}
+                    showTitle={showClient}
+                    showSubtitle={showClient}
+                    src={film.image}
+                    type="film"
+                    isMasonry={isMasonry}
+                    numericRatio={filmRatio}
+                    thumbnailScale={thumbScale}
+                    onClick={() => setActiveFilm(film)}
+                    tiltIntensity={4}
+                    glareIntensity={0.12}
+                    topLeft={<MediaBadge type="film" />}
+                    topRight={
+                      film.tc ? (
+                        <AssetCountBadge count={film.tc} />
+                      ) : undefined
+                    }
+                    centerAction={<PlayButtonOverlay />}
+                    textAlign="center"
+                    footerMode="overlay"
                   />
-                  <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors" />
+                );
+              })}
+            </MediaGrid>
 
-                  {/* Top-right duration */}
-                  <div className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[11px] font-mono text-white">
-                    {film.tc}
-                  </div>
-
-                  {/* Top-left resolution */}
-                  <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/10 text-[10px] font-mono font-bold text-white uppercase">
-                    <Film className="size-3 text-[#f5551d]" />
-                    <span>{film.resolution || "4K 60fps"}</span>
-                  </div>
-
-                  {/* Center play icon */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="size-12 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white group-hover:scale-110 group-hover:bg-[#f5551d] group-hover:text-black transition-all duration-300 shadow-xl">
-                      <Play className="size-5 fill-current ml-0.5" />
-                    </div>
-                  </div>
+            {/* Infinite Scroll Sentinel & Stats for Films */}
+            {hasMoreFilms && (
+              <div
+                ref={sentinelRef}
+                className="flex flex-col items-center justify-center pt-8 pb-4 space-y-3"
+              >
+                <div
+                  onClick={() => handleLoadMore("films")}
+                  className="flex items-center gap-2.5 px-6 py-2.5 rounded-full bg-[#141416]/90 border border-white/10 text-white shadow-xl cursor-pointer hover:border-primary/40 transition-all duration-300"
+                >
+                  <Loader2 className="size-4 animate-spin text-primary" />
+                  <TypographySpan className="text-xs font-bold uppercase tracking-wider">
+                    {isLoadingMore ? "Loading films..." : "Loading more films"}
+                  </TypographySpan>
+                  {films.length - visibleFilms.length > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
+                    >
+                      +{films.length - visibleFilms.length} more
+                    </Badge>
+                  )}
                 </div>
-
-                {/* Card bottom info */}
-                <div className="p-4 bg-[#121214] border-t border-white/5 space-y-1">
-                  <h3 className="font-heading font-bold text-base text-white group-hover:text-[#f5551d] transition-colors truncate">
-                    {film.title}
-                  </h3>
-                  <p className="text-xs text-zinc-400 font-sans line-clamp-1">
-                    {film.desc}
-                  </p>
-                </div>
+                <p className="text-[11px] text-zinc-400">
+                  Showing {visibleFilms.length} of {films.length} films
+                </p>
               </div>
-            ))}
+            )}
+
+            {films.length <= visibleFilms.length && films.length > PAGE_SIZE && (
+              <div className="text-center pt-2 pb-2 text-[11px]  text-zinc-500 flex items-center justify-center gap-2">
+                <CheckCircle2 className="size-3.5 text-emerald-400" />
+                <TypographySpan>All {films.length} films displayed</TypographySpan>
+              </div>
+            )}
           </div>
         )
       )}
 
       {/* ------------------------------------------------------------ */}
-      {/* TAB 3: STILLS (Masonry view matching screenshots 1 & 4)     */}
+      {/* TAB 3: STILLS                                                */}
       {/* ------------------------------------------------------------ */}
       {activeTab === "stills" && (
         stills.length === 0 ? (
@@ -177,40 +304,67 @@ export function LatestWork({ projects, assets }: LatestWorkProps) {
             <p className="text-zinc-400 font-sans text-sm">No photo stills published yet.</p>
           </div>
         ) : (
-          <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5 animate-in fade-in duration-300">
-            {stills.map((still) => (
-              <div
-                key={still.id}
-                onClick={() => setActiveStill(still)}
-                className="break-inside-avoid group relative rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 cursor-pointer shadow-lg hover:border-white/25 transition-all duration-300"
-              >
-                {/* Still image */}
-                <img
+          <div className="space-y-8">
+            <MediaGrid isMasonry={isMasonry} cardSize={cardSize} className="animate-in fade-in duration-300">
+              {visibleStills.map((still) => (
+                <MediaCard
+                  key={still.id}
+                  title={still.title}
+                  subtitle={still.cat}
+                  showInfo={showClient}
+                  showTitle={showClient}
+                  showSubtitle={showClient}
                   src={still.image}
-                  alt={still.title}
-                  loading="lazy"
-                  className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105"
+                  type="still"
+                  isMasonry={isMasonry}
+                  numericRatio={isMasonry ? undefined : numericRatio}
+                  thumbnailScale={thumbScale}
+                  onClick={() => setActiveStill(still)}
+                  tiltIntensity={4}
+                  glareIntensity={0.12}
+                  topLeft={<MediaBadge type="still" />}
+                  centerAction={<ZoomButtonOverlay />}
+                  textAlign="center"
+                  footerMode="overlay"
                 />
+              ))}
+            </MediaGrid>
 
-                {/* Top-left STILL badge */}
-                <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/15 text-[10px] font-mono font-bold text-white uppercase tracking-wider">
-                  <ImageIcon className="size-3 text-zinc-300" />
-                  <span>STILL</span>
+            {/* Infinite Scroll Sentinel & Stats for Stills */}
+            {hasMoreStills && (
+              <div
+                ref={sentinelRef}
+                className="flex flex-col items-center justify-center pt-8 pb-4 space-y-3"
+              >
+                <div
+                  onClick={() => handleLoadMore("stills")}
+                  className="flex items-center gap-2.5 px-6 py-2.5 rounded-full bg-[#141416]/90 border border-white/10 text-white shadow-xl cursor-pointer hover:border-primary/40 transition-all duration-300"
+                >
+                  <Loader2 className="size-4 animate-spin text-primary" />
+                  <TypographySpan className="text-xs font-bold uppercase tracking-wider">
+                    {isLoadingMore ? "Loading stills..." : "Loading more stills"}
+                  </TypographySpan>
+                  {stills.length - visibleStills.length > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] px-2 py-0.5 rounded-full ml-1 bg-primary/15 text-primary border border-primary/30"
+                    >
+                      +{stills.length - visibleStills.length} more
+                    </Badge>
+                  )}
                 </div>
-
-                {/* Hover overlay with title */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-bold text-white font-heading">
-                      {still.title}
-                    </p>
-                    <p className="text-xs text-zinc-400 font-mono capitalize">
-                      {still.cat}
-                    </p>
-                  </div>
-                </div>
+                <p className="text-[11px] text-zinc-400">
+                  Showing {visibleStills.length} of {stills.length} stills
+                </p>
               </div>
-            ))}
+            )}
+
+            {stills.length <= visibleStills.length && stills.length > PAGE_SIZE && (
+              <div className="text-center pt-2 pb-2 text-[11px]  text-zinc-500 flex items-center justify-center gap-2">
+                <CheckCircle2 className="size-3.5 text-emerald-400" />
+                <TypographySpan>All {stills.length} stills displayed</TypographySpan>
+              </div>
+            )}
           </div>
         )
       )}

@@ -29,6 +29,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { signOutAction } from "@/app/actions/auth";
+import { TypographySpan } from "@/components/ui/typography";
 import { NavDocuments } from "./nav-documents";
 
 import { WorkspaceSwitcher, WorkspaceItem } from "./workspace-switcher";
@@ -141,18 +142,18 @@ export function WorkspaceSidebar({
         icon: MessageSquare,
       },
     ],
-    resources: [
-      {
-        name: "Help & Shortcuts",
-        url: `/${workspaceSlug}/help`,
-        icon: HelpCircle,
-      },
-      {
-        name: "Studio Docs",
-        url: `/${workspaceSlug}/docs`,
-        icon: BookOpen,
-      },
-    ],
+    // resources: [
+    //   {
+    //     name: "Help & Shortcuts",
+    //     url: `/${workspaceSlug}/help`,
+    //     icon: HelpCircle,
+    //   },
+    //   {
+    //     name: "Studio Docs",
+    //     url: `/${workspaceSlug}/docs`,
+    //     icon: BookOpen,
+    //   },
+    // ],
   };
 
   const brandName = workspace?.brandName || "Pedro Concreato";
@@ -172,10 +173,10 @@ export function WorkspaceSidebar({
   return (
     <Sidebar
       collapsible="icon"
-      className="border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-colors duration-200"
+      className="border-r border-sidebar-border/30  backdrop-blur-xl bg-background/10 text-sidebar-foreground transition-colors duration-200"
       {...props}
     >
-      <SidebarHeader className="p-3 border-b border-sidebar-border">
+      <SidebarHeader className="p-3 border-b border-sidebar-border/30">
         <WorkspaceSwitcher
           workspaces={workspaceItems}
           activeSlug={workspaceSlug}
@@ -185,10 +186,10 @@ export function WorkspaceSidebar({
       <SidebarContent className="px-3 py-4 space-y-6">
         <NavDocuments title="WORKSPACE" items={data.documents} />
         <NavDocuments title="ACCOUNT" items={data.account} />
-        <NavDocuments title="RESOURCES" items={data.resources} />
+        {/*<NavDocuments title="RESOURCES" items={data.resources} />*/}
       </SidebarContent>
 
-      <SidebarFooter className="p-3 border-t border-sidebar-border">
+      <SidebarFooter className="p-3 border-t border-sidebar-border/30">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -198,9 +199,9 @@ export function WorkspaceSidebar({
               className="flex items-center gap-3 px-3 py-2 text-xs font-medium text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2"
             >
               <ArrowRight className="size-4 shrink-0 text-destructive rtl:rotate-180" />
-              <span className="group-data-[collapsible=icon]:hidden">
+              <TypographySpan variant="small" className="group-data-[collapsible=icon]:hidden text-xs font-medium text-destructive">
                 {isPending ? "Logging out..." : "Log out"}
-              </span>
+              </TypographySpan>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

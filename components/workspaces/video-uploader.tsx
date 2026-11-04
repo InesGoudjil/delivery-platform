@@ -11,10 +11,13 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TypographyH3, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import {
   requestAssetUploadAction,
   confirmUploadCompletedAction,
 } from "@/app/actions/upload";
+import { createUploadProgressToast } from "@/lib/upload-toast";
+import { inspectMediaFile } from "@/lib/media-inspector";
 import {
   Attachment,
   AttachmentContent,
@@ -32,6 +35,7 @@ export interface DirectUploadParams {
   title?: string;
   assetType?: "video" | "photo_gallery";
   assetId?: string | null;
+  aspectRatio?: string;
   onProgress?: (percent: number, loaded: number, total: number) => void;
   onStatusChange?: (statusText: string) => void;
   onXhrCreated?: (xhr: XMLHttpRequest) => void;
@@ -57,6 +61,7 @@ export async function directUploadMediaFile({
   title,
   assetType,
   assetId,
+  aspectRatio,
   onProgress,
   onStatusChange,
   onXhrCreated,
@@ -64,6 +69,22 @@ export async function directUploadMediaFile({
   const resolvedType =
     assetType || (file.type.startsWith("image/") ? "photo_gallery" : "video");
   const resolvedTitle = title || file.name.replace(/\.[^/.]+$/, "");
+
+  // Auto-detect filmmaker aspect ratio from media file if not explicitly supplied
+  let resolvedAspectRatio = aspectRatio;
+  if (!resolvedAspectRatio) {
+    try {
+      const inspected = await inspectMediaFile(file);
+      if (inspected?.aspectRatio?.id) {
+        resolvedAspectRatio =
+          inspected.aspectRatio.id === "custom"
+            ? inspected.aspectRatio.cssRatio
+            : inspected.aspectRatio.id;
+      }
+    } catch {
+      resolvedAspectRatio = "16:9";
+    }
+  }
 
   onStatusChange?.("Requesting direct upload token...");
 
@@ -76,6 +97,7 @@ export async function directUploadMediaFile({
     filename: file.name,
     fileSizeBytes: file.size,
     assetType: resolvedType,
+    aspectRatio: resolvedAspectRatio,
   });
 
   if (!initRes.success || !initRes.directUpload || !initRes.assetVersion) {
@@ -173,6 +195,7 @@ export function VideoUploader({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
+  const uploadToastRef = useRef<ReturnType<typeof createUploadProgressToast> | null>(null);
 
   const handleFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -222,17 +245,28 @@ export function VideoUploader({
   const startDirectUpload = async () => {
     if (!selectedFile || uploading) return;
 
+    const displayTitle = title.trim() || selectedFile.name;
     setUploading(true);
     setErrorMessage(null);
     setProgress(0);
-    setStatusText("Requesting Cloudflare direct upload token...");
+    setStatusText("Requesting direct upload token...");
+
+    const uploadToast = createUploadProgressToast();
+    uploadToastRef.current = uploadToast;
+    uploadToast.start({
+      title: `Uploading "${displayTitle}"`,
+      fileName: selectedFile.name,
+      fileSize: formatBytes(selectedFile.size),
+      percentage: 0,
+      statusText: "Requesting direct upload token...",
+    });
 
     try {
       const result = await directUploadMediaFile({
         workspaceId,
         projectId,
         file: selectedFile,
-        title: title || selectedFile.name,
+        title: displayTitle,
         assetType,
         assetId: selectedAssetId || undefined,
         onProgress: (percent, loaded, total) => {
@@ -240,8 +274,18 @@ export function VideoUploader({
           setStatusText(
             `Uploading: ${percent}% (${formatBytes(loaded)} / ${formatBytes(total)})`
           );
+          uploadToast.update({
+            title: `Uploading "${displayTitle}"`,
+            fileName: selectedFile.name,
+            percentage: percent,
+            loadedBytes: loaded,
+            totalBytes: total,
+            statusText: percent < 100 ? "Uploading directly to edge..." : "Finalizing asset...",
+          });
         },
-        onStatusChange: (status) => setStatusText(status),
+        onStatusChange: (status) => {
+          setStatusText(status);
+        },
         onXhrCreated: (xhr) => {
           xhrRef.current = xhr;
         },
@@ -250,21 +294,32 @@ export function VideoUploader({
       setProgress(100);
       setStatusText("Upload complete & ready!");
       setCompletedAsset(result.asset);
+      uploadToast.success(`"${displayTitle}" uploaded successfully!`);
 
       if (onUploadComplete) {
         onUploadComplete(result.asset, result.assetVersion);
       }
     } catch (err: any) {
-      setErrorMessage(err.message || "An error occurred during upload.");
+      const msg = err.message || "An error occurred during upload.";
+      setErrorMessage(msg);
+      if (msg.toLowerCase().includes("cancel")) {
+        uploadToast.info("Upload cancelled");
+      } else {
+        uploadToast.error(`Upload failed: ${displayTitle}`, msg);
+      }
     } finally {
       setUploading(false);
       xhrRef.current = null;
+      uploadToastRef.current = null;
     }
   };
 
   const cancelUpload = () => {
     if (xhrRef.current) {
       xhrRef.current.abort();
+    } else if (uploadToastRef.current) {
+      uploadToastRef.current.info("Upload cancelled");
+      uploadToastRef.current = null;
     }
     setUploading(false);
     setProgress(0);
@@ -288,12 +343,12 @@ export function VideoUploader({
             {assetType === "photo_gallery" ? <ImageIcon className="size-5" /> : <Film className="size-5" />}
           </div>
           <div>
-            <h3 className="font-heading text-base font-bold text-card-foreground">
-              Direct Cloudflare Media Upload
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Direct-to-edge 4K HLS video stream & high-res image gallery upload up to 5GB
-            </p>
+            <TypographyH3 className="font-heading text-base font-bold text-card-foreground">
+              Direct Media Upload
+            </TypographyH3>
+            <TypographyMuted className="text-xs text-muted-foreground">
+              Direct video stream &amp; high-res image gallery upload up to 5GB
+            </TypographyMuted>
           </div>
         </div>
 
@@ -322,13 +377,13 @@ export function VideoUploader({
         <div className="p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 space-y-3 animate-in fade-in">
           <div className="flex items-center gap-2 font-bold text-sm">
             <CheckCircle2 className="size-5" />
-            <span>Master Asset Uploaded Successfully!</span>
+            <TypographySpan>Master Asset Uploaded Successfully!</TypographySpan>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <TypographyMuted className="text-xs text-muted-foreground">
             {assetType === "video"
-              ? "Your cut is being encoded into adaptive multi-bitrate HLS streams across Cloudflare edge nodes."
-              : "Your photo gallery asset is now optimized and served globally via Cloudflare CDN."}
-          </p>
+              ? "Your cut is being encoded into adaptive multi-bitrate streams across global edge nodes."
+              : "Your photo gallery asset is now optimized and served globally via high-speed CDN."}
+          </TypographyMuted>
           <div className="flex items-center gap-3 pt-2">
             <Button
               onClick={resetForm}
@@ -363,16 +418,16 @@ export function VideoUploader({
           />
 
           <div className="size-14 rounded-2xl bg-muted border border-border flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:border-primary transition-colors">
-            <Upload className="size-7 text-[#f5551d]" />
+            <Upload className="size-7 text-primary" />
           </div>
 
           <div className="space-y-1">
             <div className="text-sm font-bold text-card-foreground">
               Click to select or drag and drop your video cut or photo asset
             </div>
-            <p className="text-xs text-muted-foreground">
+            <TypographyMuted className="text-xs text-muted-foreground">
               Supports ProRes 422/4444, MP4, MOV, PNG, JPG, WEBP up to 5.0 GB
-            </p>
+            </TypographyMuted>
           </div>
         </div>
       )}
@@ -397,7 +452,7 @@ export function VideoUploader({
               <AttachmentContent>
                 <AttachmentTitle>{selectedFile.name}</AttachmentTitle>
                 <AttachmentDescription>
-                  {formatBytes(selectedFile.size)} · {assetType === "video" ? "4K Video Cut" : "Photo Gallery Asset"}
+                  {formatBytes(selectedFile.size)} · {assetType === "video" ? "Video Cut" : "Photo Gallery Asset"}
                 </AttachmentDescription>
               </AttachmentContent>
               {!uploading && (
@@ -453,13 +508,13 @@ export function VideoUploader({
           {/* Progress Bar */}
           {uploading && (
             <div className="space-y-2 pt-2 animate-in fade-in">
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-muted-foreground">{statusText}</span>
-                <span className="font-bold text-primary">{progress}%</span>
+              <div className="flex items-center justify-between text-xs ">
+                <TypographySpan className="text-muted-foreground">{statusText}</TypographySpan>
+                <TypographySpan className="font-bold text-primary">{progress}%</TypographySpan>
               </div>
               <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden border border-border">
                 <div
-                  className="h-full bg-gradient-to-r from-[#f5551d] to-[#ff8a45] rounded-full transition-all duration-150"
+                  className="h-full bg-primary rounded-full transition-all duration-150"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -480,7 +535,7 @@ export function VideoUploader({
             ) : (
               <Button
                 onClick={startDirectUpload}
-                className="rounded-full bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] shadow-md shadow-[#f5551d]/20 cursor-pointer"
+                className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 shadow-md shadow-primary/20 cursor-pointer"
               >
                 <Upload className="size-3.5 mr-1.5" /> Start Direct Upload
               </Button>

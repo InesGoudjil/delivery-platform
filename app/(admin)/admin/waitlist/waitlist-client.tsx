@@ -42,7 +42,7 @@ export function WaitlistClient({ metrics, entries: initialEntries }: WaitlistCli
       if (res.success && "invitedCount" in res) {
         setFeedback({
           type: "success",
-          message: `Successfully invited ${res.invitedCount} users! Check Resend logs for delivery.`,
+          message: `Successfully invited ${res.invitedCount} users! Check ZeptoMail delivery logs.`,
         });
       } else {
         setFeedback({
@@ -85,7 +85,7 @@ export function WaitlistClient({ metrics, entries: initialEntries }: WaitlistCli
             onClick={handleInviteCohort}
             disabled={isPending || metrics.pending === 0}
             size="sm"
-            className="bg-[#f5551d] hover:bg-[#e04a16] text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             {isPending ? (
               <>
@@ -134,7 +134,7 @@ export function WaitlistClient({ metrics, entries: initialEntries }: WaitlistCli
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-extrabold text-[#f5551d]">{metrics.pending}</div>
+            <div className="text-3xl font-extrabold text-primary">{metrics.pending}</div>
           </CardContent>
         </Card>
 
@@ -202,18 +202,18 @@ export function WaitlistClient({ metrics, entries: initialEntries }: WaitlistCli
                     <tr key={entry.id} className="hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3 font-medium">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-muted-foreground">#{idx + 1}</span>
+                          <span className=" text-muted-foreground">#{idx + 1}</span>
                           <span>{entry.email}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 font-mono">{entry.referralCode}</td>
+                      <td className="px-4 py-3 ">{entry.referralCode}</td>
                       <td className="px-4 py-3">
-                        <Badge variant="outline" className="font-mono">
+                        <Badge variant="outline" className="">
                           {entry.referralCount}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge className="bg-[#f5551d]/10 text-[#f5551d] border-[#f5551d]/20">
+                        <Badge className="bg-primary/10 text-primary border-primary/20">
                           +{entry.priorityScore} pts
                         </Badge>
                       </td>

@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServerCore } from "@/core/server";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ route: "api/webhooks/cloudflare-stream" });
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,9 +30,15 @@ export async function POST(req: NextRequest) {
 
     await core.services.upload.handleTranscodeWebhook(payload);
 
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
+    revalidatePath("/deliver/[shareToken]", "page");
+    revalidatePath("/[workspaceSlug]/portfolio", "page");
+    revalidatePath("/p/[handle]", "page");
+
     return NextResponse.json({ received: true });
   } catch (error: any) {
-    console.error("[Cloudflare Stream Webhook Error]:", error);
+    log.error({ error }, "Cloudflare Stream webhook processing error");
     return NextResponse.json(
       { error: error.message || "Webhook processing error" },
       { status: 500 }

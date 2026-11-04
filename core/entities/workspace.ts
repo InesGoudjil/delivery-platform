@@ -24,6 +24,38 @@ export interface WorkspaceFeatures {
   updatedAt: string;
 }
 
+export interface PlanLimits {
+  storageBytesMax: number;
+  storageGbMax: number;
+  clientLinksMax: number; // -1 for unlimited
+  teamSeatsMax: number;
+  portfolioVideosMax: number; // -1 for unlimited
+}
+
+export interface PlanCapabilities {
+  watermark: boolean;
+  passwordProtect: boolean;
+  customBranding: boolean;
+  whiteLabel: boolean;
+  sendWhatsApp: boolean;
+  receiveDownloadNotifications: boolean;
+  useSiloArchive: boolean;
+  bilingual: boolean;
+  prioritySupport: boolean;
+}
+
+export interface WorkspaceEntitlements {
+  workspaceId: string;
+  planSlug: string;
+  planName: string;
+  subscriptionStatus: string;
+  isTrial: boolean;
+  isActive: boolean;
+  features: WorkspaceFeatureConfig;
+  limits: PlanLimits;
+  can: PlanCapabilities;
+}
+
 export interface Workspace {
   id: string;
   ownerId: string;

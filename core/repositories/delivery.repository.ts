@@ -19,11 +19,18 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
       isDownloadAllowed: row.is_download_allowed ?? false,
       notifyOnDownload: row.notify_on_download ?? false,
       isWatermarked: row.is_watermarked ?? false,
+      appearance: row.appearance ?? null,
       approvedAt: row.approved_at,
       approvedByName: row.approved_by_name,
       expiresAt: row.expires_at,
       location: row.location,
       deliveryDate: row.delivery_date,
+      siloStatus: row.silo_status ?? null,
+      siloArchivedAt: row.silo_archived_at ?? null,
+      siloRestoreRequestedAt: row.silo_restore_requested_at ?? null,
+      siloRestoreTier: row.silo_restore_tier ?? null,
+      siloRestoredAt: row.silo_restored_at ?? null,
+      siloMetadata: row.silo_metadata ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -86,6 +93,7 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
       is_download_allowed: dto.isDownloadAllowed ?? false,
       notify_on_download: dto.notifyOnDownload ?? false,
       is_watermarked: dto.isWatermarked ?? false,
+      appearance: dto.appearance ?? null,
       status: dto.status ?? "in_review",
       expires_at: dto.expiresAt ?? null,
       location: dto.location ?? null,
@@ -115,12 +123,20 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
     if (data.isDownloadAllowed !== undefined) payload.is_download_allowed = data.isDownloadAllowed;
     if (data.notifyOnDownload !== undefined) payload.notify_on_download = data.notifyOnDownload;
     if (data.isWatermarked !== undefined) payload.is_watermarked = data.isWatermarked;
+    if (data.appearance !== undefined) payload.appearance = data.appearance;
     if (data.status !== undefined) payload.status = data.status;
+    if (data.shareToken !== undefined) payload.share_token = data.shareToken;
     if (data.expiresAt !== undefined) payload.expires_at = data.expiresAt;
     if (data.location !== undefined) payload.location = data.location;
     if (data.deliveryDate !== undefined) payload.delivery_date = data.deliveryDate;
     if (data.approvedAt !== undefined) payload.approved_at = data.approvedAt;
     if (data.approvedByName !== undefined) payload.approved_by_name = data.approvedByName;
+    if (data.siloStatus !== undefined) payload.silo_status = data.siloStatus;
+    if (data.siloArchivedAt !== undefined) payload.silo_archived_at = data.siloArchivedAt;
+    if (data.siloRestoreRequestedAt !== undefined) payload.silo_restore_requested_at = data.siloRestoreRequestedAt;
+    if (data.siloRestoreTier !== undefined) payload.silo_restore_tier = data.siloRestoreTier;
+    if (data.siloRestoredAt !== undefined) payload.silo_restored_at = data.siloRestoredAt;
+    if (data.siloMetadata !== undefined) payload.silo_metadata = data.siloMetadata;
 
     const { data: updated, error } = await (this.supabase as any)
       .from("deliveries")
@@ -142,6 +158,9 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
     if (status === "approved") {
       payload.approved_at = new Date().toISOString();
       payload.approved_by_name = approvedByName || "Client";
+    } else {
+      payload.approved_at = null;
+      payload.approved_by_name = null;
     }
 
     const { data, error } = await (this.supabase as any)

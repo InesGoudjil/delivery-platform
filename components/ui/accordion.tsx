@@ -44,13 +44,13 @@ function AccordionTrigger({
       <AccordionPrimitive.Trigger
         data-slot="accordion-trigger"
         className={cn(
-          "flex flex-1 items-center justify-between py-5 text-left text-base sm:text-lg font-bold text-white transition-all hover:text-[#f5551d] [&[data-panel-open]>svg]:rotate-180 group cursor-pointer",
+          "flex flex-1 items-center justify-between py-5 text-left text-base sm:text-lg font-bold text-white transition-all hover:text-primary [&[data-panel-open]>svg]:rotate-180 group cursor-pointer",
           className
         )}
         {...props}
       >
         {children}
-        <ChevronDown className="size-5 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:text-[#f5551d]" />
+        <ChevronDown className="size-5 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:text-primary" />
       </AccordionPrimitive.Trigger>
     </AccordionPrimitive.Header>
   )

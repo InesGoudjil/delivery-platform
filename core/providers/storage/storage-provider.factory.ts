@@ -32,6 +32,11 @@ class CompositeStorageProvider implements IStorageProvider {
   ) {}
 
   private getProviderForAsset(assetType: string): IStorageProvider {
+    // If Cloudflare R2 is configured, route master uploads (videos, images, raw files) to R2
+    // so the pristine uncompressed original file is preserved for downloads.
+    if (this.r2Provider.providerName === "cloudflare_r2") {
+      return this.r2Provider;
+    }
     if (assetType === "image" || assetType === "photo_gallery") {
       return this.r2Provider;
     }
@@ -43,24 +48,37 @@ class CompositeStorageProvider implements IStorageProvider {
     return provider.createDirectUploadUrl(params);
   }
 
+  private isStreamAsset(providerUid: string): boolean {
+    return (
+      /^[a-f0-9]{32}$/i.test(providerUid) ||
+      providerUid.startsWith("mock_stream_") ||
+      providerUid.startsWith("stream_") ||
+      providerUid.includes("videodelivery.net") ||
+      providerUid.includes("cloudflarestream.com")
+    );
+  }
+
   private isR2Asset(providerUid: string): boolean {
     return (
       providerUid.startsWith("workspaces/") ||
-      providerUid.includes("/") ||
+      (providerUid.includes("/") && !providerUid.startsWith("http")) ||
       /\.(jpe?g|png|avif|webp|gif|svg|bmp|tiff)$/i.test(providerUid)
     );
   }
 
   async getPlaybackInfo(providerUid: string): Promise<PlaybackInfo | null> {
-    // If providerUid is clearly an R2 key or image file, route directly to R2
+    if (this.isStreamAsset(providerUid)) {
+      return this.streamProvider.getPlaybackInfo(providerUid);
+    }
+
     if (this.isR2Asset(providerUid)) {
       return this.r2Provider.getPlaybackInfo(providerUid);
     }
 
-    // Attempt Stream provider first, then fall back to R2
+    // Fallback: try Stream provider first
     try {
       const streamInfo = await this.streamProvider.getPlaybackInfo(providerUid);
-      if (streamInfo && streamInfo.status !== "error") return streamInfo;
+      if (streamInfo) return streamInfo;
     } catch {
       // Ignore and check R2
     }
@@ -68,13 +86,17 @@ class CompositeStorageProvider implements IStorageProvider {
   }
 
   async getAssetStatus(providerUid: string): Promise<StorageAssetStatus> {
+    if (this.isStreamAsset(providerUid)) {
+      return this.streamProvider.getAssetStatus(providerUid);
+    }
+
     if (this.isR2Asset(providerUid)) {
       return this.r2Provider.getAssetStatus(providerUid);
     }
 
     try {
       const status = await this.streamProvider.getAssetStatus(providerUid);
-      if (status && status.status !== "error") return status;
+      if (status) return status;
     } catch {
       // Ignore and check R2
     }
@@ -82,6 +104,11 @@ class CompositeStorageProvider implements IStorageProvider {
   }
 
   async deleteAsset(providerUid: string): Promise<void> {
+    if (this.isStreamAsset(providerUid)) {
+      await this.streamProvider.deleteAsset(providerUid);
+      return;
+    }
+
     if (this.isR2Asset(providerUid)) {
       await this.r2Provider.deleteAsset(providerUid);
       return;
@@ -94,11 +121,99 @@ class CompositeStorageProvider implements IStorageProvider {
     }
   }
 
+  async getSecurePlaybackUrl(
+    providerUid: string,
+    isPublic?: boolean,
+    expiresInSeconds?: number
+  ): Promise<string> {
+    if (this.isStreamAsset(providerUid)) {
+      if (typeof this.streamProvider.getSecurePlaybackUrl === "function") {
+        return this.streamProvider.getSecurePlaybackUrl(providerUid, isPublic, expiresInSeconds);
+      }
+      const streamInfo = await this.streamProvider.getPlaybackInfo(providerUid);
+      return streamInfo?.hlsManifestUrl || providerUid;
+    }
+
+    if (typeof this.r2Provider.getSecurePlaybackUrl === "function") {
+      return this.r2Provider.getSecurePlaybackUrl(providerUid, isPublic, expiresInSeconds);
+    }
+    const info = await this.r2Provider.getPlaybackInfo(providerUid);
+    return info?.rawDownloadUrl || info?.hlsManifestUrl || providerUid;
+  }
+
+  async getSecureDownloadUrl(
+    providerUid: string,
+    filename: string,
+    isPublic?: boolean,
+    expiresInSeconds?: number
+  ): Promise<string> {
+    if (this.isStreamAsset(providerUid)) {
+      if (typeof this.streamProvider.getSecureDownloadUrl === "function") {
+        return this.streamProvider.getSecureDownloadUrl(
+          providerUid,
+          filename,
+          isPublic,
+          expiresInSeconds
+        );
+      }
+      const cleanUid = providerUid.match(/([a-f0-9]{32})/i)?.[1] || providerUid;
+      return `/api/media/${cleanUid}?download=true&filename=${encodeURIComponent(filename)}`;
+    }
+
+    if (typeof this.r2Provider.getSecureDownloadUrl === "function") {
+      return this.r2Provider.getSecureDownloadUrl(
+        providerUid,
+        filename,
+        isPublic,
+        expiresInSeconds
+      );
+    }
+    return this.getSecurePlaybackUrl(providerUid, isPublic, expiresInSeconds);
+  }
+
   verifyWebhookSignature(rawBody: string, headers: Record<string, string>): boolean {
     if (typeof this.streamProvider.verifyWebhookSignature === "function") {
       return this.streamProvider.verifyWebhookSignature(rawBody, headers);
     }
     return true;
+  }
+
+  async getObjectStream(providerUid: string): Promise<{
+    stream: NodeJS.ReadableStream;
+    contentType?: string;
+    contentLength?: number;
+  }> {
+    if (typeof this.r2Provider.getObjectStream === "function") {
+      return this.r2Provider.getObjectStream(providerUid);
+    }
+    throw new Error("getObjectStream not implemented on current storage provider");
+  }
+
+  async putObjectStream(
+    providerUid: string,
+    body: NodeJS.ReadableStream | Buffer | Uint8Array,
+    contentType?: string,
+    contentLength?: number
+  ): Promise<void> {
+    if (typeof this.r2Provider.putObjectStream === "function") {
+      return this.r2Provider.putObjectStream(providerUid, body, contentType, contentLength);
+    }
+    throw new Error("putObjectStream not implemented on current storage provider");
+  }
+
+  async copyFromUrl(
+    sourceUrl: string,
+    metadata?: {
+      name?: string;
+      creator?: string;
+      allowedOrigins?: string[];
+      meta?: Record<string, string>;
+    }
+  ): Promise<{ uid: string; status?: string }> {
+    if (typeof this.streamProvider.copyFromUrl === "function") {
+      return this.streamProvider.copyFromUrl(sourceUrl, metadata);
+    }
+    throw new Error("copyFromUrl not implemented on current storage provider");
   }
 }
 
@@ -107,12 +222,19 @@ export class StorageProviderFactory {
    * Resolves the configured storage provider backed by Zod environment configuration.
    */
   static createProvider(options?: StorageFactoryOptions): IStorageProvider {
-    const providerType = options?.providerType || env.STORAGE_PROVIDER || "auto";
+    const providerType = options?.providerType || env.STORAGE_PROVIDER || process.env.STORAGE_PROVIDER || "auto";
 
-    const cfAccountId = options?.cloudflare?.accountId || env.CLOUDFLARE_ACCOUNT_ID;
-    const cfApiToken = options?.cloudflare?.apiToken || env.CLOUDFLARE_API_TOKEN;
-    const cfSubdomain = options?.cloudflare?.customerSubdomain || env.CLOUDFLARE_STREAM_SUBDOMAIN;
-    const cfWebhookSecret = options?.cloudflare?.webhookSecret || env.CLOUDFLARE_WEBHOOK_SECRET;
+    const cfAccountId = options?.cloudflare?.accountId || env.CLOUDFLARE_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID;
+    const cfApiToken = options?.cloudflare?.apiToken || env.CLOUDFLARE_API_TOKEN || process.env.CLOUDFLARE_API_TOKEN || process.env.CLOUDFLARE_STREAM_TOKEN;
+    const cfSubdomain = options?.cloudflare?.customerSubdomain || env.CLOUDFLARE_STREAM_SUBDOMAIN || process.env.CLOUDFLARE_STREAM_SUBDOMAIN;
+    const cfWebhookSecret = options?.cloudflare?.webhookSecret || env.CLOUDFLARE_WEBHOOK_SECRET || process.env.CLOUDFLARE_WEBHOOK_SECRET;
+
+    const r2PublicBucket = env.CLOUDFLARE_R2_PUBLIC_BUCKET || env.CLOUDFLARE_R2_BUCKET || process.env.CLOUDFLARE_R2_PUBLIC_BUCKET || process.env.CLOUDFLARE_R2_BUCKET;
+    const r2PrivateBucket = env.CLOUDFLARE_R2_PRIVATE_BUCKET || env.CLOUDFLARE_R2_BUCKET || process.env.CLOUDFLARE_R2_PRIVATE_BUCKET || process.env.CLOUDFLARE_R2_BUCKET;
+    const r2AccessKey = env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
+    const r2SecretKey = env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+    const r2Endpoint = env.CLOUDFLARE_R2_ENDPOINT || process.env.CLOUDFLARE_R2_ENDPOINT;
+    const r2PublicDomain = env.CLOUDFLARE_R2_PUBLIC_DOMAIN || process.env.CLOUDFLARE_R2_PUBLIC_DOMAIN;
 
     const hasStreamCreds =
       Boolean(cfAccountId) &&
@@ -120,13 +242,18 @@ export class StorageProviderFactory {
       Boolean(cfApiToken) &&
       cfApiToken !== "your-cloudflare-stream-token";
 
+    const isR2Configured =
+      Boolean(r2PublicBucket || r2PrivateBucket) &&
+      Boolean(r2AccessKey) &&
+      Boolean(r2SecretKey);
+
     const isCloudflareMode =
       providerType === "cloudflare" ||
       providerType === "auto" ||
       hasStreamCreds ||
-      env.isCloudflareR2Configured;
+      isR2Configured;
 
-    if (isCloudflareMode && (hasStreamCreds || env.isCloudflareR2Configured)) {
+    if (isCloudflareMode && (hasStreamCreds || isR2Configured)) {
       const streamProvider: IStorageProvider = hasStreamCreds
         ? new CloudflareStreamStorageProvider({
             accountId: cfAccountId!,
@@ -136,13 +263,15 @@ export class StorageProviderFactory {
           })
         : new MockStorageProvider();
 
-      const r2Provider: IStorageProvider = env.isCloudflareR2Configured
+      const r2Provider: IStorageProvider = isR2Configured
         ? new CloudflareR2StorageProvider({
-            bucket: env.CLOUDFLARE_R2_BUCKET,
-            accessKeyId: env.CLOUDFLARE_R2_ACCESS_KEY_ID,
-            secretAccessKey: env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
-            endpoint: env.CLOUDFLARE_R2_ENDPOINT,
-            publicDomain: env.CLOUDFLARE_R2_PUBLIC_DOMAIN,
+            publicBucket: r2PublicBucket,
+            privateBucket: r2PrivateBucket,
+            bucket: r2PublicBucket || r2PrivateBucket || "",
+            accessKeyId: r2AccessKey!,
+            secretAccessKey: r2SecretKey!,
+            endpoint: r2Endpoint || "",
+            publicDomain: r2PublicDomain,
           })
         : new MockStorageProvider();
 

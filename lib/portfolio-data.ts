@@ -11,6 +11,18 @@ export interface PortfolioAsset {
   resolution?: string;
 }
 
+export interface SelectableCoverAsset {
+  id: string;
+  title: string;
+  type: "video" | "still";
+  url: string;
+  thumbnailUrl: string;
+  aspectRatio?: string;
+  duration?: string | null;
+  category?: string;
+  projectName?: string;
+}
+
 export interface PublicFeaturedItem {
   id: string;
   title: string;
@@ -51,9 +63,11 @@ export interface FilmmakerProfile {
   handle: string;
   title: string;
   avatar: string;
+  logoUrl?: string | null;
   bio: string;
   tagline: string;
   heroImage: string;
+  heroCover?: any;
   featuredProjectId?: string | number;
   stats: {
     filmsDelivered: string;
@@ -69,26 +83,3 @@ export interface FilmmakerProfile {
     image: string;
   };
 }
-
-export const DEFAULT_PROFILE_TEMPLATE: FilmmakerProfile = {
-  name: "Filmmaker",
-  handle: "portfolio",
-  title: "Filmmaker & Director",
-  avatar: "/images/about-img.png",
-  bio: "Filmmaker and creative director based across the Gulf. Directing commercial campaigns, brand documentaries, and luxury visual storytelling — story first, craft you don't notice.",
-  tagline: "Commercial Films & Luxury Visuals",
-  heroImage: "/images/hero.jpg",
-  stats: {
-    filmsDelivered: "80+",
-    experienceYears: "6 YRS",
-    based: "UAE",
-  },
-  experience: [],
-  whatsappNumber: "+971501234567",
-  email: "hello@cinespace.film",
-  cta: {
-    title: "EVERY FRAME,\nCONSIDERED.",
-    subtitle: "Brand films, weddings, and launch content — made across the Gulf.",
-    image: "/images/cta.jpg",
-  },
-};

@@ -348,6 +348,13 @@ export interface Database {
           location: string | null;
           delivery_date: string | null;
           is_watermarked: boolean;
+          appearance: Json | null;
+          silo_status: "archived" | "restoring" | "restored" | null;
+          silo_archived_at: string | null;
+          silo_restore_requested_at: string | null;
+          silo_restore_tier: "Bulk" | "Standard" | null;
+          silo_restored_at: string | null;
+          silo_metadata: Json | null;
           created_at: string;
           updated_at: string;
         };
@@ -368,6 +375,13 @@ export interface Database {
           location?: string | null;
           delivery_date?: string | null;
           is_watermarked?: boolean;
+          appearance?: Json | null;
+          silo_status?: "archived" | "restoring" | "restored" | null;
+          silo_archived_at?: string | null;
+          silo_restore_requested_at?: string | null;
+          silo_restore_tier?: "Bulk" | "Standard" | null;
+          silo_restored_at?: string | null;
+          silo_metadata?: Json | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -388,6 +402,13 @@ export interface Database {
           location?: string | null;
           delivery_date?: string | null;
           is_watermarked?: boolean;
+          appearance?: Json | null;
+          silo_status?: "archived" | "restoring" | "restored" | null;
+          silo_archived_at?: string | null;
+          silo_restore_requested_at?: string | null;
+          silo_restore_tier?: "Bulk" | "Standard" | null;
+          silo_restored_at?: string | null;
+          silo_metadata?: Json | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -525,6 +546,8 @@ export interface Database {
           duration_seconds: number | null;
           transcoding_status: "pending" | "processing" | "ready" | "failed";
           is_active_version: boolean;
+          silo_archive_key: string | null;
+          silo_storage_class: string | null;
           created_at: string;
         };
         Insert: {
@@ -539,6 +562,8 @@ export interface Database {
           duration_seconds?: number | null;
           transcoding_status?: "pending" | "processing" | "ready" | "failed";
           is_active_version?: boolean;
+          silo_archive_key?: string | null;
+          silo_storage_class?: string | null;
           created_at?: string;
         };
         Update: {
@@ -553,6 +578,8 @@ export interface Database {
           duration_seconds?: number | null;
           transcoding_status?: "pending" | "processing" | "ready" | "failed";
           is_active_version?: boolean;
+          silo_archive_key?: string | null;
+          silo_storage_class?: string | null;
           created_at?: string;
         };
       };
@@ -565,7 +592,6 @@ export interface Database {
           comment_text: string;
           timestamp_seconds: number | null;
           is_resolved: boolean;
-          parent_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -577,7 +603,6 @@ export interface Database {
           comment_text: string;
           timestamp_seconds?: number | null;
           is_resolved?: boolean;
-          parent_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -589,7 +614,35 @@ export interface Database {
           comment_text?: string;
           timestamp_seconds?: number | null;
           is_resolved?: boolean;
-          parent_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      feedback_replies: {
+        Row: {
+          id: string;
+          feedback_id: string;
+          author_user_id: string | null;
+          author_name: string;
+          comment_text: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          feedback_id: string;
+          author_user_id?: string | null;
+          author_name: string;
+          comment_text: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          feedback_id?: string;
+          author_user_id?: string | null;
+          author_name?: string;
+          comment_text?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -681,6 +734,44 @@ export interface Database {
           description?: string;
           hosted_invoice_url?: string | null;
           pdf_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      workspace_settings: {
+        Row: {
+          workspace_id: string;
+          notify_approvals: boolean;
+          notify_comments: boolean;
+          notify_downloads: boolean;
+          weekly_digest: boolean;
+          whatsapp_number: string | null;
+          whatsapp_enabled: boolean;
+          default_link_expiration_days: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          workspace_id: string;
+          notify_approvals?: boolean;
+          notify_comments?: boolean;
+          notify_downloads?: boolean;
+          weekly_digest?: boolean;
+          whatsapp_number?: string | null;
+          whatsapp_enabled?: boolean;
+          default_link_expiration_days?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          workspace_id?: string;
+          notify_approvals?: boolean;
+          notify_comments?: boolean;
+          notify_downloads?: boolean;
+          weekly_digest?: boolean;
+          whatsapp_number?: string | null;
+          whatsapp_enabled?: boolean;
+          default_link_expiration_days?: number | null;
           created_at?: string;
           updated_at?: string;
         };

@@ -1,9 +1,12 @@
-import { Feedback } from '@/core/entities/feedback';
-import { IFeedbackRepository, CreateFeedbackDTO } from '@/core/repositories/feedback.repository';
+import { Feedback, FeedbackReply } from '@/core/entities/feedback';
+import { IFeedbackRepository, CreateFeedbackDTO, CreateFeedbackReplyDTO } from '@/core/repositories/feedback.repository';
 import { NotificationService } from './notification.service';
+import { createScopedLogger } from '@/lib/logger';
+
+const log = createScopedLogger({ service: 'FeedbackService' });
 
 export interface FeedbackThread extends Feedback {
-  replies: Feedback[];
+  replies: FeedbackReply[];
 }
 
 export class FeedbackService {
@@ -14,6 +17,18 @@ export class FeedbackService {
 
   async addFeedback(dto: CreateFeedbackDTO): Promise<Feedback> {
     return this.feedbackRepo.create(dto);
+  }
+
+  async addReply(dto: CreateFeedbackReplyDTO): Promise<FeedbackReply> {
+    return this.feedbackRepo.createReply(dto);
+  }
+
+  async deleteReply(replyId: string): Promise<void> {
+    return this.feedbackRepo.deleteReply(replyId);
+  }
+
+  async listReplies(feedbackId: string): Promise<FeedbackReply[]> {
+    return this.feedbackRepo.listRepliesByFeedbackId(feedbackId);
   }
 
   async notifyFeedback(params: {
@@ -27,31 +42,12 @@ export class FeedbackService {
   }) {
     if (!this.notificationService) return;
     return this.notificationService.notifyNewFeedback(params).catch((err) => {
-      console.error("[FeedbackService] Failed to notify new feedback:", err);
+      log.error({ err, deliveryId: params.deliveryId }, "Failed to notify new feedback");
     });
   }
 
-  async getThreadedFeedback(assetVersionId: string): Promise<FeedbackThread[]> {
-    const allFeedback = await this.feedbackRepo.listByAssetVersionId(assetVersionId);
-
-    const rootFeedback: FeedbackThread[] = [];
-    const feedbackMap = new Map<string, FeedbackThread>();
-
-    allFeedback.forEach((item) => {
-      const thread: FeedbackThread = { ...item, replies: [] };
-      feedbackMap.set(item.id, thread);
-    });
-
-    allFeedback.forEach((item) => {
-      if (item.parentId && feedbackMap.has(item.parentId)) {
-        feedbackMap.get(item.parentId)!.replies.push(item);
-      } else {
-        const thread = feedbackMap.get(item.id);
-        if (thread) rootFeedback.push(thread);
-      }
-    });
-
-    return rootFeedback;
+  async getThreadedFeedback(assetVersionId: string): Promise<Feedback[]> {
+    return this.feedbackRepo.listByAssetVersionId(assetVersionId);
   }
 
   async toggleResolved(id: string, isResolved: boolean): Promise<Feedback> {
@@ -60,5 +56,9 @@ export class FeedbackService {
 
   async deleteFeedback(id: string): Promise<void> {
     return this.feedbackRepo.delete(id);
+  }
+
+  async listFeedbackForVersions(assetVersionIds: string[]): Promise<Feedback[]> {
+    return this.feedbackRepo.listByAssetVersionIds(assetVersionIds);
   }
 }

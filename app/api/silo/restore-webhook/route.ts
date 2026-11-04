@@ -1,0 +1,127 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getServerAdminServices } from "@/core/server";
+import { env } from "@/lib/env";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ route: "api/silo/restore-webhook" });
+
+export async function POST(req: NextRequest) {
+  try {
+    const rawBody = await req.text();
+    let body: any;
+
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    }
+
+    // Webhook authentication check
+    if (env.SILO_WEBHOOK_SECRET) {
+      const authHeader = req.headers.get("authorization") || req.headers.get("x-silo-secret");
+      const urlSecret = req.nextUrl.searchParams.get("secret");
+      const matched =
+        authHeader === `Bearer ${env.SILO_WEBHOOK_SECRET}` ||
+        authHeader === env.SILO_WEBHOOK_SECRET ||
+        urlSecret === env.SILO_WEBHOOK_SECRET;
+
+      if (!matched) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    } else if (process.env.NODE_ENV === "production") {
+      log.error("SILO_WEBHOOK_SECRET is not configured in production");
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
+    }
+
+    // Handle AWS SNS Subscription Confirmation with strict SSRF mitigation
+    if (body.Type === "SubscriptionConfirmation" && body.SubscribeURL) {
+      try {
+        const parsedUrl = new URL(body.SubscribeURL);
+
+        // Strict protocol check: HTTPS only
+        if (parsedUrl.protocol !== "https:") {
+          log.error({ subscribeUrl: body.SubscribeURL }, "SSRF attempt blocked: non-https SubscribeURL");
+          return NextResponse.json({ error: "Invalid SubscribeURL protocol" }, { status: 400 });
+        }
+
+        // Strict hostname validation: strictly match AWS SNS domain pattern
+        const isAwsSns = /^sns\.[a-z0-9-]+\.amazonaws\.com$/i.test(parsedUrl.hostname);
+        if (!isAwsSns) {
+          log.error({ hostname: parsedUrl.hostname }, "SSRF attempt blocked: untrusted hostname");
+          return NextResponse.json({ error: "Untrusted SubscribeURL host" }, { status: 400 });
+        }
+
+        log.info({ href: parsedUrl.href }, "Confirming AWS SNS Subscription");
+        await fetch(parsedUrl.href);
+        return NextResponse.json({ success: true, message: "Subscription confirmed" });
+      } catch (subErr: any) {
+        log.error({ err: subErr }, "Failed to confirm SNS subscription");
+        return NextResponse.json({ error: subErr.message || "Subscription confirmation failed" }, { status: 500 });
+      }
+    }
+
+    // Unwrap SNS Notification payload if wrapped
+    let eventPayload = body;
+    if (body.Type === "Notification" && typeof body.Message === "string") {
+      try {
+        eventPayload = JSON.parse(body.Message);
+      } catch {
+        eventPayload = body.Message;
+      }
+    }
+
+    const services = await getServerAdminServices();
+    const deliveryIdsToProcess = new Set<string>();
+
+    // 1. Direct deliveryId passed in request (e.g. manual trigger or internal webhook)
+    if (body.deliveryId) {
+      deliveryIdsToProcess.add(body.deliveryId);
+    }
+
+    // 2. AWS S3 Event Notification format (s3:ObjectRestore:Completed)
+    if (Array.isArray(eventPayload.Records)) {
+      for (const record of eventPayload.Records) {
+        const key = decodeURIComponent(record.s3?.object?.key || "");
+        // Format: silo/workspaces/{workspaceId}/deliveries/{deliveryId}/assets/...
+        const match = key.match(/deliveries\/([^/]+)\//);
+        if (match && match[1]) {
+          deliveryIdsToProcess.add(match[1]);
+        }
+      }
+    }
+
+    // 3. AWS EventBridge Event format
+    if (eventPayload["detail-type"] === "Object Restore Completed" && eventPayload.detail?.object?.key) {
+      const key = eventPayload.detail.object.key;
+      const match = key.match(/deliveries\/([^/]+)\//);
+      if (match && match[1]) {
+        deliveryIdsToProcess.add(match[1]);
+      }
+    }
+
+    if (deliveryIdsToProcess.size === 0) {
+      return NextResponse.json({
+        success: true,
+        message: "No delivery IDs matched in the restore event payload.",
+      });
+    }
+
+    const results = [];
+    const origin = env.NEXT_PUBLIC_APP_URL || "https://cut.app";
+
+    for (const deliveryId of deliveryIdsToProcess) {
+      const restoreRes = await services.silo.checkAndFinalizeRestore(deliveryId, {
+        origin,
+      });
+      results.push({ deliveryId, result: restoreRes });
+    }
+
+    return NextResponse.json({
+      success: true,
+      processed: results,
+    });
+  } catch (err: any) {
+    log.error({ err }, "Unexpected error handling restore event");
+    return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
+  }
+}

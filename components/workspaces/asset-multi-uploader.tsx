@@ -14,6 +14,8 @@ import {
   Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TypographyH3, TypographyMuted, TypographySpan } from "@/components/ui/typography";
+import { createUploadProgressToast } from "@/lib/upload-toast";
 import {
   VideoUploader,
   directUploadMediaFile,
@@ -78,6 +80,7 @@ export function AssetMultiUploader({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeXhrRef = useRef<XMLHttpRequest | null>(null);
   const abortControllerRef = useRef<boolean>(false);
+  const batchToastRef = useRef<ReturnType<typeof createUploadProgressToast> | null>(null);
 
   // Clean up object URLs on unmount
   useEffect(() => {
@@ -191,6 +194,23 @@ export function AssetMultiUploader({
     setGlobalError(null);
 
     const completedResults: Array<{ asset: any; version?: any }> = [];
+    let failedCount = 0;
+    let lastErrorMessage = "";
+
+    const batchToast = createUploadProgressToast();
+    batchToastRef.current = batchToast;
+    batchToast.start({
+      title:
+        queuedItems.length > 1
+          ? `Uploading ${queuedItems.length} deliverables...`
+          : `Uploading "${queuedItems[0].title || queuedItems[0].file.name}"`,
+      fileName: queuedItems[0].file.name,
+      fileSize: formatBytes(queuedItems[0].file.size),
+      fileIndex: 1,
+      totalFiles: queuedItems.length,
+      percentage: 0,
+      statusText: "Initiating upload...",
+    });
 
     for (let i = 0; i < queuedItems.length; i++) {
       if (abortControllerRef.current) break;
@@ -206,13 +226,26 @@ export function AssetMultiUploader({
         )
       );
 
-      // Notify floating progress
+      // Notify floating progress & Sonner toast
       onProgressChange?.({
         fileName: item.file.name,
         fileSize: formatBytes(item.file.size),
         fileIndex: i + 1,
         totalFiles: queuedItems.length,
         percentage: 0,
+      });
+
+      batchToast.update({
+        title:
+          queuedItems.length > 1
+            ? `Uploading (${i + 1}/${queuedItems.length}): ${item.title || item.file.name}`
+            : `Uploading "${item.title || item.file.name}"`,
+        fileName: item.file.name,
+        fileSize: formatBytes(item.file.size),
+        fileIndex: i + 1,
+        totalFiles: queuedItems.length,
+        percentage: 0,
+        statusText: "Initiating upload...",
       });
 
       try {
@@ -242,6 +275,20 @@ export function AssetMultiUploader({
               fileIndex: i + 1,
               totalFiles: queuedItems.length,
               percentage: percent,
+            });
+
+            batchToast.update({
+              title:
+                queuedItems.length > 1
+                  ? `Uploading (${i + 1}/${queuedItems.length}): ${item.title || item.file.name}`
+                  : `Uploading "${item.title || item.file.name}"`,
+              fileName: item.file.name,
+              loadedBytes: loaded,
+              totalBytes: total,
+              fileIndex: i + 1,
+              totalFiles: queuedItems.length,
+              percentage: percent,
+              statusText: percent < 100 ? "Uploading directly to edge..." : "Finalizing asset...",
             });
           },
           onStatusChange: (statusText) => {
@@ -273,6 +320,8 @@ export function AssetMultiUploader({
         completedResults.push(result);
         onUploadComplete?.(result.asset, result.assetVersion);
       } catch (err: any) {
+        failedCount++;
+        lastErrorMessage = err.message || "Failed to upload asset.";
         setQueue((prev) =>
           prev.map((q) =>
             q.id === item.id
@@ -280,7 +329,7 @@ export function AssetMultiUploader({
                   ...q,
                   status: "error",
                   statusText: "Upload failed",
-                  errorMessage: err.message || "Failed to upload asset.",
+                  errorMessage: lastErrorMessage,
                 }
               : q
           )
@@ -293,15 +342,35 @@ export function AssetMultiUploader({
     setIsProcessing(false);
     onProgressChange?.(null);
 
-    if (completedResults.length > 0) {
+    if (abortControllerRef.current) {
+      batchToast.info("Batch upload cancelled");
+    } else if (completedResults.length > 0 && failedCount === 0) {
+      batchToast.success(
+        completedResults.length === 1
+          ? `"${completedResults[0].asset?.title || queuedItems[0].title}" uploaded!`
+          : `All ${completedResults.length} assets uploaded & ready!`
+      );
       onBatchComplete?.(completedResults);
+    } else if (completedResults.length > 0 && failedCount > 0) {
+      batchToast.error(
+        `Uploaded ${completedResults.length} of ${queuedItems.length} files (${failedCount} failed)`,
+        lastErrorMessage
+      );
+      onBatchComplete?.(completedResults);
+    } else if (failedCount > 0) {
+      batchToast.error("Upload failed", lastErrorMessage);
     }
+
+    batchToastRef.current = null;
   };
 
   const cancelActiveUpload = () => {
     abortControllerRef.current = true;
     if (activeXhrRef.current) {
       activeXhrRef.current.abort();
+    } else if (batchToastRef.current) {
+      batchToastRef.current.info("Batch upload cancelled");
+      batchToastRef.current = null;
     }
     setIsProcessing(false);
     onProgressChange?.(null);
@@ -321,59 +390,65 @@ export function AssetMultiUploader({
       {/* Header with Mode Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div className="flex items-center gap-3">
-          <div className="size-11 rounded-2xl bg-[#f5551d]/10 border border-[#f5551d]/30 text-[#f5551d] flex items-center justify-center shrink-0">
+          <div className="size-11 rounded-2xl bg-primary/10 border border-primary/30 text-primary flex items-center justify-center shrink-0">
             <Layers className="size-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-heading text-lg font-bold text-white tracking-tight">
+              <TypographyH3 className="font-heading text-lg font-bold text-white tracking-tight">
                 Media Asset Uploader
-              </h3>
-              <span className="text-[10px] font-mono uppercase bg-white/10 text-white/90 px-2 py-0.5 rounded-full">
-                Cloudflare 4K HLS & Stills
-              </span>
+              </TypographyH3>
+              <TypographySpan className="text-[10px]  uppercase bg-white/10 text-white/90 px-2 py-0.5 rounded-full">
+                Video Cuts &amp; Stills
+              </TypographySpan>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Upload standalone stills, high-res photos, or 4K video cuts with automatic versioning.
-            </p>
+            <TypographyMuted className="text-xs text-muted-foreground">
+              Upload standalone stills, high-res photos, or video cuts with automatic versioning.
+            </TypographyMuted>
           </div>
         </div>
 
         {/* Tab switcher & Close button */}
         <div className="flex items-center gap-2.5">
           <div className="flex items-center bg-black/40 border border-white/10 rounded-xl p-1">
-            <button
+            <Button
               type="button"
+              variant={activeTab === "batch" ? "default" : "ghost"}
+              size="sm"
               onClick={() => setActiveTab("batch")}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer h-auto ${
                 activeTab === "batch"
-                  ? "bg-[#f5551d] text-black shadow-md shadow-[#f5551d]/20"
-                  : "text-muted-foreground hover:text-white"
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90"
+                  : "text-muted-foreground hover:text-white hover:bg-transparent"
               }`}
             >
               Multi-File Batch
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant={activeTab === "single" ? "default" : "ghost"}
+              size="sm"
               onClick={() => setActiveTab("single")}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer h-auto ${
                 activeTab === "single"
-                  ? "bg-[#f5551d] text-black shadow-md shadow-[#f5551d]/20"
-                  : "text-muted-foreground hover:text-white"
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90"
+                  : "text-muted-foreground hover:text-white hover:bg-transparent"
               }`}
             >
               Single Cut
-            </button>
+            </Button>
           </div>
 
           {onClose && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-xs"
               onClick={onClose}
               className="size-8 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-muted-foreground hover:text-white flex items-center justify-center cursor-pointer transition-colors"
             >
               <X className="size-4" />
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -423,21 +498,21 @@ export function AssetMultiUploader({
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-3xl p-10 sm:p-14 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-4 ${
                 dragActive
-                  ? "border-[#f5551d] bg-[#f5551d]/5 scale-[1.01]"
-                  : "border-white/15 hover:border-[#f5551d]/60 hover:bg-white/[0.02]"
+                  ? "border-primary bg-primary/5 scale-[1.01]"
+                  : "border-white/15 hover:border-primary/60 hover:bg-white/[0.02]"
               }`}
             >
-              <div className="size-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-muted-foreground group-hover:text-[#f5551d] transition-colors">
-                <Upload className="size-8 text-[#f5551d]" />
+              <div className="size-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
+                <Upload className="size-8 text-primary" />
               </div>
 
               <div className="space-y-1.5 max-w-md">
                 <div className="text-base font-bold text-white">
-                  Drop your videos & photo stills here, or click to browse
+                  Drop your videos &amp; photo stills here, or click to browse
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Select as many files as you want at once. Supports 4K ProRes 422/4444, MP4, MOV, PNG, JPG, WEBP up to 5GB each.
-                </p>
+                <TypographyMuted className="text-xs text-muted-foreground leading-relaxed">
+                  Select as many files as you want at once. Supports ProRes 422/4444, MP4, MOV, PNG, JPG, WEBP up to 5GB each.
+                </TypographyMuted>
               </div>
 
               <div className="flex items-center gap-3 pt-2">
@@ -447,7 +522,7 @@ export function AssetMultiUploader({
                   size="sm"
                   className="rounded-full border-white/15 bg-white/5 text-white hover:bg-white/10 text-xs font-semibold"
                 >
-                  <Plus className="size-3.5 mr-1.5 text-[#f5551d]" /> Select Multiple Files
+                  <Plus className="size-3.5 mr-1.5 text-primary" /> Select Multiple Files
                 </Button>
               </div>
             </div>
@@ -457,24 +532,24 @@ export function AssetMultiUploader({
               {/* Batch Queue Header & Stats */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-black/40 border border-white/10 rounded-2xl p-4">
                 <div className="flex items-center gap-3 flex-wrap text-xs">
-                  <span className="font-bold text-white">
+                  <TypographySpan className="font-bold text-white">
                     Queue: {totalCount} {totalCount === 1 ? "File" : "Files"}
-                  </span>
-                  <span className="text-muted-foreground">·</span>
+                  </TypographySpan>
+                  <TypographySpan className="text-muted-foreground">·</TypographySpan>
                   {videoCount > 0 && (
-                    <span className="flex items-center gap-1 text-[#ff8a45] font-mono text-[11px]">
+                    <TypographySpan className="flex items-center gap-1 text-primary  text-[11px]">
                       <Film className="size-3.5" /> {videoCount} Video{videoCount > 1 ? "s" : ""}
-                    </span>
+                    </TypographySpan>
                   )}
                   {stillCount > 0 && (
-                    <span className="flex items-center gap-1 text-sky-400 font-mono text-[11px]">
+                    <TypographySpan className="flex items-center gap-1 text-sky-400  text-[11px]">
                       <ImageIcon className="size-3.5" /> {stillCount} Still{stillCount > 1 ? "s" : ""}
-                    </span>
+                    </TypographySpan>
                   )}
                   {completedCount > 0 && (
-                    <span className="flex items-center gap-1 text-emerald-400 font-mono text-[11px]">
+                    <TypographySpan className="flex items-center gap-1 text-emerald-400  text-[11px]">
                       <CheckCircle2 className="size-3.5" /> {completedCount} Uploaded
-                    </span>
+                    </TypographySpan>
                   )}
                 </div>
 
@@ -487,7 +562,7 @@ export function AssetMultiUploader({
                     onClick={() => fileInputRef.current?.click()}
                     className="text-xs text-muted-foreground hover:text-white h-8"
                   >
-                    <Plus className="size-3.5 mr-1 text-[#f5551d]" /> Add More
+                    <Plus className="size-3.5 mr-1 text-primary" /> Add More
                   </Button>
                   <Button
                     type="button"
@@ -512,7 +587,7 @@ export function AssetMultiUploader({
                       key={item.id}
                       className={`rounded-2xl border transition-all p-3.5 sm:p-4 space-y-3 ${
                         item.status === "uploading"
-                          ? "bg-[#f5551d]/5 border-[#f5551d]/40 ring-1 ring-[#f5551d]/30"
+                          ? "bg-primary/5 border-primary/40 ring-1 ring-primary/30"
                           : item.status === "completed"
                           ? "bg-emerald-500/5 border-emerald-500/30"
                           : item.status === "error"
@@ -531,9 +606,9 @@ export function AssetMultiUploader({
                                 className="size-full object-cover"
                               />
                             ) : (
-                              <Film className="size-5 text-[#f5551d]" />
+                              <Film className="size-5 text-primary" />
                             )}
-                            <div className="absolute bottom-1 right-1 bg-black/80 rounded px-1 py-0.2 text-[8px] font-mono text-white/80 uppercase">
+                            <div className="absolute bottom-1 right-1 bg-black/80 rounded px-1 py-0.2 text-[8px]  text-white/80 uppercase">
                               {isImage ? "STILL" : "CUT"}
                             </div>
                           </div>
@@ -546,12 +621,12 @@ export function AssetMultiUploader({
                                 disabled={isProcessing && item.status === "uploading"}
                                 onChange={(e) => updateItemTitle(item.id, e.target.value)}
                                 placeholder="Asset Title"
-                                className="bg-transparent text-xs font-bold text-white border-b border-transparent hover:border-white/20 focus:border-[#f5551d] focus:outline-none px-0.5 py-0.5 w-full max-w-sm truncate"
+                                className="bg-transparent text-xs font-bold text-white border-b border-transparent hover:border-white/20 focus:border-primary focus:outline-none px-0.5 py-0.5 w-full max-w-sm truncate"
                               />
                             </div>
-                            <p className="text-[11px] font-mono text-muted-foreground">
+                            <TypographyMuted className="text-[11px]  text-muted-foreground">
                               {formatBytes(item.file.size)} · {item.file.name}
-                            </p>
+                            </TypographyMuted>
                           </div>
                         </div>
 
@@ -559,14 +634,14 @@ export function AssetMultiUploader({
                         <div className="flex items-center gap-2.5 shrink-0">
                           {/* Version Target Selector */}
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-muted-foreground uppercase font-mono hidden md:inline">
+                            <TypographySpan className="text-[10px] text-muted-foreground uppercase  hidden md:inline">
                               Target:
-                            </span>
+                            </TypographySpan>
                             <select
                               value={item.targetAssetId}
                               disabled={isProcessing && (item.status === "uploading" || item.status === "completed")}
                               onChange={(e) => updateItemTargetAsset(item.id, e.target.value)}
-                              className="bg-black/60 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#f5551d] max-w-[190px] truncate cursor-pointer"
+                              className="bg-black/60 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-primary max-w-[190px] truncate cursor-pointer"
                             >
                               <option value="">New Asset (V1)</option>
                               {existingAssets.map((a) => (
@@ -579,36 +654,38 @@ export function AssetMultiUploader({
 
                           {/* Status Badge */}
                           {item.status === "queued" && (
-                            <span className="text-[10px] font-mono bg-white/10 text-white/80 px-2.5 py-1 rounded-full shrink-0">
+                            <TypographySpan className="text-[10px]  bg-white/10 text-white/80 px-2.5 py-1 rounded-full shrink-0">
                               Queued
-                            </span>
+                            </TypographySpan>
                           )}
                           {item.status === "uploading" && (
-                            <span className="text-[10px] font-mono bg-[#f5551d]/20 text-[#f5551d] border border-[#f5551d]/40 px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0">
+                            <TypographySpan className="text-[10px]  bg-primary/20 text-primary border border-primary/40 px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0">
                               <Loader2 className="size-3 animate-spin" /> {item.progress}%
-                            </span>
+                            </TypographySpan>
                           )}
                           {item.status === "completed" && (
-                            <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0 font-bold">
+                            <TypographySpan className="text-[10px]  bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0 font-bold">
                               <CheckCircle2 className="size-3" /> Done
-                            </span>
+                            </TypographySpan>
                           )}
                           {item.status === "error" && (
-                            <span className="text-[10px] font-mono bg-destructive/20 text-destructive border border-destructive/40 px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0 font-bold">
+                            <TypographySpan className="text-[10px]  bg-destructive/20 text-destructive border border-destructive/40 px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0 font-bold">
                               <AlertCircle className="size-3" /> Error
-                            </span>
+                            </TypographySpan>
                           )}
 
                           {/* Remove button */}
                           {!isProcessing && item.status !== "uploading" && (
-                            <button
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="icon-xs"
                               onClick={() => removeItem(item.id)}
-                              className="size-7 rounded-lg bg-white/5 hover:bg-destructive/20 text-muted-foreground hover:text-destructive flex items-center justify-center cursor-pointer transition-colors"
+                              className="size-7 rounded-lg bg-white/5 hover:bg-destructive/20 text-muted-foreground hover:text-destructive flex items-center justify-center cursor-pointer transition-colors p-0"
                               title="Remove item"
                             >
                               <X className="size-3.5" />
-                            </button>
+                            </Button>
                           )}
                         </div>
                       </div>
@@ -616,13 +693,13 @@ export function AssetMultiUploader({
                       {/* Item Upload Progress Bar */}
                       {item.status === "uploading" && (
                         <div className="space-y-1.5 pt-1 animate-in fade-in">
-                          <div className="flex items-center justify-between text-[11px] font-mono">
-                            <span className="text-muted-foreground">{item.statusText}</span>
-                            <span className="font-bold text-[#f5551d]">{item.progress}%</span>
+                          <div className="flex items-center justify-between text-[11px] ">
+                            <TypographySpan className="text-muted-foreground">{item.statusText}</TypographySpan>
+                            <TypographySpan className="font-bold text-primary">{item.progress}%</TypographySpan>
                           </div>
                           <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-gradient-to-r from-[#f5551d] to-[#ff8a45] rounded-full transition-all duration-150"
+                              className="h-full bg-primary rounded-full transition-all duration-150"
                               style={{ width: `${item.progress}%` }}
                             />
                           </div>
@@ -631,9 +708,9 @@ export function AssetMultiUploader({
 
                       {/* Error text */}
                       {item.status === "error" && item.errorMessage && (
-                        <p className="text-[11px] text-destructive font-mono pt-1">
+                        <TypographyMuted className="text-[11px] text-destructive  pt-1">
                           {item.errorMessage}
-                        </p>
+                        </TypographyMuted>
                       )}
                     </div>
                   );
@@ -642,17 +719,17 @@ export function AssetMultiUploader({
 
               {/* Batch Actions Footer */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-white/10">
-                <p className="text-xs text-muted-foreground">
+                <TypographyMuted className="text-xs text-muted-foreground">
                   {completedCount === totalCount && totalCount > 0 ? (
-                    <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                    <TypographySpan className="text-emerald-400 font-semibold flex items-center gap-1.5">
                       <CheckCircle2 className="size-4" /> All {totalCount} assets uploaded successfully!
-                    </span>
+                    </TypographySpan>
                   ) : (
-                    <span>
-                      {queuedCount} {queuedCount === 1 ? "asset" : "assets"} ready to upload directly to Cloudflare
-                    </span>
+                    <TypographySpan>
+                      {queuedCount} {queuedCount === 1 ? "asset" : "assets"} ready for direct upload
+                    </TypographySpan>
                   )}
-                </p>
+                </TypographyMuted>
 
                 <div className="flex items-center gap-3 justify-end">
                   {isProcessing ? (
@@ -670,7 +747,7 @@ export function AssetMultiUploader({
                       type="button"
                       onClick={startBatchUpload}
                       disabled={queuedCount === 0}
-                      className="rounded-full bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] shadow-lg shadow-[#f5551d]/20 cursor-pointer disabled:opacity-50"
+                      className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 shadow-lg shadow-primary/20 cursor-pointer disabled:opacity-50"
                     >
                       <Upload className="size-3.5 mr-1.5" />
                       {queuedCount === 0 ? "All Files Uploaded" : `Upload All (${queuedCount} Files)`}

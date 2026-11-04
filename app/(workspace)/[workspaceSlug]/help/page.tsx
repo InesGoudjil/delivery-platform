@@ -15,6 +15,16 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  TypographyH1,
+  TypographyH2,
+  TypographyH3,
+  TypographyH5,
+  TypographyLead,
+  TypographyMuted,
+  TypographyKicker,
+  TypographySpan,
+} from "@/components/ui/typography";
 
 export default async function HelpPage({
   params,
@@ -42,7 +52,7 @@ export default async function HelpPage({
     {
       question: "What video formats and resolutions are supported?",
       answer:
-        "You can upload high-bitrate masters including ProRes 422, ProRes 4444, DNxHR, H.264, and HEVC/H.265 up to 4K 60fps. CineSpace creates fast adaptive-bitrate streaming proxies for instant playback while preserving your original untouched master file for client download.",
+        "You can upload high-bitrate masters including ProRes 422, ProRes 4444, DNxHR, H.264, and HEVC/H.265 at up to 60fps. CineSpace creates fast adaptive-bitrate streaming proxies for instant playback while preserving your original untouched master file for client download.",
     },
     {
       question: "How do passcodes and security work?",
@@ -65,15 +75,15 @@ export default async function HelpPage({
     <div className="max-w-4xl mx-auto space-y-10">
       {/* Header */}
       <div className="pb-6 border-b border-border">
-        <div className="text-xs font-mono text-[#f5551d] uppercase tracking-wider mb-1">
+        <TypographyKicker className="text-xs  text-primary uppercase tracking-wider mb-1 block">
           Support &amp; Resources
-        </div>
-        <h1 className="text-3xl font-bold font-heading text-foreground">
+        </TypographyKicker>
+        <TypographyH1 className="text-3xl font-bold font-heading text-foreground">
           Filmmaker Help &amp; Shortcuts
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        </TypographyH1>
+        <TypographyLead className="text-sm text-muted-foreground mt-1">
           Keyboard shortcuts for frame-accurate review, answers to common workflow questions, and direct support.
-        </p>
+        </TypographyLead>
       </div>
 
       {/* Quick navigation cards */}
@@ -82,15 +92,15 @@ export default async function HelpPage({
           href={`/${workspaceSlug}/docs`}
           className="p-5 rounded-2xl bg-card border border-border hover:border-border/80 hover:bg-muted/40 transition-all group"
         >
-          <div className="size-9 rounded-xl bg-[#f5551d]/10 text-[#f5551d] flex items-center justify-center mb-3">
+          <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3">
             <Film className="size-5" />
           </div>
-          <h3 className="text-sm font-bold font-heading text-card-foreground group-hover:text-[#f5551d] transition-colors">
+          <TypographyH3 className="text-sm font-bold font-heading text-card-foreground group-hover:text-primary transition-colors">
             Studio Documentation
-          </h3>
-          <p className="text-xs text-muted-foreground mt-1">
+          </TypographyH3>
+          <TypographyMuted className="text-xs text-muted-foreground mt-1">
             Complete guide to delivery workflows, versioning, security, and portfolio management.
-          </p>
+          </TypographyMuted>
         </Link>
 
         <Link
@@ -100,41 +110,41 @@ export default async function HelpPage({
           <div className="size-9 rounded-xl bg-[#86b98f]/10 text-[#86b98f] flex items-center justify-center mb-3">
             <Share2 className="size-5" />
           </div>
-          <h3 className="text-sm font-bold font-heading text-card-foreground group-hover:text-[#86b98f] transition-colors">
+          <TypographyH3 className="text-sm font-bold font-heading text-card-foreground group-hover:text-[#86b98f] transition-colors">
             Manage Deliveries
-          </h3>
-          <p className="text-xs text-muted-foreground mt-1">
+          </TypographyH3>
+          <TypographyMuted className="text-xs text-muted-foreground mt-1">
             Create new delivery rooms, update passcodes, manage cut versions, and view client approvals.
-          </p>
+          </TypographyMuted>
         </Link>
 
         <Link
           href={`/${workspaceSlug}/security`}
           className="p-5 rounded-2xl bg-card border border-border hover:border-border/80 hover:bg-muted/40 transition-all group"
         >
-          <div className="size-9 rounded-xl bg-[#ff8a45]/10 text-[#ff8a45] flex items-center justify-center mb-3">
+          <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3">
             <ShieldCheck className="size-5" />
           </div>
-          <h3 className="text-sm font-bold font-heading text-card-foreground group-hover:text-[#ff8a45] transition-colors">
+          <TypographyH3 className="text-sm font-bold font-heading text-card-foreground group-hover:text-primary transition-colors">
             Security &amp; Passcodes
-          </h3>
-          <p className="text-xs text-muted-foreground mt-1">
+          </TypographyH3>
+          <TypographyMuted className="text-xs text-muted-foreground mt-1">
             Update your account password, manage default review security, and configure download locks.
-          </p>
+          </TypographyMuted>
         </Link>
       </div>
 
       {/* Keyboard Shortcuts Section */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Keyboard className="size-5 text-[#f5551d]" />
-          <h2 className="text-xl font-bold font-heading text-foreground">
+          <Keyboard className="size-5 text-primary" />
+          <TypographyH2 className="text-xl font-bold font-heading text-foreground border-none pb-0">
             Review Player Keyboard Shortcuts
-          </h2>
+          </TypographyH2>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <TypographyMuted className="text-xs text-muted-foreground">
           Industry-standard NLE playback shortcuts available both in your filmmaker studio and in client delivery rooms.
-        </p>
+        </TypographyMuted>
 
         <div className="rounded-2xl bg-card border border-border overflow-hidden shadow-sm">
           <div className="grid grid-cols-1 divide-y divide-border">
@@ -144,16 +154,16 @@ export default async function HelpPage({
                 className="flex items-center justify-between p-4 px-5 hover:bg-muted/20 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-lg bg-muted text-foreground border border-border shadow-xs">
+                  <TypographySpan className="text-xs  font-semibold px-2.5 py-1 rounded-lg bg-muted text-foreground border border-border shadow-xs">
                     {sc.key}
-                  </span>
-                  <span className="text-sm text-card-foreground font-medium">
+                  </TypographySpan>
+                  <TypographySpan className="text-sm text-card-foreground font-medium">
                     {sc.action}
-                  </span>
+                  </TypographySpan>
                 </div>
-                <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+                <TypographySpan className="text-[11px]  uppercase tracking-wider text-muted-foreground">
                   {sc.category}
-                </span>
+                </TypographySpan>
               </div>
             ))}
           </div>
@@ -164,9 +174,9 @@ export default async function HelpPage({
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <HelpCircle className="size-5 text-[#86b98f]" />
-          <h2 className="text-xl font-bold font-heading text-foreground">
+          <TypographyH2 className="text-xl font-bold font-heading text-foreground border-none pb-0">
             Frequently Asked Questions
-          </h2>
+          </TypographyH2>
         </div>
 
         <div className="grid grid-cols-1 gap-3">
@@ -175,13 +185,13 @@ export default async function HelpPage({
               key={idx}
               className="p-5 rounded-2xl bg-card border border-border space-y-2"
             >
-              <div className="text-sm font-bold font-heading text-foreground flex items-center gap-2">
+              <TypographyH5 as="div" className="text-sm font-bold text-foreground flex items-center gap-2">
                 <CheckCircle2 className="size-4 text-[#86b98f] shrink-0" />
-                <span>{faq.question}</span>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed pl-6">
+                <TypographySpan>{faq.question}</TypographySpan>
+              </TypographyH5>
+              <TypographyMuted className="text-xs text-muted-foreground leading-relaxed pl-6">
                 {faq.answer}
-              </p>
+              </TypographyMuted>
             </div>
           ))}
         </div>
@@ -191,14 +201,14 @@ export default async function HelpPage({
       <div className="p-6 rounded-2xl bg-gradient-to-br from-card to-muted/50 border border-border space-y-4 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <h3 className="text-base font-bold font-heading text-foreground">
+            <TypographyH3 className="text-base font-bold font-heading text-foreground">
               Need personalized assistance?
-            </h3>
-            <p className="text-xs text-muted-foreground max-w-xl leading-relaxed">
+            </TypographyH3>
+            <TypographyMuted className="text-xs text-muted-foreground max-w-xl leading-relaxed">
               Our video engineering team is available to help with high-volume uploads, custom branding domains, or review player troubleshooting.
-            </p>
+            </TypographyMuted>
           </div>
-          <div className="size-10 rounded-2xl bg-[#f5551d]/10 text-[#f5551d] flex items-center justify-center shrink-0">
+          <div className="size-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
             <Mail className="size-5" />
           </div>
         </div>
@@ -206,7 +216,7 @@ export default async function HelpPage({
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <Button
             asChild
-            className="bg-[#f5551d] hover:bg-[#f5551d]/90 text-white font-semibold text-xs rounded-xl px-4 py-2"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs rounded-xl px-4 py-2"
           >
             <a href="mailto:support@cinespace.video?subject=Filmmaker Support Request">
               Email Engineering Support

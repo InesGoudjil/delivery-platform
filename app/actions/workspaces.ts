@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerServices, getServerAdminServices } from "@/core/server";
+import {
+  createTeamWorkspaceSchema,
+  safeValidate,
+} from "@/lib/validations";
 
 export interface WorkspaceActionResult<T = any> {
   success: boolean;
@@ -46,14 +50,19 @@ export async function createTeamWorkspaceAction(formData: FormData): Promise<Wor
       return { success: false, error: "Please log in to create a workspace." };
     }
 
-    const brandName = (formData.get("brandName") as string)?.trim();
-    const rawSlug = (formData.get("slug") as string)?.trim();
-    const accentColor = (formData.get("accentColor") as string)?.trim() || "#f5551d";
-    const defaultLanguage = ((formData.get("defaultLanguage") as string)?.trim() as "ar" | "en") || "ar";
+    const rawInput = {
+      brandName: formData.get("brandName"),
+      slug: formData.get("slug") || undefined,
+      accentColor: formData.get("accentColor") || undefined,
+      defaultLanguage: formData.get("defaultLanguage") || undefined,
+    };
 
-    if (!brandName || brandName.length < 2) {
-      return { success: false, error: "Please enter a valid studio or workspace name (at least 2 characters)." };
+    const validated = safeValidate(createTeamWorkspaceSchema, rawInput);
+    if (!validated.success) {
+      return { success: false, error: validated.error };
     }
+
+    const { brandName, slug: rawSlug, accentColor, defaultLanguage } = validated.data;
 
     // Verify subscription eligibility
     const eligibility = await services.workspace.checkTeamWorkspaceEligibility(user.id);
@@ -83,48 +92,3 @@ export async function createTeamWorkspaceAction(formData: FormData): Promise<Wor
   }
 }
 
-/**
- * Development & Demo helper to switch a workspace's subscription plan directly (e.g. Upgrade to Studio).
- * Allows instant verification of the team workspace unlock without needing live Stripe webhooks.
- */
-export async function switchWorkspacePlanAction(
-  workspaceId: string,
-  planSlug: string
-): Promise<WorkspaceActionResult> {
-  try {
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    // Check ownership or admin status
-    const workspace = await services.workspace.getWorkspaceById(workspaceId);
-    if (!workspace) {
-      return { success: false, error: "Workspace not found" };
-    }
-
-    const member = await services.member.getMember(workspaceId, user.id);
-    const canManage = workspace.ownerId === user.id || member?.role === "owner" || member?.role === "admin";
-    if (!canManage) {
-      return { success: false, error: "Permission denied: Only workspace owners can change plans." };
-    }
-
-    const adminServices = await getServerAdminServices();
-    const plan = await adminServices.subscription.getPlanBySlug(planSlug);
-    if (!plan) {
-      return { success: false, error: `Plan "${planSlug}" not found.` };
-    }
-
-    await adminServices.subscription.adminChangeWorkspacePlan(workspaceId, plan.id, "active");
-
-    revalidatePath("/", "layout");
-    revalidatePath(`/${workspace.slug}`);
-    revalidatePath(`/${workspace.slug}/subscription`);
-    revalidatePath("/new-workspace");
-
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to switch plan." };
-  }
-}

@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-  X,
   Link2,
   Lock,
   Key,
@@ -16,14 +15,22 @@ import {
   MessageCircle,
   Download,
   Mail,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { UniversalDialog } from "@/components/ui/universal-dialog";
+import { TypographyMuted, TypographySpan } from "@/components/ui/typography";
+import { useOptionalEntitlements } from "@/components/providers/entitlements-provider";
+import Link from "next/link";
 import {
   updateDeliverySecurityAction,
   verifyPassphraseWithTokenAction,
   sendDeliveryEmailAction,
+  regenerateDeliveryShareTokenAction,
 } from "@/app/actions/deliveries";
+import { toast } from "sonner";
 
 interface ShareLinkDialogProps {
   isOpen: boolean;
@@ -31,9 +38,32 @@ interface ShareLinkDialogProps {
   projectId: string;
   shareToken: string;
   projectTitle: string;
+  clientEmail?: string | null;
   initialPasscodeProtected: boolean;
   initialDownloadAllowed: boolean;
+  initialExpiresAt?: string | null;
+  onShareTokenRegenerated?: (newToken: string) => void;
   triggerToast: (msg: string) => void;
+  features?: Record<string, any>;
+  workspaceSlug?: string;
+}
+
+function getInitialExpiryOption(expiresAt?: string | null): "24 hours" | "7 days" | "30 days" | "Never" {
+  if (!expiresAt) return "Never";
+  const diffHours = (new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60);
+  if (diffHours <= 0) return "24 hours";
+  if (diffHours <= 36) return "24 hours";
+  if (diffHours <= 8 * 24) return "7 days";
+  return "30 days";
+}
+
+function calculateExpiresAt(opt: "24 hours" | "7 days" | "30 days" | "Never"): string | null {
+  if (opt === "Never") return null;
+  const now = Date.now();
+  if (opt === "24 hours") return new Date(now + 24 * 60 * 60 * 1000).toISOString();
+  if (opt === "7 days") return new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString();
+  if (opt === "30 days") return new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString();
+  return null;
 }
 
 export function ShareLinkDialog({
@@ -42,11 +72,39 @@ export function ShareLinkDialog({
   projectId,
   shareToken,
   projectTitle,
+  clientEmail: initialClientEmail,
   initialPasscodeProtected,
   initialDownloadAllowed,
+  initialExpiresAt,
+  onShareTokenRegenerated,
   triggerToast,
+  features,
+  workspaceSlug,
 }: ShareLinkDialogProps) {
-  const shareUrl = `/deliver/${shareToken}`;
+  const [currentToken, setCurrentToken] = useState(shareToken);
+  useEffect(() => {
+    setCurrentToken(shareToken);
+  }, [shareToken]);
+
+  const [expiresAtState, setExpiresAtState] = useState<string | null>(initialExpiresAt ?? null);
+  const [shareExpires, setShareExpires] = useState<"24 hours" | "7 days" | "30 days" | "Never">(
+    getInitialExpiryOption(initialExpiresAt)
+  );
+
+  useEffect(() => {
+    setExpiresAtState(initialExpiresAt ?? null);
+    setShareExpires(getInitialExpiryOption(initialExpiresAt));
+  }, [initialExpiresAt]);
+
+  const [isUpdatingExpiry, setIsUpdatingExpiry] = useState(false);
+  const [isRegeneratingToken, setIsRegeneratingToken] = useState(false);
+
+  const shareUrl = `/deliver/${currentToken}`;
+
+  const entitlements = useOptionalEntitlements();
+  const canPasswordProtect = entitlements?.can.passwordProtect ?? (features ? Boolean(features.password_protected) : false);
+  const canWhatsApp = entitlements?.can.sendWhatsApp ?? (features ? Boolean(features.whatsapp_delivery) : false);
+  const canNotifyDownloads = entitlements?.can.receiveDownloadNotifications ?? (features ? Boolean(features.download_notifications) : false);
 
   const [sharePassphrase, setSharePassphrase] = useState(initialPasscodeProtected);
   const [passphraseValue, setPassphraseValue] = useState("");
@@ -61,18 +119,68 @@ export function ShareLinkDialog({
 
   const [shareComments, setShareComments] = useState(true);
   const [shareDownloads, setShareDownloads] = useState(initialDownloadAllowed);
-  const [shareExpires, setShareExpires] = useState<"24 hours" | "7 days" | "30 days" | "Never">("24 hours");
   const [notifyComments, setNotifyComments] = useState(true);
   const [notifyDownloads, setNotifyDownloads] = useState(true);
 
+  const handleSelectExpiry = async (opt: "24 hours" | "7 days" | "30 days" | "Never") => {
+    setShareExpires(opt);
+    const newExpiresAt = calculateExpiresAt(opt);
+    setExpiresAtState(newExpiresAt);
+    setIsUpdatingExpiry(true);
+    try {
+      const res = await updateDeliverySecurityAction(projectId, {
+        expiresAt: newExpiresAt,
+      });
+      if (res.success) {
+        triggerToast(opt === "Never" ? "Link set to never expire" : `Link expiration updated to ${opt}`);
+      } else {
+        toast.error(res.error || "Failed to update link expiration.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update link expiration.");
+    } finally {
+      setIsUpdatingExpiry(false);
+    }
+  };
+
+  const handleRegenerateToken = async () => {
+    const confirmed = window.confirm(
+      "Regenerating this link will immediately revoke the current link. Any client with the old link will lose access. Proceed?"
+    );
+    if (!confirmed) return;
+
+    setIsRegeneratingToken(true);
+    try {
+      const res = await regenerateDeliveryShareTokenAction(projectId);
+      if (res.success && res.shareToken) {
+        setCurrentToken(res.shareToken);
+        onShareTokenRegenerated?.(res.shareToken);
+        triggerToast("New delivery link generated! Previous link has been revoked.");
+      } else {
+        toast.error(res.error || "Failed to regenerate delivery link.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to regenerate delivery link.");
+    } finally {
+      setIsRegeneratingToken(false);
+    }
+  };
+
   // Email Sharing State
-  const [clientEmail, setClientEmail] = useState("");
-  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [clientEmail, setClientEmail] = useState(initialClientEmail || "");
+  const [showEmailInput, setShowEmailInput] = useState(Boolean(initialClientEmail));
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  useEffect(() => {
+    if (initialClientEmail) {
+      setClientEmail(initialClientEmail);
+      setShowEmailInput(true);
+    }
+  }, [initialClientEmail]);
 
   const handleSendEmail = async () => {
     if (!clientEmail.trim()) {
-      triggerToast("Please enter a valid client email address.");
+      toast.error("Please enter a valid client email address.");
       return;
     }
     setIsSendingEmail(true);
@@ -83,10 +191,10 @@ export function ShareLinkDialog({
         setShowEmailInput(false);
         setClientEmail("");
       } else {
-        triggerToast(res.error || "Failed to send email");
+        toast.error(res.error || "Failed to send email");
       }
     } catch (err: any) {
-      triggerToast(err.message || "Failed to send email");
+      toast.error(err.message || "Failed to send email");
     } finally {
       setIsSendingEmail(false);
     }
@@ -106,6 +214,10 @@ export function ShareLinkDialog({
   };
 
   const handleTogglePassphrase = async (enabled: boolean) => {
+    if (enabled && !canPasswordProtect) {
+      toast.error("Passcode protection is available on Pro and Studio plans. Upgrade to unlock.");
+      return;
+    }
     setSharePassphrase(enabled);
     setVerificationStatus("idle");
     setVerificationMsg(null);
@@ -116,9 +228,9 @@ export function ShareLinkDialog({
         if (res.success) {
           setIsPasscodeSaved(false);
           setPassphraseValue("");
-          triggerToast("Passphrase removed. Link is now public.");
+          toast.info("Passphrase removed. Link is now public.");
         } else {
-          triggerToast(res.error || "Failed to disable passphrase.");
+          toast.error(res.error || "Failed to disable passphrase.");
         }
       } finally {
         setIsSavingSecurity(false);
@@ -132,22 +244,30 @@ export function ShareLinkDialog({
 
   const handleSaveSecuritySettings = async () => {
     if (sharePassphrase && !passphraseValue.trim()) {
-      triggerToast("Please enter or generate a passphrase first.");
+      toast.error("Please enter or generate a passphrase first.");
+      return;
+    }
+    if (sharePassphrase && !canPasswordProtect) {
+      toast.error("Passcode protection is available on Pro and Studio plans. Upgrade to unlock.");
       return;
     }
     setIsSavingSecurity(true);
     try {
+      const currentExpiryDate = calculateExpiresAt(shareExpires);
       const res = await updateDeliverySecurityAction(projectId, {
         passphrase: sharePassphrase ? passphraseValue.trim() : null,
         isDownloadAllowed: shareDownloads,
+        notifyOnDownload: canNotifyDownloads ? notifyDownloads : false,
+        expiresAt: currentExpiryDate,
       });
       if (res.success) {
+        setExpiresAtState(currentExpiryDate);
         setIsPasscodeSaved(Boolean(res.passcodeProtected));
         setVerificationStatus("valid");
-        setVerificationMsg("Passphrase verified and locked with delivery token!");
+        setVerificationMsg("Passphrase & security verified with delivery token!");
         triggerToast("Passphrase secured & linked with delivery token!");
       } else {
-        triggerToast(res.error || "Failed to save security settings.");
+        toast.error(res.error || "Failed to save security settings.");
       }
     } finally {
       setIsSavingSecurity(false);
@@ -156,12 +276,12 @@ export function ShareLinkDialog({
 
   const handleVerifyPassphraseWithToken = async () => {
     if (!passphraseValue.trim()) {
-      triggerToast("Enter a passphrase to test verification against token.");
+      toast.error("Enter a passphrase to test verification against token.");
       return;
     }
     setIsVerifyingSecurity(true);
     try {
-      const res = await verifyPassphraseWithTokenAction(shareToken, passphraseValue);
+      const res = await verifyPassphraseWithTokenAction(currentToken, passphraseValue);
       if (res.success) {
         setVerificationStatus("valid");
         setVerificationMsg(res.message || "Passphrase verified with token!");
@@ -169,7 +289,7 @@ export function ShareLinkDialog({
       } else {
         setVerificationStatus("invalid");
         setVerificationMsg(res.error || "Passphrase does not match token security key. Click 'Save & Lock'.");
-        triggerToast(res.error || "Verification mismatch.");
+        toast.error(res.error || "Verification mismatch.");
       }
     } finally {
       setIsVerifyingSecurity(false);
@@ -197,91 +317,97 @@ export function ShareLinkDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent
-        showCloseButton={false}
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-[#141418]/95 backdrop-blur-xl border border-white/15 text-white rounded-3xl p-6 sm:p-7 w-full max-w-md shadow-2xl space-y-6"
-      >
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div>
-            <span className="text-[11px] font-bold text-[#f5551d] uppercase tracking-wider block">
-              Client link
-            </span>
-            <h3 className="text-lg font-black font-heading tracking-wide uppercase text-white">
-              SHARE A LINK
-            </h3>
-          </div>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-muted-foreground hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        {/* URL Input Bar */}
+    <UniversalDialog
+      open={isOpen}
+      onOpenChange={onOpenChange}
+      size="md"
+      badge={
+        <TypographySpan className="text-[11px] font-bold text-primary uppercase tracking-wider block">
+          Client link
+        </TypographySpan>
+      }
+      title="SHARE A LINK"
+      bodyClassName="space-y-6"
+    >
+      {/* URL Input Bar */}
         <div className="flex items-center justify-between bg-black/60 border border-white/10 rounded-2xl px-4 py-3 text-xs gap-3">
           <div className="flex items-center gap-2 text-muted-foreground truncate min-w-0 flex-1">
-            <Link2 className="size-4 shrink-0 text-[#f5551d]" />
-            <span className="font-mono text-white truncate text-[11px]">
+            <Link2 className="size-4 shrink-0 text-primary" />
+            <TypographySpan className=" text-white truncate text-[11px]">
               {typeof window !== "undefined" ? window.location.host : "cinespace.film"}{shareUrl}
-            </span>
+            </TypographySpan>
           </div>
-          {sharePassphrase && isPasscodeSaved ? (
-            <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1 font-mono">
-              <Lock className="size-3 text-amber-400" /> Protected
-            </span>
-          ) : (
-            <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
-              Public Link
-            </span>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              onClick={handleRegenerateToken}
+              disabled={isRegeneratingToken}
+              className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-white transition-colors cursor-pointer"
+              title="Regenerate link (revokes the previous link immediately)"
+            >
+              <RefreshCw className={`size-3.5 ${isRegeneratingToken ? "animate-spin text-primary" : ""}`} />
+            </Button>
+            {sharePassphrase && isPasscodeSaved ? (
+              <TypographySpan className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1 ">
+                <Lock className="size-3 text-amber-400" /> Protected
+              </TypographySpan>
+            ) : (
+              <TypographySpan className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 ">
+                Public Link
+              </TypographySpan>
+            )}
+          </div>
         </div>
 
         {/* SECURITY */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
-                SECURITY
-              </span>
-              <p className="text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <TypographySpan className="text-[10px]  text-muted-foreground uppercase tracking-widest block">
+                  SECURITY
+                </TypographySpan>
+                <Badge variant="orange" className="text-[9px] px-1.5 py-0 font-bold">
+                  PRO
+                </Badge>
+              </div>
+              <TypographyMuted className="text-[11px] text-muted-foreground">
                 Protect review room with a client access passphrase
-              </p>
+              </TypographyMuted>
+              {!canPasswordProtect && (
+                <Link
+                  href={workspaceSlug ? `/${workspaceSlug}/subscription` : "#"}
+                  className="text-[10px] text-primary hover:underline  inline-block mt-0.5"
+                >
+                  Upgrade to Pro to unlock passcode protection
+                </Link>
+              )}
             </div>
-            <button
-              type="button"
-              onClick={() => handleTogglePassphrase(!sharePassphrase)}
-              className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                sharePassphrase ? "bg-[#f5551d]" : "bg-white/20"
-              }`}
+            <Switch
+              disabled={!canPasswordProtect}
+              checked={sharePassphrase}
+              onCheckedChange={(val) => handleTogglePassphrase(val)}
               aria-label="Toggle passphrase protection"
-            >
-              <span
-                className={`absolute top-1 left-1 size-4 rounded-full bg-black transition-transform ${
-                  sharePassphrase ? "translate-x-5" : "translate-x-0"
-                }`}
-              />
-            </button>
+            />
           </div>
 
           {/* Passphrase Input Container */}
           {sharePassphrase && (
-            <div className="p-3.5 bg-black/50 border border-[#f5551d]/30 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="p-3.5 bg-black/50 border border-primary/30 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono uppercase font-bold text-[#f5551d] flex items-center gap-1.5">
+                <TypographySpan className="text-[10px]  uppercase font-bold text-primary flex items-center gap-1.5">
                   <Key className="size-3" /> Client Passphrase
-                </span>
+                </TypographySpan>
                 {isPasscodeSaved ? (
-                  <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1 font-bold">
+                  <TypographySpan className="text-[10px]  text-emerald-400 flex items-center gap-1 font-bold">
                     <ShieldCheck className="size-3" /> Secured
-                  </span>
+                  </TypographySpan>
                 ) : (
-                  <span className="text-[10px] font-mono text-amber-400 flex items-center gap-1">
+                  <TypographySpan className="text-[10px]  text-amber-400 flex items-center gap-1">
                     <ShieldAlert className="size-3" /> Unsaved changes
-                  </span>
+                  </TypographySpan>
                 )}
               </div>
 
@@ -296,41 +422,47 @@ export function ShareLinkDialog({
                     setVerificationStatus("idle");
                     setVerificationMsg(null);
                   }}
-                  className="w-full bg-[#18181c] border border-white/15 focus:border-[#f5551d] rounded-xl pl-3.5 pr-24 py-2 text-xs font-mono text-white placeholder:text-neutral-500 focus:outline-none transition-colors"
+                  className="w-full bg-[#18181c] border border-white/15 focus:border-primary rounded-xl pl-3.5 pr-24 py-2 text-xs  text-white placeholder:text-neutral-500 focus:outline-none transition-colors"
                 />
                 <div className="absolute right-1.5 flex items-center gap-1">
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={() => setShowPassphraseText(!showPassphraseText)}
                     className="p-1 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-white transition-colors cursor-pointer"
                     title={showPassphraseText ? "Hide passphrase" : "Show passphrase"}
                   >
                     {showPassphraseText ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={generateRandomPassphrase}
-                    className="p-1 rounded-lg hover:bg-white/10 text-[#f5551d] hover:text-[#ff8a45] transition-colors cursor-pointer"
+                    className="p-1 rounded-lg hover:bg-white/10 text-primary hover:text-primary/80 transition-colors cursor-pointer"
                     title="Generate memorable passphrase"
                   >
                     <RefreshCw className="size-3.5" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={handleCopyPassphrase}
                     disabled={!passphraseValue}
                     className="p-1 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-white transition-colors cursor-pointer disabled:opacity-30"
                     title="Copy passphrase"
                   >
                     {copiedPassphrase ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
-                  </button>
+                  </Button>
                 </div>
               </div>
 
               {/* Status verification message */}
               {verificationMsg && (
                 <div
-                  className={`text-[11px] flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-mono ${
+                  className={`text-[11px] flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg  ${
                     verificationStatus === "valid"
                       ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                       : "bg-red-500/10 text-red-400 border border-red-500/20"
@@ -341,17 +473,17 @@ export function ShareLinkDialog({
                   ) : (
                     <ShieldAlert className="size-3.5 shrink-0" />
                   )}
-                  <span className="truncate">{verificationMsg}</span>
+                  <TypographySpan className="truncate">{verificationMsg}</TypographySpan>
                 </div>
               )}
 
               {/* Save & Verify Action Buttons */}
               <div className="flex items-center gap-2 pt-1">
-                <button
+                <Button
                   type="button"
                   onClick={handleSaveSecuritySettings}
                   disabled={isSavingSecurity || !passphraseValue.trim()}
-                  className="flex-1 bg-[#f5551d] hover:bg-[#ff8a45] disabled:opacity-50 text-black font-extrabold text-[11px] py-2 px-3 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-[#f5551d]/10"
+                  className="flex-1 bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground font-extrabold text-[11px] py-2 px-3 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-primary/10 h-auto"
                 >
                   {isSavingSecurity ? (
                     <RefreshCw className="size-3 animate-spin" />
@@ -359,13 +491,14 @@ export function ShareLinkDialog({
                     <Lock className="size-3" />
                   )}
                   {isSavingSecurity ? "SAVING..." : "SAVE & LOCK WITH TOKEN"}
-                </button>
+                </Button>
 
-                <button
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={handleVerifyPassphraseWithToken}
                   disabled={isVerifyingSecurity || !passphraseValue.trim()}
-                  className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white font-mono text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1.5 border border-white/10"
+                  className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white  text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1.5 border border-white/10 h-auto"
                   title="Test verification between token and passphrase"
                 >
                   {isVerifyingSecurity ? (
@@ -374,131 +507,151 @@ export function ShareLinkDialog({
                     <ShieldCheck className="size-3 text-emerald-400" />
                   )}
                   TEST VERIFY
-                </button>
+                </Button>
               </div>
 
-              <p className="text-[10px] text-muted-foreground font-sans leading-relaxed">
+              <TypographyMuted className="text-[10px] text-muted-foreground font-sans leading-relaxed">
                 Passphrases are cryptographically hashed (SHA-256) and verified against the delivery share token before client access is granted.
-              </p>
+              </TypographyMuted>
             </div>
           )}
         </div>
 
         {/* PERMISSIONS */}
         <div className="space-y-3">
-          <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+          <TypographySpan className="text-[10px]  text-muted-foreground uppercase tracking-widest block">
             PERMISSIONS
-          </span>
+          </TypographySpan>
           <div className="space-y-2.5 text-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5 text-white">
                 <MessageCircle className="size-4 text-muted-foreground" />
-                <span>Comments</span>
+                <TypographySpan>Comments</TypographySpan>
               </div>
-              <button
-                type="button"
-                onClick={() => setShareComments(!shareComments)}
-                className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                  shareComments ? "bg-[#f5551d]" : "bg-white/20"
-                }`}
-              >
-                <span
-                  className={`absolute top-1 left-1 size-4 rounded-full bg-black transition-transform ${
-                    shareComments ? "translate-x-5" : "translate-x-0"
-                  }`}
-                />
-              </button>
+              <Switch
+                checked={shareComments}
+                onCheckedChange={setShareComments}
+                aria-label="Allow comments"
+              />
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5 text-white">
                 <Download className="size-4 text-muted-foreground" />
-                <span>Downloads</span>
+                <TypographySpan>Downloads</TypographySpan>
               </div>
-              <button
-                type="button"
-                onClick={() => setShareDownloads(!shareDownloads)}
-                className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                  shareDownloads ? "bg-[#f5551d]" : "bg-white/20"
-                }`}
-              >
-                <span
-                  className={`absolute top-1 left-1 size-4 rounded-full bg-black transition-transform ${
-                    shareDownloads ? "translate-x-5" : "translate-x-0"
-                  }`}
-                />
-              </button>
+              <Switch
+                checked={shareDownloads}
+                onCheckedChange={setShareDownloads}
+                aria-label="Allow downloads"
+              />
             </div>
           </div>
         </div>
 
         {/* LINK EXPIRES */}
         <div className="space-y-3">
-          <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
-            LINK EXPIRES
-          </span>
+          <div className="flex items-center justify-between">
+            <TypographySpan className="text-[10px]  text-muted-foreground uppercase tracking-widest block">
+              LINK EXPIRES
+            </TypographySpan>
+            {isUpdatingExpiry && (
+              <TypographySpan className="text-[10px]  text-primary flex items-center gap-1">
+                <RefreshCw className="size-2.5 animate-spin" /> Updating...
+              </TypographySpan>
+            )}
+          </div>
+
+          {/* Active Expiration Status Indicator */}
+          {expiresAtState ? (
+            new Date(expiresAtState).getTime() < Date.now() ? (
+              <div className="flex items-center gap-2 text-[11px] text-amber-300  bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-xl">
+                <Clock className="size-3.5 text-amber-400 shrink-0" />
+                <TypographySpan>
+                  <strong>Expired on {new Date(expiresAtState).toLocaleDateString()}</strong> · Clients cannot view this cut
+                </TypographySpan>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-[11px] text-emerald-300  bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl">
+                <Clock className="size-3.5 text-emerald-400 shrink-0" />
+                <TypographySpan>
+                  Active · Expires in{" "}
+                  {Math.max(
+                    1,
+                    Math.ceil((new Date(expiresAtState).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                  )}{" "}
+                  days ({new Date(expiresAtState).toLocaleDateString()})
+                </TypographySpan>
+              </div>
+            )
+          ) : (
+            <div className="flex items-center gap-2 text-[11px] text-neutral-300  bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl">
+              <Check className="size-3.5 text-emerald-400 shrink-0" />
+              <TypographySpan>Active · Link never expires</TypographySpan>
+            </div>
+          )}
+
           <div className="grid grid-cols-4 gap-1 bg-black/60 p-1 rounded-2xl border border-white/10 text-xs">
             {(["24 hours", "7 days", "30 days", "Never"] as const).map((opt) => (
-              <button
+              <Button
                 key={opt}
                 type="button"
-                onClick={() => setShareExpires(opt)}
-                className={`py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer text-center ${
+                variant={shareExpires === opt ? "default" : "ghost"}
+                size="sm"
+                disabled={isUpdatingExpiry}
+                onClick={() => handleSelectExpiry(opt)}
+                className={`py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer text-center h-auto ${
                   shareExpires === opt
-                    ? "bg-[#f5551d] text-black"
-                    : "text-muted-foreground hover:text-white"
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "text-muted-foreground hover:text-white hover:bg-white/5"
                 }`}
               >
                 {opt}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
 
         {/* NOTIFY ME WHEN THE CLIENT... */}
         <div className="space-y-3">
-          <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block">
+          <TypographySpan className="text-[10px]  text-muted-foreground uppercase tracking-widest block">
             NOTIFY ME WHEN THE CLIENT...
-          </span>
+          </TypographySpan>
           <div className="space-y-2.5 text-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5 text-white">
                 <MessageCircle className="size-4 text-muted-foreground" />
-                <span>Leaves a comment</span>
+                <TypographySpan>Leaves a comment</TypographySpan>
               </div>
-              <button
-                type="button"
-                onClick={() => setNotifyComments(!notifyComments)}
-                className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                  notifyComments ? "bg-[#f5551d]" : "bg-white/20"
-                }`}
-              >
-                <span
-                  className={`absolute top-1 left-1 size-4 rounded-full bg-black transition-transform ${
-                    notifyComments ? "translate-x-5" : "translate-x-0"
-                  }`}
-                />
-              </button>
+              <Switch
+                checked={notifyComments}
+                onCheckedChange={setNotifyComments}
+                aria-label="Notify on comments"
+              />
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5 text-white">
                 <Download className="size-4 text-muted-foreground" />
-                <span>Downloads files</span>
+                <div className="flex items-center gap-1.5">
+                  <TypographySpan>Downloads files</TypographySpan>
+                  <Badge variant="orange" className="text-[9px] px-1.5 py-0 font-bold">
+                    PRO
+                  </Badge>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setNotifyDownloads(!notifyDownloads)}
-                className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                  notifyDownloads ? "bg-[#f5551d]" : "bg-white/20"
-                }`}
-              >
-                <span
-                  className={`absolute top-1 left-1 size-4 rounded-full bg-black transition-transform ${
-                    notifyDownloads ? "translate-x-5" : "translate-x-0"
-                  }`}
-                />
-              </button>
+              <Switch
+                disabled={!canNotifyDownloads}
+                checked={canNotifyDownloads && notifyDownloads}
+                onCheckedChange={(val) => {
+                  if (!canNotifyDownloads) {
+                    toast.error("Download notifications are available on Pro and Studio plans.");
+                    return;
+                  }
+                  setNotifyDownloads(val);
+                }}
+                aria-label="Notify on downloads"
+              />
             </div>
           </div>
         </div>
@@ -506,17 +659,19 @@ export function ShareLinkDialog({
         {/* Email Direct Share */}
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="flex items-center gap-1.5 font-bold text-white">
-              <Mail className="size-3.5 text-[#f5551d]" />
+            <TypographySpan className="flex items-center gap-1.5 font-bold text-white">
+              <Mail className="size-3.5 text-primary" />
               Email Review Link to Client
-            </span>
-            <button
+            </TypographySpan>
+            <Button
               type="button"
+              variant="link"
+              size="xs"
               onClick={() => setShowEmailInput(!showEmailInput)}
-              className="text-[11px] font-mono text-[#f5551d] hover:underline cursor-pointer"
+              className="text-[11px]  text-primary hover:underline cursor-pointer p-0 h-auto"
             >
               {showEmailInput ? "Cancel" : "Send Email"}
-            </button>
+            </Button>
           </div>
           {showEmailInput && (
             <div className="flex gap-2 pt-1">
@@ -531,14 +686,14 @@ export function ShareLinkDialog({
                     handleSendEmail();
                   }
                 }}
-                className="flex-1 bg-black/60 border border-white/15 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-muted-foreground focus:outline-none focus:border-[#f5551d]"
+                className="flex-1 bg-black/60 border border-white/15 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-muted-foreground focus:outline-none focus:border-primary"
               />
               <Button
                 type="button"
                 size="sm"
                 disabled={isSendingEmail}
                 onClick={handleSendEmail}
-                className="bg-[#f5551d] hover:bg-[#ff8a45] text-black font-extrabold text-xs h-auto py-1.5 px-3 rounded-lg cursor-pointer"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs h-auto py-1.5 px-3 rounded-lg cursor-pointer"
               >
                 {isSendingEmail ? "Sending..." : "Send"}
               </Button>
@@ -548,39 +703,54 @@ export function ShareLinkDialog({
 
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-3 pt-2">
-          <Button
-            asChild
-            variant="outline"
-            className="rounded-full border-white/20 bg-black/40 hover:bg-white/10 text-white font-extrabold text-xs py-3 h-auto cursor-pointer"
-          >
-            <a
-              href={`https://wa.me/?text=${encodeURIComponent(
-                sharePassphrase && passphraseValue
-                  ? `🎬 Here is your private review link for "${projectTitle}":\n${
-                      typeof window !== "undefined" ? window.location.origin : ""
-                    }${shareUrl}\n\n🔐 Passphrase: ${passphraseValue}`
-                  : `🎬 Here is your review link for "${projectTitle}":\n${
-                      typeof window !== "undefined" ? window.location.origin : ""
-                    }${shareUrl}`
-              )}`}
-              target="_blank"
-              rel="noreferrer"
+          {canWhatsApp ? (
+            <Button
+              asChild
+              variant="outline"
+              className="rounded-full border-white/20 bg-black/40 hover:bg-white/10 text-white font-extrabold text-xs py-3 h-auto cursor-pointer"
             >
-              <MessageCircle className="size-3.5 mr-1.5 text-emerald-400" />
-              SEND ON WHATSAPP
-            </a>
-          </Button>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(
+                  sharePassphrase && passphraseValue
+                    ? `🎬 Here is your private review link for "${projectTitle}":\n${
+                        typeof window !== "undefined" ? window.location.origin : ""
+                      }${shareUrl}\n\n🔐 Passphrase: ${passphraseValue}`
+                    : `🎬 Here is your review link for "${projectTitle}":\n${
+                        typeof window !== "undefined" ? window.location.origin : ""
+                      }${shareUrl}`
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <MessageCircle className="size-3.5 mr-1.5 text-emerald-400" />
+                SEND ON WHATSAPP
+              </a>
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                toast.error(
+                  "WhatsApp delivery is available on Basic, Pro, and Studio plans. Upgrade to unlock."
+                )
+              }
+              className="rounded-full border-white/10 bg-black/20 text-muted-foreground font-extrabold text-xs py-3 h-auto opacity-70 cursor-not-allowed"
+            >
+              <MessageCircle className="size-3.5 mr-1.5 text-muted-foreground" />
+              WHATSAPP <Badge variant="secondary" className="text-[9px] ml-1.5 py-0 px-1 ">BASIC+</Badge>
+            </Button>
+          )}
 
           <Button
             type="button"
             onClick={handleCopyLinkWithPassphrase}
-            className="rounded-full bg-[#f5551d] hover:bg-[#ff8a45] text-black font-extrabold text-xs py-3 h-auto shadow-lg shadow-[#f5551d]/20 cursor-pointer"
+            className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs py-3 h-auto shadow-lg shadow-primary/20 cursor-pointer"
           >
             <Link2 className="size-3.5 mr-1.5" />
             {copiedLink ? "COPIED!" : sharePassphrase && passphraseValue ? "COPY LINK & PASS" : "COPY LINK"}
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+    </UniversalDialog>
   );
 }

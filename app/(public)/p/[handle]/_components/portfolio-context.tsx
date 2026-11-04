@@ -2,11 +2,13 @@
 
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { PortfolioAsset, PortfolioProject, FilmmakerProfile, PublicFeaturedItem } from "@/lib/portfolio-data";
+import { PortfolioAppearance } from "@/core/entities/portfolio";
 
 interface PortfolioContextType {
   profile: FilmmakerProfile;
   projects: PortfolioProject[];
   assets: PortfolioAsset[];
+  appearance?: PortfolioAppearance;
   primaryFeatured: PublicFeaturedItem | null;
   activeStill: PortfolioAsset | null;
   setActiveStill: (still: PortfolioAsset | null) => void;
@@ -27,6 +29,7 @@ interface PortfolioProviderProps {
   profile: FilmmakerProfile;
   projects: PortfolioProject[];
   assets: PortfolioAsset[];
+  appearance?: PortfolioAppearance;
   primaryFeatured?: PublicFeaturedItem | null;
 }
 
@@ -35,6 +38,7 @@ export function PortfolioProvider({
   profile,
   projects,
   assets,
+  appearance,
   primaryFeatured = null,
 }: PortfolioProviderProps) {
   const [activeStill, setActiveStill] = useState<PortfolioAsset | null>(null);
@@ -87,6 +91,7 @@ export function PortfolioProvider({
         profile,
         projects,
         assets,
+        appearance,
         primaryFeatured,
         activeStill,
         setActiveStill,

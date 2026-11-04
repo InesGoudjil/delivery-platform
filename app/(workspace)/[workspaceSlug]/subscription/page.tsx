@@ -3,6 +3,9 @@ import { getServerServices, getServerAdminServices } from "@/core/server";
 import { PageContainer } from "@/components/ui/page-container";
 import { SubscriptionHeader } from "./_components/subscription-header";
 import { SubscriptionClient } from "./_components/subscription-client";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ page: "SubscriptionPage" });
 
 export default async function SubscriptionPage({
   params,
@@ -32,7 +35,7 @@ export default async function SubscriptionPage({
       const adminServices = await getServerAdminServices();
       await adminServices.stripe.syncCheckoutSession(session_id, adminServices.subscription);
     } catch (err: any) {
-      console.warn("[SubscriptionPage] Checkout session sync error:", err.message);
+      log.warn({ err, sessionId: session_id }, "Checkout session sync error");
     }
   }
 

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { TypographyH1, TypographyH4, TypographyMuted } from "@/components/ui/typography";
 
 export interface PageContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
@@ -64,20 +65,17 @@ export function PageHeader({
     >
       <div className="space-y-1.5">
         {badge && (
-          <Badge
-            variant="outline"
-            className="mb-1 text-xs font-mono font-semibold tracking-wider text-primary border-primary/30 bg-primary/10 uppercase rounded-full"
-          >
+          <Badge variant="kicker" className="mb-1">
             {badge}
           </Badge>
         )}
-        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground font-heading">
+        <TypographyH1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">
           {title}
-        </h1>
+        </TypographyH1>
         {subtitle && (
-          <p className="text-sm text-muted-foreground max-w-2xl font-sans leading-relaxed">
+          <TypographyMuted className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
             {subtitle}
-          </p>
+          </TypographyMuted>
         )}
       </div>
 
@@ -106,12 +104,14 @@ export function PageSection({
       {(title || description) && (
         <div className="space-y-1">
           {title && (
-            <h2 className="text-lg font-bold text-foreground font-heading">
+            <TypographyH4 className="text-lg font-bold text-foreground">
               {title}
-            </h2>
+            </TypographyH4>
           )}
           {description && (
-            <p className="text-xs text-muted-foreground">{description}</p>
+            <TypographyMuted className="text-xs text-muted-foreground">
+              {description}
+            </TypographyMuted>
           )}
         </div>
       )}

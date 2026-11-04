@@ -158,7 +158,7 @@ export function AdminDashboardClient({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-mono text-[#f5551d] uppercase tracking-wider font-semibold">
+            <span className="text-xs  text-primary uppercase tracking-wider font-semibold">
               Super Admin Console
             </span>
           </div>
@@ -166,7 +166,7 @@ export function AdminDashboardClient({
             Platform Operations &amp; Metrics
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Real-time multi-tenant monitoring across Cloudflare Stream, R2 Storage, Supabase, and Stripe.
+            Real-time multi-tenant monitoring across Video Streaming, Cloud Storage, Database, and Stripe.
           </p>
         </div>
 
@@ -179,7 +179,7 @@ export function AdminDashboardClient({
                 size="sm"
                 className="rounded-full text-xs font-semibold gap-1.5 cursor-pointer hover:bg-accent"
               >
-                <Megaphone className="size-3.5 text-[#f5551d]" /> Broadcast Notice
+                <Megaphone className="size-3.5 text-primary" /> Broadcast Notice
               </Button>
             } />
             <DialogContent className="sm:max-w-md bg-card border-border">
@@ -197,7 +197,7 @@ export function AdminDashboardClient({
                   <textarea
                     required
                     rows={3}
-                    placeholder="e.g. Scheduled maintenance: Cloudflare Stream 4K transcode updates tonight at 02:00 UTC."
+                    placeholder="e.g. Scheduled maintenance: Video transcode infrastructure updates tonight at 02:00 UTC."
                     value={announcementText}
                     onChange={(e) => setAnnouncementText(e.target.value)}
                     className="w-full bg-muted border border-border rounded-xl p-3 text-xs text-foreground focus:outline-none focus:border-primary"
@@ -207,7 +207,7 @@ export function AdminDashboardClient({
                   <Button
                     type="submit"
                     disabled={announcementSent}
-                    className="rounded-full bg-primary text-black font-bold text-xs hover:bg-primary/90"
+                    className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90"
                   >
                     {announcementSent ? (
                       <>
@@ -224,7 +224,7 @@ export function AdminDashboardClient({
 
           <Button
             render={<Link href="/admin/workspaces" />}
-            className="rounded-full bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] shadow-lg shadow-[#f5551d]/20 cursor-pointer"
+            className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 shadow-lg shadow-primary/20 cursor-pointer"
           >
             <Sliders className="size-3.5 mr-1.5" /> Manage Workspaces
           </Button>
@@ -237,7 +237,7 @@ export function AdminDashboardClient({
         <Card className="bg-card border-border hover:border-primary/40 transition-colors shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardDescription className="text-xs uppercase font-mono font-semibold">
+              <CardDescription className="text-xs uppercase  font-semibold">
                 Est. Monthly Revenue (MRR)
               </CardDescription>
               <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
@@ -260,10 +260,10 @@ export function AdminDashboardClient({
         <Card className="bg-card border-border hover:border-primary/40 transition-colors shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardDescription className="text-xs uppercase font-mono font-semibold">
+              <CardDescription className="text-xs uppercase  font-semibold">
                 Creator Studios
               </CardDescription>
-              <span className="p-2 rounded-xl bg-[#f5551d]/10 text-[#f5551d]">
+              <span className="p-2 rounded-xl bg-primary/10 text-primary">
                 <Building2 className="size-4" />
               </span>
             </div>
@@ -272,7 +272,7 @@ export function AdminDashboardClient({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground ">
               <span className="text-emerald-400 font-semibold">{stats.activePaid} Paid</span>
               <span>•</span>
               <span className="text-amber-400 font-semibold">{stats.activeTrials} Trialing</span>
@@ -280,11 +280,11 @@ export function AdminDashboardClient({
           </CardContent>
         </Card>
 
-        {/* Projects / 4K Cuts Card */}
+        {/* Projects / Video Cuts Card */}
         <Card className="bg-card border-border hover:border-primary/40 transition-colors shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardDescription className="text-xs uppercase font-mono font-semibold">
+              <CardDescription className="text-xs uppercase  font-semibold">
                 Active Review Rooms
               </CardDescription>
               <span className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
@@ -298,17 +298,17 @@ export function AdminDashboardClient({
           <CardContent>
             <div className="flex items-center gap-1.5 text-xs text-blue-400 font-medium">
               <Zap className="size-3.5" />
-              <span>100% 4K Stream Uptime</span>
+              <span>100% Stream Uptime</span>
             </div>
           </CardContent>
         </Card>
 
-        {/* R2 Storage Consumed Card */}
+        {/* Cloud Storage Consumed Card */}
         <Card className="bg-card border-border hover:border-primary/40 transition-colors shadow-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardDescription className="text-xs uppercase font-mono font-semibold">
-                Cloudflare R2 Storage
+              <CardDescription className="text-xs uppercase  font-semibold">
+                Cloud Storage Volume
               </CardDescription>
               <span className="p-2 rounded-xl bg-purple-500/10 text-purple-400">
                 <HardDrive className="size-4" />
@@ -319,7 +319,7 @@ export function AdminDashboardClient({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground ">
               <span>$0 Egress Bandwidth Cost</span>
             </div>
           </CardContent>
@@ -354,17 +354,20 @@ export function AdminDashboardClient({
 
               <div className="flex items-center gap-1 bg-muted p-1 rounded-xl border border-border">
                 {["all", "Studio", "Pro", "Basic", "Starter"].map((plan) => (
-                  <button
+                  <Button
                     key={plan}
+                    type="button"
+                    variant={selectedPlanFilter.toLowerCase() === plan.toLowerCase() ? "default" : "ghost"}
+                    size="xs"
                     onClick={() => setSelectedPlanFilter(plan)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold capitalize transition-colors cursor-pointer ${
+                    className={`h-7 px-2.5 rounded-lg text-[11px] font-semibold capitalize transition-colors cursor-pointer ${
                       selectedPlanFilter.toLowerCase() === plan.toLowerCase()
-                        ? "bg-card text-foreground shadow-xs font-bold"
+                        ? "bg-card text-foreground shadow-xs font-bold hover:bg-card"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {plan}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -374,7 +377,7 @@ export function AdminDashboardClient({
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-muted/40 border-b border-border text-muted-foreground font-mono uppercase text-[10px]">
+              <thead className="bg-muted/40 border-b border-border text-muted-foreground  uppercase text-[10px]">
                 <tr>
                   <th className="p-4 pl-6">Workspace &amp; Owner</th>
                   <th className="p-4">Plan Tier</th>
@@ -411,7 +414,7 @@ export function AdminDashboardClient({
                               <span>{ws.brandName}</span>
                               <ExternalLink className="size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                             </Link>
-                            <p className="text-[11px] text-muted-foreground font-mono">
+                            <p className="text-[11px] text-muted-foreground ">
                               /{ws.slug} · {ws.ownerEmail}
                             </p>
                           </div>
@@ -423,7 +426,7 @@ export function AdminDashboardClient({
                         <div className="flex items-center gap-2">
                           <Badge
                             variant="outline"
-                            className={`text-[11px] font-mono capitalize ${
+                            className={`text-[11px]  capitalize ${
                               ws.planName === "Studio"
                                 ? "bg-purple-500/10 text-purple-400 border-purple-500/30 font-bold"
                                 : ws.planName === "Pro"
@@ -449,7 +452,7 @@ export function AdminDashboardClient({
                       {/* Storage Usage Bar */}
                       <td className="p-4 min-w-[160px]">
                         <div className="space-y-1">
-                          <div className="flex items-center justify-between text-[10px] font-mono">
+                          <div className="flex items-center justify-between text-[10px] ">
                             <span className="text-muted-foreground">
                               {usedGB.toFixed(1)} / {ws.storageLimitGB} GB
                             </span>
@@ -469,12 +472,12 @@ export function AdminDashboardClient({
                       </td>
 
                       {/* Delivery Projects Count */}
-                      <td className="p-4 font-mono text-muted-foreground">
+                      <td className="p-4  text-muted-foreground">
                         <span className="font-semibold text-foreground">{ws.projectsCount}</span> projects
                       </td>
 
                       {/* Created Date */}
-                      <td className="p-4 font-mono text-muted-foreground text-[11px]">
+                      <td className="p-4  text-muted-foreground text-[11px]">
                         {new Date(ws.createdAt).toLocaleDateString()}
                       </td>
 
@@ -491,7 +494,7 @@ export function AdminDashboardClient({
                             </Button>
                           } />
                           <DropdownMenuContent align="end" className="w-48 bg-popover border-border">
-                            <DropdownMenuLabel className="text-[10px] font-mono uppercase text-muted-foreground">
+                            <DropdownMenuLabel className="text-[10px]  uppercase text-muted-foreground">
                               Workspace Actions
                             </DropdownMenuLabel>
                             <DropdownMenuItem
@@ -552,7 +555,7 @@ export function AdminDashboardClient({
                 onChange={(e) => setOverrideStorageGB(Number(e.target.value))}
                 className="bg-muted border-border text-xs"
               />
-              <p className="text-[11px] text-muted-foreground mt-1 font-mono">
+              <p className="text-[11px] text-muted-foreground mt-1 ">
                 Current usage: {formatBytes(selectedWorkspace?.storageUsedBytes || 0)}
               </p>
             </div>

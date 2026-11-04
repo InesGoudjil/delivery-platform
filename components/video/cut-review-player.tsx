@@ -4,36 +4,30 @@ import {
   useRef,
   useState,
   useEffect,
-  useCallback,
   forwardRef,
   useImperativeHandle,
 } from "react";
+import { createPortal } from "react-dom";
+import "@videojs/react/video/skin.css";
+import { resolveAdapterType } from "@videojs/react";
+import { Video, VideoPlayer, VideoSkin, usePlayer } from "@videojs/react/video";
+import { HlsJsVideo } from "@videojs/react/media/hlsjs-video";
 import {
-  MediaPlayer,
-  MediaProvider,
-  Poster,
-  type MediaPlayerInstance,
-} from "@vidstack/react";
-import "@vidstack/react/player/styles/base.css";
-
-import {
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  Maximize,
-  Minimize,
+  Image as ImageIcon,
   ChevronLeft,
   ChevronRight,
   RotateCcw,
-  MessageSquare,
-  Sparkles,
-  AlertCircle,
-  Image as ImageIcon,
-  ZoomIn,
-  ZoomOut,
+  RotateCw,
 } from "lucide-react";
+
 import { formatTimecode, stepByFrames } from "@/lib/timecode";
+import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
+import {
+  getMediaBoundingStyles,
+  detectAspectRatioFromDimensions,
+} from "@/lib/media-ratios";
+import { WatermarkOverlay } from "@/components/ui/watermark-overlay";
+import { cn } from "@/lib/utils";
 
 export function isImageSource(url?: string): boolean {
   if (!url) return false;
@@ -72,595 +66,587 @@ export interface CutReviewPlayerProps {
   aspectRatio?: "16:9" | "9:16" | "1:1" | string;
   fps?: number;
   isPhoto?: boolean;
+  iframeEmbedUrl?: string;
   comments?: CutCommentMarker[];
   activeCommentId?: string | null;
   onCommentSelect?: (commentId: string, timestamp: number) => void;
   onTimeChange?: (time: number, timecode: string) => void;
   className?: string;
   autoPlay?: boolean;
+  showWatermark?: boolean;
+  watermarkText?: string;
 }
 
-export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerProps>(
-  (
-    {
-      src,
-      title,
-      poster,
-      aspectRatio = "16:9",
-      fps = 24,
-      isPhoto = false,
-      comments = [],
-      activeCommentId,
-      onCommentSelect,
-      onTimeChange,
-      className = "",
-      autoPlay = false,
+interface CutReviewPlayerInnerProps extends CutReviewPlayerProps {
+  forwardedRef?: React.ForwardedRef<CutReviewPlayerRef>;
+}
+
+function CutReviewPlayerInner({
+  src,
+  title,
+  poster,
+  aspectRatio = "16:9",
+  fps = 24,
+  isPhoto = false,
+  iframeEmbedUrl,
+  comments = [],
+  activeCommentId = null,
+  onCommentSelect,
+  onTimeChange,
+  className = "",
+  autoPlay = false,
+  showWatermark = false,
+  watermarkText,
+  forwardedRef,
+}: CutReviewPlayerInnerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [detectedRatio, setDetectedRatio] = useState<string | null>(null);
+  const [sliderTrackEl, setSliderTrackEl] = useState<HTMLElement | null>(null);
+  const [localDuration, setLocalDuration] = useState<number>(0);
+
+  const currentTime = usePlayer((s) => s.currentTime);
+  const duration = usePlayer((s) => s.duration);
+  const play = usePlayer((s) => s.play);
+  const pause = usePlayer((s) => s.pause);
+  const seek = usePlayer((s) => s.seek);
+
+  // Discover and bind to the Video.js .media-time-slider element inside the container
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return;
+
+    const updateSlider = () => {
+      const el = root.querySelector(".media-time-slider") as HTMLElement | null;
+      setSliderTrackEl((prev) => (prev === el ? prev : el));
+    };
+
+    updateSlider();
+
+    const observer = new MutationObserver(() => {
+      updateSlider();
+    });
+
+    observer.observe(root, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [src]);
+
+  const effectiveDuration =
+    duration && Number.isFinite(duration) && duration > 0
+      ? duration
+      : localDuration && Number.isFinite(localDuration) && localDuration > 0
+      ? localDuration
+      : videoRef.current &&
+        Number.isFinite(videoRef.current.duration) &&
+        videoRef.current.duration > 0
+      ? videoRef.current.duration
+      : 0;
+
+  const validComments = comments.filter(
+    (c): c is CutCommentMarker & { timestampSeconds: number } =>
+      typeof c.timestampSeconds === "number" &&
+      c.timestampSeconds >= 0 &&
+      effectiveDuration > 0 &&
+      c.timestampSeconds <= effectiveDuration
+  );
+
+  const resolvedVideoSrc = resolveMediaUrl(src);
+  const resolvedPoster = resolveThumbnailUrl(poster, src, isPhoto);
+
+  const isImageCut = Boolean(
+    isPhoto || (resolvedVideoSrc && isImageSource(resolvedVideoSrc))
+  );
+
+  // If a raw Cloudflare Stream UID or videodelivery URL was provided without .m3u8, ensure it points to the HLS manifest
+  let videoStreamSrc = isImageCut
+    ? ""
+    : resolvedVideoSrc || "https://files.vidstack.io/sprite-fight/hls/stream.m3u8";
+
+  if (
+    videoStreamSrc &&
+    (videoStreamSrc.includes("cloudflarestream.com") || videoStreamSrc.includes("videodelivery.net")) &&
+    !videoStreamSrc.includes(".m3u8") &&
+    !videoStreamSrc.includes(".mp4")
+  ) {
+    const streamUidMatch = videoStreamSrc.match(
+      /(?:cloudflarestream\.com|videodelivery\.net)\/([a-f0-9]{32})/i
+    );
+    if (streamUidMatch) {
+      const streamHostMatch = videoStreamSrc.match(/https?:\/\/([^/]+)/);
+      const streamDomain = streamHostMatch ? streamHostMatch[1] : "videodelivery.net";
+      videoStreamSrc = `https://${streamDomain}/${streamUidMatch[1]}/manifest/video.m3u8`;
+    }
+  }
+
+  const activeRatio = detectedRatio || aspectRatio || "16:9";
+  const bounding = getMediaBoundingStyles(activeRatio);
+
+  const [seekRipple, setSeekRipple] = useState<{
+    side: "left" | "right";
+    seconds: number;
+    key: number;
+  } | null>(null);
+  const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null);
+  const rippleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleStepFrame = (direction: 1 | -1) => {
+    pause();
+    const cur = videoRef.current ? videoRef.current.currentTime : (currentTime ?? 0);
+    const dur =
+      videoRef.current && Number.isFinite(videoRef.current.duration) && videoRef.current.duration > 0
+        ? videoRef.current.duration
+        : (duration ?? 0);
+    const nextTime = stepByFrames(cur, direction, dur, fps);
+    seek(nextTime);
+    if (videoRef.current) {
+      videoRef.current.currentTime = nextTime;
+    }
+    onTimeChange?.(nextTime, formatTimecode(nextTime, fps));
+  };
+
+  const triggerDoubleTapSeek = (xRatio: number) => {
+    const cur = videoRef.current ? videoRef.current.currentTime : (currentTime ?? 0);
+    const dur = effectiveDuration;
+    const now = Date.now();
+
+    if (xRatio < 0.45) {
+      const target = Math.max(0, cur - 10);
+      seek(target);
+      if (videoRef.current) videoRef.current.currentTime = target;
+      onTimeChange?.(target, formatTimecode(target, fps));
+      setSeekRipple({ side: "left", seconds: 10, key: now });
+      if (rippleTimerRef.current) clearTimeout(rippleTimerRef.current);
+      rippleTimerRef.current = setTimeout(() => setSeekRipple(null), 650);
+    } else if (xRatio > 0.55) {
+      const target = Math.min(dur, cur + 10);
+      seek(target);
+      if (videoRef.current) videoRef.current.currentTime = target;
+      onTimeChange?.(target, formatTimecode(target, fps));
+      setSeekRipple({ side: "right", seconds: 10, key: now });
+      if (rippleTimerRef.current) clearTimeout(rippleTimerRef.current);
+      rippleTimerRef.current = setTimeout(() => setSeekRipple(null), 650);
+    }
+  };
+
+  const handleVideoTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (isImageCut) return;
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clientX = touch.clientX;
+    const clientY = touch.clientY;
+    const xRatio = (clientX - rect.left) / rect.width;
+    const yRatio = (clientY - rect.top) / rect.height;
+
+    // Ignore taps in the bottom 25% where controls/scrubber live
+    if (yRatio > 0.75) return;
+
+    const now = Date.now();
+    const lastTap = lastTapRef.current;
+
+    if (
+      lastTap &&
+      now - lastTap.time < 350 &&
+      Math.abs(clientX - lastTap.x) < 60 &&
+      Math.abs(clientY - lastTap.y) < 60
+    ) {
+      lastTapRef.current = null;
+      triggerDoubleTapSeek(xRatio);
+    } else {
+      lastTapRef.current = { time: now, x: clientX, y: clientY };
+    }
+  };
+
+  const handleVideoDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isImageCut) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xRatio = (e.clientX - rect.left) / rect.width;
+    const yRatio = (e.clientY - rect.top) / rect.height;
+
+    if (yRatio > 0.75) return;
+    triggerDoubleTapSeek(xRatio);
+  };
+
+  useImperativeHandle(forwardedRef, () => ({
+    seekTo: (seconds: number) => {
+      seek(seconds);
+      if (videoRef.current) {
+        videoRef.current.currentTime = seconds;
+      }
+      onTimeChange?.(seconds, formatTimecode(seconds, fps));
     },
-    ref
-  ) => {
-    const playerRef = useRef<MediaPlayerInstance>(null);
-    const scrubberRef = useRef<HTMLDivElement>(null);
-
-    const isImageCut = isPhoto || isImageSource(src) || isImageSource(poster);
-
-    // Reliable video stream fallback ONLY if it is a video cut
-    const videoStreamSrc = isImageCut
-      ? ""
-      : src || "https://files.vidstack.io/sprite-fight/hls/stream.m3u8";
-
-    const [zoomLevel, setZoomLevel] = useState(1);
-    const [currentTime, setCurrentTime] = useState(0);
-    const [duration, setDuration] = useState(0);
-    const [isPaused, setIsPaused] = useState(true);
-    const [isMuted, setIsMuted] = useState(false);
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    const [playbackRate, setPlaybackRate] = useState(1);
-    const [hoveredComment, setHoveredComment] = useState<CutCommentMarker | null>(null);
-    const [hoverTime, setHoverTime] = useState<number | null>(null);
-    const [isDraggingScrubber, setIsDraggingScrubber] = useState(false);
-    const [mediaError, setMediaError] = useState<string | null>(null);
-
-    // Imperative Handle for parent components (seeking, stepping, etc.)
-    useImperativeHandle(ref, () => ({
-      seekTo: (seconds: number) => {
-        if (playerRef.current) {
-          playerRef.current.currentTime = seconds;
-          playerRef.current.pause();
-        }
-      },
-      play: () => playerRef.current?.play(),
-      pause: () => playerRef.current?.pause(),
-      getCurrentTime: () => playerRef.current?.currentTime ?? currentTime,
-      getDuration: () => playerRef.current?.duration ?? duration,
-      stepFrame: (direction: 1 | -1) => {
-        handleStepFrame(direction);
-      },
-    }));
-
-    const handleStepFrame = useCallback(
-      (direction: 1 | -1) => {
-        if (!playerRef.current) return;
-        playerRef.current.pause();
-        const nextTime = stepByFrames(
-          playerRef.current.currentTime || currentTime,
-          direction,
-          duration,
-          fps
-        );
-        playerRef.current.currentTime = nextTime;
-        setCurrentTime(nextTime);
-        onTimeChange?.(nextTime, formatTimecode(nextTime, fps));
-      },
-      [currentTime, duration, fps, onTimeChange]
-    );
-
-    const handleStepSeconds = useCallback(
-      (secondsDelta: number) => {
-        if (!playerRef.current) return;
-        const current = playerRef.current.currentTime || currentTime;
-        const nextTime = Math.min(Math.max(0, current + secondsDelta), duration);
-        playerRef.current.currentTime = nextTime;
-        setCurrentTime(nextTime);
-        onTimeChange?.(nextTime, formatTimecode(nextTime, fps));
-      },
-      [currentTime, duration, fps, onTimeChange]
-    );
-
-    // Keyboard Shortcuts for NLE-grade cut review
-    useEffect(() => {
-      const handleKeyDown = (e: KeyboardEvent) => {
-        // Ignore shortcuts if the user is typing in an input or textarea
-        const activeTag = document.activeElement?.tagName.toLowerCase();
-        if (activeTag === "input" || activeTag === "textarea") return;
-
-        if (e.code === "Space") {
-          e.preventDefault();
-          if (playerRef.current) {
-            if (playerRef.current.paused) {
-              playerRef.current.play();
-            } else {
-              playerRef.current.pause();
-            }
-          }
-        } else if (e.code === "ArrowLeft") {
-          e.preventDefault();
-          if (e.shiftKey) {
-            handleStepSeconds(-1);
-          } else {
-            handleStepFrame(-1);
-          }
-        } else if (e.code === "ArrowRight") {
-          e.preventDefault();
-          if (e.shiftKey) {
-            handleStepSeconds(1);
-          } else {
-            handleStepFrame(1);
-          }
-        } else if (e.key === "j" || e.key === "J") {
-          e.preventDefault();
-          handleStepSeconds(-2);
-        } else if (e.key === "k" || e.key === "K") {
-          e.preventDefault();
-          playerRef.current?.pause();
-        } else if (e.key === "l" || e.key === "L") {
-          e.preventDefault();
-          handleStepSeconds(2);
-        }
-      };
-
-      window.addEventListener("keydown", handleKeyDown);
-      return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [handleStepFrame, handleStepSeconds]);
-
-    // Scrubber interaction
-    const getScrubTimeFromEvent = (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!scrubberRef.current || duration <= 0) return 0;
-      const rect = scrubberRef.current.getBoundingClientRect();
-      const clickX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-      const percentage = clickX / rect.width;
-      return percentage * duration;
-    };
-
-    const handleScrubberClick = (e: React.MouseEvent<HTMLDivElement>) => {
-      const targetTime = getScrubTimeFromEvent(e);
-      if (playerRef.current) {
-        playerRef.current.currentTime = targetTime;
-        setCurrentTime(targetTime);
-        onTimeChange?.(targetTime, formatTimecode(targetTime, fps));
+    play: () => {
+      play().catch(() => {});
+    },
+    pause: () => {
+      pause();
+    },
+    getCurrentTime: () => {
+      if (videoRef.current) return videoRef.current.currentTime;
+      return currentTime ?? 0;
+    },
+    getDuration: () => {
+      if (videoRef.current && Number.isFinite(videoRef.current.duration) && videoRef.current.duration > 0) {
+        return videoRef.current.duration;
       }
-    };
+      return duration ?? 0;
+    },
+    stepFrame: (direction: 1 | -1) => {
+      handleStepFrame(direction);
+    },
+  }));
 
-    const handleScrubberMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-      const hoverSec = getScrubTimeFromEvent(e);
-      setHoverTime(hoverSec);
-    };
-
-    const handleScrubberMouseLeave = () => {
-      setHoverTime(null);
-      setHoveredComment(null);
-    };
-
-    const togglePlay = () => {
-      if (!playerRef.current) return;
-      if (playerRef.current.paused) {
-        playerRef.current.play();
-      } else {
-        playerRef.current.pause();
-      }
-    };
-
-    const toggleMute = () => {
-      if (!playerRef.current) return;
-      playerRef.current.muted = !playerRef.current.muted;
-      setIsMuted(playerRef.current.muted);
-    };
-
-    const toggleFullscreen = () => {
-      if (!playerRef.current) return;
-      if (isFullscreen) {
-        playerRef.current.exitFullscreen();
-        setIsFullscreen(false);
-      } else {
-        playerRef.current.enterFullscreen();
-        setIsFullscreen(true);
-      }
-    };
-
-    const handleRateChange = (rate: number) => {
-      if (!playerRef.current) return;
-      playerRef.current.playbackRate = rate;
-      setPlaybackRate(rate);
-    };
-
-    // Calculate progress percentage
-    const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-    const hoverPercent =
-      duration > 0 && hoverTime !== null ? (hoverTime / duration) * 100 : null;
-
+  if (isImageCut) {
     return (
       <div
-        className={`group/player relative flex flex-col bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl select-none ${className}`}
+        className={`group/player relative flex items-center justify-center bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl select-none w-full h-full ${className}`}
+        style={bounding.style}
       >
-        {/* Video or Photo Display Core */}
         <div
-          className={`relative w-full overflow-hidden bg-black flex items-center justify-center ${
-            aspectRatio === "9:16"
-              ? "aspect-[9/16] max-h-[72vh] mx-auto"
-              : aspectRatio === "1:1"
-              ? "aspect-square max-h-[72vh] mx-auto"
-              : "aspect-video"
-          }`}
+          className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden cursor-zoom-in"
+          onContextMenu={(e) => {
+            if (showWatermark) e.preventDefault();
+          }}
+          onDoubleClick={() => setZoomLevel((prev) => (prev > 1 ? 1 : 2))}
         >
-          {isImageCut ? (
-            /* Dedicated High-Res Photo Still Review */
-            <div
-              className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden cursor-zoom-in"
-              onDoubleClick={() => setZoomLevel((prev) => (prev > 1 ? 1 : 2))}
-            >
-              <img
-                src={src || poster}
-                alt={title || "Still Asset"}
-                style={{
-                  transform: `scale(${zoomLevel})`,
-                  transition: "transform 200ms ease-out",
-                }}
-                className="max-w-full max-h-full object-contain pointer-events-none select-none"
-              />
-              <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-black/80 text-emerald-400 border border-emerald-500/30 backdrop-blur-md shadow-lg flex items-center gap-1.5">
-                  <ImageIcon className="size-3.5" />
-                  STILL ASSET
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono text-muted-foreground bg-black/60 border border-white/10 backdrop-blur-md">
-                  {aspectRatio}
-                </span>
-              </div>
-            </div>
-          ) : (
-            /* Video Review Core (Vidstack) */
-            <>
-              <MediaPlayer
-                ref={playerRef}
-                src={videoStreamSrc}
-                title={title}
-                autoPlay={autoPlay}
-                playsInline
-                className="w-full h-full object-contain"
-                onTimeUpdate={(detail) => {
-                  setCurrentTime(detail.currentTime);
-                  onTimeChange?.(detail.currentTime, formatTimecode(detail.currentTime, fps));
-                }}
-                onDurationChange={(d) => setDuration(d)}
-                onPlay={() => {
-                  setIsPaused(false);
-                  setMediaError(null);
-                }}
-                onPause={() => setIsPaused(true)}
-                onError={() => {
-                  setMediaError("Video stream failed to decode or is still processing.");
-                }}
-                onFullscreenChange={(fs) => setIsFullscreen(fs)}
-              >
-                <MediaProvider>
-                  {poster && (
-                    <Poster
-                      src={poster}
-                      alt={title || "Video thumbnail"}
-                      className="w-full h-full object-contain"
-                    />
-                  )}
-                </MediaProvider>
-              </MediaPlayer>
-
-              {/* Stream Error Recovery Overlay */}
-              {mediaError && (
-                <div className="absolute inset-0 z-30 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-3 animate-in fade-in">
-                  <div className="size-12 rounded-full bg-[#f5551d]/20 text-[#f5551d] flex items-center justify-center border border-[#f5551d]/40">
-                    <AlertCircle className="size-6" />
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="font-bold text-sm text-white">Stream Processing or Unavailable</h4>
-                    <p className="text-xs text-muted-foreground max-w-sm">
-                      {mediaError}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMediaError(null);
-                      if (playerRef.current) {
-                        playerRef.current.currentTime = 0;
-                        playerRef.current.play();
-                      }
-                    }}
-                    className="px-4 py-1.5 rounded-full bg-[#f5551d] text-black font-bold text-xs hover:bg-[#ff8a45] transition-colors cursor-pointer"
-                  >
-                    Reload Stream
-                  </button>
-                </div>
-              )}
-
-              {/* Center Play/Pause Overlay Indicator on Click */}
-              <div
-                onClick={togglePlay}
-                className="absolute inset-0 cursor-pointer flex items-center justify-center"
-              >
-                {isPaused && !mediaError && (
-                  <div className="w-16 h-16 rounded-full bg-black/60 border border-white/20 backdrop-blur-md flex items-center justify-center text-[#f5551d] shadow-2xl scale-95 group-hover/player:scale-105 transition-transform">
-                    <Play className="size-7 fill-current ml-1" />
-                  </div>
-                )}
-              </div>
-
-              {/* Floating Timecode Pill (Top Left) */}
-              <div className="absolute top-4 left-4 z-20 flex items-center gap-2 pointer-events-none">
-                <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-black/80 text-white border border-white/15 backdrop-blur-md shadow-lg flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#f5551d] animate-pulse" />
-                  {formatTimecode(currentTime, fps)}
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono text-muted-foreground bg-black/60 border border-white/10 backdrop-blur-md">
-                  {fps} FPS
-                </span>
-              </div>
-            </>
+          <img
+            src={resolvedVideoSrc || resolvedPoster || src || poster}
+            alt={title || "Still Asset"}
+            draggable={false}
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = "/api/media/placeholder.svg";
+            }}
+            onLoad={(e) => {
+              const img = e.currentTarget;
+              if (
+                img.naturalWidth &&
+                img.naturalHeight &&
+                (!aspectRatio || aspectRatio === "16:9")
+              ) {
+                const detected = detectAspectRatioFromDimensions(
+                  img.naturalWidth,
+                  img.naturalHeight
+                );
+                if (detected.id !== "16:9") {
+                  setDetectedRatio(
+                    detected.id === "custom" ? detected.cssRatio : detected.id
+                  );
+                }
+              }
+            }}
+            style={{
+              transform: `scale(${zoomLevel})`,
+              transition: "transform 200ms ease-out",
+            }}
+            className="max-w-full max-h-full object-contain pointer-events-none select-none"
+          />
+          {showWatermark && (
+            <WatermarkOverlay text={watermarkText} variant="player" showBadge />
           )}
-
-          {/* Floating Title (Top Right) */}
-          <div className="absolute top-4 right-4 z-20 pointer-events-none">
-            <span className="px-2.5 py-1 rounded-full text-[11px] font-mono font-medium text-white/80 bg-black/80 border border-white/10 backdrop-blur-md">
-              {title || "Cut Preview"}
+          <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-black/80 text-emerald-400 border border-emerald-500/30 backdrop-blur-md shadow-lg flex items-center gap-1.5">
+              <ImageIcon className="size-3.5" />
+              STILL ASSET
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] text-muted-foreground bg-black/60 border border-white/10 backdrop-blur-md">
+              {(bounding.parsed as any)?.shortLabel ||
+                (bounding.parsed as any)?.label ||
+                (typeof activeRatio === "string"
+                  ? activeRatio
+                  : bounding.parsed?.id || "16:9")}
             </span>
           </div>
         </div>
-
-        {/* Custom NLE HUD Review Controls & Scrubber */}
-        <div className="bg-[#121215] border-t border-white/10 p-3.5 space-y-3">
-          {isImageCut ? (
-            <div className="flex items-center justify-between text-xs py-1">
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-mono text-[11px] flex items-center gap-1.5 font-bold">
-                  <ImageIcon className="size-3.5" />
-                  Still Photography Cut
-                </span>
-                <span className="text-muted-foreground text-[11px] font-mono">
-                  {aspectRatio} High-Resolution Asset
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {/* Zoom Controls */}
-                <div className="flex items-center bg-black/60 border border-white/10 rounded-lg p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setZoomLevel((prev) => Math.max(1, prev - 0.5))}
-                    disabled={zoomLevel <= 1}
-                    className="p-1 text-muted-foreground hover:text-white disabled:opacity-30 cursor-pointer"
-                    title="Zoom Out"
-                  >
-                    <ZoomOut className="size-3.5" />
-                  </button>
-                  <span className="px-2 text-[10px] font-mono text-white font-bold min-w-[38px] text-center">
-                    {Math.round(zoomLevel * 100)}%
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setZoomLevel((prev) => Math.min(4, prev + 0.5))}
-                    disabled={zoomLevel >= 4}
-                    className="p-1 text-muted-foreground hover:text-white disabled:opacity-30 cursor-pointer"
-                    title="Zoom In"
-                  >
-                    <ZoomIn className="size-3.5" />
-                  </button>
-                </div>
-
-                {zoomLevel > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setZoomLevel(1)}
-                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-mono text-white cursor-pointer"
-                  >
-                    Reset Fit
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={toggleFullscreen}
-                  className="w-7 h-7 rounded-lg bg-black/60 border border-white/10 text-white/80 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
-                  title="Fullscreen"
-                >
-                  {isFullscreen ? <Minimize className="size-3.5" /> : <Maximize className="size-3.5" />}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* 1. Scrubber Track with Comment Markers */}
-              <div className="relative flex flex-col gap-1.5">
-                <div
-                  ref={scrubberRef}
-                  onClick={handleScrubberClick}
-                  onMouseMove={handleScrubberMouseMove}
-                  onMouseLeave={handleScrubberMouseLeave}
-                  className="relative w-full h-3 flex items-center cursor-pointer group/scrub"
-                >
-                  {/* Background Bar */}
-                  <div className="w-full h-1.5 bg-white/15 rounded-full overflow-hidden transition-all group-hover/scrub:h-2" />
-
-                  {/* Played Progress Bar */}
-                  <div
-                    className="absolute left-0 h-1.5 bg-[#f5551d] rounded-full transition-all pointer-events-none group-hover/scrub:h-2"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-
-                  {/* Scrubber Playhead Thumb */}
-                  <div
-                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-[#f5551d] shadow-lg pointer-events-none transition-transform group-hover/scrub:scale-125"
-                    style={{ left: `${progressPercent}%` }}
-                  />
-
-                  {/* Hover Preview Marker */}
-                  {hoverPercent !== null && (
-                    <div
-                      className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-1.5 h-3 bg-white/50 rounded-full pointer-events-none"
-                      style={{ left: `${hoverPercent}%` }}
-                    />
-                  )}
-
-                  {/* Comment Markers on Timeline */}
-                  {duration > 0 &&
-                    comments.map((comment) => {
-                      if (
-                        comment.timestampSeconds === undefined ||
-                        comment.timestampSeconds === null
-                      )
-                        return null;
-                      const markerPercent = (comment.timestampSeconds / duration) * 100;
-                      const isActive = activeCommentId === comment.id;
-
-                      return (
-                        <div
-                          key={comment.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (playerRef.current && comment.timestampSeconds !== undefined && comment.timestampSeconds !== null) {
-                              playerRef.current.currentTime = comment.timestampSeconds;
-                              playerRef.current.pause();
-                              setCurrentTime(comment.timestampSeconds);
-                              onCommentSelect?.(comment.id, comment.timestampSeconds);
-                            }
-                          }}
-                          onMouseEnter={() => setHoveredComment(comment)}
-                          onMouseLeave={() => setHoveredComment(null)}
-                          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-2.5 h-2.5 rounded-full cursor-pointer transition-all hover:scale-150 ${
-                            isActive
-                              ? "bg-white ring-2 ring-[#f5551d] scale-125"
-                              : comment.isResolved
-                              ? "bg-emerald-400"
-                              : "bg-[#f5551d]"
-                          }`}
-                          style={{ left: `${markerPercent}%` }}
-                        />
-                      );
-                    })}
-                </div>
-
-                {/* Hover Tooltip (shows time or comment details) */}
-                {hoveredComment && hoveredComment.timestampSeconds !== null && hoveredComment.timestampSeconds !== undefined && (
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 bg-black/90 border border-white/20 px-3 py-1.5 rounded-xl text-xs backdrop-blur-md shadow-2xl flex items-center gap-2 pointer-events-none animate-in fade-in">
-                    <MessageSquare className="size-3 text-[#f5551d]" />
-                    <span className="font-mono font-bold text-[#ff8a45]">
-                      [{formatTimecode(hoveredComment.timestampSeconds, fps)}]
-                    </span>
-                    <span className="font-semibold text-white truncate max-w-[200px]">
-                      {hoveredComment.authorName}:
-                    </span>
-                    <span className="text-white/80 truncate max-w-[260px]">
-                      {hoveredComment.commentText}
-                    </span>
-                  </div>
-                )}
-                {!hoveredComment && hoverTime !== null && (
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 bg-black/85 border border-white/15 px-2 py-0.5 rounded text-[11px] font-mono text-white pointer-events-none">
-                    {formatTimecode(hoverTime, fps)}
-                  </div>
-                )}
-              </div>
-
-              {/* 2. Control Bar Buttons (Frame Step, Play, Timecode, Speed, Audio, Fullscreen) */}
-              <div className="flex items-center justify-between gap-3 text-xs">
-                {/* Left Group: Play/Pause, Frame Stepping, Timecode */}
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={togglePlay}
-                    className="w-8 h-8 rounded-lg bg-[#f5551d] text-black hover:bg-[#ff8a45] flex items-center justify-center cursor-pointer transition-all active:scale-95"
-                    title={isPaused ? "Play (Space)" : "Pause (Space)"}
-                  >
-                    {isPaused ? (
-                      <Play className="size-4 fill-current ml-0.5" />
-                    ) : (
-                      <Pause className="size-4 fill-current" />
-                    )}
-                  </button>
-
-                  {/* Precision Frame Stepping */}
-                  <div className="flex items-center bg-black/60 border border-white/10 rounded-lg p-0.5">
-                    <button
-                      type="button"
-                      onClick={() => handleStepFrame(-1)}
-                      className="px-2 py-1 rounded text-[11px] font-mono text-white/80 hover:text-white hover:bg-white/10 flex items-center gap-0.5 transition-colors cursor-pointer"
-                      title="Step -1 Frame (←)"
-                    >
-                      <ChevronLeft className="size-3" />
-                      <span>-1F</span>
-                    </button>
-                    <div className="w-[1px] h-3 bg-white/10" />
-                    <button
-                      type="button"
-                      onClick={() => handleStepFrame(1)}
-                      className="px-2 py-1 rounded text-[11px] font-mono text-white/80 hover:text-white hover:bg-white/10 flex items-center gap-0.5 transition-colors cursor-pointer"
-                      title="Step +1 Frame (→)"
-                    >
-                      <span>+1F</span>
-                      <ChevronRight className="size-3" />
-                    </button>
-                  </div>
-
-                  {/* Timecode Readout */}
-                  <div className="font-mono text-xs text-white/90 px-2 py-1 bg-black/40 rounded-lg border border-white/5 flex items-center gap-1.5">
-                    <span className="text-[#ff8a45] font-bold">
-                      {formatTimecode(currentTime, fps)}
-                    </span>
-                    <span className="text-white/40">/</span>
-                    <span className="text-white/60">{formatTimecode(duration, fps)}</span>
-                  </div>
-                </div>
-
-                {/* Right Group: Speed, Volume, Fullscreen */}
-                <div className="flex items-center gap-2 font-mono">
-                  {/* Playback Rate Selector */}
-                  <div className="flex items-center bg-black/60 border border-white/10 rounded-lg p-0.5 text-[10px]">
-                    {([0.5, 1, 1.5, 2] as const).map((rate) => (
-                      <button
-                        key={rate}
-                        type="button"
-                        onClick={() => handleRateChange(rate)}
-                        className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
-                          playbackRate === rate
-                            ? "bg-[#f5551d] text-black font-bold"
-                            : "text-white/60 hover:text-white"
-                        }`}
-                      >
-                        {rate}x
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Volume / Mute */}
-                  <button
-                    type="button"
-                    onClick={toggleMute}
-                    className="w-7 h-7 rounded-lg bg-black/60 border border-white/10 text-white/80 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
-                    title={isMuted ? "Unmute" : "Mute"}
-                  >
-                    {isMuted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
-                  </button>
-
-                  {/* Fullscreen */}
-                  <button
-                    type="button"
-                    onClick={toggleFullscreen}
-                    className="w-7 h-7 rounded-lg bg-black/60 border border-white/10 text-white/80 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
-                    title="Fullscreen"
-                  >
-                    {isFullscreen ? <Minimize className="size-3.5" /> : <Maximize className="size-3.5" />}
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
       </div>
+    );
+  }
+
+  if (iframeEmbedUrl) {
+    return (
+      <div
+        className={`relative w-full h-full bg-black flex items-center justify-center rounded-2xl overflow-hidden border border-white/10 shadow-2xl ${className}`}
+        style={bounding.style}
+      >
+        <iframe
+          src={iframeEmbedUrl}
+          title={title || "Video Player"}
+          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+          allowFullScreen
+          className="w-full h-full border-0"
+        />
+        {showWatermark && (
+          <WatermarkOverlay text={watermarkText} variant="player" showBadge />
+        )}
+      </div>
+    );
+  }
+
+  const isHls =
+    videoStreamSrc.includes(".m3u8") ||
+    resolveAdapterType(videoStreamSrc) === "hls";
+
+  const renderCommentMarkers = () => {
+    if (validComments.length === 0 || effectiveDuration <= 0) return null;
+
+    return (
+      <div
+        className="cut-comment-markers-layer pointer-events-none absolute inset-0 z-20 flex items-center"
+        style={{ width: "100%", height: "100%" }}
+        aria-label="Timeline comment markers"
+      >
+        {validComments.map((comment) => {
+          const leftPercent = Math.min(
+            100,
+            Math.max(0, (comment.timestampSeconds / effectiveDuration) * 100)
+          );
+          const isActive = comment.id === activeCommentId;
+
+          const tooltipPositionClass =
+            leftPercent < 15
+              ? "left-0 -translate-x-1"
+              : leftPercent > 85
+              ? "right-0 translate-x-1"
+              : "left-1/2 -translate-x-1/2";
+
+          return (
+            <button
+              key={comment.id}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                seek(comment.timestampSeconds);
+                if (videoRef.current) {
+                  videoRef.current.currentTime = comment.timestampSeconds;
+                }
+                onTimeChange?.(
+                  comment.timestampSeconds,
+                  formatTimecode(comment.timestampSeconds, fps)
+                );
+                onCommentSelect?.(comment.id, comment.timestampSeconds);
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+              }}
+              style={{
+                left: `${leftPercent}%`,
+              }}
+              className="pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2 group/marker z-30 flex items-center justify-center min-w-[36px] min-h-[36px] -m-3 focus:outline-none cursor-pointer touch-manipulation"
+              aria-label={`Comment by ${comment.authorName || "Reviewer"} at ${formatTimecode(comment.timestampSeconds, fps)}`}
+            >
+              {/* Timeline Marker Dot */}
+              <span
+                className={cn(
+                  "block rounded-full transition-all duration-150",
+                  isActive
+                    ? "size-3.5 bg-amber-400 border-2 border-white ring-4 ring-amber-400/40 shadow-lg scale-125 z-40"
+                    : comment.isResolved
+                    ? "size-2.5 bg-emerald-400 border border-black/70 shadow-sm hover:scale-135 hover:bg-emerald-300"
+                    : "size-2.5 bg-amber-400 border border-black/70 shadow-sm hover:scale-130 hover:bg-amber-300"
+                )}
+              />
+
+              {/* Hover & Active Tooltip Card */}
+              <div
+                className={cn(
+                  "pointer-events-none absolute bottom-full mb-2.5 flex-col items-start gap-1 p-2 rounded-lg bg-black/95 backdrop-blur-md border border-white/20 shadow-2xl text-left min-w-[140px] max-w-[240px] z-50 animate-in fade-in zoom-in-95 duration-100 select-none",
+                  isActive ? "flex" : "hidden group-hover/marker:flex",
+                  tooltipPositionClass
+                )}
+              >
+                <div className="flex items-center gap-1.5 w-full justify-between">
+                  <span className="font-mono text-[11px] font-bold text-amber-300">
+                    {formatTimecode(comment.timestampSeconds, fps)}
+                  </span>
+                  <span
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider",
+                      comment.isResolved
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                        : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                    )}
+                  >
+                    {comment.isResolved ? "Resolved" : "Open"}
+                  </span>
+                </div>
+                {comment.authorName && (
+                  <span className="text-[11px] font-medium text-white truncate w-full">
+                    {comment.authorName}
+                  </span>
+                )}
+                {comment.commentText && (
+                  <span className="text-[11px] text-zinc-300 line-clamp-2 leading-snug">
+                    {comment.commentText}
+                  </span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className={`group/player relative flex items-center justify-center bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl select-none w-full h-full ${className}`}
+      style={bounding.style}
+    >
+      <VideoSkin
+        style={{
+          width: "100%",
+          height: "100%",
+          aspectRatio: bounding.parsed.cssRatio,
+        }}
+        className="w-full h-full"
+      >
+        {isHls ? (
+          <HlsJsVideo
+            key={videoStreamSrc}
+            ref={videoRef}
+            src={videoStreamSrc}
+            autoPlay={autoPlay}
+            playsInline
+            onDurationChange={(e) => {
+              if (Number.isFinite(e.currentTarget.duration) && e.currentTarget.duration > 0) {
+                setLocalDuration(e.currentTarget.duration);
+              }
+            }}
+            onLoadedMetadata={(e) => {
+              if (Number.isFinite(e.currentTarget.duration) && e.currentTarget.duration > 0) {
+                setLocalDuration(e.currentTarget.duration);
+              }
+            }}
+            onTimeUpdate={(e) => {
+              onTimeChange?.(
+                e.currentTarget.currentTime,
+                formatTimecode(e.currentTarget.currentTime, fps)
+              );
+            }}
+          />
+        ) : (
+          <Video
+            key={videoStreamSrc}
+            ref={videoRef}
+            src={videoStreamSrc}
+            autoPlay={autoPlay}
+            playsInline
+            onDurationChange={(e) => {
+              if (Number.isFinite(e.currentTarget.duration) && e.currentTarget.duration > 0) {
+                setLocalDuration(e.currentTarget.duration);
+              }
+            }}
+            onLoadedMetadata={(e) => {
+              if (Number.isFinite(e.currentTarget.duration) && e.currentTarget.duration > 0) {
+                setLocalDuration(e.currentTarget.duration);
+              }
+            }}
+            onTimeUpdate={(e) => {
+              onTimeChange?.(
+                e.currentTarget.currentTime,
+                formatTimecode(e.currentTarget.currentTime, fps)
+              );
+            }}
+          />
+        )}
+
+        {/* Double-Tap Seek Layer (Top 75% zone above bottom controls) */}
+        {!isImageCut && (
+          <div
+            className="absolute inset-x-0 top-0 bottom-16 z-20 pointer-events-auto cursor-pointer"
+            onTouchEnd={handleVideoTouchEnd}
+            onDoubleClick={handleVideoDoubleClick}
+          />
+        )}
+
+        {/* Animated Double-Tap Seek Ripple Indicator */}
+        {seekRipple && (
+          <div
+            key={seekRipple.key}
+            className={cn(
+              "pointer-events-none absolute top-1/2 -translate-y-1/2 z-40 flex flex-col items-center justify-center size-20 rounded-full bg-black/85 backdrop-blur-md border border-white/20 text-white shadow-2xl animate-in fade-in zoom-in-75 duration-150",
+              seekRipple.side === "left" ? "left-6 sm:left-12" : "right-6 sm:right-12"
+            )}
+          >
+            {seekRipple.side === "left" ? (
+              <>
+                <RotateCcw className="size-6 text-primary" />
+                <span className="font-mono text-xs font-bold text-white mt-1">-10s</span>
+              </>
+            ) : (
+              <>
+                <RotateCw className="size-6 text-primary" />
+                <span className="font-mono text-xs font-bold text-white mt-1">+10s</span>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Frame-Stepping Quick Controls */}
+        {!isImageCut && (
+          <div className="absolute top-3 right-3 z-30 flex items-center gap-1 bg-black/75 backdrop-blur-md border border-white/15 rounded-full p-1 shadow-lg pointer-events-auto">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleStepFrame(-1);
+              }}
+              className="size-7 rounded-full bg-white/5 hover:bg-white/20 active:scale-90 text-white/90 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              title="Step back 1 frame (Left Arrow)"
+              aria-label="Step back 1 frame"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <span className="font-mono text-[9px] font-bold text-zinc-300 tracking-wider px-1 select-none">
+              FRAME
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleStepFrame(1);
+              }}
+              className="size-7 rounded-full bg-white/5 hover:bg-white/20 active:scale-90 text-white/90 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              title="Step forward 1 frame (Right Arrow)"
+              aria-label="Step forward 1 frame"
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
+        )}
+
+        {showWatermark && (
+          <WatermarkOverlay text={watermarkText} variant="player" showBadge />
+        )}
+        {sliderTrackEl
+          ? createPortal(renderCommentMarkers(), sliderTrackEl)
+          : validComments.length > 0 && (
+              <div className="absolute inset-x-4 bottom-14 z-30 pointer-events-none">
+                <div className="relative w-full h-2">
+                  {renderCommentMarkers()}
+                </div>
+              </div>
+            )}
+      </VideoSkin>
+    </div>
+  );
+}
+
+export const CutReviewPlayer = forwardRef<CutReviewPlayerRef, CutReviewPlayerProps>(
+  (props, ref) => {
+    const resolvedPoster = resolveThumbnailUrl(props.poster, props.src, props.isPhoto);
+
+    return (
+      <VideoPlayer title={props.title} poster={resolvedPoster}>
+        <CutReviewPlayerInner {...props} forwardedRef={ref} />
+      </VideoPlayer>
     );
   }
 );

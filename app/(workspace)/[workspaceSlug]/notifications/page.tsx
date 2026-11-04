@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -11,64 +11,176 @@ import {
   Send,
   Smartphone,
   Sparkles,
+  Loader2,
+  Clock,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import Link from "next/link";
+import { useOptionalEntitlements } from "@/components/providers/entitlements-provider";
+import {
+  TypographyH1,
+  TypographyH3,
+  TypographyLead,
+  TypographyMuted,
+  TypographyKicker,
+  TypographySmall,
+  TypographySpan,
+} from "@/components/ui/typography";
+import { NotificationLog } from "@/core/entities/notification";
+import {
+  getWorkspaceSettingsAction,
+  updateWorkspaceNotificationSettingsAction,
+  getWorkspaceNotificationLogsAction,
+} from "@/app/actions/settings";
 
-interface WhatsAppLog {
-  id: string;
-  recipient: string;
-  projectTitle: string;
-  sentAt: string;
-  status: "delivered" | "read";
+function formatRelativeTime(dateString?: string): string {
+  if (!dateString) return "Recently";
+  try {
+    const diffMs = Date.now() - new Date(dateString).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days === 1) return "Yesterday";
+    if (days < 7) return `${days}d ago`;
+    return new Date(dateString).toLocaleDateString();
+  } catch {
+    return dateString;
+  }
 }
-
-const SAMPLE_LOGS: WhatsAppLog[] = [
-  {
-    id: "log_1",
-    recipient: "+971 50 492 8192 (Lost in Tokyo)",
-    projectTitle: "Omakase Launch Cut v3",
-    sentAt: "15 mins ago",
-    status: "read",
-  },
-  {
-    id: "log_2",
-    recipient: "+971 55 382 1029 (Aisha)",
-    projectTitle: "Wedding Highlight Film",
-    sentAt: "3 hours ago",
-    status: "read",
-  },
-  {
-    id: "log_3",
-    recipient: "+971 52 901 3491 (Prestige Rentals)",
-    projectTitle: "GT3 Desert Reel",
-    sentAt: "Yesterday",
-    status: "delivered",
-  },
-];
 
 export default function NotificationsPage() {
   const params = useParams();
   const workspaceSlug = (params?.workspaceSlug as string) || "studio";
+  const entitlements = useOptionalEntitlements();
+  const canNotifyDownloads = entitlements?.can.receiveDownloadNotifications ?? true;
+  const canWhatsApp = entitlements?.can.sendWhatsApp ?? true;
 
+  // Notification Preferences State
   const [notifyApproval, setNotifyApproval] = useState(true);
   const [notifyComments, setNotifyComments] = useState(true);
   const [notifyDownloads, setNotifyDownloads] = useState(true);
   const [weeklyDigest, setWeeklyDigest] = useState(false);
-  const [whatsAppNumber, setWhatsAppNumber] = useState("+971 50 839 2041");
+  const [whatsAppNumber, setWhatsAppNumber] = useState("");
+  const [whatsAppEnabled, setWhatsAppEnabled] = useState(true);
+
+  // Async & Logs State
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [isUpdatingPhone, setIsUpdatingPhone] = useState(false);
+  const [logs, setLogs] = useState<NotificationLog[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(true);
+
+  // Load persisted settings and real logs on mount
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadData() {
+      try {
+        const [settingsRes, logsRes] = await Promise.all([
+          getWorkspaceSettingsAction(workspaceSlug),
+          getWorkspaceNotificationLogsAction(workspaceSlug),
+        ]);
+
+        if (mounted) {
+          if (settingsRes.success && settingsRes.data) {
+            setNotifyApproval(settingsRes.data.notifyApprovals);
+            setNotifyComments(settingsRes.data.notifyComments);
+            setNotifyDownloads(settingsRes.data.notifyDownloads);
+            setWeeklyDigest(settingsRes.data.weeklyDigest);
+            setWhatsAppNumber(settingsRes.data.whatsappNumber || "");
+            setWhatsAppEnabled(settingsRes.data.whatsappEnabled);
+          }
+          setIsLoadingSettings(false);
+
+          if (logsRes.success && logsRes.data) {
+            setLogs(logsRes.data);
+          }
+          setIsLoadingLogs(false);
+        }
+      } catch (err) {
+        console.warn("[NotificationsPage] Error loading settings/logs:", err);
+        if (mounted) {
+          setIsLoadingSettings(false);
+          setIsLoadingLogs(false);
+        }
+      }
+    }
+
+    loadData();
+    return () => {
+      mounted = false;
+    };
+  }, [workspaceSlug]);
+
+  // Generic toggle persistence handler
+  const handleTogglePreference = async (
+    key: "notifyApprovals" | "notifyComments" | "notifyDownloads" | "weeklyDigest",
+    checked: boolean,
+    label: string
+  ) => {
+    // 1. Optimistic UI update
+    if (key === "notifyApprovals") setNotifyApproval(checked);
+    if (key === "notifyComments") setNotifyComments(checked);
+    if (key === "notifyDownloads") setNotifyDownloads(checked);
+    if (key === "weeklyDigest") setWeeklyDigest(checked);
+
+    // 2. Persist to DB
+    const res = await updateWorkspaceNotificationSettingsAction(workspaceSlug, {
+      [key]: checked,
+    });
+
+    if (res.success) {
+      toast.success(checked ? `${label} alerts enabled` : `${label} alerts disabled`);
+    } else {
+      // Revert on failure
+      if (key === "notifyApprovals") setNotifyApproval(!checked);
+      if (key === "notifyComments") setNotifyComments(!checked);
+      if (key === "notifyDownloads") setNotifyDownloads(!checked);
+      if (key === "weeklyDigest") setWeeklyDigest(!checked);
+      toast.error(res.error || "Failed to update notification preference");
+    }
+  };
+
+  // WhatsApp number update
+  const handleUpdateWhatsAppNumber = async () => {
+    const trimmed = whatsAppNumber.trim();
+    if (!trimmed) {
+      toast.error("Please enter a valid phone number");
+      return;
+    }
+
+    setIsUpdatingPhone(true);
+    const res = await updateWorkspaceNotificationSettingsAction(workspaceSlug, {
+      whatsappNumber: trimmed,
+      whatsappEnabled: true,
+    });
+    setIsUpdatingPhone(false);
+
+    if (res.success) {
+      toast.success("WhatsApp delivery number updated and verified");
+    } else {
+      toast.error(res.error || "Failed to update WhatsApp number");
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Header */}
       <div className="pb-6 border-b border-border">
-        <div className="text-xs font-mono text-[#f5551d] uppercase tracking-wider mb-1">
-          Account
-        </div>
-        <h1 className="text-3xl font-bold font-heading text-foreground">
+        <TypographyKicker className="text-xs text-primary uppercase tracking-wider mb-1 block">
+          Studio Settings
+        </TypographyKicker>
+        <TypographyH1 className="text-3xl font-bold font-heading text-foreground">
           Notifications &amp; WhatsApp
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Configure real-time client feedback alerts and WhatsApp delivery automation.
-        </p>
+        </TypographyH1>
+        <TypographyLead className="text-sm text-muted-foreground mt-1">
+          Configure real-time client feedback alerts, approval notifications, and delivery logs.
+        </TypographyLead>
       </div>
 
       {/* Notification Preferences */}
@@ -76,109 +188,96 @@ export default function NotificationsPage() {
         {/* Client Approvals */}
         <div className="p-6 flex items-center justify-between gap-4">
           <div className="space-y-0.5">
-            <div className="text-sm font-bold font-heading text-card-foreground">
+            <TypographySmall className="text-sm font-bold font-heading text-card-foreground">
               Client Cut Approvals
-            </div>
-            <div className="text-xs text-muted-foreground">
+            </TypographySmall>
+            <TypographyMuted className="text-xs text-muted-foreground">
               Receive an immediate WhatsApp message and email when a client approves a cut.
-            </div>
+            </TypographyMuted>
           </div>
-          <button
-            onClick={() => {
-              setNotifyApproval(!notifyApproval);
-              toast.success(!notifyApproval ? "Approval alerts enabled" : "Approval alerts disabled");
-            }}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              notifyApproval ? "bg-[#f5551d]" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                notifyApproval ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+          <Switch
+            disabled={isLoadingSettings}
+            checked={notifyApproval}
+            onCheckedChange={(checked) =>
+              handleTogglePreference("notifyApprovals", checked, "Client cut approval")
+            }
+            aria-label="Toggle Client Cut Approvals"
+          />
         </div>
 
         {/* New Comments */}
         <div className="p-6 flex items-center justify-between gap-4">
           <div className="space-y-0.5">
-            <div className="text-sm font-bold font-heading text-card-foreground">
+            <TypographySmall className="text-sm font-bold font-heading text-card-foreground">
               New Timecoded Notes &amp; Comments
-            </div>
-            <div className="text-xs text-muted-foreground">
+            </TypographySmall>
+            <TypographyMuted className="text-xs text-muted-foreground">
               Notify when a client pauses and leaves timestamped review notes on a scene.
-            </div>
+            </TypographyMuted>
           </div>
-          <button
-            onClick={() => {
-              setNotifyComments(!notifyComments);
-              toast.success(!notifyComments ? "Comment notifications enabled" : "Comment notifications disabled");
-            }}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              notifyComments ? "bg-[#f5551d]" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                notifyComments ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+          <Switch
+            disabled={isLoadingSettings}
+            checked={notifyComments}
+            onCheckedChange={(checked) =>
+              handleTogglePreference("notifyComments", checked, "Timecoded notes & comments")
+            }
+            aria-label="Toggle New Timecoded Notes & Comments"
+          />
         </div>
 
         {/* Master File Downloads */}
         <div className="p-6 flex items-center justify-between gap-4">
           <div className="space-y-0.5">
-            <div className="text-sm font-bold font-heading text-card-foreground">
-              Master File Download Alerts
+            <div className="flex items-center gap-2">
+              <TypographySmall className="text-sm font-bold font-heading text-card-foreground">
+                Master File Download Alerts
+              </TypographySmall>
+              {!canNotifyDownloads && (
+                <Badge variant="orange" className="text-[9px] px-1.5 py-0.5 font-bold">
+                  PRO
+                </Badge>
+              )}
             </div>
-            <div className="text-xs text-muted-foreground">
-              Get notified when a client initiates a full 4K ProRes master file download.
-            </div>
+            <TypographyMuted className="text-xs text-muted-foreground">
+              Get notified when a client initiates a full ProRes master file download.
+            </TypographyMuted>
+            {!canNotifyDownloads && (
+              <Link
+                href={`/${workspaceSlug}/subscription`}
+                className="text-[10px] text-primary hover:underline block pt-0.5"
+              >
+                Upgrade to Pro to enable download alerts &rarr;
+              </Link>
+            )}
           </div>
-          <button
-            onClick={() => {
-              setNotifyDownloads(!notifyDownloads);
-              toast.success(!notifyDownloads ? "Download alerts enabled" : "Download alerts disabled");
-            }}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              notifyDownloads ? "bg-[#f5551d]" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                notifyDownloads ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+          <Switch
+            disabled={isLoadingSettings || !canNotifyDownloads}
+            checked={canNotifyDownloads && notifyDownloads}
+            onCheckedChange={(checked) =>
+              handleTogglePreference("notifyDownloads", checked, "Master file download")
+            }
+            aria-label="Toggle Master File Download Alerts"
+          />
         </div>
 
         {/* Weekly Digest */}
         <div className="p-6 flex items-center justify-between gap-4">
           <div className="space-y-0.5">
-            <div className="text-sm font-bold font-heading text-card-foreground">
+            <TypographySmall className="text-sm font-bold font-heading text-card-foreground">
               Weekly Studio Activity Summary
-            </div>
-            <div className="text-xs text-muted-foreground">
+            </TypographySmall>
+            <TypographyMuted className="text-xs text-muted-foreground">
               A consolidated email digest of client views, stream minutes, and approvals every Monday morning.
-            </div>
+            </TypographyMuted>
           </div>
-          <button
-            onClick={() => {
-              setWeeklyDigest(!weeklyDigest);
-              toast.success(!weeklyDigest ? "Weekly digest enabled" : "Weekly digest disabled");
-            }}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              weeklyDigest ? "bg-[#f5551d]" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                weeklyDigest ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
+          <Switch
+            disabled={isLoadingSettings}
+            checked={weeklyDigest}
+            onCheckedChange={(checked) =>
+              handleTogglePreference("weeklyDigest", checked, "Weekly activity summary")
+            }
+            aria-label="Toggle Weekly Studio Activity Summary"
+          />
         </div>
       </div>
 
@@ -187,55 +286,123 @@ export default function NotificationsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="inline-block size-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <h3 className="text-base font-bold font-heading text-card-foreground">
-                Official CineSpace WhatsApp Bot
-              </h3>
+              <span className={`inline-block size-2.5 rounded-full ${canWhatsApp ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/40"}`} />
+              <TypographyH3 className="text-base font-bold font-heading text-card-foreground flex items-center gap-2">
+                <MessageCircle className={`size-4 ${canWhatsApp ? "text-emerald-400" : "text-muted-foreground"}`} />
+                CineSpace WhatsApp Gateway
+              </TypographyH3>
+              {!canWhatsApp && (
+                <Badge variant="orange" className="text-[9px] px-1.5 py-0.5 font-bold">
+                  BASIC
+                </Badge>
+              )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Messages will be dispatched from +1 (800) 246-3772 to your registered Gulf mobile number.
-            </p>
+            <TypographyMuted className="text-xs text-muted-foreground">
+              Instant alerts and share links dispatched directly to your mobile phone.
+            </TypographyMuted>
+            {!canWhatsApp && (
+              <Link
+                href={`/${workspaceSlug}/subscription`}
+                className="text-[10px] text-primary hover:underline block pt-0.5"
+              >
+                Upgrade to Basic or higher to enable WhatsApp delivery &rarr;
+              </Link>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
             <input
               type="text"
+              placeholder="+971 50 123 4567"
               value={whatsAppNumber}
+              disabled={isLoadingSettings || isUpdatingPhone || !canWhatsApp}
               onChange={(e) => setWhatsAppNumber(e.target.value)}
-              className="bg-muted border border-border rounded-xl px-3 py-1.5 text-xs font-mono text-foreground focus:outline-none focus:border-primary w-44"
+              className="bg-muted border border-border rounded-xl px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary w-48 disabled:opacity-50"
             />
             <Button
-              onClick={() => toast.success("WhatsApp number verified")}
-              className="rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-black cursor-pointer"
+              disabled={isUpdatingPhone || isLoadingSettings || !canWhatsApp}
+              onClick={handleUpdateWhatsAppNumber}
+              className="rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-black cursor-pointer disabled:opacity-50"
             >
-              Update
+              {isUpdatingPhone ? <Loader2 className="size-3 animate-spin" /> : "Save"}
             </Button>
           </div>
         </div>
 
-        {/* WhatsApp Delivery Logs */}
+        {/* Real Notification Delivery Logs */}
         <div className="pt-4 border-t border-border space-y-3">
-          <div className="text-xs font-bold font-mono text-muted-foreground uppercase tracking-wider">
-            Recent WhatsApp Delivery Broadcasts
+          <div className="flex items-center justify-between text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            <span>Recent Notification Broadcasts &amp; Alerts</span>
+            <span className="text-[11px] font-normal normal-case">
+              {logs.length} logged events
+            </span>
           </div>
 
-          <div className="divide-y divide-border">
-            {SAMPLE_LOGS.map((log) => (
-              <div key={log.id} className="py-2.5 flex items-center justify-between text-xs first:pt-0 last:pb-0">
-                <div className="space-y-0.5">
-                  <div className="font-semibold text-foreground">{log.projectTitle}</div>
-                  <div className="text-[11px] font-mono text-muted-foreground">{log.recipient}</div>
-                </div>
-                <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
-                  <span>{log.sentAt}</span>
-                  <span className="flex items-center gap-1 text-emerald-400">
-                    <CheckCheck className="size-3.5" />
-                    {log.status === "read" ? "Read" : "Delivered"}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+          {isLoadingLogs ? (
+            <div className="py-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="size-4 animate-spin text-primary" /> Loading broadcast history...
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="py-8 text-center rounded-xl bg-muted/40 border border-border/60 p-6 space-y-1">
+              <Bell className="size-5 text-muted-foreground mx-auto mb-2 opacity-50" />
+              <TypographySmall className="text-xs font-semibold text-foreground">
+                No notification events dispatched yet
+              </TypographySmall>
+              <TypographyMuted className="text-[11px] text-muted-foreground">
+                When clients approve cuts, leave notes, or download master files, audit logs will appear here.
+              </TypographyMuted>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {logs.map((log) => {
+                const isEmail = log.channel === "email";
+                const isWhatsApp = log.channel === "whatsapp";
+                const recipientDisplay = log.recipientEmail || log.recipientPhone || "Recipient";
+                const titleDisplay = log.subject || (isWhatsApp ? "WhatsApp Review Link" : "Studio Notification");
+
+                return (
+                  <div
+                    key={log.id}
+                    className="py-3 flex items-center justify-between text-xs first:pt-0 last:pb-0 gap-4"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="p-2 rounded-xl bg-muted border border-border shrink-0">
+                        {isEmail ? (
+                          <Mail className="size-3.5 text-primary" />
+                        ) : (
+                          <MessageCircle className="size-3.5 text-emerald-400" />
+                        )}
+                      </div>
+                      <div className="space-y-0.5 truncate">
+                        <div className="font-semibold text-foreground truncate">{titleDisplay}</div>
+                        <div className="text-[11px] text-muted-foreground truncate">{recipientDisplay}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0 text-[11px] text-muted-foreground">
+                      <TypographySpan>{formatRelativeTime(log.createdAt)}</TypographySpan>
+                      <TypographySpan
+                        className={`flex items-center gap-1 font-semibold ${
+                          log.status === "delivered" || log.status === "sent"
+                            ? "text-emerald-400"
+                            : log.status === "failed"
+                            ? "text-destructive"
+                            : "text-amber-400"
+                        }`}
+                      >
+                        {log.status === "delivered" || log.status === "sent" ? (
+                          <CheckCheck className="size-3.5" />
+                        ) : (
+                          <Clock className="size-3.5" />
+                        )}
+                        <span className="capitalize">{log.status}</span>
+                      </TypographySpan>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

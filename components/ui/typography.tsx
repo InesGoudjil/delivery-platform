@@ -2,7 +2,7 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-const typographyVariants = cva("transition-colors", {
+const typographyVariants = cva("font-sans transition-colors", {
   variants: {
     variant: {
       h1: "font-heading text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight leading-[1.02]",
@@ -17,17 +17,18 @@ const typographyVariants = cva("transition-colors", {
       small: "text-xs sm:text-sm font-medium",
       muted: "text-xs leading-normal",
       kicker: "text-xs font-bold uppercase tracking-wider",
-      code: "relative rounded bg-white/10 px-[0.35rem] py-[0.15rem] font-mono text-xs font-semibold",
+      code: "relative rounded bg-white/10 px-[0.35rem] py-[0.15rem]  text-xs font-semibold",
+      span: "inline",
     },
     color: {
       default: "text-[#f6f3ec]",
       muted: "text-[#9a9a9f]",
       faint: "text-[#5e5e64]",
-      orange: "text-[#f5551d]",
+      orange: "text-primary",
       sage: "text-[#86b98f]",
       white: "text-white",
       gradient:
-        "text-transparent bg-clip-text bg-gradient-to-r from-[#f5551d] via-[#ff8a45] to-[#f6f3ec]",
+        "text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary/80 to-[#f6f3ec]",
     },
   },
   defaultVariants: {
@@ -41,7 +42,7 @@ type ElementType = React.ElementType;
 export interface TypographyProps<T extends ElementType = "p">
   extends Omit<React.HTMLAttributes<HTMLElement>, "color">,
     VariantProps<typeof typographyVariants> {
-  as?: T;
+  as?: ElementType;
 }
 
 const defaultElementMap: Record<
@@ -61,6 +62,7 @@ const defaultElementMap: Record<
   muted: "p",
   kicker: "span",
   code: "code",
+  span: "span",
 };
 
 export function Typography<T extends ElementType = "p">({
@@ -96,35 +98,38 @@ export function Typography<T extends ElementType = "p">({
 
 // Convenience helper components
 export const TypographyH1 = (props: TypographyProps<"h1">) => (
-  <Typography as="h1" variant="h1" {...props} />
+  <Typography as={props.as || "h1"} variant="h1" {...props} />
 );
 export const TypographyH2 = (props: TypographyProps<"h2">) => (
-  <Typography as="h2" variant="h2" {...props} />
+  <Typography as={props.as || "h2"} variant="h2" {...props} />
 );
 export const TypographyH3 = (props: TypographyProps<"h3">) => (
-  <Typography as="h3" variant="h3" {...props} />
+  <Typography as={props.as || "h3"} variant="h3" {...props} />
 );
 export const TypographyH4 = (props: TypographyProps<"h4">) => (
-  <Typography as="h4" variant="h4" {...props} />
+  <Typography as={props.as || "h4"} variant="h4" {...props} />
 );
 export const TypographyH5 = (props: TypographyProps<"h5">) => (
-  <Typography as="h5" variant="h5" {...props} />
+  <Typography as={props.as || "h5"} variant="h5" {...props} />
 );
 export const TypographyH6 = (props: TypographyProps<"h6">) => (
-  <Typography as="h6" variant="h6" {...props} />
+  <Typography as={props.as || "h6"} variant="h6" {...props} />
 );
 export const TypographyLead = (props: TypographyProps<"p">) => (
-  <Typography as="p" variant="lead" {...props} />
+  <Typography as={props.as || "p"} variant="lead" {...props} />
 );
 export const TypographyP = (props: TypographyProps<"p">) => (
-  <Typography as="p" variant="p" {...props} />
+  <Typography as={props.as || "p"} variant="p" {...props} />
 );
 export const TypographyMuted = (props: TypographyProps<"p">) => (
-  <Typography as="p" variant="muted" {...props} />
+  <Typography as={props.as || "p"} variant="muted" {...props} />
 );
 export const TypographySmall = (props: TypographyProps<"p">) => (
-  <Typography as="p" variant="small" {...props} />
+  <Typography as={props.as || "p"} variant="small" {...props} />
 );
 export const TypographyKicker = (props: TypographyProps<"span">) => (
-  <Typography as="span" variant="kicker" {...props} />
+  <Typography as={props.as || "span"} variant="kicker" {...props} />
+);
+export const TypographySpan = (props: TypographyProps<"span">) => (
+  <Typography as={props.as || "span"} variant={props.variant || "span"} {...props} />
 );

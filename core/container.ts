@@ -1,11 +1,14 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database.types";
+import { logger, Logger } from "@/lib/logger";
 
 // Storage Provider
 import {
   IStorageProvider,
   StorageProviderFactory,
   StorageFactoryOptions,
+  ISiloStorageProvider,
+  SiloProviderFactory,
 } from "./providers/storage";
 
 // Repositories
@@ -27,8 +30,11 @@ import {
   SupabaseNotificationLogRepository,
   SupabaseInvoiceRepository,
   SupabaseWaitlistRepository,
+  SupabaseInquiryRepository,
+  SupabaseWorkspaceSettingsRepository,
+  SupabaseUserSessionRepository,
 } from "./repositories";
-import { ResendEmailProvider } from "./providers/email";
+import { ZeptoMailEmailProvider, IEmailProvider } from "./providers/email";
 
 // Services
 import {
@@ -47,10 +53,14 @@ import {
   NotificationService,
   StripeService,
   WaitlistService,
+  SiloService,
+  SessionService,
 } from "./services";
 
 export interface CoreServices {
+  logger: Logger;
   storageProvider: IStorageProvider;
+  siloProvider: ISiloStorageProvider;
   repositories: {
     workspace: SupabaseWorkspaceRepository;
     workspaceFeatures: SupabaseWorkspaceFeaturesRepository;
@@ -68,6 +78,9 @@ export interface CoreServices {
     feedback: SupabaseFeedbackRepository;
     notification: SupabaseNotificationLogRepository;
     waitlist: SupabaseWaitlistRepository;
+    inquiry: SupabaseInquiryRepository;
+    settings: SupabaseWorkspaceSettingsRepository;
+    session: SupabaseUserSessionRepository;
   };
   services: {
     auth: AuthService;
@@ -85,6 +98,12 @@ export interface CoreServices {
     notification: NotificationService;
     stripe: StripeService;
     waitlist: WaitlistService;
+    storage: IStorageProvider;
+    silo: SiloService;
+    siloProvider: ISiloStorageProvider;
+    email: IEmailProvider;
+    settings: SupabaseWorkspaceSettingsRepository;
+    session: SessionService;
   };
 }
 
@@ -103,6 +122,7 @@ export function createCoreServices(
 ): CoreServices {
   // 0. Storage Provider
   const storageProvider = StorageProviderFactory.createProvider(options?.storageOptions);
+  const siloProvider = SiloProviderFactory.createProvider();
 
   // Privileged client to bypass RLS for system/billing tables (subscriptions, plans, features, invoices)
   const systemClient = options?.adminSupabase || supabase;
@@ -112,7 +132,8 @@ export function createCoreServices(
   const workspaceFeaturesRepo = new SupabaseWorkspaceFeaturesRepository(systemClient);
   const userProfileRepo = new SupabaseUserProfileRepository(supabase);
   const workspaceMemberRepo = new SupabaseWorkspaceMemberRepository(supabase);
-  const workspaceInvitationRepo = new SupabaseWorkspaceInvitationRepository(supabase);
+  const systemWorkspaceMemberRepo = new SupabaseWorkspaceMemberRepository(systemClient);
+  const workspaceInvitationRepo = new SupabaseWorkspaceInvitationRepository(systemClient);
   const planRepo = new SupabasePlanRepository(systemClient);
   const subscriptionRepo = new SupabaseSubscriptionRepository(systemClient);
   const clientRepo = new SupabaseClientRepository(supabase);
@@ -125,9 +146,12 @@ export function createCoreServices(
   const notificationRepo = new SupabaseNotificationLogRepository(supabase);
   const invoiceRepo = new SupabaseInvoiceRepository(systemClient);
   const waitlistRepo = new SupabaseWaitlistRepository(systemClient);
+  const inquiryRepo = new SupabaseInquiryRepository(systemClient);
+  const workspaceSettingsRepo = new SupabaseWorkspaceSettingsRepository(supabase);
+  const userSessionRepo = new SupabaseUserSessionRepository(systemClient);
 
-  // Email Provider
-  const emailProvider = new ResendEmailProvider();
+  // Email Provider (Zoho ZeptoMail)
+  const emailProvider = new ZeptoMailEmailProvider();
 
   // Notification Service (Hub for multi-channel notifications)
   const notificationService = new NotificationService(
@@ -147,20 +171,22 @@ export function createCoreServices(
     workspaceMemberRepo
   );
   const profileService = new ProfileService(userProfileRepo);
-  const memberService = new MemberService(
-    workspaceMemberRepo,
-    workspaceInvitationRepo,
-    workspaceFeaturesRepo,
-    workspaceRepo,
-    userProfileRepo,
-    notificationService
-  );
   const subscriptionService = new SubscriptionService(
     subscriptionRepo,
     planRepo,
     workspaceFeaturesRepo,
     deliveryRepo as any,
     invoiceRepo
+  );
+  const memberService = new MemberService(
+    workspaceMemberRepo,
+    workspaceInvitationRepo,
+    workspaceFeaturesRepo,
+    workspaceRepo,
+    userProfileRepo,
+    notificationService,
+    systemWorkspaceMemberRepo,
+    subscriptionService
   );
   const clientService = new ClientService(clientRepo);
   const portfolioService = new PortfolioService(
@@ -176,13 +202,14 @@ export function createCoreServices(
     assetVersionRepo,
     feedbackRepo,
     projectRepo,
-    undefined,
+    subscriptionService,
     notificationService
   );
   const projectService = new ProjectService(
     projectRepo,
     assetRepo,
-    assetVersionRepo
+    assetVersionRepo,
+    subscriptionService
   );
   const assetService = new AssetService(assetRepo, assetVersionRepo);
   const uploadService = new AssetUploadService(
@@ -192,7 +219,8 @@ export function createCoreServices(
     assetRepo,
     assetVersionRepo,
     subscriptionRepo,
-    planRepo
+    planRepo,
+    workspaceFeaturesRepo
   );
   const feedbackService = new FeedbackService(feedbackRepo, notificationService);
   const stripeService = new StripeService(
@@ -202,9 +230,24 @@ export function createCoreServices(
     workspaceRepo
   );
   const waitlistService = new WaitlistService(waitlistRepo, emailProvider);
+  const sessionService = new SessionService(userSessionRepo);
+  const siloService = new SiloService(
+    siloProvider,
+    storageProvider,
+    deliveryRepo,
+    assetRepo,
+    assetVersionRepo,
+    workspaceRepo,
+    subscriptionService,
+    notificationService,
+    memberService
+  );
+
 
   return {
+    logger,
     storageProvider,
+    siloProvider,
     repositories: {
       workspace: workspaceRepo,
       workspaceFeatures: workspaceFeaturesRepo,
@@ -222,6 +265,9 @@ export function createCoreServices(
       feedback: feedbackRepo,
       notification: notificationRepo,
       waitlist: waitlistRepo,
+      inquiry: inquiryRepo,
+      settings: workspaceSettingsRepo,
+      session: userSessionRepo,
     },
     services: {
       auth: authService,
@@ -239,6 +285,12 @@ export function createCoreServices(
       notification: notificationService,
       stripe: stripeService,
       waitlist: waitlistService,
+      storage: storageProvider,
+      silo: siloService,
+      siloProvider,
+      email: emailProvider,
+      settings: workspaceSettingsRepo,
+      session: sessionService,
     },
   };
 }

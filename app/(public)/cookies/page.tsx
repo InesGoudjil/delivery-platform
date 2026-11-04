@@ -84,7 +84,7 @@ export default async function CookiesPage() {
           Questions about this policy or your cookie preferences:{" "}
           <a
             href="mailto:hello@cinespace.film"
-            className="text-white hover:text-[#f5551d] transition-colors underline underline-offset-2"
+            className="text-white hover:text-primary transition-colors underline underline-offset-2"
           >
             hello@cinespace.film
           </a>

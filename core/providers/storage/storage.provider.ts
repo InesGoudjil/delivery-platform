@@ -9,6 +9,9 @@ export interface CreateUploadUrlParams {
   fileSizeBytes: number;
   filename: string;
   maxDurationSeconds?: number;
+  isPublic?: boolean;
+  category?: string;
+  versionNumber?: number;
   metadata?: Record<string, string>;
 }
 
@@ -31,6 +34,7 @@ export interface PlaybackInfo {
   status: "ready" | "processing" | "pending" | "error";
   width?: number;
   height?: number;
+  rawDownloadUrl?: string;
 }
 
 export interface StorageAssetStatus {
@@ -68,7 +72,56 @@ export interface IStorageProvider {
   deleteAsset(providerUid: string): Promise<void>;
 
   /**
+   * Returns a direct CDN URL (for public assets) or a short-lived presigned GET URL (for private assets)
+   */
+  getSecurePlaybackUrl?(providerUid: string, isPublic?: boolean, expiresInSeconds?: number): Promise<string>;
+
+  /**
+   * Returns a presigned GET URL with ResponseContentDisposition set to attachment,
+   * guaranteeing native browser download directly to disk.
+   */
+  getSecureDownloadUrl?(
+    providerUid: string,
+    filename: string,
+    isPublic?: boolean,
+    expiresInSeconds?: number
+  ): Promise<string>;
+
+  /**
    * Validates incoming webhook signature (e.g. from Cloudflare)
    */
   verifyWebhookSignature?(rawBody: string, headers: Record<string, string>): boolean;
+
+  /**
+   * Retrieves a readable stream of the object for transferring/archiving
+   */
+  getObjectStream?(providerUid: string): Promise<{
+    stream: NodeJS.ReadableStream | any;
+    contentType?: string;
+    contentLength?: number;
+  }>;
+
+  /**
+   * Streams a file into storage (e.g. restoring a thawed asset back into active storage)
+   */
+  putObjectStream?(
+    providerUid: string,
+    body: NodeJS.ReadableStream | Buffer | Uint8Array,
+    contentType?: string,
+    contentLength?: number
+  ): Promise<void>;
+
+  /**
+   * Ingests a video from a publicly-accessible or presigned URL into the streaming pipeline.
+   * Enables Cloudflare Stream to pull master video files stored in Cloudflare R2 and generate HLS/DASH streaming renditions.
+   */
+  copyFromUrl?(
+    sourceUrl: string,
+    metadata?: {
+      name?: string;
+      creator?: string;
+      allowedOrigins?: string[];
+      meta?: Record<string, string>;
+    }
+  ): Promise<{ uid: string; status?: string }>;
 }

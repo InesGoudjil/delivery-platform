@@ -2,7 +2,7 @@ import React from "react";
 
 export default function PortfolioLoading() {
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-200">
+    <div className="w-full space-y-8 animate-in fade-in duration-200">
       {/* Hero Banner Skeleton */}
       <div className="rounded-3xl bg-[#141416] border border-white/10 p-6 md:p-8 space-y-4 shadow-2xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">

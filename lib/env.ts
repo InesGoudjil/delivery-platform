@@ -22,12 +22,22 @@ const envSchema = z.object({
   CLOUDFLARE_STREAM_SUBDOMAIN: z.string().optional().default("videodelivery.net"),
   CLOUDFLARE_WEBHOOK_SECRET: z.string().optional().default(""),
 
-  // Cloudflare R2 Configuration (Images & Photo Galleries)
+  // Cloudflare R2 Configuration (Images, Photo Galleries, and Deliveries)
   CLOUDFLARE_R2_BUCKET: z.string().optional().default(""),
+  CLOUDFLARE_R2_PUBLIC_BUCKET: z.string().optional().default(""),
+  CLOUDFLARE_R2_PRIVATE_BUCKET: z.string().optional().default(""),
   CLOUDFLARE_R2_ACCESS_KEY_ID: z.string().optional().default(""),
   CLOUDFLARE_R2_SECRET_ACCESS_KEY: z.string().optional().default(""),
   CLOUDFLARE_R2_ENDPOINT: z.string().optional().default(""),
   CLOUDFLARE_R2_PUBLIC_DOMAIN: z.string().optional().default(""),
+
+  // AWS S3 Glacier Deep Archive Configuration (The Silo)
+  AWS_REGION: z.string().optional().default("us-east-1"),
+  AWS_ACCESS_KEY_ID: z.string().optional().default(""),
+  AWS_SECRET_ACCESS_KEY: z.string().optional().default(""),
+  AWS_S3_SILO_BUCKET: z.string().optional().default(""),
+  AWS_SILO_STORAGE_CLASS: z.enum(["DEEP_ARCHIVE", "GLACIER"]).default("DEEP_ARCHIVE"),
+  SILO_WEBHOOK_SECRET: z.string().optional().default(""),
 
   // Stripe Billing Configuration
   STRIPE_SECRET_KEY: z.string().optional().default(""),
@@ -37,19 +47,71 @@ const envSchema = z.object({
   // App & Storage Options
   STORAGE_PROVIDER: z.enum(["cloudflare", "mock", "auto"]).default("auto"),
   NEXT_PUBLIC_APP_URL: z.string().optional().default("http://localhost:3000"),
+  LOG_LEVEL: z
+    .enum(["trace", "debug", "info", "warn", "error", "fatal", "silent"])
+    .optional()
+    .default(process.env.NODE_ENV === "production" ? "info" : "debug"),
 
-  // Resend Email Configuration
+  // Zoho ZeptoMail Configuration
+  ZEPTOMAIL_API_TOKEN: z.string().optional().default(""),
+  ZEPTOMAIL_FROM_EMAIL: z.string().optional().default("noreply@cinespace.film"),
+  ZEPTOMAIL_FROM_NAME: z.string().optional().default("CineSpace"),
+  ZEPTOMAIL_API_URL: z.string().optional().default("https://api.zeptomail.com/v1.1/email"),
+  ZEPTOMAIL_BOUNCE_ADDRESS: z.string().optional().default(""),
+
+  // Resend Email Configuration (Legacy / Fallback during migration)
   RESEND_API_KEY: z.string().optional().default(""),
   RESEND_FROM_EMAIL: z.string().optional().default("onboarding@resend.dev"),
 
   // Google OAuth Configuration
   GOOGLE_CLIENT_ID: z.string().optional().default(""),
   GOOGLE_CLIENT_SECRET: z.string().optional().default(""),
+
+  // Meta Pixel + Conversions API
+  NEXT_PUBLIC_META_PIXEL_ID: z.string().optional().default(""),
+  NEXT_PUBLIC_META_DEV_PIXEL: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) => v === "true"),
+  META_ACCESS_TOKEN: z.string().optional().default(""),
+  META_CAPI_ENABLED: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) => v !== "false"),
+  META_TEST_EVENT_CODE: z.string().optional().default(""),
+
+  // PostHog
+  NEXT_PUBLIC_POSTHOG_KEY: z.string().optional().default(""),
+  NEXT_PUBLIC_POSTHOG_HOST: z.string().optional().default("/ingest"),
+  NEXT_PUBLIC_POSTHOG_UI_HOST: z
+    .string()
+    .optional()
+    .default("https://eu.posthog.com"),
+  POSTHOG_PROJECT_API_KEY: z.string().optional().default(""),
+  POSTHOG_HOST: z
+    .string()
+    .optional()
+    .default("https://eu.i.posthog.com"),
+  POSTHOG_ENABLED: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) => v !== "false"),
+  POSTHOG_SESSION_REPLAY_ENABLED: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) => v !== "false"),
 });
 
 export type Env = z.infer<typeof envSchema> & {
   isCloudflareStreamConfigured: boolean;
   isCloudflareR2Configured: boolean;
+  isAwsSiloConfigured: boolean;
+  isMetaPixelEnabled: boolean;
+  isMetaCapiEnabled: boolean;
+  isPostHogClientEnabled: boolean;
+  isPostHogServerEnabled: boolean;
+  isPostHogSessionReplayEnabled: boolean;
+  isZeptoMailConfigured: boolean;
 };
 
 /**
@@ -77,15 +139,55 @@ function parseEnv(): Env {
     Boolean(rawApiToken) &&
     rawApiToken !== "your-cloudflare-stream-token";
 
+  const publicBucket = parsed.CLOUDFLARE_R2_PUBLIC_BUCKET || parsed.CLOUDFLARE_R2_BUCKET;
+  const privateBucket = parsed.CLOUDFLARE_R2_PRIVATE_BUCKET || parsed.CLOUDFLARE_R2_BUCKET;
+
   const isCloudflareR2Configured =
-    Boolean(parsed.CLOUDFLARE_R2_BUCKET) &&
+    Boolean(publicBucket || privateBucket) &&
     Boolean(parsed.CLOUDFLARE_R2_ACCESS_KEY_ID) &&
     Boolean(parsed.CLOUDFLARE_R2_SECRET_ACCESS_KEY);
 
+  const isAwsSiloConfigured =
+    Boolean(parsed.AWS_S3_SILO_BUCKET) &&
+    Boolean(parsed.AWS_ACCESS_KEY_ID) &&
+    Boolean(parsed.AWS_SECRET_ACCESS_KEY);
+
+  const isMetaPixelEnabled = Boolean(parsed.NEXT_PUBLIC_META_PIXEL_ID);
+  const isMetaCapiEnabled =
+    isMetaPixelEnabled &&
+    parsed.META_CAPI_ENABLED &&
+    Boolean(parsed.META_ACCESS_TOKEN) &&
+    parsed.META_ACCESS_TOKEN !== "your-meta-access-token";
+
+  const isPostHogClientEnabled =
+    parsed.POSTHOG_ENABLED &&
+    Boolean(parsed.NEXT_PUBLIC_POSTHOG_KEY) &&
+    parsed.NEXT_PUBLIC_POSTHOG_KEY !== "your-posthog-project-key";
+  const isPostHogServerEnabled =
+    isPostHogClientEnabled &&
+    Boolean(parsed.POSTHOG_PROJECT_API_KEY) &&
+    parsed.POSTHOG_PROJECT_API_KEY !== "your-posthog-project-api-key";
+  const isPostHogSessionReplayEnabled =
+    isPostHogClientEnabled && parsed.POSTHOG_SESSION_REPLAY_ENABLED;
+
+  const isZeptoMailConfigured =
+    Boolean(parsed.ZEPTOMAIL_API_TOKEN) &&
+    parsed.ZEPTOMAIL_API_TOKEN.trim() !== "" &&
+    parsed.ZEPTOMAIL_API_TOKEN !== "your-zeptomail-token";
+
   return {
     ...parsed,
+    CLOUDFLARE_R2_PUBLIC_BUCKET: publicBucket,
+    CLOUDFLARE_R2_PRIVATE_BUCKET: privateBucket,
     isCloudflareStreamConfigured,
     isCloudflareR2Configured,
+    isAwsSiloConfigured,
+    isMetaPixelEnabled,
+    isMetaCapiEnabled,
+    isPostHogClientEnabled,
+    isPostHogServerEnabled,
+    isPostHogSessionReplayEnabled,
+    isZeptoMailConfigured,
   };
 }
 

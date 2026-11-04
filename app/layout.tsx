@@ -1,26 +1,105 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import localFont from "next/font/local";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/i18n/context";
-
-const manrope = localFont({
-  src: "../public/fonts/Manrope-Regular.otf",
-  variable: "--font-manrope",
-  display: "swap",
-});
+import { MetaPixel } from "@/components/meta/MetaPixel";
+import { MetaPageView } from "@/components/meta/MetaPageView";
+import { PostHogProvider } from "@/lib/posthog/client";
+import { PostHogPageView } from "@/components/posthog/PostHogPageView";
+import { PostHogIdentify } from "@/components/posthog/PostHogIdentify";
 
 const satoshi = localFont({
-  src: "../public/fonts/Satoshi-Black.otf",
+  src: [
+    {
+      path: "../public/fonts/Satoshi-Light.otf",
+      weight: "300",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Satoshi-LightItalic.otf",
+      weight: "300",
+      style: "italic",
+    },
+    {
+      path: "../public/fonts/Satoshi-Regular.otf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Satoshi-Italic.otf",
+      weight: "400",
+      style: "italic",
+    },
+    {
+      path: "../public/fonts/Satoshi-Medium.otf",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Satoshi-MediumItalic.otf",
+      weight: "500",
+      style: "italic",
+    },
+    {
+      path: "../public/fonts/Satoshi-Bold.otf",
+      weight: "700",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Satoshi-BoldItalic.otf",
+      weight: "700",
+      style: "italic",
+    },
+    {
+      path: "../public/fonts/Satoshi-Black.otf",
+      weight: "900",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Satoshi-BlackItalic.otf",
+      weight: "900",
+      style: "italic",
+    },
+  ],
   variable: "--font-satoshi",
   display: "swap",
+  fallback: [
+    "system-ui",
+    "-apple-system",
+    "BlinkMacSystemFont",
+    "Segoe UI",
+    "Roboto",
+    "Helvetica Neue",
+    "Arial",
+    "sans-serif",
+  ],
 });
 
 export const metadata: Metadata = {
   title: "CineSpace — Deliver films like a studio.",
   description:
     "Your portfolio, client review, and delivery — in one place, built for filmmakers in the Gulf.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "CineSpace",
+  },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/images/logo.svg",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: "cover",
+  themeColor: "#070709",
 };
 
 export default function RootLayout({
@@ -33,7 +112,7 @@ export default function RootLayout({
       lang="en"
       suppressHydrationWarning
       data-scroll-behavior="smooth"
-      className={`${manrope.variable} ${satoshi.variable}`}
+      className={`${satoshi.variable} font-sans`}
     >
       <head>
         <script
@@ -52,18 +131,28 @@ export default function RootLayout({
             `,
           }}
         />
+        <MetaPixel />
       </head>
-      <body className="min-h-screen bg-background text-foreground antialiased selection:bg-[#f5551d] selection:text-black">
+      <body className="min-h-screen bg-background text-foreground antialiased selection:bg-primary selection:text-primary-foreground">
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
         >
-          <I18nProvider initialLocale="en">
-            {children}
-          </I18nProvider>
-          <Toaster position="bottom-right" richColors closeButton />
+          <PostHogProvider>
+            <I18nProvider initialLocale="en">
+              {children}
+            </I18nProvider>
+            <Toaster position="bottom-right" richColors closeButton />
+            <PostHogIdentify />
+            <Suspense fallback={null}>
+              <PostHogPageView />
+            </Suspense>
+            <Suspense fallback={null}>
+              <MetaPageView />
+            </Suspense>
+          </PostHogProvider>
         </ThemeProvider>
       </body>
     </html>

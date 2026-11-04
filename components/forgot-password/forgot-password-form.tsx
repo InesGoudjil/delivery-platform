@@ -59,7 +59,7 @@ export function ForgotPasswordForm({
     >
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-[#f5551d]/15 text-[#f5551d] flex items-center justify-center mb-2 shadow-inner">
+          <div className="w-12 h-12 rounded-2xl bg-primary/15 text-primary flex items-center justify-center mb-2 shadow-inner">
             <Mail className="size-6" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight font-heading">
