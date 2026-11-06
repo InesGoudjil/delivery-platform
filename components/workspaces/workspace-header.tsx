@@ -39,6 +39,7 @@ import { signOutAction } from "@/app/actions/auth";
 
 import { WorkspaceHeaderSwitcher, WorkspaceHeaderItem } from "./workspace-header-switcher";
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { InstallPwaMenuItem } from "@/components/pwa/install-pwa-button";
 import {
   Typography,
   TypographySpan,
@@ -287,8 +288,9 @@ export function WorkspaceHeader({
 
             <DropdownMenuSeparator className="bg-border my-1" />
 
-            {/* Public Link */}
+            {/* Public Link & PWA Install */}
             <DropdownMenuGroup className="space-y-0.5">
+              <InstallPwaMenuItem />
               <DropdownMenuItem asChild>
                 <Link
                   href={`/p/${workspaceSlug}`}

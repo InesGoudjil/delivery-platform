@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { signOutAction } from "@/app/actions/auth";
+import { InstallPwaMenuItem } from "@/components/pwa/install-pwa-button";
 
 export interface UserNavMenuProps {
   user: {
@@ -176,6 +177,13 @@ export function UserNavMenu({ user, workspace }: UserNavMenuProps) {
               <span>Branding & Settings</span>
             </Link>
           </DropdownMenuItem>
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator className="bg-white/10 my-1" />
+
+        {/* PWA Install */}
+        <DropdownMenuGroup className="space-y-0.5">
+          <InstallPwaMenuItem className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium text-[#f6f3ec] hover:bg-white/10 hover:text-white cursor-pointer transition-colors" />
         </DropdownMenuGroup>
 
         <DropdownMenuSeparator className="bg-white/10 my-1" />
