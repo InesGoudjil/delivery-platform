@@ -179,7 +179,8 @@ export function DeliveryAssetsGallery({
               key={item.id}
               title={item.title}
               // subtitle={`Aspect: ${aspectLabel}`}
-
+              className={item.type === "video" ? "max-sm:rounded-none" : ""}
+              containerClassName={item.type === "video" ? "max-sm:rounded-none" : ""}
               showInfo={showCardInfo}
               showTitle={showCardInfo}
               showSubtitle={showCardInfo}

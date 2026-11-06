@@ -37,4 +37,5 @@ export interface CutImageViewerProps {
   allowDownload?: boolean;
   onDownload?: () => void;
   showHud?: boolean;
+  onAspectRatioDetected?: (ratio: string) => void;
 }

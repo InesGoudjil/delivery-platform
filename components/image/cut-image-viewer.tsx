@@ -36,6 +36,7 @@ export const CutImageViewer = forwardRef<CutImageViewerRef, CutImageViewerProps>
       showWatermark = false,
       watermarkText = "STUDIO PREVIEW",
       className = "",
+      onAspectRatioDetected,
     },
     ref
   ) => {
@@ -155,11 +156,10 @@ export const CutImageViewer = forwardRef<CutImageViewerRef, CutImageViewerProps>
     return (
       <div
         ref={containerRef}
-        className={`group/image-viewer relative flex flex-col bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl select-none w-full h-full ${className}`}
+        className={`group/image-viewer relative flex flex-col items-center justify-center bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl select-none w-full h-full ${className}`}
       >
         {/* Viewport Stage */}
         <div
-          style={bounding.style}
           onWheel={handleWheel}
           onClick={handleStageClick}
           onContextMenu={(e) => {
@@ -171,7 +171,7 @@ export const CutImageViewer = forwardRef<CutImageViewerRef, CutImageViewerProps>
               : zoomLevel > 1
               ? "cursor-grab active:cursor-grabbing"
               : "cursor-default"
-          } ${bounding.className}`}
+          }`}
         >
           {/* Framer Motion Pan & Zoom Canvas */}
           <motion.div
@@ -185,7 +185,7 @@ export const CutImageViewer = forwardRef<CutImageViewerRef, CutImageViewerProps>
               scaleX: isFlipped ? -zoomLevel : zoomLevel,
             }}
             transition={{ type: "spring", stiffness: 350, damping: 30 }}
-            className="relative flex items-center justify-center max-w-full max-h-full"
+            className="relative flex items-center justify-center w-full h-full"
           >
             <img
               ref={imageRef}
@@ -198,21 +198,24 @@ export const CutImageViewer = forwardRef<CutImageViewerRef, CutImageViewerProps>
               }}
               onLoad={(e) => {
                 const img = e.currentTarget;
-                if (
-                  img.naturalWidth &&
-                  img.naturalHeight &&
-                  (!aspectRatio || aspectRatio === "16:9")
-                ) {
+                if (img.naturalWidth && img.naturalHeight) {
                   const detected = detectAspectRatioFromDimensions(
                     img.naturalWidth,
                     img.naturalHeight
                   );
-                  if (detected.id !== "16:9") {
-                    setDetectedRatio(detected.id === "custom" ? detected.cssRatio : detected.id);
+                  const ratioStr =
+                    detected.id === "custom" ? detected.cssRatio : detected.id;
+                  if (
+                    !aspectRatio ||
+                    aspectRatio === "16:9" ||
+                    detected.isPortrait !== bounding.parsed.isPortrait
+                  ) {
+                    setDetectedRatio(ratioStr);
+                    onAspectRatioDetected?.(ratioStr);
                   }
                 }
               }}
-              className="max-w-full max-h-full object-contain pointer-events-none select-none shadow-2xl"
+              className="max-w-full max-h-full w-auto h-auto object-contain pointer-events-none select-none shadow-2xl"
             />
 
             {/* Spatial Feedback Pin Layer */}

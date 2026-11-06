@@ -14,7 +14,7 @@ interface ContactButtonProps {
 
 export function ContactButton({
   label = "Get In Touch",
-  className = "px-6 py-2.5 min-h-[38px] rounded-full bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground text-xs font-extrabold tracking-wider uppercase transition-all shadow-lg hover:shadow-primary/25 cursor-pointer h-auto touch-manipulation",
+  className = "px-3.5 sm:px-6 py-2 sm:py-2.5 min-h-[36px] sm:min-h-[38px] rounded-full bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground text-[11px] sm:text-xs font-extrabold tracking-wider uppercase whitespace-nowrap shrink-0 transition-all shadow-lg hover:shadow-primary/25 cursor-pointer h-auto touch-manipulation",
   icon = false,
 }: ContactButtonProps) {
   const { setIsContactOpen } = usePortfolioModal();
@@ -25,8 +25,8 @@ export function ContactButton({
       onClick={() => setIsContactOpen(true)}
       className={className}
     >
-      {icon && <MessageCircle className="size-4 mr-2 inline-block" />}
-      <TypographySpan>{label}</TypographySpan>
+      {icon && <MessageCircle className="size-4 mr-2 inline-block shrink-0" />}
+      <TypographySpan className="whitespace-nowrap">{label}</TypographySpan>
     </Button>
   );
 }
@@ -36,7 +36,7 @@ interface ShareButtonProps {
 }
 
 export function ShareButton({
-  className = "inline-flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-2 min-h-[38px] rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-zinc-300 hover:text-white transition-all cursor-pointer h-auto active:scale-95 touch-manipulation",
+  className = "inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 min-h-[36px] sm:min-h-[38px] rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-zinc-300 hover:text-white whitespace-nowrap shrink-0 transition-all cursor-pointer h-auto active:scale-95 touch-manipulation",
 }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
 

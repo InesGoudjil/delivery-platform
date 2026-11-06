@@ -32,11 +32,11 @@ export function ArchiveManagerButton({
       <Tooltip>
         <TooltipTrigger
           render={
-            <Link href={workspaceSlug ? `/${workspaceSlug}/settings` : "#"}>
+            <Link href={workspaceSlug ? `/${workspaceSlug}/settings` : "#"} className="block w-full sm:w-auto">
               <Button
                 variant="outline"
                 onClick={handleArchive}
-                className="rounded-full text-xs font-semibold cursor-pointer shrink-0 border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 gap-1.5"
+                className="w-full sm:w-auto justify-center rounded-full text-xs font-semibold cursor-pointer shrink-0 border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 gap-1.5"
               >
                 <Lock className="size-3.5 text-blue-400" />
                 <TypographySpan>Unlock Silo</TypographySpan>
@@ -64,7 +64,7 @@ export function ArchiveManagerButton({
           <Button
             variant="outline"
             onClick={handleArchive}
-            className="rounded-full text-xs font-semibold cursor-pointer shrink-0 border-border bg-muted/40 hover:bg-muted text-foreground"
+            className="w-full sm:w-auto justify-center rounded-full text-xs font-semibold cursor-pointer shrink-0 border-border bg-muted/40 hover:bg-muted text-foreground"
           >
             <Upload className="size-3.5 mr-1.5" /> Manage Archive
           </Button>

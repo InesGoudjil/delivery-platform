@@ -160,9 +160,11 @@ export function LightboxFeedbackDrawer({
           )}
         </h4>
         {!isStill && (
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-zinc-400">
-            <span className="size-1.5 rounded-full bg-primary animate-pulse" />
-            <span>{currentCutTimecode}</span>
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-zinc-400 tabular-nums [font-kerning:none] shrink-0">
+            <span className="size-1.5 rounded-full bg-primary animate-pulse shrink-0" />
+            <span className="inline-block min-w-[46px] text-center tabular-nums">
+              {currentCutTimecode}
+            </span>
           </div>
         )}
       </div>
@@ -541,17 +543,24 @@ export function LightboxFeedbackDrawer({
             <button
               type="button"
               onClick={() => setAttachTime((prev) => !prev)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer w-fit min-h-[32px] active:scale-95 ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer w-fit min-h-[32px] active:scale-95 tabular-nums [font-kerning:none] ${
                 attachTime
                   ? "text-primary border-primary/50 bg-primary/10"
                   : "text-zinc-400 border-white/10 hover:text-white"
               }`}
             >
-              <Clock className="size-3.5" />
+              <Clock className="size-3.5 shrink-0" />
               <span>
-                {attachTime
-                  ? `Pinned to ${currentCutTimecode}`
-                  : "Add timecode"}
+                {attachTime ? (
+                  <>
+                    Pinned to{" "}
+                    <span className="inline-block min-w-[55px] text-left tabular-nums">
+                      {currentCutTimecode}
+                    </span>
+                  </>
+                ) : (
+                  "Add timecode"
+                )}
               </span>
             </button>
           )}

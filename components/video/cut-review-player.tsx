@@ -75,6 +75,7 @@ export interface CutReviewPlayerProps {
   autoPlay?: boolean;
   showWatermark?: boolean;
   watermarkText?: string;
+  onAspectRatioDetected?: (ratio: string) => void;
 }
 
 interface CutReviewPlayerInnerProps extends CutReviewPlayerProps {
@@ -97,6 +98,7 @@ function CutReviewPlayerInner({
   autoPlay = false,
   showWatermark = false,
   watermarkText,
+  onAspectRatioDetected,
   forwardedRef,
 }: CutReviewPlayerInnerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -368,7 +370,7 @@ function CutReviewPlayerInner({
   if (iframeEmbedUrl) {
     return (
       <div
-        className={`relative w-full h-full bg-black flex items-center justify-center rounded-2xl overflow-hidden border border-white/10 shadow-2xl ${className}`}
+        className={`relative w-full h-full bg-black flex items-center justify-center rounded-none sm:rounded-2xl overflow-hidden border-0 sm:border border-white/10 shadow-2xl ${className}`}
         style={bounding.style}
       >
         <iframe
@@ -497,16 +499,20 @@ function CutReviewPlayerInner({
   return (
     <div
       ref={containerRef}
-      className={`group/player relative flex items-center justify-center bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl select-none w-full h-full ${className}`}
+      className={`group/player relative flex items-center justify-center bg-black rounded-none sm:rounded-2xl overflow-hidden border-0 sm:border border-white/10 shadow-2xl select-none w-full h-full ${className}`}
       style={bounding.style}
     >
       <VideoSkin
-        style={{
-          width: "100%",
-          height: "100%",
-          aspectRatio: bounding.parsed.cssRatio,
-        }}
-        className="w-full h-full"
+        style={
+          {
+            width: "100%",
+            height: "100%",
+            aspectRatio: bounding.parsed.cssRatio,
+            "--media-border-radius": "0px",
+            "--media-video-border-radius": "0px",
+          } as React.CSSProperties
+        }
+        className="w-full h-full max-sm:rounded-none"
       >
         {isHls ? (
           <HlsJsVideo
@@ -521,8 +527,25 @@ function CutReviewPlayerInner({
               }
             }}
             onLoadedMetadata={(e) => {
-              if (Number.isFinite(e.currentTarget.duration) && e.currentTarget.duration > 0) {
-                setLocalDuration(e.currentTarget.duration);
+              const vid = e.currentTarget;
+              if (Number.isFinite(vid.duration) && vid.duration > 0) {
+                setLocalDuration(vid.duration);
+              }
+              if (vid.videoWidth && vid.videoHeight) {
+                const detected = detectAspectRatioFromDimensions(
+                  vid.videoWidth,
+                  vid.videoHeight
+                );
+                const ratioStr =
+                  detected.id === "custom" ? detected.cssRatio : detected.id;
+                if (
+                  !aspectRatio ||
+                  aspectRatio === "16:9" ||
+                  detected.isPortrait !== bounding.parsed.isPortrait
+                ) {
+                  setDetectedRatio(ratioStr);
+                  onAspectRatioDetected?.(ratioStr);
+                }
               }
             }}
             onTimeUpdate={(e) => {
@@ -545,8 +568,25 @@ function CutReviewPlayerInner({
               }
             }}
             onLoadedMetadata={(e) => {
-              if (Number.isFinite(e.currentTarget.duration) && e.currentTarget.duration > 0) {
-                setLocalDuration(e.currentTarget.duration);
+              const vid = e.currentTarget;
+              if (Number.isFinite(vid.duration) && vid.duration > 0) {
+                setLocalDuration(vid.duration);
+              }
+              if (vid.videoWidth && vid.videoHeight) {
+                const detected = detectAspectRatioFromDimensions(
+                  vid.videoWidth,
+                  vid.videoHeight
+                );
+                const ratioStr =
+                  detected.id === "custom" ? detected.cssRatio : detected.id;
+                if (
+                  !aspectRatio ||
+                  aspectRatio === "16:9" ||
+                  detected.isPortrait !== bounding.parsed.isPortrait
+                ) {
+                  setDetectedRatio(ratioStr);
+                  onAspectRatioDetected?.(ratioStr);
+                }
               }
             }}
             onTimeUpdate={(e) => {

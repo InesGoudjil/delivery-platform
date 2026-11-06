@@ -35,6 +35,7 @@ export interface MediaReviewStageProps {
   videoPlayerRef?: React.RefObject<CutReviewPlayerRef | null>;
   imageViewerRef?: React.RefObject<CutImageViewerRef | null>;
   showHud?: boolean;
+  onAspectRatioDetected?: (ratio: string) => void;
 }
 
 export function MediaReviewStage({
@@ -58,6 +59,7 @@ export function MediaReviewStage({
   videoPlayerRef,
   imageViewerRef,
   showHud = true,
+  onAspectRatioDetected,
 }: MediaReviewStageProps) {
   const isPhoto = Boolean(
     propIsStill ||
@@ -95,6 +97,7 @@ export function MediaReviewStage({
         watermarkText={watermarkText}
         className={className}
         showHud={showHud}
+        onAspectRatioDetected={onAspectRatioDetected}
       />
     );
   }
@@ -125,6 +128,7 @@ export function MediaReviewStage({
       watermarkText={watermarkText}
       className={className}
       autoPlay={autoPlay}
+      onAspectRatioDetected={onAspectRatioDetected}
     />
   );
 }

@@ -44,15 +44,26 @@ export function LightboxPlayerStage({
   onNext,
   playerRef,
 }: LightboxPlayerStageProps) {
-  const parsedRatio = parseAspectRatio(resolvedAspectRatio);
+  const [detectedRatio, setDetectedRatio] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    setDetectedRatio(null);
+  }, [keyId, resolvedAspectRatio]);
+
+  const effectiveAspectRatio = detectedRatio || resolvedAspectRatio;
+  const parsedRatio = parseAspectRatio(effectiveAspectRatio);
   const isPortrait = parsedRatio.isPortrait;
 
   return (
     <div
-      className={`relative w-full flex items-center justify-center overflow-hidden rounded-2xl bg-black/80 border border-white/10 group/stage shrink-0 shadow-xl ${
+      className={`relative w-full flex items-center justify-center overflow-hidden ${
+        !isStill ? "rounded-none sm:rounded-2xl" : "rounded-2xl"
+      } bg-black/80 border border-white/10 group/stage shrink-0 shadow-xl ${
         isPortrait
           ? "h-[480px] sm:h-[520px]"
-          : "min-h-[260px] max-h-[500px]"
+          : isStill
+          ? "h-[360px] sm:h-[480px]"
+          : "min-h-0 sm:min-h-[260px] max-h-[500px]"
       }`}
     >
       {/* Floating Prev Button */}
@@ -87,7 +98,7 @@ export function LightboxPlayerStage({
           src={mediaSrc}
           title={title}
           poster={posterUrl}
-          aspectRatio={resolvedAspectRatio}
+          aspectRatio={effectiveAspectRatio}
           fps={24}
           showWatermark={watermarkMedia}
           watermarkText={watermarkText}
@@ -95,6 +106,7 @@ export function LightboxPlayerStage({
           activeCommentId={activeCommentId}
           onCommentSelect={onCommentSelect}
           onTimeChange={onTimeChange}
+          onAspectRatioDetected={setDetectedRatio}
           className="w-full h-full"
         />
       </div>
