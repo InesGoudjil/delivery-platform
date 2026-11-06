@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import {
+  LayoutDashboard,
   Pencil,
   LayoutGrid,
   Link2,
@@ -99,6 +100,12 @@ export function WorkspaceSidebar({
 
   const data = {
     documents: [
+      {
+        name: "Dashboard",
+        url: `/${workspaceSlug}`,
+        icon: LayoutDashboard,
+        exact: true,
+      },
       {
         name: "Portfolio",
         url: `/${workspaceSlug}/portfolio`,

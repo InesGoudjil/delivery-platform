@@ -145,7 +145,7 @@ export function DeliveryRoomClient(props: DeliveryRoomProps) {
               onToggleResolve={room.handleToggleResolve}
               onToggleApproval={room.handleToggleAssetApproval}
               authorName={room.commentAuthor}
-              showFeedback={true}
+              showFeedback={delivery.isCommentAllowed ?? true}
               showVersions={Boolean(
                 room.activeAsset?.versions && room.activeAsset.versions.length > 1
               )}

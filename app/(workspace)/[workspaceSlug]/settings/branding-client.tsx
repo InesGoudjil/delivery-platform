@@ -15,6 +15,7 @@ import { BioSection } from "./_components/bio-section";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { TypographySpan } from "@/components/ui/typography";
 import { useAccentTheme } from "@/components/theme/accent-theme-provider";
+import { useOptionalEntitlements } from "@/components/providers/entitlements-provider";
 import { toast } from "sonner";
 import { createUploadProgressToast } from "@/lib/upload-toast";
 import {
@@ -54,8 +55,9 @@ export function BrandingClient({
   const [isPending, startTransition] = useTransition();
   const { setAccent: setLiveAccent } = useAccentTheme();
 
-  const canBranding = features ? Boolean(features.branding) : true;
-  const canWhatsapp = features ? Boolean(features.whatsapp_delivery ?? features.whatsappDelivery) : true;
+  const entitlements = useOptionalEntitlements();
+  const canBranding = entitlements?.can.customBranding ?? (features ? Boolean(features.branding) : false);
+  const canWhatsapp = entitlements?.can.sendWhatsApp ?? (features ? Boolean(features.whatsapp_delivery ?? features.whatsappDelivery) : false);
 
   // Brand details
   const [brandName, setBrandName] = useState(workspace.brandName || "Pedro Concreato");

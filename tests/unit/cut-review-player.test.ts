@@ -66,6 +66,19 @@ describe("CutReviewPlayer with Timeline Comment Markers", () => {
       expect(validComments).toHaveLength(2);
       expect(validComments.map((c) => c.id)).toEqual(["c1", "c5"]);
     });
+
+    it("resolves tooltip position classes based on horizontal percentage", () => {
+      const getTooltipPositionClass = (leftPercent: number) =>
+        leftPercent < 15
+          ? "left-0 -translate-x-1"
+          : leftPercent > 85
+          ? "right-0 translate-x-1"
+          : "left-1/2 -translate-x-1/2";
+
+      expect(getTooltipPositionClass(5)).toBe("left-0 -translate-x-1");
+      expect(getTooltipPositionClass(50)).toBe("left-1/2 -translate-x-1/2");
+      expect(getTooltipPositionClass(92)).toBe("right-0 translate-x-1");
+    });
   });
 
   describe("Mobile gesture and frame-stepping calculations", () => {

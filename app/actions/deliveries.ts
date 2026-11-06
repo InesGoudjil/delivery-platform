@@ -619,6 +619,14 @@ export async function archiveDeliveryAction(deliveryId: string) {
   try {
     const { services, delivery, user } = await requireDeliveryAccess(deliveryId, "admin");
 
+    const canArchive = await services.subscription.isSiloArchiveAllowed(delivery.workspaceId);
+    if (!canArchive) {
+      return {
+        error:
+          "The Silo Glacier Cold Storage archive requires a Studio or Enterprise plan. Please upgrade your subscription.",
+      };
+    }
+
     // Move master cut assets into AWS S3 Glacier Deep Archive and free active workspace quota
     await services.silo.archiveDelivery(deliveryId, {
       userId: user?.id,
@@ -678,6 +686,7 @@ export async function updateDeliverySecurityAction(
     const updated = await services.delivery.updateDelivery(deliveryId.trim(), {
       ...(passcodeHash !== undefined ? { passcodeHash } : {}),
       ...(validated.data.isDownloadAllowed !== undefined ? { isDownloadAllowed: validated.data.isDownloadAllowed } : {}),
+      ...(validated.data.isCommentAllowed !== undefined ? { isCommentAllowed: validated.data.isCommentAllowed } : {}),
       ...(validated.data.notifyOnDownload !== undefined ? { notifyOnDownload: validated.data.notifyOnDownload } : {}),
       ...(validated.data.expiresAt !== undefined ? { expiresAt: validated.data.expiresAt } : {}),
     });
@@ -689,6 +698,8 @@ export async function updateDeliverySecurityAction(
       success: true,
       delivery: updated,
       passcodeProtected: Boolean(updated.passcodeHash),
+      isDownloadAllowed: updated.isDownloadAllowed,
+      isCommentAllowed: updated.isCommentAllowed,
       expiresAt: updated.expiresAt,
     };
   } catch (err: any) {

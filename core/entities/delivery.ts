@@ -20,6 +20,7 @@ export interface Delivery {
   passcodeHash?: string | null;
   status: DeliveryStatus;
   isDownloadAllowed: boolean;
+  isCommentAllowed: boolean;
   notifyOnDownload: boolean;
   isWatermarked: boolean;
   appearance?: DeliveryAppearanceSettings | null;
@@ -47,6 +48,7 @@ export interface CreateDeliveryDTO {
   passcodeHash?: string | null;
   status?: DeliveryStatus;
   isDownloadAllowed?: boolean;
+  isCommentAllowed?: boolean;
   notifyOnDownload?: boolean;
   isWatermarked?: boolean;
   appearance?: DeliveryAppearanceSettings | null;

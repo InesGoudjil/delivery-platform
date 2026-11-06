@@ -69,6 +69,7 @@ export default async function DeliveryDetailPage({
       passcodeHash: null,
       status: "in_review",
       isDownloadAllowed: true,
+      isCommentAllowed: true,
       notifyOnDownload: false,
       isWatermarked: false,
       approvedAt: null,

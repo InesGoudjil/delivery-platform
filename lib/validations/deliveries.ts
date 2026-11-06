@@ -57,6 +57,7 @@ export type DeliveryAppearanceInput = z.infer<typeof deliveryAppearanceSchema>;
 export const updateDeliverySecuritySchema = z.object({
   passphrase: z.string().nullable().optional(),
   isDownloadAllowed: z.boolean().optional(),
+  isCommentAllowed: z.boolean().optional(),
   notifyOnDownload: z.boolean().optional(),
   expiresAt: z.string().nullable().optional(),
 });

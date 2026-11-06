@@ -220,7 +220,8 @@ export function createCoreServices(
     assetVersionRepo,
     subscriptionRepo,
     planRepo,
-    workspaceFeaturesRepo
+    workspaceFeaturesRepo,
+    subscriptionService
   );
   const feedbackService = new FeedbackService(feedbackRepo, notificationService);
   const stripeService = new StripeService(

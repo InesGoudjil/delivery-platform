@@ -1077,6 +1077,7 @@ export function DeliveryDetailClient({
           clientEmail={projectMeta.clientEmail}
           initialPasscodeProtected={project.passcodeProtected ?? false}
           initialDownloadAllowed={project.isDownloadAllowed ?? false}
+          initialCommentAllowed={project.isCommentAllowed ?? true}
           initialExpiresAt={project.expiresAt ?? null}
           onShareTokenRegenerated={(newToken) => {
             setCurrentShareToken(newToken);

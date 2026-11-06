@@ -60,6 +60,7 @@ export interface DeliveryRoomProps {
     shareToken: string;
     status: "draft" | "in_review" | "approved" | "archived";
     isDownloadAllowed: boolean;
+    isCommentAllowed?: boolean;
     isWatermarked: boolean;
     appearance?: DeliveryAppearance | null;
     approvedAt?: string | null;

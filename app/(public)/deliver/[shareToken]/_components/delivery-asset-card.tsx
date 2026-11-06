@@ -6,10 +6,11 @@ import {
   MediaCard,
   MediaBadge,
   VersionBadge,
+  PlayButtonOverlay,
+  ZoomButtonOverlay,
 } from "@/components/workspaces/media-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TypographySpan } from "@/components/ui/typography";
 import {
   Tooltip,
   TooltipTrigger,
@@ -71,9 +72,14 @@ export function DeliveryAssetCard({
   const isWatermarkedSetting = appearance?.watermarkMedia ?? isDeliveryWatermarked;
   const showWatermarkOnAsset = isWatermarkedSetting && !asset.isApproved;
 
+  const subtitleText = isPhoto
+    ? (asset.isApproved ? "Approved • High-Res Still" : "High-Res Still • In Review")
+    : `${durationLabel || "Video"}${ver?.versionNumber ? ` • v${ver.versionNumber}` : ""} • ${asset.isApproved ? "Approved" : "In Review"}`;
+
   return (
     <MediaCard
       title={asset.title}
+      subtitle={subtitleText}
       src={poster}
       type={isPhoto ? "photo" : "video"}
       aspectRatio={asset.aspectRatio}
@@ -82,7 +88,11 @@ export function DeliveryAssetCard({
       thumbnailScale={thumbnailScale}
       onClick={() => onSelect(asset)}
       showInfo={showCardInfo}
-      footerMode={showCardInfo ? "card" : "none"}
+      showTitle={showCardInfo}
+      showSubtitle={showCardInfo}
+      textAlign="center"
+      footerMode="overlay"
+      centerAction={isPhoto ? <ZoomButtonOverlay /> : <PlayButtonOverlay />}
       watermarkMedia={
         showWatermarkOnAsset
           ? {
@@ -92,8 +102,8 @@ export function DeliveryAssetCard({
             }
           : undefined
       }
-      tiltIntensity={3}
-      glareIntensity={0.1}
+      tiltIntensity={4}
+      glareIntensity={0.12}
       topLeft={
         <>
           <MediaBadge type={isPhoto ? "photo" : "video"} />
@@ -103,14 +113,20 @@ export function DeliveryAssetCard({
               totalVersions={asset.versions.length}
             />
           )}
-          {asset.isApproved && (
-            <Badge
-              variant="sage"
-              className="text-[9px] px-1.5 py-0.5 font-bold uppercase rounded-md shadow-md border-none"
-            >
-              ✓ Approved
-            </Badge>
-          )}
+          <Badge
+            variant={asset.isApproved ? "sage" : "outline"}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleApproval(asset.id);
+            }}
+            className={`text-[9px] px-2 py-0.5 font-bold uppercase rounded-md shadow-md border cursor-pointer active:scale-95 touch-manipulation transition-all ${
+              asset.isApproved
+                ? "bg-emerald-500/80 border-emerald-400/50 text-black hover:bg-amber-400 opacity-100"
+                : "bg-black/60 border-amber-500/30 text-amber-300 backdrop-blur-md hover:bg-amber-500/20"
+            }`}
+          >
+            {asset.isApproved ? "✓ Approved" : "In Review"}
+          </Badge>
         </>
       }
       topRight={
@@ -174,65 +190,9 @@ export function DeliveryAssetCard({
         </div>
       }
       bottomRight={
-        !isPhoto && durationLabel ? (
-          <div className="px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[11px] font-semibold text-white border border-white/10 z-10">
+        !showCardInfo && !isPhoto && durationLabel ? (
+          <div className="px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[11px] font-semibold text-white border border-white/10 z-10 pointer-events-none">
             {durationLabel}
-          </div>
-        ) : null
-      }
-      footer={
-        showCardInfo ? (
-          <div className="p-3.5 border-t border-white/10 flex items-center justify-between gap-2 bg-[#141416] w-full">
-            <TypographySpan className="text-xs font-semibold text-white truncate">
-              {asset.title}
-            </TypographySpan>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                disabled={isApproving}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleApproval(asset.id);
-                }}
-                title={
-                  asset.isApproved
-                    ? "Click to unapprove"
-                    : "Click to approve"
-                }
-                className="h-8 p-1 hover:bg-transparent cursor-pointer focus:outline-none active:scale-95 touch-manipulation"
-              >
-                <Badge
-                  variant="outline"
-                  className={`text-[10px] shrink-0 font-medium transition-colors py-1 px-2 ${
-                    asset.isApproved
-                      ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10 hover:bg-amber-500/15 hover:text-amber-300 hover:border-amber-500/30"
-                      : "border-amber-500/30 text-amber-400 bg-amber-500/10 hover:bg-emerald-500/15 hover:text-emerald-300 hover:border-emerald-500/30"
-                  }`}
-                >
-                  {asset.isApproved ? "✓ Approved" : "In Review"}
-                </Badge>
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                disabled={!isGlobalDownloadUnlocked && !asset.isApproved}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDownload(asset);
-                }}
-                className="size-8 sm:size-7 rounded-lg text-[#aeaeb4] hover:text-white hover:bg-white/10 transition-colors p-0 cursor-pointer disabled:opacity-30 active:scale-95 touch-manipulation flex items-center justify-center"
-                title={
-                  isGlobalDownloadUnlocked || asset.isApproved
-                    ? `Download ${asset.title}`
-                    : "Approve cut to unlock download"
-                }
-              >
-                <Download className="size-3.5 sm:size-3" />
-              </Button>
-            </div>
           </div>
         ) : null
       }

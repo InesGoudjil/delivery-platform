@@ -17,6 +17,7 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
       passcodeHash: row.passcode_hash,
       status: row.status as DeliveryStatus,
       isDownloadAllowed: row.is_download_allowed ?? false,
+      isCommentAllowed: row.is_comment_allowed ?? true,
       notifyOnDownload: row.notify_on_download ?? false,
       isWatermarked: row.is_watermarked ?? false,
       appearance: row.appearance ?? null,
@@ -91,6 +92,7 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
       description: dto.description ?? null,
       passcode_hash: dto.passcodeHash ?? null,
       is_download_allowed: dto.isDownloadAllowed ?? false,
+      is_comment_allowed: dto.isCommentAllowed ?? true,
       notify_on_download: dto.notifyOnDownload ?? false,
       is_watermarked: dto.isWatermarked ?? false,
       appearance: dto.appearance ?? null,
@@ -121,6 +123,7 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
     if (data.clientId !== undefined) payload.client_id = data.clientId;
     if (data.passcodeHash !== undefined) payload.passcode_hash = data.passcodeHash;
     if (data.isDownloadAllowed !== undefined) payload.is_download_allowed = data.isDownloadAllowed;
+    if (data.isCommentAllowed !== undefined) payload.is_comment_allowed = data.isCommentAllowed;
     if (data.notifyOnDownload !== undefined) payload.notify_on_download = data.notifyOnDownload;
     if (data.isWatermarked !== undefined) payload.is_watermarked = data.isWatermarked;
     if (data.appearance !== undefined) payload.appearance = data.appearance;

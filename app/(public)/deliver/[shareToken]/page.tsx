@@ -197,6 +197,7 @@ export default async function ClientDeliveryPage(props: PageProps) {
         shareToken: fullDetails.shareToken,
         status: fullDetails.status,
         isDownloadAllowed: fullDetails.isDownloadAllowed,
+        isCommentAllowed: fullDetails.isCommentAllowed ?? true,
         isWatermarked: effectiveWatermark,
         appearance: {
           ...fullDetails.appearance,

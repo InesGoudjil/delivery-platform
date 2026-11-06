@@ -43,10 +43,10 @@ export function PortfolioHero({
   const aspectRatio = heroCover?.aspectRatio || "21:9";
   const aspectClass =
     aspectRatio === "16:9"
-      ? "aspect-[16/9]"
+      ? "aspect-[4/5] sm:aspect-[16/9]"
       : aspectRatio === "3:1"
-      ? "aspect-[16/9] sm:aspect-[24/8]"
-      : "aspect-[16/9] sm:aspect-[21/9]";
+      ? "aspect-[4/5] sm:aspect-[24/8]"
+      : "aspect-[4/5] sm:aspect-[21/9]";
 
   const overlayOpacity = heroCover?.overlayOpacity ?? 50;
 
@@ -62,7 +62,7 @@ export function PortfolioHero({
   return (
     <section className="relative">
       <HeroPreviewTrigger
-        className={`group relative w-full ${aspectClass} rounded-[2rem] overflow-hidden border border-white/10 bg-zinc-950 shadow-2xl cursor-pointer block select-none`}
+        className={`group relative w-full ${aspectClass} min-h-[380px] sm:min-h-0 rounded-[1.75rem] sm:rounded-[2rem] overflow-hidden border border-white/10 bg-zinc-950 shadow-2xl cursor-pointer block select-none`}
       >
         {/* Visual Media Layer: Ambient Video or Image */}
         {isAmbientVideo ? (
@@ -139,7 +139,7 @@ export function PortfolioHero({
 
         {/* Hero Information - Headline and Category / Badge Text */}
         {showHeroText && (
-          <div className="absolute bottom-6 left-6 right-6 sm:bottom-10 sm:left-10 sm:right-10 z-10 pointer-events-none space-y-2.5 max-w-3xl">
+          <div className="absolute bottom-5 left-5 right-5 sm:bottom-10 sm:left-10 sm:right-10 z-10 pointer-events-none space-y-2.5 max-w-3xl">
             {heroCategory && (
               <div className="flex items-center gap-2">
                 <Badge
@@ -150,7 +150,7 @@ export function PortfolioHero({
                 </Badge>
               </div>
             )}
-            <TypographyH2 className="font-heading font-extrabold text-2xl sm:text-4xl lg:text-5xl text-white tracking-tight drop-shadow-md uppercase">
+            <TypographyH2 className="font-heading font-extrabold text-2xl sm:text-4xl lg:text-5xl text-white tracking-tight drop-shadow-md uppercase break-words line-clamp-2">
               {heroTitle}
             </TypographyH2>
           </div>

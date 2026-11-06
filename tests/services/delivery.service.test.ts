@@ -23,6 +23,7 @@ describe("core/services/DeliveryService", () => {
     shareToken: "token_123",
     status: "in_review",
     isDownloadAllowed: true,
+    isCommentAllowed: true,
     notifyOnDownload: true,
     isWatermarked: false,
     createdAt: new Date().toISOString(),

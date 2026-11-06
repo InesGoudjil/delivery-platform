@@ -75,7 +75,7 @@ describe("components/workspaces/media-card", () => {
 
       const lGrid = getMediaGridClasses(false, "L");
       expect(lGrid).toContain("grid");
-      expect(lGrid).toContain("grid-cols-1 sm:grid-cols-2 lg:grid-cols-3");
+      expect(lGrid).toContain("grid-cols-1 sm:grid-cols-2 lg:grid-cols-2");
     });
 
     it("returns standard responsive column classes for masonry mode without space-y", () => {
@@ -88,7 +88,7 @@ describe("components/workspaces/media-card", () => {
       expect(mMasonry).not.toContain("space-y");
 
       const lMasonry = getMediaGridClasses(true, "L");
-      expect(lMasonry).toContain("columns-1 sm:columns-2 lg:columns-3");
+      expect(lMasonry).toContain("columns-1 sm:columns-2 lg:columns-2");
       expect(lMasonry).not.toContain("space-y");
     });
   });

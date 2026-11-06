@@ -118,7 +118,8 @@ function CutReviewPlayerInner({
     if (!root) return;
 
     const updateSlider = () => {
-      const el = root.querySelector(".media-time-slider") as HTMLElement | null;
+      const el = (root.querySelector(".media-time-slider") ||
+        root.querySelector(".media-slider[data-orientation='horizontal']")) as HTMLElement | null;
       setSliderTrackEl((prev) => (prev === el ? prev : el));
     };
 
@@ -393,7 +394,7 @@ function CutReviewPlayerInner({
 
     return (
       <div
-        className="cut-comment-markers-layer pointer-events-none absolute inset-0 z-20 flex items-center"
+        className="cut-comment-markers-layer pointer-events-none absolute inset-0 z-20"
         style={{ width: "100%", height: "100%" }}
         aria-label="Timeline comment markers"
       >
@@ -437,25 +438,25 @@ function CutReviewPlayerInner({
               style={{
                 left: `${leftPercent}%`,
               }}
-              className="pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2 group/marker z-30 flex items-center justify-center min-w-[36px] min-h-[36px] -m-3 focus:outline-none cursor-pointer touch-manipulation"
+              className="pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2 group/marker z-30 flex items-center justify-center size-6 m-0 p-0 focus:outline-none cursor-pointer touch-manipulation"
               aria-label={`Comment by ${comment.authorName || "Reviewer"} at ${formatTimecode(comment.timestampSeconds, fps)}`}
             >
-              {/* Timeline Marker Dot */}
+              {/* Timeline Marker Dot directly on the timeline track */}
               <span
                 className={cn(
-                  "block rounded-full transition-all duration-150",
+                  "block rounded-full transition-all duration-150 pointer-events-none",
                   isActive
-                    ? "size-3.5 bg-amber-400 border-2 border-white ring-4 ring-amber-400/40 shadow-lg scale-125 z-40"
+                    ? "size-3.5 bg-amber-400 border-2 border-white ring-2 ring-amber-400/50 shadow-md scale-110 z-40"
                     : comment.isResolved
-                    ? "size-2.5 bg-emerald-400 border border-black/70 shadow-sm hover:scale-135 hover:bg-emerald-300"
-                    : "size-2.5 bg-amber-400 border border-black/70 shadow-sm hover:scale-130 hover:bg-amber-300"
+                    ? "size-2.5 bg-emerald-400 border border-black/80 shadow-[0_0_0_1px_rgba(255,255,255,0.25)] hover:scale-130 hover:bg-emerald-300"
+                    : "size-2.5 bg-amber-400 border border-black/80 shadow-[0_0_0_1px_rgba(255,255,255,0.25)] hover:scale-130 hover:bg-amber-300"
                 )}
               />
 
               {/* Hover & Active Tooltip Card */}
               <div
                 className={cn(
-                  "pointer-events-none absolute bottom-full mb-2.5 flex-col items-start gap-1 p-2 rounded-lg bg-black/95 backdrop-blur-md border border-white/20 shadow-2xl text-left min-w-[140px] max-w-[240px] z-50 animate-in fade-in zoom-in-95 duration-100 select-none",
+                  "pointer-events-none absolute bottom-full mb-3 flex-col items-start gap-1 p-2 rounded-lg bg-black/95 backdrop-blur-md border border-white/20 shadow-2xl text-left min-w-[140px] max-w-[240px] z-50 animate-in fade-in zoom-in-95 duration-100 select-none",
                   isActive ? "flex" : "hidden group-hover/marker:flex",
                   tooltipPositionClass
                 )}
@@ -625,15 +626,7 @@ function CutReviewPlayerInner({
         {showWatermark && (
           <WatermarkOverlay text={watermarkText} variant="player" showBadge />
         )}
-        {sliderTrackEl
-          ? createPortal(renderCommentMarkers(), sliderTrackEl)
-          : validComments.length > 0 && (
-              <div className="absolute inset-x-4 bottom-14 z-30 pointer-events-none">
-                <div className="relative w-full h-2">
-                  {renderCommentMarkers()}
-                </div>
-              </div>
-            )}
+        {sliderTrackEl && createPortal(renderCommentMarkers(), sliderTrackEl)}
       </VideoSkin>
     </div>
   );

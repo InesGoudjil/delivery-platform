@@ -66,7 +66,7 @@ export function MediaCard({
 
   const mediaContent = (
     <div
-      className={`relative w-full overflow-hidden bg-black/40 ${isMasonry ? "" : "size-full"}`}
+      className={`relative w-full overflow-hidden bg-black/40 min-h-[220px] sm:min-h-[200px] ${isMasonry ? "" : "size-full"}`}
       style={isMasonry ? { aspectRatio: `${effectiveRatio}` } : undefined}
     >
       <AppImage
@@ -162,7 +162,7 @@ export function MediaCard({
           {isMasonry ? (
             mediaContent
           ) : (
-            <AspectRatio ratio={effectiveRatio} className="w-full relative overflow-hidden bg-black/40">
+            <AspectRatio ratio={effectiveRatio} className="w-full relative overflow-hidden bg-black/40 min-h-[220px] sm:min-h-[200px]">
               {mediaContent}
             </AspectRatio>
           )}

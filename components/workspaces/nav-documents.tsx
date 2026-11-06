@@ -44,7 +44,7 @@ export function NavDocuments({
       <SidebarMenu className="space-y-0.5">
         {items.map((item) => {
           const isActive = item.exact
-            ? pathname === item.url
+            ? pathname === item.url || pathname === `${item.url}/`
             : pathname === item.url || (item.url.includes("#") ? pathname === item.url.split("#")[0] : pathname.startsWith(item.url));
 
           return (
