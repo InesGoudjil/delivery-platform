@@ -101,34 +101,38 @@ export class SubscriptionService {
     return this.subscriptionRepo.findByWorkspaceId(workspaceId);
   }
 
-  async getCurrentPlan(workspaceId: string): Promise<Plan | null> {
-    const starterPlan = (await this.planRepo.findBySlug('starter')) || ({
-      id: 'plan_starter',
-      name: 'Starter',
-      slug: 'starter',
-      priceCents: 0,
-      currency: 'USD',
-      billingInterval: 'month',
-      sortOrder: 1,
-      isActive: true,
-      features: SEED_PLANS.starter.features as WorkspaceFeatureConfig,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    } as Plan);
+  private async getStarterPlanFallback(): Promise<Plan> {
+    return (
+      (await this.planRepo.findBySlug('starter')) ||
+      ({
+        id: 'plan_starter',
+        name: 'Starter',
+        slug: 'starter',
+        priceCents: 0,
+        currency: 'USD',
+        billingInterval: 'month',
+        sortOrder: 1,
+        isActive: true,
+        features: SEED_PLANS.starter.features as WorkspaceFeatureConfig,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as Plan)
+    );
+  }
 
-    const sub = await this.subscriptionRepo.findByWorkspaceId(workspaceId);
-    if (!sub) return starterPlan;
+  private async resolvePlanFromSubscription(sub: Subscription | null): Promise<Plan> {
+    if (!sub) return this.getStarterPlanFallback();
 
     // Check expiration for trials
     if (sub.status === 'trialing') {
       if (sub.trialEndsAt && new Date(sub.trialEndsAt) < new Date()) {
-        return starterPlan;
+        return this.getStarterPlanFallback();
       }
     }
 
     // Inactive subscriptions forfeit high-tier features
     if (sub.status === 'canceled' || sub.status === 'past_due') {
-      return starterPlan;
+      return this.getStarterPlanFallback();
     }
 
     if (sub.status === 'active' || sub.status === 'trialing') {
@@ -138,19 +142,23 @@ export class SubscriptionService {
       }
     }
 
-    return starterPlan;
+    return this.getStarterPlanFallback();
   }
 
-  async getFeatures(workspaceId: string): Promise<WorkspaceFeatureConfig> {
-    const plan = await this.getCurrentPlan(workspaceId);
+  private mergeFeatures(
+    plan: Plan | null,
+    overridesRecord: WorkspaceFeatures | null
+  ): WorkspaceFeatureConfig {
     const baselineFeatures: WorkspaceFeatureConfig =
       plan?.features && Object.keys(plan.features).length > 0
         ? plan.features
         : (SEED_PLANS.starter.features as WorkspaceFeatureConfig);
 
-    // Check for custom workspace overrides (if any exist)
-    const overridesRecord = await this.featuresRepo.findByWorkspaceId(workspaceId);
-    if (overridesRecord && overridesRecord.features && Object.keys(overridesRecord.features).length > 0) {
+    if (
+      overridesRecord &&
+      overridesRecord.features &&
+      Object.keys(overridesRecord.features).length > 0
+    ) {
       return {
         ...baselineFeatures,
         ...overridesRecord.features,
@@ -160,10 +168,26 @@ export class SubscriptionService {
     return baselineFeatures;
   }
 
-  async getEntitlements(workspaceId: string): Promise<WorkspaceEntitlements> {
-    const plan = await this.getCurrentPlan(workspaceId);
+  async getCurrentPlan(workspaceId: string): Promise<Plan | null> {
     const sub = await this.subscriptionRepo.findByWorkspaceId(workspaceId);
-    const features = await this.getFeatures(workspaceId);
+    return this.resolvePlanFromSubscription(sub);
+  }
+
+  async getFeatures(workspaceId: string): Promise<WorkspaceFeatureConfig> {
+    const [plan, overridesRecord] = await Promise.all([
+      this.getCurrentPlan(workspaceId),
+      this.featuresRepo.findByWorkspaceId(workspaceId),
+    ]);
+    return this.mergeFeatures(plan, overridesRecord);
+  }
+
+  async getEntitlements(workspaceId: string): Promise<WorkspaceEntitlements> {
+    const [sub, overridesRecord] = await Promise.all([
+      this.subscriptionRepo.findByWorkspaceId(workspaceId),
+      this.featuresRepo.findByWorkspaceId(workspaceId),
+    ]);
+    const plan = await this.resolvePlanFromSubscription(sub);
+    const features = this.mergeFeatures(plan, overridesRecord);
 
     const storageGb = Number(
       features.storage_gb ??

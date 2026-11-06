@@ -26,6 +26,15 @@ export class AssetService {
     return this.assetRepo.listByDeliveryId(deliveryId, options);
   }
 
+  async listAssetsByDeliveryIds(deliveryIds: string[]): Promise<Asset[]> {
+    if (!deliveryIds.length) return [];
+    if (this.assetRepo.listByDeliveryIds) {
+      return this.assetRepo.listByDeliveryIds(deliveryIds);
+    }
+    const lists = await Promise.all(deliveryIds.map((id) => this.assetRepo.listByDeliveryId(id)));
+    return lists.flat();
+  }
+
   async listDeliveryAssetsPaginated(
     deliveryId: string,
     options?: ListDeliveryAssetsOptions
@@ -77,8 +86,52 @@ export class AssetService {
     return this.assetVersionRepo.findActiveVersion(assetId);
   }
 
+  async getActiveVersionsByAssetIds(assetIds: string[]): Promise<Map<string, AssetVersion>> {
+    const map = new Map<string, AssetVersion>();
+    if (!assetIds.length) return map;
+
+    if (this.assetVersionRepo.listActiveByAssetIds) {
+      const versions = await this.assetVersionRepo.listActiveByAssetIds(assetIds);
+      for (const v of versions) {
+        map.set(v.assetId, v);
+      }
+      return map;
+    }
+
+    const results = await Promise.all(
+      assetIds.map((id) => this.assetVersionRepo.findActiveVersion(id))
+    );
+    results.forEach((v, idx) => {
+      if (v) map.set(assetIds[idx], v);
+    });
+    return map;
+  }
+
   async listVersions(assetId: string): Promise<AssetVersion[]> {
     return this.assetVersionRepo.listByAssetId(assetId);
+  }
+
+  async listVersionsByAssetIds(assetIds: string[]): Promise<Map<string, AssetVersion[]>> {
+    const map = new Map<string, AssetVersion[]>();
+    if (!assetIds.length) return map;
+
+    if (this.assetVersionRepo.listByAssetIds) {
+      const allVersions = await this.assetVersionRepo.listByAssetIds(assetIds);
+      for (const v of allVersions) {
+        const list = map.get(v.assetId) || [];
+        list.push(v);
+        map.set(v.assetId, list);
+      }
+      return map;
+    }
+
+    const results = await Promise.all(
+      assetIds.map((id) => this.assetVersionRepo.listByAssetId(id))
+    );
+    results.forEach((list, idx) => {
+      map.set(assetIds[idx], list);
+    });
+    return map;
   }
 
   async addVersion(params: CreateAssetVersionDTO): Promise<AssetVersion> {

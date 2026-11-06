@@ -36,55 +36,17 @@ export function AmbientBackground({
 
   const renderGlowElements = () => (
     <>
-      {/* Left Glowing Fluid Ribbon */}
+      {/* Single Composited Soft Radial Mesh (Zero Real-Time Gaussian Blur Filter Pass) */}
       <div
-        className={`absolute rounded-full transition-[background,opacity] duration-700 ease-out ${
-          animated ? "animate-aura-drift-left" : ""
-        } ${
-          isHero
-            ? "-top-24 -left-40 h-[700px] w-[500px] opacity-85 blur-[90px]"
-            : isSubtle
-            ? "-top-32 -left-48 h-[750px] w-[520px] opacity-45 blur-[120px]"
-            : "-top-24 -left-44 h-[900px] w-[600px] opacity-80 blur-[95px]"
+        className={`absolute inset-0 transition-opacity duration-700 ease-out ${
+          isHero ? "opacity-80" : isSubtle ? "opacity-40" : "opacity-75"
         }`}
         style={{
-          background:
-            "radial-gradient(ellipse at 35% 45%, rgba(var(--acc-rgb, 245, 85, 29), 0.75) 0%, rgba(223, 24, 116, 0.55) 42%, rgba(136, 23, 159, 0.35) 75%, transparent 100%)",
-          transform: "rotate(-18deg) translate3d(0, 0, 0)",
-          willChange: animated ? "transform" : "auto",
-        }}
-      />
-
-      {/* Right Glowing Fluid Ribbon */}
-      <div
-        className={`absolute rounded-full transition-[background,opacity] duration-700 ease-out ${
-          animated ? "animate-aura-drift-right" : ""
-        } ${
-          isHero
-            ? "top-12 -right-32 h-[750px] w-[520px] opacity-80 blur-[90px]"
-            : isSubtle
-            ? "top-1/4 -right-44 h-[800px] w-[540px] opacity-40 blur-[120px]"
-            : "top-16 -right-40 h-[950px] w-[620px] opacity-75 blur-[100px]"
-        }`}
-        style={{
-          background:
-            "radial-gradient(ellipse at 65% 45%, rgba(136, 23, 159, 0.65) 0%, rgba(var(--acc-rgb, 245, 85, 29), 0.55) 45%, rgba(var(--acc2-rgb, 255, 138, 69), 0.3) 78%, transparent 100%)",
-          transform: "rotate(24deg) translate3d(0, 0, 0)",
-          willChange: animated ? "transform" : "auto",
-        }}
-      />
-
-      {/* Center-Bottom Subtle Warm Core */}
-      <div
-        className={`absolute -bottom-28 left-1/2 -translate-x-1/2 rounded-full blur-[110px] transition-[background,opacity] duration-700 ease-out ${
-          isSubtle
-            ? "h-[350px] w-[600px] opacity-30"
-            : "h-[450px] w-[800px] opacity-50"
-        }`}
-        style={{
-          background:
-            "radial-gradient(ellipse at center, rgba(var(--acc-rgb, 245, 85, 29), 0.5) 0%, rgba(223, 24, 116, 0.25) 45%, transparent 80%)",
-          transform: "translate3d(-50%, 0, 0)",
+          background: [
+            "radial-gradient(650px 500px at 12% 18%, rgba(var(--acc-rgb, 245, 85, 29), 0.32) 0%, rgba(223, 24, 116, 0.16) 45%, transparent 75%)",
+            "radial-gradient(680px 520px at 88% 28%, rgba(136, 23, 159, 0.28) 0%, rgba(var(--acc-rgb, 245, 85, 29), 0.18) 48%, transparent 78%)",
+            "radial-gradient(700px 380px at 50% 95%, rgba(var(--acc-rgb, 245, 85, 29), 0.22) 0%, rgba(223, 24, 116, 0.1) 50%, transparent 80%)",
+          ].join(", "),
         }}
       />
 

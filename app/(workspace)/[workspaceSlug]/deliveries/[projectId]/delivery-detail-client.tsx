@@ -26,10 +26,9 @@ import {
   updateFeedbackAction,
   updateFeedbackReplyAction,
 } from "@/app/actions/feedback";
+import dynamic from "next/dynamic";
 import { resolveThumbnailUrl, resolveMediaUrl } from "@/lib/media";
-import { EditAssetDialog, type EditableAssetItem } from "@/components/workspaces/edit-asset-dialog";
-import { TrashBinDialog } from "@/components/workspaces/trash-bin-dialog";
-import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
+import { type EditableAssetItem } from "@/components/workspaces/edit-asset-dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useOptionalEntitlements } from "@/components/providers/entitlements-provider";
 
@@ -39,12 +38,63 @@ import { DeliveryProgressBar } from "./_components/delivery-progress-bar";
 import { DeliveryAppearanceCard } from "./_components/delivery-appearance-card";
 import { DeliveryAssetsGallery } from "./_components/delivery-assets-gallery";
 import { DeliveryProjectDetailsCard } from "./_components/delivery-project-details-card";
-import { ShareLinkDialog } from "./_components/share-link-dialog";
-import { EditDeliveryDialog } from "./_components/edit-delivery-dialog";
-import { PublishPortfolioDialog } from "./_components/publish-portfolio-dialog";
 import { FloatingUploadProgress } from "./_components/floating-upload-progress";
-import { AssetLightboxModal } from "@/components/workspaces/asset-lightbox-modal";
-import { DownloadPackageModal } from "@/components/workspaces/download-package-modal";
+
+// Dynamically loaded heavy modals (Video.js player, ZIP packager, dialogs)
+const AssetLightboxModal = dynamic(
+  () =>
+    import("@/components/workspaces/asset-lightbox-modal").then(
+      (mod) => mod.AssetLightboxModal
+    ),
+  { ssr: false }
+);
+const DownloadPackageModal = dynamic(
+  () =>
+    import("@/components/workspaces/download-package-modal").then(
+      (mod) => mod.DownloadPackageModal
+    ),
+  { ssr: false }
+);
+const EditAssetDialog = dynamic(
+  () =>
+    import("@/components/workspaces/edit-asset-dialog").then(
+      (mod) => mod.EditAssetDialog
+    ),
+  { ssr: false }
+);
+const TrashBinDialog = dynamic(
+  () =>
+    import("@/components/workspaces/trash-bin-dialog").then(
+      (mod) => mod.TrashBinDialog
+    ),
+  { ssr: false }
+);
+const DeleteConfirmDialog = dynamic(
+  () =>
+    import("@/components/workspaces/delete-confirm-dialog").then(
+      (mod) => mod.DeleteConfirmDialog
+    ),
+  { ssr: false }
+);
+const ShareLinkDialog = dynamic(
+  () =>
+    import("./_components/share-link-dialog").then((mod) => mod.ShareLinkDialog),
+  { ssr: false }
+);
+const EditDeliveryDialog = dynamic(
+  () =>
+    import("./_components/edit-delivery-dialog").then(
+      (mod) => mod.EditDeliveryDialog
+    ),
+  { ssr: false }
+);
+const PublishPortfolioDialog = dynamic(
+  () =>
+    import("./_components/publish-portfolio-dialog").then(
+      (mod) => mod.PublishPortfolioDialog
+    ),
+  { ssr: false }
+);
 
 // Shared Types
 import type {

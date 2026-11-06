@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Image, { ImageProps } from "next/image";
 import { Camera, Film, Image as ImageIcon, RefreshCw } from "lucide-react";
 import { resolveThumbnailUrl, isPlaceholderUrl, resolveMediaUrl } from "@/lib/media";
@@ -28,6 +28,19 @@ function isVideoUrl(url: string | null | undefined): boolean {
   );
 }
 
+function computeResolvedSrc(src: string | null | undefined, isImageOrStill: boolean): string {
+  if (!src || typeof src !== "string") return "";
+  const trimmed = src.trim();
+  if (!trimmed || isPlaceholderUrl(trimmed)) return "";
+
+  const resolved =
+    resolveThumbnailUrl(trimmed, undefined, isImageOrStill) ||
+    resolveMediaUrl(trimmed);
+
+  if (!resolved || isPlaceholderUrl(resolved)) return "";
+  return resolved;
+}
+
 export function AppImage({
   src,
   alt = "Media asset",
@@ -40,48 +53,75 @@ export function AppImage({
   objectFit = "cover",
   sizes,
   unoptimized,
+  priority,
+  loading,
   ...props
 }: AppImageProps) {
-  const [hasError, setHasError] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentSrc, setCurrentSrc] = useState<string>("");
-  const [retryAttempt, setRetryAttempt] = useState(0);
-
   const isImageOrStill = fallbackIcon === "image" || fallbackIcon === "camera";
+  const initialSrc = useMemo(
+    () => computeResolvedSrc(src, isImageOrStill),
+    [src, isImageOrStill]
+  );
+
+  const [overrideSrc, setOverrideSrc] = useState<string | null>(null);
+  const [hasError, setHasError] = useState(!initialSrc);
+  const [isLoading, setIsLoading] = useState(Boolean(initialSrc));
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  const currentSrc = overrideSrc ?? initialSrc;
   const isVideo = isVideoUrl(currentSrc);
 
   useEffect(() => {
-    setHasError(false);
-    setIsLoading(true);
-
-    if (!src || typeof src !== "string" || src.trim().length === 0) {
+    setOverrideSrc(null);
+    if (!initialSrc) {
       setHasError(true);
       setIsLoading(false);
-      setCurrentSrc("");
+    } else {
+      setHasError(false);
+      setIsLoading(true);
+    }
+  }, [initialSrc, retryAttempt]);
+
+  // Progressive enhancement + IntersectionObserver fallback for offscreen <video loading="lazy">
+  useEffect(() => {
+    const videoEl = videoRef.current;
+    if (!isVideo || !videoEl || priority || !currentSrc) return;
+
+    const targetVideoSrc = `${currentSrc}#t=0.001`;
+    const supportsLazyMedia =
+      typeof HTMLMediaElement !== "undefined" &&
+      Object.hasOwn(HTMLMediaElement.prototype, "loading");
+
+    if (supportsLazyMedia || typeof IntersectionObserver === "undefined") {
+      if (videoEl.getAttribute("src") !== targetVideoSrc) {
+        videoEl.src = targetVideoSrc;
+        videoEl.preload = "metadata";
+      }
       return;
     }
 
-    const trimmed = src.trim();
-    if (isPlaceholderUrl(trimmed)) {
-      setHasError(true);
-      setIsLoading(false);
-      setCurrentSrc("");
-      return;
-    }
+    // Hold back network fetches in browsers without native <video loading="lazy"> until near viewport
+    videoEl.preload = "none";
+    videoEl.removeAttribute("src");
 
-    const resolved =
-      resolveThumbnailUrl(trimmed, undefined, isImageOrStill) ||
-      resolveMediaUrl(trimmed);
+    const mediaObserver = new IntersectionObserver(
+      (entries, observer) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const media = entry.target as HTMLVideoElement;
+          media.preload = "metadata";
+          media.src = targetVideoSrc;
+          media.load();
+          observer.unobserve(media);
+        }
+      },
+      { rootMargin: "200px 0px" }
+    );
 
-    if (!resolved || isPlaceholderUrl(resolved)) {
-      setHasError(true);
-      setIsLoading(false);
-      setCurrentSrc("");
-      return;
-    }
-
-    setCurrentSrc(resolved);
-  }, [src, isImageOrStill, retryAttempt]);
+    mediaObserver.observe(videoEl);
+    return () => mediaObserver.disconnect();
+  }, [isVideo, currentSrc, priority]);
 
   const handleImageError = () => {
     // If the media failed on direct R2 public CDN or S3 endpoint, gracefully fall back to the authenticated /api/media proxy
@@ -96,8 +136,7 @@ export function AppImage({
           : workspaceKey;
       const proxyUrl = `/api/media/${cleanKey}`;
       if (currentSrc !== proxyUrl) {
-        console.warn(`[AppImage] Media failed to load at ${currentSrc}. Falling back to proxy ${proxyUrl}`);
-        setCurrentSrc(proxyUrl);
+        setOverrideSrc(proxyUrl);
         return;
       }
     }
@@ -106,12 +145,12 @@ export function AppImage({
     setIsLoading(false);
   };
 
-  const isExternalCdn = Boolean(
-    currentSrc &&
-    (currentSrc.includes("cloudflarestream.com") ||
-      currentSrc.includes("r2.dev") ||
-      currentSrc.includes("videodelivery.net"))
-  );
+  const shouldUnoptimize =
+    unoptimized ??
+    (currentSrc.startsWith("/api/media/") ||
+      currentSrc.startsWith("blob:") ||
+      currentSrc.startsWith("data:") ||
+      currentSrc.includes("X-Amz-Signature"));
 
   const renderFallbackIcon = () => {
     switch (fallbackIcon) {
@@ -153,10 +192,14 @@ export function AppImage({
           )}
           {isVideo ? (
             <video
-              src={`${currentSrc}#t=0.001`}
-              preload="metadata"
+              ref={videoRef}
+              src={priority ? `${currentSrc}#t=0.001` : undefined}
+              preload={priority ? "metadata" : "none"}
+              width={640}
+              height={360}
               muted
               playsInline
+              {...(!priority ? ({ loading: "lazy" } as any) : {})}
               className={`w-full h-full transition-opacity duration-300 ${
                 isLoading ? "opacity-40" : "opacity-100"
               } ${objectFit === "contain" ? "object-contain" : "object-cover"} ${className}`}
@@ -180,8 +223,11 @@ export function AppImage({
               src={currentSrc}
               alt={alt}
               fill={fill}
+              priority={priority}
+              loading={priority ? undefined : loading ?? "lazy"}
+              fetchPriority={priority ? "high" : props.fetchPriority}
               sizes={sizes || (fill ? "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" : undefined)}
-              unoptimized={unoptimized ?? true}
+              unoptimized={shouldUnoptimize}
               onError={handleImageError}
               className={`transition-opacity duration-300 ${
                 isLoading ? "opacity-40" : "opacity-100"

@@ -42,6 +42,7 @@ export interface IAssetRepository {
   listByWorkspaceId(workspaceId: string, includeArchived?: boolean): Promise<Asset[]>;
   listUnassignedByWorkspaceId(workspaceId: string): Promise<Asset[]>;
   listByDeliveryId(deliveryId: string, options?: ListDeliveryAssetsOptions): Promise<Asset[]>;
+  listByDeliveryIds?(deliveryIds: string[]): Promise<Asset[]>;
   listByDeliveryIdPaginated(deliveryId: string, options?: ListDeliveryAssetsOptions): Promise<PaginatedAssetsResult>;
   countByDeliveryId(deliveryId: string, options?: { type?: string; isApproved?: boolean }): Promise<number>;
   listArchivedByWorkspaceId(workspaceId: string): Promise<Asset[]>;
@@ -59,7 +60,9 @@ export interface IAssetRepository {
 export interface IAssetVersionRepository {
   findById(id: string): Promise<AssetVersion | null>;
   listByAssetId(assetId: string): Promise<AssetVersion[]>;
+  listByAssetIds?(assetIds: string[]): Promise<AssetVersion[]>;
   findActiveVersion(assetId: string): Promise<AssetVersion | null>;
+  listActiveByAssetIds?(assetIds: string[]): Promise<AssetVersion[]>;
   create(dto: CreateAssetVersionDTO): Promise<AssetVersion>;
   update(id: string, data: Partial<AssetVersion>): Promise<AssetVersion>;
   updateLabel(versionId: string, label: string): Promise<AssetVersion>;

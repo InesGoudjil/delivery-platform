@@ -98,6 +98,19 @@ export class SupabaseAssetRepository implements IAssetRepository {
     return (data || []).map(this.mapRowToEntity);
   }
 
+  async listByDeliveryIds(deliveryIds: string[]): Promise<Asset[]> {
+    if (!deliveryIds.length) return [];
+    const { data, error } = await (this.supabase as any)
+      .from("assets")
+      .select("*")
+      .in("delivery_id", deliveryIds)
+      .eq("is_archived", false)
+      .order("sort_order", { ascending: true });
+
+    if (error) throw new Error(`Error listing assets for deliveries: ${error.message}`);
+    return (data || []).map(this.mapRowToEntity);
+  }
+
   async listByDeliveryIdPaginated(
     deliveryId: string,
     options?: ListDeliveryAssetsOptions
@@ -326,6 +339,18 @@ export class SupabaseAssetVersionRepository implements IAssetVersionRepository {
     return (data || []).map(this.mapRowToEntity);
   }
 
+  async listByAssetIds(assetIds: string[]): Promise<AssetVersion[]> {
+    if (!assetIds.length) return [];
+    const { data, error } = await (this.supabase as any)
+      .from("asset_versions")
+      .select("*")
+      .in("asset_id", assetIds)
+      .order("version_number", { ascending: false });
+
+    if (error) throw new Error(`Error listing asset versions by asset IDs: ${error.message}`);
+    return (data || []).map(this.mapRowToEntity);
+  }
+
   async findActiveVersion(assetId: string): Promise<AssetVersion | null> {
     const { data, error } = await (this.supabase as any)
       .from("asset_versions")
@@ -336,6 +361,18 @@ export class SupabaseAssetVersionRepository implements IAssetVersionRepository {
 
     if (error) throw new Error(`Error fetching active asset version: ${error.message}`);
     return data ? this.mapRowToEntity(data) : null;
+  }
+
+  async listActiveByAssetIds(assetIds: string[]): Promise<AssetVersion[]> {
+    if (!assetIds.length) return [];
+    const { data, error } = await (this.supabase as any)
+      .from("asset_versions")
+      .select("*")
+      .in("asset_id", assetIds)
+      .eq("is_active_version", true);
+
+    if (error) throw new Error(`Error fetching active asset versions by IDs: ${error.message}`);
+    return (data || []).map(this.mapRowToEntity);
   }
 
   async create(dto: CreateAssetVersionDTO): Promise<AssetVersion> {

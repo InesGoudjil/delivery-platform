@@ -50,7 +50,7 @@ export function MediaGrid({
 }: MediaGridProps) {
   const layoutClass = getMediaGridClasses(isMasonry, cardSize);
   return (
-    <div className={`${layoutClass} ${className}`} {...props}>
+    <div className={`media-grid-container ${layoutClass} ${className}`} {...props}>
       {children}
     </div>
   );

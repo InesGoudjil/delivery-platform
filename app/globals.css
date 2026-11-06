@@ -786,3 +786,10 @@ h6,
   }
 }
 
+/* Defer layout and paint calculations for off-screen media grid items strictly below the fold */
+.media-grid-container > *:nth-child(n + 7) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto none auto 320px;
+}
+
+

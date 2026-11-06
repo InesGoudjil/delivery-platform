@@ -1,6 +1,7 @@
 "use client";
 
 import { Download, Lock } from "lucide-react";
+import { AppImage } from "@/components/ui/app-image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -38,10 +39,15 @@ export function DeliveryHeroBanner({
 
   return (
     <Card className="relative rounded-3xl overflow-hidden border border-white/10 min-h-[350px] sm:min-h-[560px] lg:min-h-[600px] flex flex-col justify-end shadow-2xl group bg-transparent py-0 hover:translate-y-0">
-      {/* Project Cover Background */}
-      <div
-        className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-[1.02]"
-        style={{ backgroundImage: `url(${heroCoverUrl})` }}
+      {/* Project Cover Background (LCP Element) */}
+      <AppImage
+        src={heroCoverUrl}
+        alt={title}
+        priority
+        fill
+        sizes="100vw"
+        containerClassName="absolute inset-0"
+        className="transition-transform duration-700 group-hover:scale-[1.02]"
       />
       {/* Dark Vignette Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0b] via-[#0a0a0b]/60 to-[#0a0a0b]/35" />

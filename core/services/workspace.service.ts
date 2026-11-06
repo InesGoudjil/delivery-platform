@@ -84,21 +84,29 @@ export class WorkspaceService {
   }
 
   async getUserWorkspaces(userId: string): Promise<Workspace[]> {
-    const owned = await this.workspaceRepo.listByOwnerId(userId);
+    const [owned, memberships] = await Promise.all([
+      this.workspaceRepo.listByOwnerId(userId),
+      this.memberRepo
+        ? this.memberRepo.listByUserId(userId).catch((err: any) => {
+            log.warn({ err, userId }, 'Error fetching member workspaces');
+            return [];
+          })
+        : Promise.resolve([]),
+    ]);
 
     let memberWorkspaces: Workspace[] = [];
-    if (this.memberRepo) {
+    if (this.memberRepo && memberships.length > 0) {
       try {
-        const memberships = await this.memberRepo.listByUserId(userId);
+        const ownedIds = new Set(owned.map((o) => o.id));
         const memberWorkspaceIds = memberships
           .map((m) => m.workspaceId)
-          .filter((id) => !owned.some((o) => o.id === id));
+          .filter((id) => !ownedIds.has(id));
 
         if (memberWorkspaceIds.length > 0) {
           memberWorkspaces = await this.workspaceRepo.listByIds(memberWorkspaceIds);
         }
       } catch (err: any) {
-        log.warn({ err, userId }, 'Error fetching member workspaces');
+        log.warn({ err, userId }, 'Error fetching member workspaces by IDs');
       }
     }
 

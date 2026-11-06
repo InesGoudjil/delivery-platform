@@ -23,27 +23,29 @@ export function PostHogIdentify() {
     const supabase = createClient();
 
     let mounted = true;
+    let lastIdentifiedUserId: string | null | undefined = undefined;
 
-    const apply = async (userId: string | null) => {
+    const apply = async (sessionUser: {
+      id: string;
+      email?: string;
+      user_metadata?: Record<string, unknown>;
+    } | null) => {
       if (!mounted) return;
-      if (!userId) {
-        client.reset();
-        return;
-      }
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!mounted) return;
-      if (!user || user.id !== userId) {
+      const userId = sessionUser?.id ?? null;
+
+      if (userId === lastIdentifiedUserId) return;
+      lastIdentifiedUserId = userId;
+
+      if (!sessionUser || !userId) {
         client.reset();
         return;
       }
 
       const properties: Record<string, unknown> = {
-        email: user.email,
+        email: sessionUser.email,
         name:
-          (user.user_metadata?.full_name as string | undefined) ||
-          (user.user_metadata?.name as string | undefined) ||
+          (sessionUser.user_metadata?.full_name as string | undefined) ||
+          (sessionUser.user_metadata?.name as string | undefined) ||
           undefined,
       };
 
@@ -52,8 +54,9 @@ export function PostHogIdentify() {
         const { data: workspaces } = await supabase
           .from("workspaces")
           .select("id, slug, brand_name, account_type")
-          .eq("owner_id", user.id)
+          .eq("owner_id", userId)
           .limit(1);
+        if (!mounted) return;
         const ws = workspaces?.[0];
         if (ws) {
           properties.workspace_id = ws.id;
@@ -72,16 +75,12 @@ export function PostHogIdentify() {
       client.identify(userId, properties);
     };
 
-    // Initial sync.
-    supabase.auth.getSession().then(({ data }) => {
-      apply(data.session?.user?.id ?? null);
-    });
-
-    // Listen for future changes.
+    // `onAuthStateChange` fires `INITIAL_SESSION` immediately on subscription
+    // and provides `session.user` directly without an extra `auth.getUser()` HTTP roundtrip.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      apply(session?.user?.id ?? null);
+      apply((session?.user as any) ?? null);
     });
 
     return () => {

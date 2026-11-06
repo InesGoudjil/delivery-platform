@@ -81,7 +81,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
   let portfolio = null;
 
   try {
-    // 1. Resolve Workspace by slug, public portfolio slug, or first workspace
+    // 1. Resolve Workspace by slug or public portfolio slug
     workspace = await services.workspace.getWorkspaceBySlug(handle);
 
     if (!workspace) {
@@ -90,14 +90,6 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
         portfolio = publicView;
         workspace = await services.workspace.getWorkspaceById(publicView.workspaceId);
       }
-    }
-
-    if (!workspace) {
-      const allWorkspaces = await services.workspace.listAllWorkspaces();
-      workspace =
-        allWorkspaces.find((w) => w.slug === handle) ||
-        notFound()||
-        null;
     }
 
     // 2. Fetch or Create Portfolio domain entity
@@ -112,27 +104,47 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     log.warn({ err, handle }, "Notice resolving workspace/portfolio");
   }
 
-  // 3. Fetch Real Projects and Standalone Assets from DB
+  if (!workspace) {
+    notFound();
+  }
+
+  // 3. Fetch Real Projects and All Workspace Assets from DB in parallel
   let dbProjects: any[] = [];
   let wsProjects: any[] = [];
-  let standaloneAssets: any[] = [];
+  let allWorkspaceAssets: any[] = [];
+  let activeVersionByAssetId = new Map<string, any>();
 
   let workspaceFeatures: any = null;
   if (workspace) {
     try {
-      const [pProjects, wProjects, unassigned, features] = await Promise.all([
+      const [pProjects, wProjects, wsAssets, features] = await Promise.all([
         portfolio ? services.project.listPortfolioProjects(portfolio.id) : [],
         services.project.listWorkspaceProjects(workspace.id),
-        services.asset.listUnassignedAssets(workspace.id),
+        services.asset.listWorkspaceAssets(workspace.id),
         services.subscription.getFeatures(workspace.id),
       ]);
       dbProjects = pProjects;
       wsProjects = wProjects;
-      standaloneAssets = unassigned;
+      allWorkspaceAssets = wsAssets;
       workspaceFeatures = features;
+
+      if (allWorkspaceAssets.length > 0) {
+        activeVersionByAssetId = await services.asset.getActiveVersionsByAssetIds(
+          allWorkspaceAssets.map((a: any) => a.id)
+        );
+      }
     } catch (err: any) {
       log.warn({ err, workspaceId: workspace.id }, "Notice fetching database assets/projects");
     }
+  }
+
+  const standaloneAssets = allWorkspaceAssets.filter((a: any) => !a.deliveryId);
+  const assetsByDeliveryId = new Map<string, any[]>();
+  for (const asset of allWorkspaceAssets) {
+    if (!asset.deliveryId) continue;
+    const list = assetsByDeliveryId.get(asset.deliveryId) || [];
+    list.push(asset);
+    assetsByDeliveryId.set(asset.deliveryId, list);
   }
 
   // Merge unique showcase projects from DB (filter out unpublished)
@@ -153,7 +165,10 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
   for (const p of combinedProjects) {
     let assets: any[] = [];
     if (p.sourceDeliveryId) {
-      assets = await services.asset.listAssets(p.sourceDeliveryId);
+      assets = assetsByDeliveryId.get(p.sourceDeliveryId) || [];
+    }
+    if (assets.length === 0) {
+      assets = assetsByDeliveryId.get(p.id) || [];
     }
     if (assets.length === 0) {
       const projectWithAssets = await services.project.getProjectWithAssets(p.id);
@@ -161,15 +176,14 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
         assets = projectWithAssets.assets;
       }
     }
-    if (assets.length === 0) {
-      assets = await services.asset.listAssets(p.id);
-    }
 
     const projectAssetIds: string[] = [];
 
     for (const a of assets) {
       const activeVersion =
-        (a as any).activeVersion || (await services.asset.getActiveVersion(a.id));
+        (a as any).activeVersion ||
+        activeVersionByAssetId.get(a.id) ||
+        (await services.asset.getActiveVersion(a.id));
       const isStill = a.type === "photo_gallery" || a.category === "still";
       const rawMedia = resolveMediaUrl(
         activeVersion?.rawFileUrl ||
@@ -235,7 +249,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
 
   // 5. Extract Standalone Assets (unassigned stills and films)
   for (const a of standaloneAssets) {
-    const activeVersion = await services.asset.getActiveVersion(a.id);
+    const activeVersion = activeVersionByAssetId.get(a.id) || null;
     const isStill = a.type === "photo_gallery" || a.category === "still";
     const rawMedia = resolveMediaUrl(
       activeVersion?.rawFileUrl ||

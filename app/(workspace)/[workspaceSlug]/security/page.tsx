@@ -113,33 +113,33 @@ export default function SecurityPage() {
 
     async function loadSecurityData() {
       try {
+        const [factorsRes, sessionsRes, settingsRes] = await Promise.all([
+          supabase.auth.mfa.listFactors(),
+          getActiveSessionsAction(),
+          getWorkspaceSettingsAction(workspaceSlug),
+        ]);
+
+        if (!mounted) return;
+
         // 1. Check Supabase MFA Factors
-        const { data: factorsData } = await supabase.auth.mfa.listFactors();
-        const verifiedFactor = factorsData?.totp?.find((f) => f.status === "verified");
-
-        if (mounted) {
-          if (verifiedFactor) {
-            setIs2FAEnabled(true);
-            setActiveFactorId(verifiedFactor.id);
-          } else {
-            setIs2FAEnabled(false);
-            setActiveFactorId(null);
-          }
-          setIsLoading2FA(false);
+        const verifiedFactor = factorsRes.data?.totp?.find((f) => f.status === "verified");
+        if (verifiedFactor) {
+          setIs2FAEnabled(true);
+          setActiveFactorId(verifiedFactor.id);
+        } else {
+          setIs2FAEnabled(false);
+          setActiveFactorId(null);
         }
+        setIsLoading2FA(false);
 
-        // 2. Fetch Active Device Sessions
-        const sessionsRes = await getActiveSessionsAction();
-        if (mounted) {
-          if (sessionsRes.success && sessionsRes.data) {
-            setSessions(sessionsRes.data);
-          }
-          setIsLoadingSessions(false);
+        // 2. Active Device Sessions
+        if (sessionsRes.success && sessionsRes.data) {
+          setSessions(sessionsRes.data);
         }
+        setIsLoadingSessions(false);
 
-        // 3. Fetch Workspace Link Expiration Defaults
-        const settingsRes = await getWorkspaceSettingsAction(workspaceSlug);
-        if (mounted && settingsRes.success && settingsRes.data) {
+        // 3. Workspace Link Expiration Defaults
+        if (settingsRes.success && settingsRes.data) {
           setExpirationDays(settingsRes.data.defaultLinkExpirationDays ?? null);
         }
       } catch (err) {

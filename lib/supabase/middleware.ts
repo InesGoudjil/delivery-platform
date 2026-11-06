@@ -42,29 +42,32 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // 1. Fetch User & refresh auth session cookies safely in Edge Runtime
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // 1.5 Session Revocation Enforcement
+  // 1. Fetch User & check Session Revocation in parallel to minimize Edge Middleware latency
   const sessionTokenId = request.cookies.get('cinespace_sid')?.value;
-  if (user && sessionTokenId) {
-    const { data: sessionRecord } = await supabase
-      .from('user_sessions')
-      .select('is_revoked')
-      .eq('session_token_id', sessionTokenId)
-      .maybeSingle();
+  const [
+    {
+      data: { user },
+    },
+    sessionCheckResult,
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    sessionTokenId
+      ? supabase
+          .from('user_sessions')
+          .select('is_revoked')
+          .eq('session_token_id', sessionTokenId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
 
-    if (sessionRecord?.is_revoked) {
-      await supabase.auth.signOut();
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = '/login';
-      redirectUrl.search = 'error=' + encodeURIComponent('Your session was revoked from another device.');
-      const res = NextResponse.redirect(redirectUrl);
-      res.cookies.delete('cinespace_sid');
-      return res;
-    }
+  if (user && sessionTokenId && sessionCheckResult?.data?.is_revoked) {
+    await supabase.auth.signOut();
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = '/login';
+    redirectUrl.search = 'error=' + encodeURIComponent('Your session was revoked from another device.');
+    const res = NextResponse.redirect(redirectUrl);
+    res.cookies.delete('cinespace_sid');
+    return res;
   }
 
   const url = request.nextUrl.clone();

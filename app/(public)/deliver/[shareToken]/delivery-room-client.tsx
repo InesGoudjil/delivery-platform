@@ -1,10 +1,9 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { AmbientBackground } from "@/components/ui/ambient-background";
 import { AccentThemeProvider } from "@/components/theme/accent-theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AssetLightboxModal } from "@/components/workspaces/asset-lightbox-modal";
-import { DownloadPackageModal } from "@/components/workspaces/download-package-modal";
 
 import { DeliveryPasscodeDialog } from "./_components/delivery-passcode-dialog";
 import { DeliveryRoomHeader } from "./_components/delivery-room-header";
@@ -13,6 +12,22 @@ import { DeliveryActionBar } from "./_components/delivery-action-bar";
 import { DeliveryAssetGrid } from "./_components/delivery-asset-grid";
 import { DeliveryRoomFooter } from "./_components/delivery-room-footer";
 import { useDeliveryRoom } from "./_components/use-delivery-room";
+
+const AssetLightboxModal = dynamic(
+  () =>
+    import("@/components/workspaces/asset-lightbox-modal").then(
+      (mod) => mod.AssetLightboxModal
+    ),
+  { ssr: false }
+);
+
+const DownloadPackageModal = dynamic(
+  () =>
+    import("@/components/workspaces/download-package-modal").then(
+      (mod) => mod.DownloadPackageModal
+    ),
+  { ssr: false }
+);
 
 import type {
   AssetVersionItem,
@@ -129,98 +144,58 @@ export function DeliveryRoomClient(props: DeliveryRoomProps) {
                 whiteLabel={whiteLabel}
                 brandName={workspace?.brandName}
               />
-
-              {/* Hero Project Cover Banner */}
-              <DeliveryHeroBanner
-                title={delivery.title}
-                clientName={clientName}
-                heroCoverUrl={room.heroCoverUrl}
-                formattedDate={room.formattedDate}
-                displayLocation={room.displayLocation}
-                formattedTotalSize={room.formattedTotalSize}
-                displayAssetCount={room.displayAssetCount}
-                approvedCount={room.approvedCount}
-                isGlobalDownloadUnlocked={room.isGlobalDownloadUnlocked}
-                onDownloadAll={room.handleDownloadAll}
-              />
-
-              {/* Approval Progress & Action Bar */}
-              <DeliveryActionBar
-                brandName={workspace.brandName}
-                totalAssets={room.assets.length}
-                approvedCount={room.approvedCount}
-                allApproved={room.allApproved}
-                isApprovingAll={room.isApprovingAll}
-                onMessageCreator={room.handleMessageCreator}
-                onApproveAll={room.handleApproveAll}
-                onUnapproveAll={room.handleUnapproveAll}
-              />
-
-              {/* Asset Library / Project Files */}
-              <DeliveryAssetGrid
-                filteredAssets={room.filteredAssets}
-                activeTab={room.assetTab}
-                onTabChange={room.setAssetTab}
-                workspaceBrandName={workspace.brandName}
-                appearance={delivery.appearance}
-                isDeliveryWatermarked={delivery.isWatermarked}
-                isGlobalDownloadUnlocked={room.isGlobalDownloadUnlocked}
-                approvingAssetId={room.approvingAssetId}
-                onSelectAsset={room.openAssetModal}
-                onToggleApproval={room.handleToggleAssetApproval}
-                onDownloadAsset={room.handleSingleAssetDownload}
-              />
-
-              {/* Studio Branding Footer */}
-              <DeliveryRoomFooter />
             </div>
 
             {/* 📹 Interactive Video Review Lightbox Modal */}
-            <AssetLightboxModal
-              activeItem={room.activeLightboxItem}
-              onClose={room.closeAssetModal}
-              onNext={room.filteredAssets.length > 1 ? room.handleNextAsset : undefined}
-              onPrev={room.filteredAssets.length > 1 ? room.handlePrevAsset : undefined}
-              feedbackList={room.activeAsset?.feedback || []}
-              onAddFeedback={room.handleAddFeedback}
-              onAddReply={room.handleAddReply}
-              onReconcileFeedbackId={room.handleReconcileFeedbackId}
-              onReconcileReplyId={room.handleReconcileReplyId}
-              onToggleResolve={room.handleToggleResolve}
-              onDeleteFeedback={room.handleDeleteFeedback}
-              onDeleteReply={room.handleDeleteReply}
-              onEditFeedback={room.handleEditFeedback}
-              onEditReply={room.handleEditReply}
-              onToggleApproval={room.handleToggleAssetApproval}
-              authorName={room.commentAuthor}
-              showFeedback={delivery.isCommentAllowed ?? true}
-              showVersions={Boolean(
-                room.activeAsset?.versions && room.activeAsset.versions.length > 1
-              )}
-              showDownload={room.isGlobalDownloadUnlocked}
-              onDownload={room.handleLightboxDownload}
-              watermarkMedia={
-                Boolean(delivery.appearance?.watermarkMedia ?? delivery.isWatermarked) &&
-                !room.activeAsset?.isApproved
-              }
-              watermarkText={workspace?.brandName || "STUDIO PREVIEW"}
-              shareToken={delivery.shareToken}
-              deliveryId={delivery.id}
-            />
+            {room.activeLightboxItem && (
+              <AssetLightboxModal
+                activeItem={room.activeLightboxItem}
+                onClose={room.closeAssetModal}
+                onNext={room.filteredAssets.length > 1 ? room.handleNextAsset : undefined}
+                onPrev={room.filteredAssets.length > 1 ? room.handlePrevAsset : undefined}
+                feedbackList={room.activeAsset?.feedback || []}
+                onAddFeedback={room.handleAddFeedback}
+                onAddReply={room.handleAddReply}
+                onReconcileFeedbackId={room.handleReconcileFeedbackId}
+                onReconcileReplyId={room.handleReconcileReplyId}
+                onToggleResolve={room.handleToggleResolve}
+                onDeleteFeedback={room.handleDeleteFeedback}
+                onDeleteReply={room.handleDeleteReply}
+                onEditFeedback={room.handleEditFeedback}
+                onEditReply={room.handleEditReply}
+                onToggleApproval={room.handleToggleAssetApproval}
+                authorName={room.commentAuthor}
+                showFeedback={delivery.isCommentAllowed ?? true}
+                showVersions={Boolean(
+                  room.activeAsset?.versions && room.activeAsset.versions.length > 1
+                )}
+                showDownload={room.isGlobalDownloadUnlocked}
+                onDownload={room.handleLightboxDownload}
+                watermarkMedia={
+                  Boolean(delivery.appearance?.watermarkMedia ?? delivery.isWatermarked) &&
+                  !room.activeAsset?.isApproved
+                }
+                watermarkText={workspace?.brandName || "STUDIO PREVIEW"}
+                shareToken={delivery.shareToken}
+                deliveryId={delivery.id}
+              />
+            )}
 
             {/* 📦 Master Deliverables Package Modal */}
-            <DownloadPackageModal
-              isOpen={room.showDownloadModal}
-              onOpenChange={room.setShowDownloadModal}
-              projectTitle={delivery.title}
-              isDownloadAllowed={room.isGlobalDownloadUnlocked}
-              brandName={workspace?.brandName}
-              deliveryId={delivery.id}
-              shareToken={delivery.shareToken}
-              totalAssetsCount={room.displayAssetCount}
-              onClientDownload={room.notifyCreatorOfDownload}
-              items={room.packageModalItems}
-            />
+            {room.showDownloadModal && (
+              <DownloadPackageModal
+                isOpen={room.showDownloadModal}
+                onOpenChange={room.setShowDownloadModal}
+                projectTitle={delivery.title}
+                isDownloadAllowed={room.isGlobalDownloadUnlocked}
+                brandName={workspace?.brandName}
+                deliveryId={delivery.id}
+                shareToken={delivery.shareToken}
+                totalAssetsCount={room.displayAssetCount}
+                onClientDownload={room.notifyCreatorOfDownload}
+                items={room.packageModalItems}
+              />
+            )}
           </div>
         </div>
       </TooltipProvider>

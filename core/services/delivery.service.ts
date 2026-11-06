@@ -81,6 +81,73 @@ export class DeliveryService {
     return this.deliveryRepo.listByWorkspaceId(workspaceId);
   }
 
+  private async enrichAssetsBatch(assets: Asset[]): Promise<
+    Array<
+      Asset & {
+        versions: AssetVersion[];
+        activeVersion?: AssetVersion | null;
+        feedback: Feedback[];
+      }
+    >
+  > {
+    if (assets.length === 0) return [];
+
+    const assetIds = assets.map((a) => a.id);
+    const versionsByAssetId = new Map<string, AssetVersion[]>();
+
+    if (this.assetVersionRepo.listByAssetIds) {
+      const allVersions = await this.assetVersionRepo.listByAssetIds(assetIds);
+      for (const v of allVersions) {
+        const list = versionsByAssetId.get(v.assetId) || [];
+        list.push(v);
+        versionsByAssetId.set(v.assetId, list);
+      }
+    } else {
+      const perAsset = await Promise.all(
+        assets.map((asset) => this.assetVersionRepo.listByAssetId(asset.id))
+      );
+      perAsset.forEach((versions, idx) => {
+        versionsByAssetId.set(assets[idx].id, versions);
+      });
+    }
+
+    const allVersionIds: string[] = [];
+    for (const versions of versionsByAssetId.values()) {
+      for (const v of versions) {
+        allVersionIds.push(v.id);
+      }
+    }
+
+    const allFeedback =
+      allVersionIds.length > 0
+        ? await this.feedbackRepo.listByAssetVersionIds(allVersionIds)
+        : [];
+
+    const feedbackByVersionId = new Map<string, Feedback[]>();
+    for (const fb of allFeedback) {
+      const list = feedbackByVersionId.get(fb.assetVersionId) || [];
+      list.push(fb);
+      feedbackByVersionId.set(fb.assetVersionId, list);
+    }
+
+    return assets.map((asset) => {
+      const versions = versionsByAssetId.get(asset.id) || [];
+      const activeVersion = versions.find((v) => v.isActiveVersion) || versions[0] || null;
+      const feedback: Feedback[] = [];
+      for (const v of versions) {
+        const vFeedback = feedbackByVersionId.get(v.id);
+        if (vFeedback) feedback.push(...vFeedback);
+      }
+
+      return {
+        ...asset,
+        versions,
+        activeVersion,
+        feedback,
+      };
+    });
+  }
+
   async getDeliveryWithFullDetails(
     identifier: string,
     options?: { page?: number; limit?: number; type?: string }
@@ -91,10 +158,9 @@ export class DeliveryService {
     }
     if (!delivery) return null;
 
-    let client: Client | null = null;
-    if (delivery.clientId) {
-      client = await this.clientRepo.findById(delivery.clientId);
-    }
+    const clientPromise = delivery.clientId
+      ? this.clientRepo.findById(delivery.clientId)
+      : Promise.resolve(null);
 
     let assets: Asset[] = [];
     let totalAssetsCount = 0;
@@ -104,14 +170,17 @@ export class DeliveryService {
     if (options?.limit !== undefined) {
       const page = options.page || 1;
       const offset = (page - 1) * options.limit;
-      const res = await this.assetRepo.listByDeliveryIdPaginated(delivery.id, {
-        limit: options.limit,
-        offset,
-        type: options.type,
-      });
+      const [res, approvedCount] = await Promise.all([
+        this.assetRepo.listByDeliveryIdPaginated(delivery.id, {
+          limit: options.limit,
+          offset,
+          type: options.type,
+        }),
+        this.assetRepo.countByDeliveryId(delivery.id, { isApproved: true }),
+      ]);
       assets = res.assets;
       totalAssetsCount = res.totalCount;
-      approvedAssetsCount = await this.assetRepo.countByDeliveryId(delivery.id, { isApproved: true });
+      approvedAssetsCount = approvedCount;
       hasMore = offset + assets.length < totalAssetsCount;
     } else {
       assets = await this.assetRepo.listByDeliveryId(delivery.id);
@@ -120,25 +189,10 @@ export class DeliveryService {
       hasMore = false;
     }
 
-    const enrichedAssets = await Promise.all(
-      assets.map(async (asset) => {
-        const versions = await this.assetVersionRepo.listByAssetId(asset.id);
-        const activeVersion = versions.find((v) => v.isActiveVersion) || versions[0] || null;
-
-        let feedback: Feedback[] = [];
-        if (versions.length > 0) {
-          const versionIds = versions.map((v) => v.id);
-          feedback = await this.feedbackRepo.listByAssetVersionIds(versionIds);
-        }
-
-        return {
-          ...asset,
-          versions,
-          activeVersion,
-          feedback,
-        };
-      })
-    );
+    const [client, enrichedAssets] = await Promise.all([
+      clientPromise,
+      this.enrichAssetsBatch(assets),
+    ]);
 
     return {
       ...delivery,
@@ -185,25 +239,7 @@ export class DeliveryService {
       this.assetRepo.countByDeliveryId(deliveryId, { isApproved: true }),
     ]);
 
-    const enrichedAssets = await Promise.all(
-      paginatedResult.assets.map(async (asset) => {
-        const versions = await this.assetVersionRepo.listByAssetId(asset.id);
-        const activeVersion = versions.find((v) => v.isActiveVersion) || versions[0] || null;
-
-        let feedback: Feedback[] = [];
-        if (versions.length > 0) {
-          const versionIds = versions.map((v) => v.id);
-          feedback = await this.feedbackRepo.listByAssetVersionIds(versionIds);
-        }
-
-        return {
-          ...asset,
-          versions,
-          activeVersion,
-          feedback,
-        };
-      })
-    );
+    const enrichedAssets = await this.enrichAssetsBatch(paginatedResult.assets);
 
     return {
       assets: enrichedAssets,

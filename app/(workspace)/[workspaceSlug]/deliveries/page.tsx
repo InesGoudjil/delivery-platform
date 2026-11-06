@@ -20,76 +20,111 @@ export default async function DeliveriesPage({
     redirect("/");
   }
 
-  // 1. Fetch real workspace deliveries
-  const dbDeliveries = await services.delivery.listWorkspaceDeliveries(workspace.id);
+  // 1. Fetch deliveries, workspace clients, and plan features in parallel
+  const [dbDeliveries, workspaceClients, workspaceFeatures] = await Promise.all([
+    services.delivery.listWorkspaceDeliveries(workspace.id),
+    services.client.listClients(workspace.id),
+    services.subscription.getFeatures(workspace.id),
+  ]);
 
-  // 2. Enrich with assets, versions, clients, and comments
-  const mappedDbDeliveries: DeliveryProjectItem[] = await Promise.all(
-    dbDeliveries.map(async (delivery) => {
-      const assets = await services.asset.listAssets(delivery.id);
-      const activeVersion =
-        assets.length > 0
-          ? await services.asset.getActiveVersion(assets[0].id)
-          : null;
+  const clientsById = new Map(workspaceClients.map((c) => [c.id, c]));
 
-      let clientName = (delivery as { clientName?: string }).clientName || "Private Client";
-      if (delivery.clientId) {
-        const client = await services.client.getClientById(delivery.clientId);
-        if (client) clientName = client.name;
+  // 2. Batch-fetch assets, active versions, and feedback counts across all deliveries
+  const deliveryIds = dbDeliveries.map((d) => d.id);
+  const allDeliveryAssets =
+    deliveryIds.length > 0
+      ? await services.asset.listAssetsByDeliveryIds(deliveryIds)
+      : [];
+
+  const assetsByDeliveryId = new Map<string, typeof allDeliveryAssets>();
+  for (const asset of allDeliveryAssets) {
+    if (!asset.deliveryId) continue;
+    const list = assetsByDeliveryId.get(asset.deliveryId) || [];
+    list.push(asset);
+    assetsByDeliveryId.set(asset.deliveryId, list);
+  }
+
+  const firstAssetIds: string[] = [];
+  for (const delivery of dbDeliveries) {
+    const assets = assetsByDeliveryId.get(delivery.id);
+    if (assets && assets.length > 0) {
+      firstAssetIds.push(assets[0].id);
+    }
+  }
+
+  const activeVersionByAssetId =
+    firstAssetIds.length > 0
+      ? await services.asset.getActiveVersionsByAssetIds(firstAssetIds)
+      : new Map();
+
+  const activeVersionIds = Array.from(activeVersionByAssetId.values()).map((v) => v.id);
+  let feedbackCountByVersionId = new Map<string, number>();
+  if (activeVersionIds.length > 0) {
+    try {
+      const allFeedback = await services.feedback.listFeedbackForVersions(activeVersionIds);
+      for (const fb of allFeedback) {
+        feedbackCountByVersionId.set(
+          fb.assetVersionId,
+          (feedbackCountByVersionId.get(fb.assetVersionId) || 0) + 1
+        );
       }
+    } catch {
+      feedbackCountByVersionId = new Map();
+    }
+  }
 
-      // Count comments for active version
-      let commentsCount = 0;
-      if (activeVersion) {
-        try {
-          const threads = await services.feedback.getThreadedFeedback(activeVersion.id);
-          commentsCount = threads.length;
-        } catch {
-          commentsCount = 0;
-        }
-      }
+  const nowMs = Date.now();
+  const mappedDbDeliveries: DeliveryProjectItem[] = dbDeliveries.map((delivery) => {
+    const assets = assetsByDeliveryId.get(delivery.id) || [];
+    const activeVersion =
+      assets.length > 0 ? activeVersionByAssetId.get(assets[0].id) ?? null : null;
 
-      // Format duration (e.g. 47 -> 00:47)
-      let durationStr = "01:00";
-      if (activeVersion?.durationSeconds) {
-        const totalSec = Math.round(activeVersion.durationSeconds);
-        const mins = Math.floor(totalSec / 60);
-        const secs = totalSec % 60;
-        durationStr = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-      }
+    let clientName = (delivery as { clientName?: string }).clientName || "Private Client";
+    if (delivery.clientId) {
+      const client = clientsById.get(delivery.clientId);
+      if (client) clientName = client.name;
+    }
 
-      // Calculate relative time
-      const updatedAt = new Date(delivery.updatedAt || delivery.createdAt);
-      const diffMins = Math.floor((Date.now() - updatedAt.getTime()) / (1000 * 60));
-      let lastActivity = "Just now";
-      if (diffMins > 60 * 24) {
-        lastActivity = `${Math.floor(diffMins / (60 * 24))} days ago`;
-      } else if (diffMins > 60) {
-        lastActivity = `${Math.floor(diffMins / 60)} hours ago`;
-      } else if (diffMins > 0) {
-        lastActivity = `${diffMins} mins ago`;
-      }
+    const commentsCount = activeVersion
+      ? feedbackCountByVersionId.get(activeVersion.id) || 0
+      : 0;
 
-      return {
-        id: delivery.id,
-        title: delivery.title,
-        clientName,
-        version: activeVersion ? `v${activeVersion.versionNumber}_DirectorCut` : "v1_Master",
-        duration: durationStr,
-        status: (delivery.status as any) || "in_review",
-        shareToken: delivery.shareToken,
-        passcodeProtected: Boolean(delivery.passcodeHash),
-        downloadsAllowed: Boolean(delivery.isDownloadAllowed),
-        assetsCount: assets.length,
-        commentsCount,
-        lastActivity,
-      };
-    })
-  );
+    // Format duration (e.g. 47 -> 00:47)
+    let durationStr = "01:00";
+    if (activeVersion?.durationSeconds) {
+      const totalSec = Math.round(activeVersion.durationSeconds);
+      const mins = Math.floor(totalSec / 60);
+      const secs = totalSec % 60;
+      durationStr = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    }
 
+    // Calculate relative time
+    const updatedAt = new Date(delivery.updatedAt || delivery.createdAt);
+    const diffMins = Math.floor((nowMs - updatedAt.getTime()) / (1000 * 60));
+    let lastActivity = "Just now";
+    if (diffMins > 60 * 24) {
+      lastActivity = `${Math.floor(diffMins / (60 * 24))} days ago`;
+    } else if (diffMins > 60) {
+      lastActivity = `${Math.floor(diffMins / 60)} hours ago`;
+    } else if (diffMins > 0) {
+      lastActivity = `${diffMins} mins ago`;
+    }
 
-
-  const workspaceFeatures = await services.subscription.getFeatures(workspace.id);
+    return {
+      id: delivery.id,
+      title: delivery.title,
+      clientName,
+      version: activeVersion ? `v${activeVersion.versionNumber}_DirectorCut` : "v1_Master",
+      duration: durationStr,
+      status: (delivery.status as any) || "in_review",
+      shareToken: delivery.shareToken,
+      passcodeProtected: Boolean(delivery.passcodeHash),
+      downloadsAllowed: Boolean(delivery.isDownloadAllowed),
+      assetsCount: assets.length,
+      commentsCount,
+      lastActivity,
+    };
+  });
 
   const deliveries =
     mappedDbDeliveries.length > 0

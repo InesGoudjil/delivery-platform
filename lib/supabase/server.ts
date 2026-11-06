@@ -43,6 +43,9 @@ export const createClient = cache(async () => {
   );
 });
 
+let cachedAdminClient: ReturnType<typeof createSupabaseClient> | null = null;
+let cachedAdminKey: string | null = null;
+
 /**
  * Admin Supabase client using SUPABASE_SERVICE_ROLE_KEY to bypass RLS in backend operations like Webhooks.
  */
@@ -63,10 +66,17 @@ export function createAdminClient() {
       ? env.NEXT_PUBLIC_SUPABASE_ANON_KEY
       : 'placeholder-anon-key';
 
-  return createSupabaseClient(url, key, {
+  const cacheKey = `${url}::${key}`;
+  if (cachedAdminClient && cachedAdminKey === cacheKey) {
+    return cachedAdminClient;
+  }
+
+  cachedAdminClient = createSupabaseClient(url, key, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
     },
   });
+  cachedAdminKey = cacheKey;
+  return cachedAdminClient;
 }

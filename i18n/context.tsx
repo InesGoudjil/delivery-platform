@@ -1,14 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { type Locale, defaultLocale, isRTL, locales } from "./config";
+import { type Locale, defaultLocale, isRTL } from "./config";
 import { en, type Dictionary } from "./dictionaries/en";
-import { ar } from "./dictionaries/ar";
 
-const dictionaries: Record<Locale, Dictionary> = {
-  en,
-  ar,
-};
+let cachedArDict: Dictionary | null = null;
 
 interface I18nContextType {
   locale: Locale;
@@ -41,8 +37,19 @@ export function I18nProvider({
     return initialLocale;
   });
 
+  const [arDict, setArDict] = React.useState<Dictionary | null>(cachedArDict);
+
+  React.useEffect(() => {
+    if (locale === "ar" && !arDict) {
+      import("./dictionaries/ar").then((mod) => {
+        cachedArDict = mod.ar;
+        setArDict(mod.ar);
+      });
+    }
+  }, [locale, arDict]);
+
   const dir: "ltr" | "rtl" = isRTL(locale) ? "rtl" : "ltr";
-  const dict = dictionaries[locale] || dictionaries[defaultLocale];
+  const dict = locale === "ar" && arDict ? arDict : en;
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {

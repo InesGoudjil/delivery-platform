@@ -20,9 +20,11 @@ export default async function AdminDashboardPage() {
   let mappedWorkspaces: AdminWorkspaceItem[] = [];
 
   try {
-    const dbWorkspaces: Workspace[] = await services.workspace.listAllWorkspaces().catch(() => []);
-    const subscriptions: Subscription[] = await services.subscription.listAllSubscriptions().catch(() => []);
-    const plans: Plan[] = await services.subscription.listAllPlans().catch(() => []);
+    const [dbWorkspaces, subscriptions, plans] = await Promise.all([
+      services.workspace.listAllWorkspaces().catch(() => [] as Workspace[]),
+      services.subscription.listAllSubscriptions().catch(() => [] as Subscription[]),
+      services.subscription.listAllPlans().catch(() => [] as Plan[]),
+    ]);
 
     const planMap = new Map<string, Plan>(plans.map((p) => [p.id, p]));
     const subMap = new Map<string, Subscription>(subscriptions.map((s) => [s.workspaceId, s]));
@@ -51,8 +53,7 @@ export default async function AdminDashboardPage() {
             }
           }
 
-          const features = await services.workspace.getWorkspaceFeatures(ws.id).catch(() => ({} as any));
-          const storageLimitGB = (features as any)?.storage_gb || 500;
+          const storageLimitGB = Number((plan?.features as any)?.storage_gb || 500);
 
           return {
             id: ws.id,

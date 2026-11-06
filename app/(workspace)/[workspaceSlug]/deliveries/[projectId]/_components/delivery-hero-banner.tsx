@@ -27,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TypographyH1, TypographyKicker, TypographySpan } from "@/components/ui/typography";
+import { AppImage } from "@/components/ui/app-image";
 import { cn } from "@/lib/utils";
 
 interface DeliveryHeroBannerProps {
@@ -76,12 +77,14 @@ export function DeliveryHeroBanner({
 }: DeliveryHeroBannerProps) {
   return (
     <Card className="relative rounded-3xl overflow-hidden border border-border/80 shadow-2xl bg-card hover:translate-y-0 hover:shadow-2xl">
-      {/* Dark Hero Image Background with Gradient Overlay */}
-      <div
-        className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-luminosity scale-105"
-        style={{
-          backgroundImage: `url('${coverThumbnailUrl}')`,
-        }}
+      {/* Dark Hero Image Background with Gradient Overlay (LCP Element) */}
+      <AppImage
+        src={coverThumbnailUrl}
+        alt={projectTitle}
+        priority
+        fill
+        sizes="100vw"
+        containerClassName="absolute inset-0 opacity-40 mix-blend-luminosity scale-105"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
       <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/60 to-transparent" />

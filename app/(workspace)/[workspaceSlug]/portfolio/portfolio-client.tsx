@@ -10,24 +10,52 @@ import {
   updateAssetAction,
   updatePortfolioAction,
 } from "@/app/actions/portfolio";
-import { EditAssetDialog, type EditableAssetItem } from "@/components/workspaces/edit-asset-dialog";
-import { TrashBinDialog } from "@/components/workspaces/trash-bin-dialog";
+import dynamic from "next/dynamic";
+import { type EditableAssetItem } from "@/components/workspaces/edit-asset-dialog";
 import { PortfolioHero } from "./_components/portfolio-hero";
 import { CoverBannerSection } from "./_components/cover-banner-section";
 import { AppearanceToolbar } from "./_components/appearance-toolbar";
 import { ShowcaseGrid } from "./_components/showcase-grid";
-import {
-  AssetLightboxModal,
-  ProjectExplorerModal,
-} from "./_components/portfolio-modals";
-// import { ExperienceSection } from "./_components/experience-section";
 import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SelectableCoverAsset } from "@/lib/portfolio-data";
-import {
-  ImageCropEditorDialog,
-  ImageCropResult,
-} from "@/components/ui/image-crop-editor-dialog";
+import { type ImageCropResult } from "@/components/ui/image-crop-editor-dialog";
+
+const AssetLightboxModal = dynamic(
+  () =>
+    import("./_components/portfolio-modals").then(
+      (mod) => mod.AssetLightboxModal
+    ),
+  { ssr: false }
+);
+const ProjectExplorerModal = dynamic(
+  () =>
+    import("./_components/portfolio-modals").then(
+      (mod) => mod.ProjectExplorerModal
+    ),
+  { ssr: false }
+);
+const ImageCropEditorDialog = dynamic(
+  () =>
+    import("@/components/ui/image-crop-editor-dialog").then(
+      (mod) => mod.ImageCropEditorDialog
+    ),
+  { ssr: false }
+);
+const EditAssetDialog = dynamic(
+  () =>
+    import("@/components/workspaces/edit-asset-dialog").then(
+      (mod) => mod.EditAssetDialog
+    ),
+  { ssr: false }
+);
+const TrashBinDialog = dynamic(
+  () =>
+    import("@/components/workspaces/trash-bin-dialog").then(
+      (mod) => mod.TrashBinDialog
+    ),
+  { ssr: false }
+);
 
 
 

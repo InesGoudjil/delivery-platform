@@ -238,28 +238,61 @@ export function TiltCard({
   tiltIntensity = 7,
   glareIntensity = 0.25,
   className = "",
+  style,
   ...props
 }: TiltCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const [coords, setCoords] = useState({ x: 0, y: 0 });
-  const [isHovered, setIsHovered] = useState(false);
+  const rectRef = useRef<DOMRect | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  const handleMouseEnter = () => {
+    const el = cardRef.current;
+    if (!el) return;
+    rectRef.current = el.getBoundingClientRect();
+    el.dataset.hovered = "true";
+  };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width - 0.5;
-    const y = (e.clientY - rect.top) / rect.height - 0.5;
-    setCoords({ x, y });
+    const el = cardRef.current;
+    if (!el) return;
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      const rect = rectRef.current || el.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const x = (clientX - rect.left) / rect.width - 0.5;
+      const y = (clientY - rect.top) / rect.height - 0.5;
+      const rotateY = (x * tiltIntensity * 2).toFixed(2);
+      const rotateX = (-y * tiltIntensity * 2).toFixed(2);
+      const glareX = ((x + 0.5) * 100).toFixed(1);
+      const glareY = ((y + 0.5) * 100).toFixed(1);
+
+      el.style.setProperty("--tilt-rx", `${rotateX}deg`);
+      el.style.setProperty("--tilt-ry", `${rotateY}deg`);
+      el.style.setProperty("--tilt-scale", "1.01");
+      el.style.setProperty("--glare-x", `${glareX}%`);
+      el.style.setProperty("--glare-y", `${glareY}%`);
+      el.style.setProperty("--glare-opacity", "1");
+    });
   };
 
-  const handleMouseEnter = () => setIsHovered(true);
   const handleMouseLeave = () => {
-    setIsHovered(false);
-    setCoords({ x: 0, y: 0 });
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    rectRef.current = null;
+    const el = cardRef.current;
+    if (!el) return;
+    delete el.dataset.hovered;
+    el.style.setProperty("--tilt-rx", "0deg");
+    el.style.setProperty("--tilt-ry", "0deg");
+    el.style.setProperty("--tilt-scale", "1");
+    el.style.setProperty("--glare-opacity", "0");
   };
-
-  const rotateY = coords.x * tiltIntensity * 2;
-  const rotateX = -coords.y * tiltIntensity * 2;
 
   return (
     <div
@@ -269,21 +302,20 @@ export function TiltCard({
       onMouseLeave={handleMouseLeave}
       className={`relative perspective-1000 transition-transform duration-200 ease-out ${className}`}
       style={{
-        transform: isHovered
-          ? `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.01, 1.01, 1.01)`
-          : "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)",
+        transform:
+          "perspective(1000px) rotateX(var(--tilt-rx, 0deg)) rotateY(var(--tilt-ry, 0deg)) scale3d(var(--tilt-scale, 1), var(--tilt-scale, 1), var(--tilt-scale, 1))",
+        ...style,
       }}
       {...props}
     >
       {children}
-      {isHovered && (
-        <div
-          className="pointer-events-none absolute inset-0 rounded-[inherit] transition-opacity duration-300"
-          style={{
-            background: `radial-gradient(circle at ${(coords.x + 0.5) * 100}% ${(coords.y + 0.5) * 100}%, rgba(255, 255, 255, ${glareIntensity}) 0%, transparent 60%)`,
-          }}
-        />
-      )}
+      <div
+        className="pointer-events-none absolute inset-0 rounded-[inherit] transition-opacity duration-300"
+        style={{
+          opacity: "var(--glare-opacity, 0)" as any,
+          background: `radial-gradient(circle at var(--glare-x, 50%) var(--glare-y, 50%), rgba(255, 255, 255, ${glareIntensity}) 0%, transparent 60%)`,
+        }}
+      />
     </div>
   );
 }

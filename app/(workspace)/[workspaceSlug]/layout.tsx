@@ -42,7 +42,7 @@ export default async function WorkspaceLayout({
   }
 
   const isOwner = workspace.ownerId === user.id;
-  const isMember = await services.member.isMember(workspace.id, user.id);
+  const isMember = isOwner || (await services.member.isMember(workspace.id, user.id));
 
   if (!isOwner && !isMember) {
     const userWorkspaces = await services.workspace.getUserWorkspaces(user.id);

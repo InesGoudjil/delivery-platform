@@ -87,13 +87,18 @@ export default async function StoragePage({
     services.subscription.getFeatures(workspace.id),
   ]);
 
-  // 2. Calculate real storage usage concurrently across all workspace assets
+  // 2. Calculate real storage usage with a single batch query across all workspace assets
   let totalVideoBytes = 0;
   let totalStillBytes = 0;
   let totalStreamBytes = 0;
 
-  const processAsset = async (asset: { id: string; type: string }) => {
-    const activeVer = await services.asset.getActiveVersion(asset.id);
+  const activeVersionByAssetId =
+    allWorkspaceAssets.length > 0
+      ? await services.asset.getActiveVersionsByAssetIds(allWorkspaceAssets.map((a) => a.id))
+      : new Map();
+
+  for (const asset of allWorkspaceAssets) {
+    const activeVer = activeVersionByAssetId.get(asset.id);
     if (activeVer) {
       const bytes = Number(activeVer.fileSizeBytes || 0);
       if (asset.type === "photo_gallery") {
@@ -105,16 +110,16 @@ export default async function StoragePage({
         }
       }
     }
-  };
-
-  await Promise.all(allWorkspaceAssets.map(processAsset));
+  }
 
   const calculatedUsedBytes = totalVideoBytes + totalStillBytes + totalStreamBytes;
   const usedBytes = Math.max(workspace.storageUsedBytes || 0, calculatedUsedBytes);
 
-  // Sync workspace.storage_used_bytes in database if it was out of sync
+  // Sync workspace.storage_used_bytes in background if it was out of sync (non-blocking)
   if (calculatedUsedBytes > 0 && workspace.storageUsedBytes !== calculatedUsedBytes) {
-    await services.workspace.trackStorageUsage(workspace.id, calculatedUsedBytes - (workspace.storageUsedBytes || 0)).catch(() => {});
+    void services.workspace
+      .trackStorageUsage(workspace.id, calculatedUsedBytes - (workspace.storageUsedBytes || 0))
+      .catch(() => {});
   }
 
   // 3. Quota allocation based on active subscription plan & features

@@ -30,13 +30,26 @@ export default async function PortfolioPage({
   );
 
 
-  // 2. Query showcase projects, standalone assets, and plan features
-  const [dbProjects, standaloneAssets, features] = await Promise.all([
+  // 2. Query showcase projects, all workspace assets, and plan features in parallel
+  const [dbProjects, allWorkspaceAssets, features] = await Promise.all([
     services.project.listPortfolioProjects(portfolio.id),
-    services.asset.listUnassignedAssets(workspace.id),
+    services.asset.listWorkspaceAssets(workspace.id),
     services.subscription.getFeatures(workspace.id),
   ]);
 
+  const standaloneAssets = allWorkspaceAssets.filter((a) => !a.deliveryId);
+  const assetsByDeliveryId = new Map<string, typeof allWorkspaceAssets>();
+  for (const asset of allWorkspaceAssets) {
+    if (!asset.deliveryId) continue;
+    const list = assetsByDeliveryId.get(asset.deliveryId) || [];
+    list.push(asset);
+    assetsByDeliveryId.set(asset.deliveryId, list);
+  }
+
+  // Batch-fetch active versions for all workspace assets in 1 query
+  const activeVersionByAssetId = await services.asset.getActiveVersionsByAssetIds(
+    allWorkspaceAssets.map((a) => a.id)
+  );
 
   const featuredItemIds: string[] = Array.isArray(portfolio.appearance?.featuredItemIds)
     ? portfolio.appearance.featuredItemIds
@@ -46,9 +59,9 @@ export default async function PortfolioPage({
   const mappedDbProjects: PortfolioItem[] = await Promise.all(
     dbProjects.map(async (p) => {
       const deliveryIdToQuery = p.sourceDeliveryId || p.id;
-      let assets = await services.asset.listAssets(deliveryIdToQuery);
+      let assets = assetsByDeliveryId.get(deliveryIdToQuery) || [];
       if (assets.length === 0 && p.id !== deliveryIdToQuery) {
-        assets = await services.asset.listAssets(p.id);
+        assets = assetsByDeliveryId.get(p.id) || [];
       }
       if (assets.length === 0) {
         const projectWithAssets = await services.project.getProjectWithAssets(p.id);
@@ -59,7 +72,10 @@ export default async function PortfolioPage({
 
       const projectAssets = await Promise.all(
         assets.map(async (a) => {
-          const activeVersion = await services.asset.getActiveVersion(a.id);
+          const activeVersion =
+            (a as any).activeVersion ||
+            activeVersionByAssetId.get(a.id) ||
+            (await services.asset.getActiveVersion(a.id));
           const isStill = a.type === "photo_gallery";
           const rawMedia =
             activeVersion?.rawFileUrl ||
@@ -112,35 +128,33 @@ export default async function PortfolioPage({
   );
 
   // 4. Map Standalone Workspace Assets (Films & Stills)
-  const mappedStandaloneAssets: PortfolioItem[] = await Promise.all(
-    standaloneAssets.map(async (asset) => {
-      const activeVersion = await services.asset.getActiveVersion(asset.id);
-      const itemType = asset.type === "photo_gallery" ? ("still" as const) : ("film" as const);
-      const isStill = itemType === "still";
-      const rawMedia =
-        activeVersion?.rawFileUrl ||
-        activeVersion?.hlsManifestUrl ||
-        "";
-      const resolvedThumb = resolveThumbnailUrl(
-        activeVersion?.thumbnailUrl,
-        rawMedia,
-        isStill
-      );
-      const isFeatured = featuredItemIds.includes(asset.id);
+  const mappedStandaloneAssets: PortfolioItem[] = standaloneAssets.map((asset) => {
+    const activeVersion = activeVersionByAssetId.get(asset.id) || null;
+    const itemType = asset.type === "photo_gallery" ? ("still" as const) : ("film" as const);
+    const isStill = itemType === "still";
+    const rawMedia =
+      activeVersion?.rawFileUrl ||
+      activeVersion?.hlsManifestUrl ||
+      "";
+    const resolvedThumb = resolveThumbnailUrl(
+      activeVersion?.thumbnailUrl,
+      rawMedia,
+      isStill
+    );
+    const isFeatured = featuredItemIds.includes(asset.id);
 
-      return {
-        id: asset.id,
-        title: asset.title,
-        category: isStill ? "Photo Gallery" : "Film Cut",
-        type: itemType,
-        assetCount: 1,
-        thumbnailUrl: resolvedThumb,
-        mediaUrl: resolveMediaUrl(rawMedia || resolvedThumb),
-        aspectRatio: asset.aspectRatio || undefined,
-        isFeatured,
-      };
-    })
-  );
+    return {
+      id: asset.id,
+      title: asset.title,
+      category: isStill ? "Photo Gallery" : "Film Cut",
+      type: itemType,
+      assetCount: 1,
+      thumbnailUrl: resolvedThumb,
+      mediaUrl: resolveMediaUrl(rawMedia || resolvedThumb),
+      aspectRatio: asset.aspectRatio || undefined,
+      isFeatured,
+    };
+  });
 
   // Unified portfolio showcase containing EVERYTHING (Projects + Standalone Films + Standalone Stills)
   const allPortfolioItems = [...mappedDbProjects, ...mappedStandaloneAssets];
