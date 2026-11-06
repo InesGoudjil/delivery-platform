@@ -21,6 +21,10 @@ import {
   addFeedbackAction,
   addFeedbackReplyAction,
   toggleFeedbackResolvedAction,
+  deleteFeedbackAction,
+  deleteFeedbackReplyAction,
+  updateFeedbackAction,
+  updateFeedbackReplyAction,
 } from "@/app/actions/feedback";
 
 import {
@@ -49,6 +53,10 @@ export function AssetLightboxModal({
   onToggleResolve,
   onToggleFeedbackResolved,
   onToggleApproval,
+  onDeleteFeedback,
+  onDeleteReply,
+  onEditFeedback,
+  onEditReply,
   onDeleteAsset,
   onEditAsset,
   authorName = "Filmmaker",
@@ -393,6 +401,84 @@ export function AssetLightboxModal({
       } catch (err: any) {
         console.error("Failed to toggle resolve:", err);
         toast.error("Failed to update resolution status");
+      }
+    }
+  };
+
+  const handleDeleteFeedback = async (feedbackId: string) => {
+    if (onDeleteFeedback) {
+      await onDeleteFeedback(feedbackId);
+    } else {
+      try {
+        const res = await deleteFeedbackAction(feedbackId, shareToken, deliveryId || projectId);
+        if (res?.error) {
+          toast.error(res.error || "Failed to delete feedback");
+        } else {
+          triggerToast("Feedback deleted");
+        }
+      } catch (err: any) {
+        toast.error("Failed to delete feedback");
+      }
+    }
+  };
+
+  const handleDeleteReply = async (feedbackId: string, replyId: string) => {
+    if (onDeleteReply) {
+      await onDeleteReply(feedbackId, replyId);
+    } else {
+      try {
+        const res = await deleteFeedbackReplyAction(replyId, shareToken, deliveryId || projectId);
+        if (res?.error) {
+          toast.error(res.error || "Failed to delete reply");
+        } else {
+          triggerToast("Reply deleted");
+        }
+      } catch (err: any) {
+        toast.error("Failed to delete reply");
+      }
+    }
+  };
+
+  const handleEditFeedback = async (feedbackId: string, newText: string) => {
+    if (onEditFeedback) {
+      await onEditFeedback(feedbackId, newText);
+    } else {
+      try {
+        const res = await updateFeedbackAction({
+          feedbackId,
+          commentText: newText,
+          shareToken,
+          deliveryId: deliveryId || projectId,
+        });
+        if (res?.error) {
+          toast.error(res.error || "Failed to edit feedback");
+        } else {
+          triggerToast("Feedback updated");
+        }
+      } catch (err: any) {
+        toast.error("Failed to edit feedback");
+      }
+    }
+  };
+
+  const handleEditReply = async (feedbackId: string, replyId: string, newText: string) => {
+    if (onEditReply) {
+      await onEditReply(feedbackId, replyId, newText);
+    } else {
+      try {
+        const res = await updateFeedbackReplyAction({
+          replyId,
+          commentText: newText,
+          shareToken,
+          deliveryId: deliveryId || projectId,
+        });
+        if (res?.error) {
+          toast.error(res.error || "Failed to edit reply");
+        } else {
+          triggerToast("Reply updated");
+        }
+      } catch (err: any) {
+        toast.error("Failed to edit reply");
       }
     }
   };
@@ -751,6 +837,10 @@ export function AssetLightboxModal({
               onAddFeedback={handleSendFeedback}
               onAddReply={handleSendReply}
               onToggleResolve={handleToggleResolve}
+              onDeleteFeedback={handleDeleteFeedback}
+              onDeleteReply={handleDeleteReply}
+              onEditFeedback={handleEditFeedback}
+              onEditReply={handleEditReply}
             />
           </div>
         )}

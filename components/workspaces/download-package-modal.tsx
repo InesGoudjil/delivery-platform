@@ -139,7 +139,7 @@ export function DownloadPackageModal({
     setSelectedIds((prev) => {
       const next: Record<string, boolean> = {};
       for (const item of validItems) {
-        const canDownloadItem = isDownloadAllowed || Boolean(item.isApproved);
+        const canDownloadItem = Boolean(isDownloadAllowed);
         next[item.id] = prev[item.id] !== undefined ? prev[item.id] : canDownloadItem;
       }
       return next;
@@ -161,9 +161,7 @@ export function DownloadPackageModal({
 
   const downloadableFilteredItems = useMemo(
     () =>
-      filteredItems.filter(
-        (item) => isDownloadAllowed || Boolean(item.isApproved)
-      ),
+      isDownloadAllowed ? filteredItems : [],
     [filteredItems, isDownloadAllowed]
   );
 
@@ -224,9 +222,8 @@ export function DownloadPackageModal({
   };
 
   const handleDownloadSingle = (item: DownloadItem) => {
-    const canDownloadItem = isDownloadAllowed || Boolean(item.isApproved);
-    if (!canDownloadItem) {
-      toast.error("This cut is locked pending approval.");
+    if (!isDownloadAllowed) {
+      toast.error("Downloads are restricted for this review link.");
       return;
     }
     const filename = getDownloadFilename(
@@ -247,8 +244,7 @@ export function DownloadPackageModal({
   };
 
   const handleCopySingleLink = (item: DownloadItem) => {
-    const canDownloadItem = isDownloadAllowed || Boolean(item.isApproved);
-    if (!canDownloadItem || !item.downloadUrl) return;
+    if (!isDownloadAllowed || !item.downloadUrl) return;
     const directUrl = resolveAbsoluteDownloadUrl(item);
     navigator.clipboard.writeText(directUrl);
     setCopiedItemIds((prev) => ({ ...prev, [item.id]: true }));
@@ -261,9 +257,8 @@ export function DownloadPackageModal({
   };
 
   const handleDownloadProxy = (item: DownloadItem) => {
-    const canDownloadItem = isDownloadAllowed || Boolean(item.isApproved);
-    if (!canDownloadItem || !item.proxyDownloadUrl) {
-      toast.error("Web proxy not available for this cut.");
+    if (!isDownloadAllowed || !item.proxyDownloadUrl) {
+      toast.error("Downloads are restricted for this review link.");
       return;
     }
     const safeTitle = (item.title || "Deliverable").replace(/[/\\?%*:|"<>]/g, "_").trim();
@@ -284,7 +279,7 @@ export function DownloadPackageModal({
 
     if (targetList.length === 0) {
       if (!isDownloadAllowed) {
-        toast.error("Downloads are locked until cuts are approved.");
+        toast.error("Downloads are restricted for this review link.");
       } else {
         toast.error("Please select at least one deliverable to download.");
       }
@@ -379,8 +374,7 @@ export function DownloadPackageModal({
     setTimeout(() => setHasCopiedLinks(false), 2500);
   };
 
-  const hasAnyDownloadable =
-    isDownloadAllowed || validItems.some((i) => Boolean(i.isApproved));
+  const hasAnyDownloadable = Boolean(isDownloadAllowed);
 
   return (
     <UniversalDialog
@@ -420,14 +414,10 @@ export function DownloadPackageModal({
             <Lock className="size-5 shrink-0 mt-0.5 text-amber-400" />
             <div className="space-y-1 text-xs">
               <TypographySmall className="font-bold">
-                {hasAnyDownloadable
-                  ? "Unapproved Drafts Locked — Approved Cuts Unlocked"
-                  : "Downloads Currently Restricted"}
+                Downloads Restricted
               </TypographySmall>
               <TypographyMuted className="text-amber-200/80 leading-relaxed">
-                {hasAnyDownloadable
-                  ? "Approved assets are unlocked for immediate download below. Approve the remaining cuts to unlock the full package."
-                  : "The creator has locked master cut downloads pending final sign-off and approval. Once approved, all high-resolution files unlock automatically."}
+                The creator has restricted file downloads for this review link. This delivery is in review-only mode.
               </TypographyMuted>
             </div>
           </div>
@@ -593,8 +583,7 @@ export function DownloadPackageModal({
                   item.type === "photo_gallery" ||
                   item.type === "still";
                 const isDownloaded = downloadedIds[item.id];
-                const canDownloadItem =
-                  isDownloadAllowed || Boolean(item.isApproved);
+                const canDownloadItem = Boolean(isDownloadAllowed);
                 const isSelected =
                   canDownloadItem && Boolean(selectedIds[item.id]);
 

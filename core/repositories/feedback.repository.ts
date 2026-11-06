@@ -27,6 +27,7 @@ export interface IFeedbackRepository {
   resolve(id: string, isResolved: boolean): Promise<Feedback>;
   delete(id: string): Promise<void>;
   createReply(dto: CreateFeedbackReplyDTO): Promise<FeedbackReply>;
+  updateReply(replyId: string, commentText: string): Promise<FeedbackReply>;
   deleteReply(replyId: string): Promise<void>;
   listRepliesByFeedbackId(feedbackId: string): Promise<FeedbackReply[]>;
 }
@@ -176,6 +177,18 @@ export class SupabaseFeedbackRepository implements IFeedbackRepository {
       .single();
 
     if (error) throw new Error(`Failed to create feedback reply: ${error.message}`);
+    return this.mapReplyRowToEntity(data);
+  }
+
+  async updateReply(replyId: string, commentText: string): Promise<FeedbackReply> {
+    const { data, error } = await (this.supabase as any)
+      .from('feedback_replies')
+      .update({ comment_text: commentText })
+      .eq('id', replyId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to update feedback reply: ${error.message}`);
     return this.mapReplyRowToEntity(data);
   }
 

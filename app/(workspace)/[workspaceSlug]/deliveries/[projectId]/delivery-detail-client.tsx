@@ -19,7 +19,13 @@ import {
   restoreDeliveryFromSiloAction,
   checkDeliverySiloStatusAction,
 } from "@/app/actions/silo";
-import { toggleFeedbackResolvedAction } from "@/app/actions/feedback";
+import {
+  toggleFeedbackResolvedAction,
+  deleteFeedbackAction,
+  deleteFeedbackReplyAction,
+  updateFeedbackAction,
+  updateFeedbackReplyAction,
+} from "@/app/actions/feedback";
 import { resolveThumbnailUrl, resolveMediaUrl } from "@/lib/media";
 import { EditAssetDialog, type EditableAssetItem } from "@/components/workspaces/edit-asset-dialog";
 import { TrashBinDialog } from "@/components/workspaces/trash-bin-dialog";
@@ -103,6 +109,30 @@ type GalleryOptimisticAction =
       itemId: string;
       feedbackId: string;
       isResolved: boolean;
+    }
+  | {
+      type: "delete-feedback";
+      itemId: string;
+      feedbackId: string;
+    }
+  | {
+      type: "delete-feedback-reply";
+      itemId: string;
+      feedbackId: string;
+      replyId: string;
+    }
+  | {
+      type: "edit-feedback";
+      itemId: string;
+      feedbackId: string;
+      commentText: string;
+    }
+  | {
+      type: "edit-feedback-reply";
+      itemId: string;
+      feedbackId: string;
+      replyId: string;
+      commentText: string;
     };
 
 export function DeliveryDetailClient({
@@ -335,6 +365,72 @@ export function DeliveryDetailClient({
                 }
               : item
           );
+        case "delete-feedback":
+          return prev.map((item) =>
+            item.id === action.itemId
+              ? {
+                  ...item,
+                  feedback: (item.feedback || []).filter((fb) => fb.id !== action.feedbackId),
+                }
+              : item
+          );
+        case "delete-feedback-reply":
+          return prev.map((item) =>
+            item.id === action.itemId
+              ? {
+                  ...item,
+                  feedback: (item.feedback || []).map((fb) =>
+                    fb.id === action.feedbackId
+                      ? {
+                          ...fb,
+                          replies: (fb.replies || []).filter((r) => r.id !== action.replyId),
+                        }
+                      : fb
+                  ),
+                }
+              : item
+          );
+        case "edit-feedback":
+          return prev.map((item) =>
+            item.id === action.itemId
+              ? {
+                  ...item,
+                  feedback: (item.feedback || []).map((fb) =>
+                    fb.id === action.feedbackId
+                      ? {
+                          ...fb,
+                          commentText: action.commentText,
+                          updatedAt: new Date().toISOString(),
+                        }
+                      : fb
+                  ),
+                }
+              : item
+          );
+        case "edit-feedback-reply":
+          return prev.map((item) =>
+            item.id === action.itemId
+              ? {
+                  ...item,
+                  feedback: (item.feedback || []).map((fb) =>
+                    fb.id === action.feedbackId
+                      ? {
+                          ...fb,
+                          replies: (fb.replies || []).map((r) =>
+                            r.id === action.replyId
+                              ? {
+                                  ...r,
+                                  commentText: action.commentText,
+                                  updatedAt: new Date().toISOString(),
+                                }
+                              : r
+                          ),
+                        }
+                      : fb
+                  ),
+                }
+              : item
+          );
         default:
           return prev;
       }
@@ -423,6 +519,8 @@ export function DeliveryDetailClient({
 
   const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>(initialFeedback);
   const [currentShareToken, setCurrentShareToken] = useState(project.shareToken);
+  const [isDownloadAllowed, setIsDownloadAllowed] = useState(project.isDownloadAllowed ?? false);
+  const [isCommentAllowed, setIsCommentAllowed] = useState(project.isCommentAllowed ?? true);
   const shareUrl = `/deliver/${currentShareToken}`;
 
   const triggerToast = (msg: string) => {
@@ -932,6 +1030,186 @@ export function DeliveryDetailClient({
     );
   };
 
+  const handleDeleteFeedback = async (feedbackId: string) => {
+    if (!activeItem) return;
+    const targetItemId = activeItem.id;
+
+    setFeedbackList((prev) => prev.filter((fb) => fb.id !== feedbackId));
+    setLoadedItems((prev) =>
+      prev.map((item) =>
+        item.id === targetItemId
+          ? {
+              ...item,
+              feedback: (item.feedback || []).filter((fb) => fb.id !== feedbackId),
+            }
+          : item
+      )
+    );
+    startTransition(() => {
+      setOptimisticItems({
+        type: "delete-feedback",
+        itemId: targetItemId,
+        feedbackId,
+      });
+    });
+
+    const res = await deleteFeedbackAction(feedbackId, undefined, project.id);
+    if (res?.error) {
+      toast.error(res.error || "Failed to delete feedback");
+    } else {
+      toast.success("Comment deleted");
+    }
+  };
+
+  const handleDeleteReply = async (feedbackId: string, replyId: string) => {
+    if (!activeItem) return;
+    const targetItemId = activeItem.id;
+
+    setFeedbackList((prev) =>
+      prev.map((fb) =>
+        fb.id === feedbackId
+          ? {
+              ...fb,
+              replies: (fb.replies || []).filter((r) => r.id !== replyId),
+            }
+          : fb
+      )
+    );
+    setLoadedItems((prev) =>
+      prev.map((item) =>
+        item.id === targetItemId
+          ? {
+              ...item,
+              feedback: (item.feedback || []).map((fb) =>
+                fb.id === feedbackId
+                  ? {
+                      ...fb,
+                      replies: (fb.replies || []).filter((r) => r.id !== replyId),
+                    }
+                  : fb
+              ),
+            }
+          : item
+      )
+    );
+    startTransition(() => {
+      setOptimisticItems({
+        type: "delete-feedback-reply",
+        itemId: targetItemId,
+        feedbackId,
+        replyId,
+      });
+    });
+
+    const res = await deleteFeedbackReplyAction(replyId, undefined, project.id);
+    if (res?.error) {
+      toast.error(res.error || "Failed to delete reply");
+    } else {
+      toast.success("Reply deleted");
+    }
+  };
+
+  const handleEditFeedback = async (feedbackId: string, newText: string) => {
+    if (!activeItem) return;
+    const targetItemId = activeItem.id;
+    const nowIso = new Date().toISOString();
+
+    setFeedbackList((prev) =>
+      prev.map((fb) =>
+        fb.id === feedbackId ? { ...fb, commentText: newText, updatedAt: nowIso } : fb
+      )
+    );
+    setLoadedItems((prev) =>
+      prev.map((item) =>
+        item.id === targetItemId
+          ? {
+              ...item,
+              feedback: (item.feedback || []).map((fb) =>
+                fb.id === feedbackId ? { ...fb, commentText: newText, updatedAt: nowIso } : fb
+              ),
+            }
+          : item
+      )
+    );
+    startTransition(() => {
+      setOptimisticItems({
+        type: "edit-feedback",
+        itemId: targetItemId,
+        feedbackId,
+        commentText: newText,
+      });
+    });
+
+    const res = await updateFeedbackAction({
+      feedbackId,
+      commentText: newText,
+      deliveryId: project.id,
+    });
+    if (res?.error) {
+      toast.error(res.error || "Failed to update feedback");
+    } else {
+      toast.success("Comment updated");
+    }
+  };
+
+  const handleEditReply = async (feedbackId: string, replyId: string, newText: string) => {
+    if (!activeItem) return;
+    const targetItemId = activeItem.id;
+    const nowIso = new Date().toISOString();
+
+    setFeedbackList((prev) =>
+      prev.map((fb) =>
+        fb.id === feedbackId
+          ? {
+              ...fb,
+              replies: (fb.replies || []).map((r) =>
+                r.id === replyId ? { ...r, commentText: newText, updatedAt: nowIso } : r
+              ),
+            }
+          : fb
+      )
+    );
+    setLoadedItems((prev) =>
+      prev.map((item) =>
+        item.id === targetItemId
+          ? {
+              ...item,
+              feedback: (item.feedback || []).map((fb) =>
+                fb.id === feedbackId
+                  ? {
+                      ...fb,
+                      replies: (fb.replies || []).map((r) =>
+                        r.id === replyId ? { ...r, commentText: newText, updatedAt: nowIso } : r
+                      ),
+                    }
+                  : fb
+              ),
+            }
+          : item
+      )
+    );
+    startTransition(() => {
+      setOptimisticItems({
+        type: "edit-feedback-reply",
+        itemId: targetItemId,
+        feedbackId,
+        replyId,
+        commentText: newText,
+      });
+    });
+
+    const res = await updateFeedbackReplyAction({
+      replyId,
+      commentText: newText,
+      deliveryId: project.id,
+    });
+    if (res?.error) {
+      toast.error(res.error || "Failed to update reply");
+    } else {
+      toast.success("Reply updated");
+    }
+  };
+
   const totalAssetsCount = totalAssetsCountState;
   const approvedCount = approvedCountState;
 
@@ -1076,11 +1354,17 @@ export function DeliveryDetailClient({
           projectTitle={projectMeta.title}
           clientEmail={projectMeta.clientEmail}
           initialPasscodeProtected={project.passcodeProtected ?? false}
-          initialDownloadAllowed={project.isDownloadAllowed ?? false}
-          initialCommentAllowed={project.isCommentAllowed ?? true}
+          initialDownloadAllowed={isDownloadAllowed}
+          initialCommentAllowed={isCommentAllowed}
           initialExpiresAt={project.expiresAt ?? null}
           onShareTokenRegenerated={(newToken) => {
             setCurrentShareToken(newToken);
+          }}
+          onDownloadAllowedChange={(allowed) => {
+            setIsDownloadAllowed(allowed);
+          }}
+          onCommentAllowedChange={(allowed) => {
+            setIsCommentAllowed(allowed);
           }}
           triggerToast={triggerToast}
           features={features}
@@ -1202,6 +1486,10 @@ export function DeliveryDetailClient({
           onReconcileFeedbackId={handleReconcileFeedbackId}
           onReconcileReplyId={handleReconcileReplyId}
           onToggleResolve={handleToggleResolveFeedback}
+          onDeleteFeedback={handleDeleteFeedback}
+          onDeleteReply={handleDeleteReply}
+          onEditFeedback={handleEditFeedback}
+          onEditReply={handleEditReply}
           onToggleApproval={handleToggleAssetApproval}
           onDeleteAsset={handleDeleteAsset}
           onEditAsset={handleOpenEditAsset}

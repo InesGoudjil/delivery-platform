@@ -23,6 +23,13 @@ export class FeedbackService {
     return this.feedbackRepo.createReply(dto);
   }
 
+  async updateReply(replyId: string, commentText: string): Promise<FeedbackReply> {
+    if (!this.feedbackRepo.updateReply) {
+      throw new Error('updateReply not supported by repository');
+    }
+    return this.feedbackRepo.updateReply(replyId, commentText);
+  }
+
   async deleteReply(replyId: string): Promise<void> {
     return this.feedbackRepo.deleteReply(replyId);
   }
@@ -52,6 +59,13 @@ export class FeedbackService {
 
   async toggleResolved(id: string, isResolved: boolean): Promise<Feedback> {
     return this.feedbackRepo.resolve(id, isResolved);
+  }
+
+  async updateFeedback(id: string, commentText: string): Promise<Feedback> {
+    if (!this.feedbackRepo.update) {
+      throw new Error('update not supported by repository');
+    }
+    return this.feedbackRepo.update(id, { commentText });
   }
 
   async deleteFeedback(id: string): Promise<void> {

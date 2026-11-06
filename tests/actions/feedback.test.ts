@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { addFeedbackAction, addFeedbackReplyAction } from "@/app/actions/feedback";
+import {
+  addFeedbackAction,
+  addFeedbackReplyAction,
+  deleteFeedbackAction,
+  deleteFeedbackReplyAction,
+  updateFeedbackAction,
+  updateFeedbackReplyAction,
+} from "@/app/actions/feedback";
 import * as serverModule from "@/core/server";
 
 describe("app/actions/feedback (Comment Control Gating)", () => {
@@ -20,6 +27,10 @@ describe("app/actions/feedback (Comment Control Gating)", () => {
       feedback: {
         addFeedback: vi.fn(),
         addReply: vi.fn(),
+        deleteFeedback: vi.fn().mockResolvedValue(undefined),
+        deleteReply: vi.fn().mockResolvedValue(undefined),
+        updateFeedback: vi.fn(),
+        updateReply: vi.fn(),
       },
     };
 
@@ -95,5 +106,58 @@ describe("app/actions/feedback (Comment Control Gating)", () => {
 
     expect(result.success).toBe(true);
     expect(mockAdminServices.feedback.addFeedback).toHaveBeenCalled();
+  });
+
+  it("permits deleteFeedbackAction and deleteFeedbackReplyAction for workspace members", async () => {
+    mockAdminServices.delivery.getDeliveryById.mockResolvedValue({
+      id: "del_1",
+      workspaceId: "ws_1",
+      passcodeHash: null,
+    });
+    mockUserServices.auth.getCurrentUser.mockResolvedValue({ id: "user_owner" });
+    mockAdminServices.member.isMember.mockResolvedValue(true);
+
+    const deleteResult = await deleteFeedbackAction("fb_1", undefined, "del_1");
+    expect(deleteResult.success).toBe(true);
+    expect(mockAdminServices.feedback.deleteFeedback).toHaveBeenCalledWith("fb_1");
+
+    const deleteReplyResult = await deleteFeedbackReplyAction("reply_1", undefined, "del_1");
+    expect(deleteReplyResult.success).toBe(true);
+    expect(mockAdminServices.feedback.deleteReply).toHaveBeenCalledWith("reply_1");
+  });
+
+  it("permits updateFeedbackAction and updateFeedbackReplyAction", async () => {
+    mockAdminServices.delivery.getDeliveryById.mockResolvedValue({
+      id: "del_1",
+      workspaceId: "ws_1",
+      passcodeHash: null,
+    });
+    mockUserServices.auth.getCurrentUser.mockResolvedValue({ id: "user_owner" });
+    mockAdminServices.member.isMember.mockResolvedValue(true);
+
+    mockAdminServices.feedback.updateFeedback.mockResolvedValue({
+      id: "fb_1",
+      commentText: "Updated comment text",
+    });
+    mockAdminServices.feedback.updateReply.mockResolvedValue({
+      id: "reply_1",
+      commentText: "Updated reply text",
+    });
+
+    const updateResult = await updateFeedbackAction({
+      feedbackId: "fb_1",
+      commentText: "Updated comment text",
+      deliveryId: "del_1",
+    });
+    expect(updateResult.success).toBe(true);
+    expect(mockAdminServices.feedback.updateFeedback).toHaveBeenCalledWith("fb_1", "Updated comment text");
+
+    const updateReplyResult = await updateFeedbackReplyAction({
+      replyId: "reply_1",
+      commentText: "Updated reply text",
+      deliveryId: "del_1",
+    });
+    expect(updateReplyResult.success).toBe(true);
+    expect(mockAdminServices.feedback.updateReply).toHaveBeenCalledWith("reply_1", "Updated reply text");
   });
 });

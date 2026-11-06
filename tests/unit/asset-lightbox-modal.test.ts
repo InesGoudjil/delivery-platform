@@ -156,4 +156,16 @@ describe("AssetLightboxModal Centralization", () => {
       expect(unique[0].id).toBe("temp_reply_123");
     });
   });
+
+  it("accurately handles 9:16 vertical video ratio and provides portrait bounding styles", () => {
+    const vertical = parseAspectRatio("9:16");
+    expect(vertical.id).toBe("9:16");
+    expect(vertical.isPortrait).toBe(true);
+    expect(vertical.isLandscape).toBe(false);
+    expect(vertical.cssRatio).toBe("9 / 16");
+
+    const bounding = getMediaBoundingStyles("9:16");
+    expect(bounding.style).toEqual({ aspectRatio: "9 / 16" });
+    expect(bounding.parsed.isPortrait).toBe(true);
+  });
 });

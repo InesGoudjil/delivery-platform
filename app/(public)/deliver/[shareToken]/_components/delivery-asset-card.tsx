@@ -131,7 +131,7 @@ export function DeliveryAssetCard({
       }
       topRight={
         <div className="flex items-center gap-1.5 p-0.5">
-          {(isGlobalDownloadUnlocked || asset.isApproved) && (
+          {isGlobalDownloadUnlocked && (
             <Tooltip>
               <TooltipTrigger
                 render={

@@ -8,11 +8,22 @@ import {
   Clock,
   Play,
   Check,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
 import { formatTimecode } from "@/lib/timecode";
 import { FeedbackItem, FeedbackReplyItem } from "./types";
 
@@ -26,6 +37,10 @@ export interface LightboxFeedbackDrawerProps {
   onAddFeedback?: (text: string, attachTime?: boolean) => Promise<void> | void;
   onAddReply?: (feedbackId: string, text: string) => Promise<void> | void;
   onToggleResolve?: (feedbackId: string, currentResolved: boolean) => Promise<void> | void;
+  onDeleteFeedback?: (feedbackId: string) => Promise<void> | void;
+  onDeleteReply?: (feedbackId: string, replyId: string) => Promise<void> | void;
+  onEditFeedback?: (feedbackId: string, newText: string) => Promise<void> | void;
+  onEditReply?: (feedbackId: string, replyId: string, newText: string) => Promise<void> | void;
   assetTitle?: string;
 }
 
@@ -39,6 +54,10 @@ export function LightboxFeedbackDrawer({
   onAddFeedback,
   onAddReply,
   onToggleResolve,
+  onDeleteFeedback,
+  onDeleteReply,
+  onEditFeedback,
+  onEditReply,
   assetTitle,
 }: LightboxFeedbackDrawerProps) {
   const [inputText, setInputText] = useState("");
@@ -46,6 +65,28 @@ export function LightboxFeedbackDrawer({
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyInputText, setReplyInputText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Edit states
+  const [editingFeedbackId, setEditingFeedbackId] = useState<string | null>(null);
+  const [editingFeedbackText, setEditingFeedbackText] = useState("");
+  const [isSavingFeedback, setIsSavingFeedback] = useState(false);
+
+  const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
+  const [editingReplyText, setEditingReplyText] = useState("");
+  const [isSavingReply, setIsSavingReply] = useState(false);
+
+  // Delete modal state
+  const [deleteTarget, setDeleteTarget] = useState<
+    | { type: "feedback"; id: string; hasReplies: boolean; authorName?: string }
+    | { type: "reply"; feedbackId: string; id: string; authorName?: string }
+    | null
+  >(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const isEdited = (item: { createdAt?: string; updatedAt?: string }) => {
+    if (!item.updatedAt || !item.createdAt) return false;
+    return new Date(item.updatedAt).getTime() - new Date(item.createdAt).getTime() > 2000;
+  };
 
   const handleSendFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +108,43 @@ export function LightboxFeedbackDrawer({
     setReplyInputText("");
     setReplyingToId(null);
     await onAddReply(feedbackId, text);
+  };
+
+  const handleSaveEditFeedback = async (feedbackId: string) => {
+    if (!editingFeedbackText.trim() || !onEditFeedback || isSavingFeedback) return;
+    setIsSavingFeedback(true);
+    try {
+      await onEditFeedback(feedbackId, editingFeedbackText.trim());
+      setEditingFeedbackId(null);
+    } finally {
+      setIsSavingFeedback(false);
+    }
+  };
+
+  const handleSaveEditReply = async (feedbackId: string, replyId: string) => {
+    if (!editingReplyText.trim() || !onEditReply || isSavingReply) return;
+    setIsSavingReply(true);
+    try {
+      await onEditReply(feedbackId, replyId, editingReplyText.trim());
+      setEditingReplyId(null);
+    } finally {
+      setIsSavingReply(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      if (deleteTarget.type === "feedback" && onDeleteFeedback) {
+        await onDeleteFeedback(deleteTarget.id);
+      } else if (deleteTarget.type === "reply" && onDeleteReply) {
+        await onDeleteReply(deleteTarget.feedbackId, deleteTarget.id);
+      }
+      setDeleteTarget(null);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -137,28 +215,119 @@ export function LightboxFeedbackDrawer({
                     )}
                   </div>
 
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <Badge
-                          variant={isTimecoded ? "orange" : "outline"}
-                          className="text-[10px] py-0 h-4 flex items-center gap-1 cursor-pointer hover:opacity-80"
-                        >
-                          {isTimecoded && <Play className="size-2 fill-current" />}
-                          <span>{tcDisplay}</span>
-                        </Badge>
-                      }
-                    />
-                    <TooltipContent>
-                      {isTimecoded ? `Jump player to ${tcDisplay}` : "Photo note"}
-                    </TooltipContent>
-                  </Tooltip>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Badge
+                            variant={isTimecoded ? "orange" : "outline"}
+                            className="text-[10px] py-0 h-4 flex items-center gap-1 cursor-pointer hover:opacity-80"
+                          >
+                            {isTimecoded && <Play className="size-2 fill-current" />}
+                            <span>{tcDisplay}</span>
+                          </Badge>
+                        }
+                      />
+                      <TooltipContent>
+                        {isTimecoded ? `Jump player to ${tcDisplay}` : "Photo note"}
+                      </TooltipContent>
+                    </Tooltip>
+
+                    {(onEditFeedback || onDeleteFeedback) && (
+                      <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger className="size-5 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+                            <MoreVertical className="size-3.5" />
+                            <span className="sr-only">Comment options</span>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-28 bg-[#1c1c24] border-white/10 text-xs shadow-xl">
+                            {onEditFeedback && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEditingFeedbackId(f.id);
+                                  setEditingFeedbackText(f.commentText);
+                                }}
+                                className="gap-2 cursor-pointer text-zinc-200 focus:text-white focus:bg-white/10"
+                              >
+                                <Pencil className="size-3" />
+                                <span>Edit</span>
+                              </DropdownMenuItem>
+                            )}
+                            {onDeleteFeedback && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setDeleteTarget({
+                                    type: "feedback",
+                                    id: f.id,
+                                    hasReplies: Boolean(f.replies && f.replies.length > 0),
+                                    authorName: f.authorName,
+                                  });
+                                }}
+                                className="gap-2 cursor-pointer text-red-400 focus:text-red-300 focus:bg-red-500/10"
+                              >
+                                <Trash2 className="size-3" />
+                                <span>Delete</span>
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Comment Text */}
-                <p className={`leading-relaxed text-xs ${f.isResolved ? "text-zinc-400" : "text-white/95"}`}>
-                  {f.commentText}
-                </p>
+                {/* Comment Text or Inline Edit Mode */}
+                {editingFeedbackId === f.id ? (
+                  <div onClick={(e) => e.stopPropagation()} className="space-y-1.5 pt-1">
+                    <textarea
+                      value={editingFeedbackText}
+                      onChange={(e) => setEditingFeedbackText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSaveEditFeedback(f.id);
+                        } else if (e.key === "Escape") {
+                          e.preventDefault();
+                          setEditingFeedbackId(null);
+                        }
+                      }}
+                      rows={2}
+                      autoFocus
+                      className="w-full bg-black/60 border border-white/20 rounded-lg p-2 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-primary resize-none"
+                    />
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={isSavingFeedback}
+                        onClick={() => setEditingFeedbackId(null)}
+                        className="h-6 text-[10px] px-2 text-zinc-400 hover:text-white"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={!editingFeedbackText.trim() || isSavingFeedback}
+                        onClick={() => handleSaveEditFeedback(f.id)}
+                        className="h-6 text-[10px] px-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+                      >
+                        {isSavingFeedback ? <Loader2 className="size-2.5 animate-spin mr-1" /> : null}
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className={`leading-relaxed text-xs ${f.isResolved ? "text-zinc-400" : "text-white/95"}`}>
+                    {f.commentText}
+                    {isEdited(f) && (
+                      <span className="text-[10px] text-zinc-500 font-normal italic ml-1.5">
+                        (edited)
+                      </span>
+                    )}
+                  </p>
+                )}
 
                 {/* Actions Row: Reply Toggle & Resolve Toggle */}
                 <div className="flex items-center justify-between pt-0.5 gap-2">
@@ -216,21 +385,113 @@ export function LightboxFeedbackDrawer({
                     {Array.from(new Map(f.replies.map((r: FeedbackReplyItem) => [r.id, r])).values()).map((r: FeedbackReplyItem) => (
                       <div
                         key={r.id}
-                        className="flex items-start gap-2 pl-2.5 border-l-2 border-primary/50 text-xs"
+                        className="flex items-start justify-between gap-2 pl-2.5 border-l-2 border-primary/50 text-xs group"
                       >
-                        <Avatar className="size-4 text-[8px] shrink-0 mt-0.5">
-                          <AvatarFallback className="text-[8px] bg-white/10 text-white font-bold">
-                            {r.authorName ? r.authorName.slice(0, 2).toUpperCase() : "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <span className="font-semibold text-white/90 text-[10px] block">
-                            {r.authorName}
-                          </span>
-                          <p className="text-white/80 leading-snug text-xs">
-                            {r.commentText}
-                          </p>
+                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                          <Avatar className="size-4 text-[8px] shrink-0 mt-0.5">
+                            <AvatarFallback className="text-[8px] bg-white/10 text-white font-bold">
+                              {r.authorName ? r.authorName.slice(0, 2).toUpperCase() : "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-semibold text-white/90 text-[10px] block truncate">
+                                {r.authorName}
+                              </span>
+                              {isEdited(r) && (
+                                <span className="text-[8px] text-zinc-500 italic">(edited)</span>
+                              )}
+                            </div>
+
+                            {editingReplyId === r.id ? (
+                              <div onClick={(e) => e.stopPropagation()} className="space-y-1.5 pt-1">
+                                <textarea
+                                  value={editingReplyText}
+                                  onChange={(e) => setEditingReplyText(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) {
+                                      e.preventDefault();
+                                      handleSaveEditReply(f.id, r.id);
+                                    } else if (e.key === "Escape") {
+                                      e.preventDefault();
+                                      setEditingReplyId(null);
+                                    }
+                                  }}
+                                  rows={2}
+                                  autoFocus
+                                  className="w-full bg-black/60 border border-white/20 rounded-lg p-2 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-primary resize-none"
+                                />
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={isSavingReply}
+                                    onClick={() => setEditingReplyId(null)}
+                                    className="h-6 text-[10px] px-2 text-zinc-400 hover:text-white"
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    disabled={!editingReplyText.trim() || isSavingReply}
+                                    onClick={() => handleSaveEditReply(f.id, r.id)}
+                                    className="h-6 text-[10px] px-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+                                  >
+                                    {isSavingReply ? <Loader2 className="size-2.5 animate-spin mr-1" /> : null}
+                                    Save
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-white/80 leading-snug text-xs">
+                                {r.commentText}
+                              </p>
+                            )}
+                          </div>
                         </div>
+
+                        {(onEditReply || onDeleteReply) && editingReplyId !== r.id && (
+                          <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger className="size-5 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 transition-colors opacity-70 sm:opacity-0 sm:group-hover:opacity-100 cursor-pointer">
+                                <MoreVertical className="size-3" />
+                                <span className="sr-only">Reply options</span>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-28 bg-[#1c1c24] border-white/10 text-xs shadow-xl">
+                                {onEditReply && (
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setEditingReplyId(r.id);
+                                      setEditingReplyText(r.commentText);
+                                    }}
+                                    className="gap-2 cursor-pointer text-zinc-200 focus:text-white focus:bg-white/10"
+                                  >
+                                    <Pencil className="size-3" />
+                                    <span>Edit</span>
+                                  </DropdownMenuItem>
+                                )}
+                                {onDeleteReply && (
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setDeleteTarget({
+                                        type: "reply",
+                                        feedbackId: f.id,
+                                        id: r.id,
+                                        authorName: r.authorName,
+                                      });
+                                    }}
+                                    className="gap-2 cursor-pointer text-red-400 focus:text-red-300 focus:bg-red-500/10"
+                                  >
+                                    <Trash2 className="size-3" />
+                                    <span>Delete</span>
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -322,6 +583,23 @@ export function LightboxFeedbackDrawer({
           </div>
         </form>
       )}
+
+      {/* 4. Safe Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        isOpen={Boolean(deleteTarget)}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title={deleteTarget?.type === "feedback" ? "Delete Comment" : "Delete Reply"}
+        itemName={deleteTarget?.authorName ? `Note by ${deleteTarget.authorName}` : undefined}
+        description={
+          deleteTarget?.type === "feedback" && deleteTarget.hasReplies
+            ? "Are you sure you want to delete this comment? All threaded replies under this note will also be permanently deleted."
+            : "Are you sure you want to permanently delete this note? This action cannot be undone."
+        }
+        confirmText="Delete"
+        isPermanent={true}
+        isDeleting={isDeleting}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

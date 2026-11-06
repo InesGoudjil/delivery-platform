@@ -16,6 +16,12 @@ describe("core/services/FeedbackService", () => {
       createReply: vi.fn().mockImplementation((dto) =>
         Promise.resolve({ id: "reply_new", ...dto, createdAt: new Date() })
       ),
+      updateReply: vi.fn().mockImplementation((replyId, commentText) =>
+        Promise.resolve({ id: replyId, commentText, updatedAt: new Date().toISOString() } as any)
+      ),
+      update: vi.fn().mockImplementation((id, data) =>
+        Promise.resolve({ id, ...data, updatedAt: new Date().toISOString() } as any)
+      ),
       deleteReply: vi.fn().mockResolvedValue(undefined),
       delete: vi.fn().mockResolvedValue(undefined),
       resolve: vi.fn().mockImplementation((id, isResolved) =>
@@ -66,6 +72,21 @@ describe("core/services/FeedbackService", () => {
 
     await service.deleteReply("reply_new");
     expect(feedbackRepo.deleteReply).toHaveBeenCalledWith("reply_new");
+  });
+
+  it("updates feedback comment and delegates deletion", async () => {
+    const updated = await service.updateFeedback("fb_1", "Updated note text");
+    expect(updated.commentText).toBe("Updated note text");
+    expect(feedbackRepo.update).toHaveBeenCalledWith("fb_1", { commentText: "Updated note text" });
+
+    await service.deleteFeedback("fb_1");
+    expect(feedbackRepo.delete).toHaveBeenCalledWith("fb_1");
+  });
+
+  it("updates feedback reply comment", async () => {
+    const updatedReply = await service.updateReply("reply_1", "Updated reply text");
+    expect(updatedReply.commentText).toBe("Updated reply text");
+    expect(feedbackRepo.updateReply).toHaveBeenCalledWith("reply_1", "Updated reply text");
   });
 
   it("sends notification when notificationService is present", async () => {
