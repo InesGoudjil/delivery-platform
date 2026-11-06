@@ -14,6 +14,8 @@ import {
   Trash2,
   Loader2,
   Layers,
+  Film,
+  SearchX,
 } from "lucide-react";
 import {
   Card,
@@ -84,6 +86,24 @@ export function DeliveryCardGrid({
         );
     }
   };
+
+  if (displayDeliveries.length === 0) {
+    return (
+      <Card className="rounded-3xl border border-dashed border-border bg-card/40 p-12 text-center shadow-none">
+        <div className="size-12 rounded-2xl bg-muted/60 text-muted-foreground flex items-center justify-center mx-auto mb-3">
+          <Film className="size-6 text-muted-foreground/60" />
+        </div>
+        <TypographyH3 className="text-base font-bold font-heading text-foreground">
+          No delivery rooms found
+        </TypographyH3>
+        <TypographyMuted className="text-xs text-muted-foreground max-w-sm mx-auto mt-1">
+          {items && items.length > 0
+            ? "No client deliveries match the selected filter. Try selecting 'All Projects'."
+            : "Get started by creating your first client delivery room using the 'New Delivery Room' button above."}
+        </TypographyMuted>
+      </Card>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

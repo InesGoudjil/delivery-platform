@@ -3,6 +3,8 @@ import {
   createDeliveryAction,
   verifyDeliveryPasscodeAction,
   checkDeliveryAccessAction,
+  updateDeliverySecurityAction,
+  archiveDeliveryAction,
 } from "@/app/actions/deliveries";
 import * as guards from "@/core/security/guards";
 import * as serverModule from "@/core/server";
@@ -188,6 +190,74 @@ describe("app/actions/deliveries", () => {
 
       const result = await checkDeliveryAccessAction("token_abc123");
       expect(result.hasAccess).toBe(false);
+    });
+  });
+
+  describe("updateDeliverySecurityAction", () => {
+    it("updates isCommentAllowed and isDownloadAllowed permissions", async () => {
+      const mockServices = {
+        delivery: {
+          updateDelivery: vi.fn().mockImplementation((id, data) =>
+            Promise.resolve({
+              ...mockDelivery,
+              ...data,
+            })
+          ),
+        },
+        subscription: {
+          isPasswordProtectionAllowed: vi.fn().mockResolvedValue(true),
+          isDownloadNotificationAllowed: vi.fn().mockResolvedValue(true),
+        },
+      };
+
+      vi.spyOn(guards, "requireDeliveryAccess").mockResolvedValue({
+        services: mockServices as any,
+        delivery: mockDelivery as any,
+        workspace: { id: "ws_test" } as any,
+        role: "admin",
+        user: { id: "user_1" } as any,
+      });
+
+      const result = await updateDeliverySecurityAction("del_101", {
+        isCommentAllowed: false,
+        isDownloadAllowed: false,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.isCommentAllowed).toBe(false);
+      expect(result.isDownloadAllowed).toBe(false);
+      expect(mockServices.delivery.updateDelivery).toHaveBeenCalledWith(
+        "del_101",
+        expect.objectContaining({
+          isCommentAllowed: false,
+          isDownloadAllowed: false,
+        })
+      );
+    });
+  });
+
+  describe("archiveDeliveryAction", () => {
+    it("rejects Silo archiving if workspace plan does not allow silo archive", async () => {
+      const mockServices = {
+        subscription: {
+          isSiloArchiveAllowed: vi.fn().mockResolvedValue(false),
+        },
+        silo: {
+          archiveDelivery: vi.fn(),
+        },
+      };
+
+      vi.spyOn(guards, "requireDeliveryAccess").mockResolvedValue({
+        services: mockServices as any,
+        delivery: mockDelivery as any,
+        workspace: { id: "ws_test" } as any,
+        role: "admin",
+        user: { id: "user_1" } as any,
+      });
+
+      const result = await archiveDeliveryAction("del_101");
+      expect(result.error).toContain("The Silo Glacier Cold Storage archive requires a Studio or Enterprise plan");
+      expect(mockServices.silo.archiveDelivery).not.toHaveBeenCalled();
     });
   });
 });

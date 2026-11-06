@@ -590,7 +590,7 @@ export function AssetLightboxModal({
             resolvedAspectRatio={resolvedAspectRatio}
             watermarkMedia={watermarkMedia}
             watermarkText={watermarkText || "PREVIEW WATERMARK"}
-            feedbackList={currentVersionFeedback}
+            feedbackList={hasFeedbackMode ? currentVersionFeedback : []}
             activeCommentId={activeCommentId}
             onCommentSelect={(commentId, timestamp) => {
               setActiveCommentId(commentId);

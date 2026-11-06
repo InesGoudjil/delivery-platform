@@ -341,6 +341,7 @@ export interface Database {
           passcode_hash: string | null;
           status: "draft" | "in_review" | "approved" | "archived";
           is_download_allowed: boolean;
+          is_comment_allowed: boolean;
           notify_on_download: boolean;
           approved_at: string | null;
           approved_by_name: string | null;
@@ -368,6 +369,7 @@ export interface Database {
           passcode_hash?: string | null;
           status?: "draft" | "in_review" | "approved" | "archived";
           is_download_allowed?: boolean;
+          is_comment_allowed?: boolean;
           notify_on_download?: boolean;
           approved_at?: string | null;
           approved_by_name?: string | null;
@@ -395,6 +397,7 @@ export interface Database {
           passcode_hash?: string | null;
           status?: "draft" | "in_review" | "approved" | "archived";
           is_download_allowed?: boolean;
+          is_comment_allowed?: boolean;
           notify_on_download?: boolean;
           approved_at?: string | null;
           approved_by_name?: string | null;

@@ -54,6 +54,7 @@ function mapStorageStatusToTranscodingStatus(status?: string): TranscodingStatus
 }
 
 import { IWorkspaceFeaturesRepository } from "@/core/repositories/workspace.repository";
+import type { SubscriptionService } from "./subscription.service";
 
 export class AssetUploadService {
   constructor(
@@ -64,7 +65,8 @@ export class AssetUploadService {
     private readonly assetVersionRepo: IAssetVersionRepository,
     private readonly subscriptionRepo: ISubscriptionRepository,
     private readonly planRepo: IPlanRepository,
-    private readonly featuresRepo?: IWorkspaceFeaturesRepository
+    private readonly featuresRepo?: IWorkspaceFeaturesRepository,
+    private readonly subscriptionService?: SubscriptionService
   ) {}
 
   /**
@@ -103,32 +105,41 @@ export class AssetUploadService {
 
     // 3. Validate Storage Quota against Active Plan & Workspace Features
     let storageLimitGB = 2; // Default baseline for Starter plan
-
-    const subscription = await this.subscriptionRepo.findByWorkspaceId(resolvedWorkspaceId);
-    let plan: any = null;
-    if (subscription && (subscription.status === "active" || subscription.status === "trialing")) {
-      if (subscription.status === "trialing" && subscription.trialEndsAt && new Date(subscription.trialEndsAt) < new Date()) {
-        plan = await this.planRepo.findBySlug("starter");
-      } else {
-        plan = await this.planRepo.findById(subscription.planId);
-      }
+    let storageLimitBytes: number;
+    if (this.subscriptionService) {
+      const entitlements = await this.subscriptionService.getEntitlements(resolvedWorkspaceId);
+      storageLimitBytes = entitlements.limits.storageBytesMax;
+      storageLimitGB = entitlements.limits.storageGbMax;
     } else {
-      plan = await this.planRepo.findBySlug("starter");
-    }
+      let storageLimitGB = 2; // Default baseline for Starter plan
 
-    if (plan?.features?.storage_gb) {
-      storageLimitGB = Number(plan.features.storage_gb);
-    }
-
-    // Check optional custom workspace overrides
-    if (this.featuresRepo) {
-      const featuresRecord = await this.featuresRepo.findByWorkspaceId(resolvedWorkspaceId);
-      if (featuresRecord?.features?.storage_gb) {
-        storageLimitGB = Number(featuresRecord.features.storage_gb);
+      const subscription = await this.subscriptionRepo.findByWorkspaceId(resolvedWorkspaceId);
+      let plan: any = null;
+      if (subscription && (subscription.status === "active" || subscription.status === "trialing")) {
+        if (subscription.status === "trialing" && subscription.trialEndsAt && new Date(subscription.trialEndsAt) < new Date()) {
+          plan = await this.planRepo.findBySlug("starter");
+        } else {
+          plan = await this.planRepo.findById(subscription.planId);
+        }
+      } else {
+        plan = await this.planRepo.findBySlug("starter");
       }
+
+      if (plan?.features?.storage_gb) {
+        storageLimitGB = Number(plan.features.storage_gb);
+      }
+
+      // Check optional custom workspace overrides
+      if (this.featuresRepo) {
+        const featuresRecord = await this.featuresRepo.findByWorkspaceId(resolvedWorkspaceId);
+        if (featuresRecord?.features?.storage_gb) {
+          storageLimitGB = Number(featuresRecord.features.storage_gb);
+        }
+      }
+
+      storageLimitBytes = storageLimitGB * 1024 * 1024 * 1024;
     }
 
-    const storageLimitBytes = storageLimitGB * 1024 * 1024 * 1024;
     const currentUsageBytes = workspace.storageUsedBytes || 0;
     const projectedUsageBytes = currentUsageBytes + dto.fileSizeBytes;
 

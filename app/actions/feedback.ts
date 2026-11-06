@@ -86,6 +86,9 @@ export async function addFeedbackAction(params: AddFeedbackParams) {
         return { error: "Passcode verification required to leave feedback on this cut." };
       }
       deliveryContext = authCtx.delivery;
+      if (deliveryContext && deliveryContext.isCommentAllowed === false) {
+        return { error: "Comments are disabled for this delivery cut." };
+      }
     } else {
       if (!user) {
         return { error: "Unauthorized. Authentication or delivery share token required." };
@@ -183,9 +186,12 @@ export async function addFeedbackReplyAction(params: AddFeedbackReplyParams) {
 
     // Verify access
     if (shareToken || deliveryId) {
-      const { isAuthorized } = await verifyDeliveryAccessContext(shareToken, deliveryId);
+      const { isAuthorized, delivery } = await verifyDeliveryAccessContext(shareToken, deliveryId);
       if (!isAuthorized) {
         return { error: "Passcode verification required to reply to feedback." };
+      }
+      if (delivery && delivery.isCommentAllowed === false) {
+        return { error: "Comments are disabled for this delivery cut." };
       }
     } else {
       if (!user) {

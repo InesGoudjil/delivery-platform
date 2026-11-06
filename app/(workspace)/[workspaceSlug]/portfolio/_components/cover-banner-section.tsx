@@ -201,7 +201,11 @@ export function CoverBannerSection({
         {/* 🌟 1. LIVE HERO PREVIEW STAGE */}
         <div className="space-y-2">
           <TiltCard tiltIntensity={2} glareIntensity={0.06} className="rounded-2xl overflow-hidden shadow-2xl">
-            <AspectRatio ratio={ratioValue} className="relative overflow-hidden bg-black group">
+            <AspectRatio
+              ratio={ratioValue}
+              style={{ aspectRatio: "var(--preview-aspect, auto)" }}
+              className="relative overflow-hidden bg-black group max-sm:[--preview-aspect:4/5] sm:[--preview-aspect:var(--ratio)] min-h-[300px] sm:min-h-0"
+            >
               {/* Visual Media Layer (Default to Ambient Loop for Videos) */}
               {heroCover.mediaUrl ? (
                 isVideo ? (
@@ -238,29 +242,29 @@ export function CoverBannerSection({
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/30 pointer-events-none" />
 
               {/* Overlaid Badges */}
-              <div className="absolute top-4 left-4 flex items-center gap-2 z-10 pointer-events-none">
+              <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex items-center gap-1.5 sm:gap-2 z-10 pointer-events-none">
                 <Badge
                   variant="outline"
-                  className="bg-black/80 backdrop-blur-md border-white/20 text-white  text-[10px] uppercase font-bold px-2 py-0.5"
+                  className="bg-black/80 backdrop-blur-md border-white/20 text-white text-[9px] sm:text-[10px] uppercase font-bold px-2 py-0.5"
                 >
                   Live Storefront View
                 </Badge>
-                <Badge variant="orange" className=" text-[10px] uppercase font-bold px-2.5 py-1 shadow-lg">
+                <Badge variant="orange" className="text-[9px] sm:text-[10px] uppercase font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 shadow-lg">
                   {isVideo ? "Cinematic Video" : "High-Res Still"}
                 </Badge>
               </div>
 
               {/* Overlaid Headline & Category */}
               {showHeroText && (
-                <div className="absolute bottom-4 left-4 right-4 z-10 pointer-events-none space-y-1.5">
+                <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 z-10 pointer-events-none space-y-1 sm:space-y-1.5">
                   {(heroCover.category || (isVideo ? "Featured Film" : "Featured Still")) && (
                     <div>
-                      <Badge variant="orange" className="text-[10px] uppercase font-bold px-2 py-0.5 shadow-md">
+                      <Badge variant="orange" className="text-[9px] sm:text-[10px] uppercase font-bold px-2 py-0.5 shadow-md">
                         {heroCover.category || (isVideo ? "Featured Film" : "Featured Still")}
                       </Badge>
                     </div>
                   )}
-                  <TypographyH3 className="text-lg sm:text-2xl text-white tracking-tight uppercase drop-shadow-md max-w-xl font-heading">
+                  <TypographyH3 className="text-base sm:text-2xl text-white tracking-tight uppercase drop-shadow-md max-w-xl font-heading leading-tight truncate sm:whitespace-normal">
                     {heroCover.title || brandName}
                   </TypographyH3>
                 </div>

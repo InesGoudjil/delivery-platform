@@ -51,9 +51,9 @@ export function WorkspaceMobileBottomNav({
   return (
     <nav
       aria-label="Workspace mobile navigation"
-      className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-background/90 backdrop-blur-2xl border-t border-border/40 pb-safe pt-1.5 px-3 shadow-[0_-8px_24px_rgba(0,0,0,0.4)]"
+      className="md:hidden fixed bottom-3 inset-x-0 mx-auto w-[calc(100%-2rem)] max-w-[340px] z-40 liquid-glass rounded-full p-1.5 px-2 shadow-[0_12px_36px_rgba(0,0,0,0.6)] mb-safe"
     >
-      <div className="flex items-center justify-around max-w-lg mx-auto">
+      <div className="flex items-center justify-between">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
@@ -61,24 +61,24 @@ export function WorkspaceMobileBottomNav({
               key={item.name}
               href={item.href}
               className={cn(
-                "flex-1 flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all min-h-[48px] touch-manipulation active:scale-95 group",
+                "flex-1 flex flex-col items-center justify-center py-1 px-1.5 rounded-full transition-all min-h-[42px] touch-manipulation active:scale-95 group",
                 item.isActive
-                  ? "text-primary font-bold"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "text-primary bg-white/[0.08] shadow-inner font-bold"
+                  : "text-zinc-400 hover:text-zinc-200"
               )}
             >
               <div className="relative">
                 <Icon
                   className={cn(
-                    "size-5 transition-transform duration-150",
-                    item.isActive ? "scale-110 text-primary" : "group-hover:scale-105"
+                    "size-4 sm:size-4.5 transition-transform duration-150",
+                    item.isActive ? "scale-105 text-primary" : "group-hover:scale-105"
                   )}
                 />
                 {item.isActive && (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary" />
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary shadow-[0_0_6px_var(--primary)]" />
                 )}
               </div>
-              <span className="text-[10px] tracking-tight mt-1 leading-none font-medium">
+              <span className="text-[9.5px] tracking-tight mt-0.5 leading-none font-medium truncate">
                 {item.name}
               </span>
             </Link>

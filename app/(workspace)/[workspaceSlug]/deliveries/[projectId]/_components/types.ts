@@ -85,6 +85,7 @@ export interface DeliveryDetailClientProps {
     status: string;
     shareToken: string;
     isDownloadAllowed: boolean;
+    isCommentAllowed?: boolean;
     passcodeProtected: boolean;
     clientName: string;
     clientEmail?: string | null;
