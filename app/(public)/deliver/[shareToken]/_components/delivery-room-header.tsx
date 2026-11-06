@@ -48,32 +48,36 @@ export function DeliveryRoomHeader({
       )}
 
       {/* Prototype Brand Header */}
-      <header className="py-4 border-b border-white/10 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
+      <header className="py-4 border-b border-white/10 flex items-center justify-between gap-2.5 sm:gap-4">
+        <div className="flex items-center gap-2 min-w-0">
           {logoUrl ? (
             <img
               src={logoUrl}
               alt={brandName}
-              className="h-7 w-auto object-contain"
+              className="h-6 sm:h-7 w-auto max-w-[160px] sm:max-w-[220px] object-contain shrink-0"
             />
           ) : (
-            <TypographySpan className="font-heading font-extrabold text-lg sm:text-xl text-[#f6f3ec] tracking-tight">
-              {brandName}
-              <TypographySpan className="text-primary">.</TypographySpan>
-            </TypographySpan>
+            <div className="flex items-center min-w-0">
+              <TypographySpan className="block truncate font-heading font-extrabold text-base sm:text-xl text-[#f6f3ec] tracking-tight whitespace-nowrap">
+                {brandName}
+              </TypographySpan>
+              <TypographySpan className="font-heading font-extrabold text-base sm:text-xl text-primary shrink-0">
+                .
+              </TypographySpan>
+            </div>
           )}
         </div>
 
         <Badge
           variant="outline"
-          className={`rounded-full px-3.5 py-1.5 text-xs gap-2 font-normal ${
+          className={`shrink-0 whitespace-nowrap rounded-full px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs gap-1.5 sm:gap-2 font-normal ${
             isExpired
               ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
               : "border-white/15 bg-white/5 text-[#aeaeb4]"
           }`}
         >
-          <Lock className="size-3" />
-          <TypographySpan>Private · {expiryLabel}</TypographySpan>
+          <Lock className="size-3 shrink-0" />
+          <TypographySpan className="whitespace-nowrap">Private · {expiryLabel}</TypographySpan>
         </Badge>
       </header>
     </>

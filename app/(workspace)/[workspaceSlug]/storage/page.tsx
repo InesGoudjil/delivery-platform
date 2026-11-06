@@ -149,7 +149,7 @@ export default async function StoragePage({
       <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-200">
         {/* Header */}
         <div className="pb-6 border-b border-border space-y-2">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="kicker">
               WORKSPACE DASHBOARD
             </Badge>
@@ -157,7 +157,7 @@ export default async function StoragePage({
               Cloud Storage &amp; Streaming
             </Badge>
           </div>
-          <TypographyH1 className="text-3xl font-bold font-heading text-foreground">
+          <TypographyH1 className="text-2xl sm:text-3xl font-bold font-heading text-foreground">
             Storage &amp; Usage
           </TypographyH1>
           <TypographyLead className="text-sm text-muted-foreground font-sans max-w-2xl">
@@ -187,15 +187,15 @@ export default async function StoragePage({
 
         {/* Main Active Storage Meter */}
         <TiltCard tiltIntensity={1.5} glareIntensity={0.04} className="rounded-2xl">
-          <Card className="rounded-2xl border border-border p-6 sm:p-8 space-y-6 shadow-sm hover:translate-y-0">
-            <CardHeader className="p-0 flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-primary/10 text-primary border border-primary/20 shrink-0">
-                  <HardDrive className="size-6" />
+          <Card className="rounded-2xl border border-border p-4 sm:p-6 md:p-8 has-data-[slot=card-footer]:pb-4 sm:has-data-[slot=card-footer]:pb-6 md:has-data-[slot=card-footer]:pb-8 gap-5 sm:gap-6 shadow-sm hover:translate-y-0">
+            <CardHeader className="p-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                <div className="p-2.5 sm:p-3 rounded-xl bg-primary/10 text-primary border border-primary/20 shrink-0">
+                  <HardDrive className="size-5 sm:size-6" />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <CardTitle className="p-0 border-none">
-                    <TypographyH3 className="font-heading text-lg font-bold text-card-foreground">
+                    <TypographyH3 className="font-heading text-base sm:text-lg font-bold text-card-foreground leading-snug">
                       Active Storage &amp; Streaming
                     </TypographyH3>
                   </CardTitle>
@@ -205,15 +205,18 @@ export default async function StoragePage({
                 </div>
               </div>
 
-              <CardAction className="text-left sm:text-right self-start sm:self-auto">
-                <Typography as="div" variant="h3" className="text-2xl font-bold  text-foreground">
-                  {usedDisplay} <TypographySpan variant="muted" className="text-sm font-normal text-muted-foreground">/ {quotaDisplay}</TypographySpan>
+              <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center w-full sm:w-auto shrink-0 gap-2 sm:gap-1 pt-3 sm:pt-0 border-t border-border/50 sm:border-t-0 text-left sm:text-right">
+                <Typography as="div" variant="h3" className="text-lg sm:text-2xl font-bold text-foreground whitespace-nowrap leading-none">
+                  {usedDisplay}{" "}
+                  <TypographySpan variant="muted" className="text-xs sm:text-sm font-normal text-muted-foreground whitespace-nowrap">
+                    / {quotaDisplay}
+                  </TypographySpan>
                 </Typography>
-                <div className="flex items-center sm:justify-end gap-1.5 mt-0.5">
+                <div className="flex items-center sm:justify-end gap-1.5 shrink-0">
                   <Tooltip>
                     <TooltipTrigger
                       render={
-                        <Badge variant={badgeVariant} className="text-xs  font-semibold cursor-help">
+                        <Badge variant={badgeVariant} className="text-[11px] sm:text-xs font-semibold cursor-help whitespace-nowrap shrink-0">
                           {percentage}% allocated
                         </Badge>
                       }
@@ -223,15 +226,15 @@ export default async function StoragePage({
                     </TooltipContent>
                   </Tooltip>
                 </div>
-              </CardAction>
+              </div>
             </CardHeader>
 
-            <CardContent className="p-0 space-y-6">
+            <CardContent className="p-0 space-y-5 sm:space-y-6">
               {/* Progress Bar with Tooltip */}
               <Tooltip>
                 <TooltipTrigger
                   render={
-                    <div className="space-y-2 cursor-pointer">
+                    <div className="w-full space-y-2 cursor-pointer">
                       <div className="h-3 w-full bg-muted rounded-full overflow-hidden p-0.5 border border-border">
                         <div
                           className={`h-full rounded-full transition-all duration-500 shadow-sm ${
@@ -244,10 +247,10 @@ export default async function StoragePage({
                           style={{ width: `${Math.max(percentage, 2)}%` }}
                         />
                       </div>
-                      <div className="flex items-center justify-between text-[11px]  text-muted-foreground">
-                        <TypographySpan>0 GB</TypographySpan>
-                        <TypographySpan className="text-foreground font-semibold">{remainingDisplay} remaining</TypographySpan>
-                        <TypographySpan>{quotaDisplay}</TypographySpan>
+                      <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                        <TypographySpan className="whitespace-nowrap">0 GB</TypographySpan>
+                        <TypographySpan className="text-foreground font-semibold whitespace-nowrap">{remainingDisplay} remaining</TypographySpan>
+                        <TypographySpan className="whitespace-nowrap">{quotaDisplay}</TypographySpan>
                       </div>
                     </div>
                   }
@@ -264,13 +267,13 @@ export default async function StoragePage({
                     render={
                       <div className="w-full">
                         <TiltCard tiltIntensity={3} glareIntensity={0.08} className="rounded-xl h-full">
-                          <Card className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1 hover:translate-y-0 shadow-none h-full cursor-help">
+                          <Card className="p-3.5 rounded-xl bg-muted/40 border border-border gap-1 hover:translate-y-0 shadow-none h-full cursor-help">
                             <CardContent className="p-0 space-y-1">
                               <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                                <Film className="size-3.5 text-primary" />
-                                Video Masters &amp; Cuts
+                                <Film className="size-3.5 text-primary shrink-0" />
+                                <TypographySpan className="truncate">Video Masters &amp; Cuts</TypographySpan>
                               </div>
-                              <div className="text-sm  font-bold text-foreground">
+                              <div className="text-sm font-bold text-foreground">
                                 {formatSize(totalVideoBytes)}
                               </div>
                               <TypographyMuted className="text-[10px] text-muted-foreground">
@@ -292,13 +295,13 @@ export default async function StoragePage({
                     render={
                       <div className="w-full">
                         <TiltCard tiltIntensity={3} glareIntensity={0.08} className="rounded-xl h-full">
-                          <Card className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1 hover:translate-y-0 shadow-none h-full cursor-help">
+                          <Card className="p-3.5 rounded-xl bg-muted/40 border border-border gap-1 hover:translate-y-0 shadow-none h-full cursor-help">
                             <CardContent className="p-0 space-y-1">
                               <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                                <Layers className="size-3.5 text-primary" />
-                                Adaptive Video Streams
+                                <Layers className="size-3.5 text-primary shrink-0" />
+                                <TypographySpan className="truncate">Adaptive Video Streams</TypographySpan>
                               </div>
-                              <div className="text-sm  font-bold text-foreground">
+                              <div className="text-sm font-bold text-foreground">
                                 {formatSize(totalStreamBytes)}
                               </div>
                               <TypographyMuted className="text-[10px] text-muted-foreground">
@@ -320,13 +323,13 @@ export default async function StoragePage({
                     render={
                       <div className="w-full">
                         <TiltCard tiltIntensity={3} glareIntensity={0.08} className="rounded-xl h-full">
-                          <Card className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1 hover:translate-y-0 shadow-none h-full cursor-help">
+                          <Card className="p-3.5 rounded-xl bg-muted/40 border border-border gap-1 hover:translate-y-0 shadow-none h-full cursor-help">
                             <CardContent className="p-0 space-y-1">
                               <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                                <Camera className="size-3.5 text-[#86b98f]" />
-                                Stills &amp; Deliverables
+                                <Camera className="size-3.5 text-[#86b98f] shrink-0" />
+                                <TypographySpan className="truncate">Stills &amp; Deliverables</TypographySpan>
                               </div>
-                              <div className="text-sm  font-bold text-foreground">
+                              <div className="text-sm font-bold text-foreground">
                                 {formatSize(totalStillBytes)}
                               </div>
                               <TypographyMuted className="text-[10px] text-muted-foreground">
@@ -346,7 +349,10 @@ export default async function StoragePage({
             </CardContent>
 
             {/* Storage Boost CTA using CardFooter */}
-            <CardFooter className="p-0 pt-4 border-t border-border flex items-center justify-end">
+            <CardFooter className="p-0 pt-4 sm:pt-5 border-t border-border bg-transparent rounded-none flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <TypographyMuted className="text-xs text-muted-foreground text-center sm:text-left">
+                Need more capacity? Expand your high-speed workspace storage anytime.
+              </TypographyMuted>
               <StorageUpgradeButton
                 workspaceId={workspace.id}
                 workspaceSlug={workspace.slug}
@@ -357,20 +363,20 @@ export default async function StoragePage({
 
         {/* The Silo — Cold Storage Archive */}
         <TiltCard tiltIntensity={1.5} glareIntensity={0.04} className="rounded-2xl">
-          <Card className="rounded-2xl border border-border p-6 sm:p-8 space-y-5 shadow-sm hover:translate-y-0">
-            <CardHeader className="p-0 flex-col sm:flex-row sm:items-start justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <div className="p-3 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30 shrink-0">
-                  <Archive className="size-6" />
+          <Card className="rounded-2xl border border-border p-4 sm:p-6 md:p-8 gap-5 shadow-sm hover:translate-y-0">
+            <CardHeader className="p-0 flex flex-col sm:flex-row items-stretch sm:items-start justify-between gap-4">
+              <div className="flex items-start gap-3 min-w-0 flex-1">
+                <div className="p-2.5 sm:p-3 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30 shrink-0">
+                  <Archive className="size-5 sm:size-6" />
                 </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
+                <div className="space-y-1.5 min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
                     <CardTitle className="p-0 border-none">
-                      <TypographyH3 className="font-heading text-lg font-bold text-card-foreground">
+                      <TypographyH3 className="font-heading text-base sm:text-lg font-bold text-card-foreground leading-snug">
                         The Silo — Deep Cold Archive
                       </TypographyH3>
                     </CardTitle>
-                    <Badge variant="outline" className="text-[10px]  font-semibold bg-blue-500/15 text-blue-400 border-blue-500/30">
+                    <Badge variant="outline" className="text-[10px] font-semibold bg-blue-500/15 text-blue-400 border-blue-500/30">
                       Secure Archival
                     </Badge>
                   </div>
@@ -380,9 +386,9 @@ export default async function StoragePage({
                 </div>
               </div>
 
-              <CardAction className="self-start">
+              <div className="w-full sm:w-auto shrink-0 self-stretch sm:self-start">
                 <ArchiveManagerButton canSiloArchive={canSiloArchive} workspaceSlug={workspaceSlug} />
-              </CardAction>
+              </div>
             </CardHeader>
 
             <CardContent className="p-0">

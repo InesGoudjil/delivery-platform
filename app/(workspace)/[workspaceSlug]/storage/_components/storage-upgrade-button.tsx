@@ -62,14 +62,14 @@ export function StorageUpgradeButton({
           <Button
             onClick={handleUpgrade}
             disabled={isUpgrading}
-            className="rounded-full bg-primary text-primary-foreground font-bold hover:bg-primary/90 shadow-md shadow-primary/20 text-xs cursor-pointer h-9 px-4.5 disabled:opacity-50"
+            className="w-full sm:w-auto shrink-0 justify-center rounded-full bg-primary text-primary-foreground font-bold hover:bg-primary/90 shadow-md shadow-primary/20 text-xs cursor-pointer h-9 sm:h-10 px-5 disabled:opacity-50"
           >
             {isUpgrading ? (
-              <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+              <Loader2 className="size-3.5 animate-spin shrink-0" />
             ) : (
-              <Zap className="size-3.5 mr-1.5" />
+              <Zap className="size-3.5 shrink-0" />
             )}
-            {isUpgrading ? "Opening Checkout..." : "Add +1 TB Storage ($15/mo)"}
+            <span>{isUpgrading ? "Opening Checkout..." : "Add +1 TB Storage ($15/mo)"}</span>
           </Button>
         }
       />
