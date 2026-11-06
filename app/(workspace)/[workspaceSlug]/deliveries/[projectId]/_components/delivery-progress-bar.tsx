@@ -42,7 +42,7 @@ export function DeliveryProgressBar({
         </div>
       </CardContent>
 
-      <CardAction className="flex items-center gap-2 shrink-0 w-full sm:w-auto self-auto">
+      <CardAction className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 w-full sm:w-auto self-auto">
         {/* MARK APPROVED / UNAPPROVE CUT Button */}
         {projectStatus !== "approved" ? (
           <Button
