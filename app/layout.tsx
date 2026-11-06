@@ -10,6 +10,7 @@ import { MetaPageView } from "@/components/meta/MetaPageView";
 import { PostHogProvider } from "@/lib/posthog/client";
 import { PostHogPageView } from "@/components/posthog/PostHogPageView";
 import { PostHogIdentify } from "@/components/posthog/PostHogIdentify";
+import { PwaRegister } from "@/components/pwa/pwa-register";
 
 const satoshi = localFont({
   src: [
@@ -88,8 +89,14 @@ export const metadata: Metadata = {
     title: "CineSpace",
   },
   icons: {
-    icon: "/favicon.ico",
-    apple: "/images/logo.svg",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
 };
 
@@ -144,6 +151,7 @@ export default function RootLayout({
             <I18nProvider initialLocale="en">
               {children}
             </I18nProvider>
+            <PwaRegister />
             <Toaster position="bottom-right" richColors closeButton />
             <PostHogIdentify />
             <Suspense fallback={null}>

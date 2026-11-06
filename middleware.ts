@@ -47,11 +47,13 @@ export async function middleware(request: NextRequest) {
     const isBypassed = Boolean(bypassSecret && bypassCookie === bypassSecret);
 
     if (!isBypassed) {
-      // Allow internal Next.js paths, API routes, and favicon
+      // Allow internal Next.js paths, API routes, favicon, and PWA assets
       if (
         pathname.startsWith('/_next') ||
         pathname.startsWith('/api') ||
-        pathname === '/favicon.ico'
+        pathname === '/favicon.ico' ||
+        pathname === '/sw.js' ||
+        pathname === '/manifest.webmanifest'
       ) {
         return await updateSession(request);
       }
@@ -85,9 +87,9 @@ export const config = {
      * Match all request paths except:
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico
+     * - favicon.ico, sw.js, manifest.webmanifest
      * - images, media, and font assets
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|mp4|webm)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|mp4|webm)$).*)',
   ],
 };
