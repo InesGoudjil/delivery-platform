@@ -21,6 +21,7 @@ export interface FeedbackReplyItem {
   authorName: string;
   commentText: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface FeedbackItem {
@@ -30,6 +31,7 @@ export interface FeedbackItem {
   commentText: string;
   timestampSeconds?: number | null;
   createdAt: string;
+  updatedAt?: string;
   isResolved?: boolean;
   replies?: FeedbackReplyItem[];
 }
@@ -85,6 +87,10 @@ export interface AssetLightboxModalProps {
   onToggleResolve?: (feedbackId: string, currentResolved: boolean) => void;
   onToggleFeedbackResolved?: (feedbackId: string, currentResolved: boolean) => void;
   onToggleApproval?: (itemId: string, currentStatus: string) => void;
+  onDeleteFeedback?: (feedbackId: string) => Promise<void> | void;
+  onDeleteReply?: (feedbackId: string, replyId: string) => Promise<void> | void;
+  onEditFeedback?: (feedbackId: string, newText: string) => Promise<void> | void;
+  onEditReply?: (feedbackId: string, replyId: string, newText: string) => Promise<void> | void;
 
   // Management Actions
   onDeleteAsset?: (item: any) => Promise<void> | void;

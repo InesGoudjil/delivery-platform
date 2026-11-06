@@ -38,3 +38,46 @@ export const toggleFeedbackResolvedSchema = z.object({
 });
 
 export type ToggleFeedbackResolvedInput = z.infer<typeof toggleFeedbackResolvedSchema>;
+
+export const deleteFeedbackSchema = z.object({
+  feedbackId: z.string().trim().min(1, "Feedback ID is required"),
+  shareToken: z.string().trim().optional(),
+  deliveryId: z.string().trim().optional(),
+});
+
+export type DeleteFeedbackInput = z.infer<typeof deleteFeedbackSchema>;
+
+export const deleteFeedbackReplySchema = z.object({
+  replyId: z.string().trim().min(1, "Reply ID is required"),
+  shareToken: z.string().trim().optional(),
+  deliveryId: z.string().trim().optional(),
+});
+
+export type DeleteFeedbackReplyInput = z.infer<typeof deleteFeedbackReplySchema>;
+
+export const updateFeedbackSchema = z.object({
+  feedbackId: z.string().trim().min(1, "Feedback ID is required"),
+  commentText: z
+    .string()
+    .trim()
+    .min(1, "Feedback comment cannot be empty")
+    .max(2000, "Comment cannot exceed 2000 characters"),
+  shareToken: z.string().trim().optional(),
+  deliveryId: z.string().trim().optional(),
+});
+
+export type UpdateFeedbackInput = z.infer<typeof updateFeedbackSchema>;
+
+export const updateFeedbackReplySchema = z.object({
+  replyId: z.string().trim().min(1, "Reply ID is required"),
+  commentText: z
+    .string()
+    .trim()
+    .min(1, "Reply comment cannot be empty")
+    .max(2000, "Reply cannot exceed 2000 characters"),
+  shareToken: z.string().trim().optional(),
+  deliveryId: z.string().trim().optional(),
+});
+
+export type UpdateFeedbackReplyInput = z.infer<typeof updateFeedbackReplySchema>;
+

@@ -10,7 +10,13 @@ import {
   unapproveAllAssetsAction,
   recordClientDownloadAction,
 } from "@/app/actions/deliveries";
-import { toggleFeedbackResolvedAction } from "@/app/actions/feedback";
+import {
+  toggleFeedbackResolvedAction,
+  deleteFeedbackAction,
+  deleteFeedbackReplyAction,
+  updateFeedbackAction,
+  updateFeedbackReplyAction,
+} from "@/app/actions/feedback";
 import type { LightboxAssetItem } from "@/components/workspaces/asset-lightbox-modal";
 import type {
   DeliveryRoomProps,
@@ -122,7 +128,7 @@ export function useDeliveryRoom({
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
     const yy = String(d.getFullYear()).slice(-2);
-    return `${mm}.${dd}.${yy}`;
+    return `${dd}.${mm}.${yy}`;
   })();
 
   const displayAssetCount = assets.length > 0 ? assets.length : (initialAssetCount || 0);
@@ -369,6 +375,100 @@ export function useDeliveryRoom({
     }
   };
 
+  const handleDeleteFeedback = async (feedbackId: string) => {
+    setAssets((prev) =>
+      prev.map((a) => ({
+        ...a,
+        feedback: a.feedback.filter((f) => f.id !== feedbackId),
+      }))
+    );
+
+    const res = await deleteFeedbackAction(feedbackId, delivery.shareToken, delivery.id);
+    if (res?.error) {
+      toast.error(res.error || "Failed to delete feedback");
+    } else {
+      toast.success("Comment deleted");
+    }
+  };
+
+  const handleDeleteReply = async (feedbackId: string, replyId: string) => {
+    setAssets((prev) =>
+      prev.map((a) => ({
+        ...a,
+        feedback: a.feedback.map((f) =>
+          f.id === feedbackId
+            ? {
+                ...f,
+                replies: (f.replies || []).filter((r) => r.id !== replyId),
+              }
+            : f
+        ),
+      }))
+    );
+
+    const res = await deleteFeedbackReplyAction(replyId, delivery.shareToken, delivery.id);
+    if (res?.error) {
+      toast.error(res.error || "Failed to delete reply");
+    } else {
+      toast.success("Reply deleted");
+    }
+  };
+
+  const handleEditFeedback = async (feedbackId: string, newText: string) => {
+    const nowIso = new Date().toISOString();
+    setAssets((prev) =>
+      prev.map((a) => ({
+        ...a,
+        feedback: a.feedback.map((f) =>
+          f.id === feedbackId ? { ...f, commentText: newText, updatedAt: nowIso } : f
+        ),
+      }))
+    );
+
+    const res = await updateFeedbackAction({
+      feedbackId,
+      commentText: newText,
+      shareToken: delivery.shareToken,
+      deliveryId: delivery.id,
+    });
+    if (res?.error) {
+      toast.error(res.error || "Failed to update feedback");
+    } else {
+      toast.success("Comment updated");
+    }
+  };
+
+  const handleEditReply = async (feedbackId: string, replyId: string, newText: string) => {
+    const nowIso = new Date().toISOString();
+    setAssets((prev) =>
+      prev.map((a) => ({
+        ...a,
+        feedback: a.feedback.map((f) =>
+          f.id === feedbackId
+            ? {
+                ...f,
+                replies: (f.replies || []).map((r) =>
+                  r.id === replyId ? { ...r, commentText: newText, updatedAt: nowIso } : r
+                ),
+              }
+            : f
+        ),
+      }))
+    );
+
+    const res = await updateFeedbackReplyAction({
+      replyId,
+      commentText: newText,
+      shareToken: delivery.shareToken,
+      deliveryId: delivery.id,
+    });
+    if (res?.error) {
+      toast.error(res.error || "Failed to update reply");
+    } else {
+      toast.success("Reply updated");
+    }
+  };
+
   // WhatsApp Share & Message Creator
   const handleWhatsAppShare = () => {
     const text = encodeURIComponent(
@@ -387,9 +487,7 @@ export function useDeliveryRoom({
 
   // Master Files Download & Creator Notification
   const hasNotifiedDownloadRef = useRef(false);
-  const isGlobalDownloadUnlocked = Boolean(
-    delivery.isDownloadAllowed || deliveryStatus === "approved" || allApproved
-  );
+  const isGlobalDownloadUnlocked = Boolean(delivery.isDownloadAllowed);
 
   const notifyCreatorOfDownload = (info: {
     assetTitle?: string;
@@ -408,9 +506,8 @@ export function useDeliveryRoom({
     asset: DeliveryAssetItem,
     versionOverride?: AssetVersionItem | null
   ) => {
-    const canDownloadThisAsset = isGlobalDownloadUnlocked || Boolean(asset.isApproved);
-    if (!canDownloadThisAsset) {
-      toast.error("Downloads are locked until this cut is approved.");
+    if (!isGlobalDownloadUnlocked) {
+      toast.error("Downloads are restricted for this review link.");
       return;
     }
 
@@ -445,6 +542,10 @@ export function useDeliveryRoom({
   };
 
   const handleDownloadAll = () => {
+    if (!isGlobalDownloadUnlocked) {
+      toast.error("Downloads are restricted for this review link.");
+      return;
+    }
     setShowDownloadModal(true);
   };
 
@@ -589,6 +690,10 @@ export function useDeliveryRoom({
     handleReconcileFeedbackId,
     handleReconcileReplyId,
     handleToggleResolve,
+    handleDeleteFeedback,
+    handleDeleteReply,
+    handleEditFeedback,
+    handleEditReply,
     handleWhatsAppShare,
     handleMessageCreator,
     notifyCreatorOfDownload,

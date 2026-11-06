@@ -9,9 +9,17 @@ import {
   addFeedbackSchema,
   addFeedbackReplySchema,
   toggleFeedbackResolvedSchema,
+  deleteFeedbackSchema,
+  deleteFeedbackReplySchema,
+  updateFeedbackSchema,
+  updateFeedbackReplySchema,
   safeValidate,
   type AddFeedbackInput,
   type AddFeedbackReplyInput,
+  type DeleteFeedbackInput,
+  type DeleteFeedbackReplyInput,
+  type UpdateFeedbackInput,
+  type UpdateFeedbackReplyInput,
 } from "@/lib/validations";
 import { createScopedLogger } from "@/lib/logger";
 
@@ -217,18 +225,46 @@ export async function addFeedbackReplyAction(params: AddFeedbackReplyParams) {
   }
 }
 
+/**
+ * Helper to verify mutation permission (delete/update) for feedback or reply
+ */
+async function verifyFeedbackMutationPermission(shareToken?: string, deliveryId?: string) {
+  const { isAuthorized, delivery, user, adminServices } = await verifyDeliveryAccessContext(shareToken, deliveryId);
+
+  if (delivery && user) {
+    const isMember = await adminServices.member.isMember(delivery.workspaceId, user.id).catch(() => false);
+    if (isMember) {
+      return { allowed: true, delivery, user, adminServices };
+    }
+  }
+
+  if (isAuthorized) {
+    return { allowed: true, delivery, user, adminServices };
+  }
+
+  try {
+    const { user: authedUser } = await requireUser();
+    const targetDelivery = delivery || (deliveryId ? await adminServices.delivery.getDeliveryById(deliveryId) : null);
+    if (targetDelivery) {
+      const isMember = await adminServices.member.isMember(targetDelivery.workspaceId, authedUser.id).catch(() => false);
+      if (isMember) {
+        return { allowed: true, delivery: targetDelivery, user: authedUser, adminServices };
+      }
+    }
+  } catch {
+    // not logged in
+  }
+
+  return { allowed: false, delivery, user, adminServices };
+}
+
 export async function deleteFeedbackReplyAction(replyId: string, shareToken?: string, deliveryId?: string) {
   try {
     if (!replyId?.trim()) return { error: "Reply ID is required." };
 
-    const { isAuthorized, adminServices } = await verifyDeliveryAccessContext(shareToken, deliveryId);
-    if (!isAuthorized) {
-      // Must be authenticated workspace member
-      const { user } = await requireUser();
-      const isMember = deliveryId ? await adminServices.member.isMember(deliveryId, user.id).catch(() => false) : false;
-      if (!isMember) {
-        return { error: "Unauthorized to delete feedback reply." };
-      }
+    const { allowed, adminServices } = await verifyFeedbackMutationPermission(shareToken, deliveryId);
+    if (!allowed) {
+      return { error: "Unauthorized to delete feedback reply." };
     }
 
     await adminServices.feedback.deleteReply(replyId.trim());
@@ -241,6 +277,32 @@ export async function deleteFeedbackReplyAction(replyId: string, shareToken?: st
     return { success: true };
   } catch (err: any) {
     return { error: err.message || "Failed to delete reply." };
+  }
+}
+
+export async function updateFeedbackReplyAction(params: UpdateFeedbackReplyInput) {
+  try {
+    const validated = safeValidate(updateFeedbackReplySchema, params);
+    if (!validated.success) {
+      return { error: validated.error };
+    }
+
+    const { replyId, commentText, shareToken, deliveryId } = validated.data;
+    const { allowed, adminServices } = await verifyFeedbackMutationPermission(shareToken, deliveryId);
+    if (!allowed) {
+      return { error: "Unauthorized to update reply." };
+    }
+
+    const reply = await adminServices.feedback.updateReply(replyId.trim(), commentText.trim());
+
+    if (shareToken) {
+      revalidatePath(`/deliver/${shareToken}`);
+    }
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
+    return { success: true, reply };
+  } catch (err: any) {
+    return { error: err.message || "Failed to update reply." };
   }
 }
 
@@ -279,17 +341,39 @@ export async function toggleFeedbackResolvedAction(feedbackId: string, isResolve
   }
 }
 
+export async function updateFeedbackAction(params: UpdateFeedbackInput) {
+  try {
+    const validated = safeValidate(updateFeedbackSchema, params);
+    if (!validated.success) {
+      return { error: validated.error };
+    }
+
+    const { feedbackId, commentText, shareToken, deliveryId } = validated.data;
+    const { allowed, adminServices } = await verifyFeedbackMutationPermission(shareToken, deliveryId);
+    if (!allowed) {
+      return { error: "Unauthorized to update feedback." };
+    }
+
+    const feedback = await adminServices.feedback.updateFeedback(feedbackId.trim(), commentText.trim());
+
+    if (shareToken) {
+      revalidatePath(`/deliver/${shareToken}`);
+    }
+    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/[workspaceSlug]/deliveries", "page");
+    return { success: true, feedback };
+  } catch (err: any) {
+    return { error: err.message || "Failed to update feedback." };
+  }
+}
+
 export async function deleteFeedbackAction(feedbackId: string, shareToken?: string, deliveryId?: string) {
   try {
     if (!feedbackId?.trim()) return { error: "Feedback ID is required." };
 
-    const { isAuthorized, adminServices } = await verifyDeliveryAccessContext(shareToken, deliveryId);
-    if (!isAuthorized) {
-      const { user } = await requireUser();
-      const isMember = deliveryId ? await adminServices.member.isMember(deliveryId, user.id).catch(() => false) : false;
-      if (!isMember) {
-        return { error: "Unauthorized to delete feedback." };
-      }
+    const { allowed, adminServices } = await verifyFeedbackMutationPermission(shareToken, deliveryId);
+    if (!allowed) {
+      return { error: "Unauthorized to delete feedback." };
     }
 
     await adminServices.feedback.deleteFeedback(feedbackId.trim());

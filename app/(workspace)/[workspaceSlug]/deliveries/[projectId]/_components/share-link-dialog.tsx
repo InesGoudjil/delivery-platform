@@ -44,6 +44,8 @@ interface ShareLinkDialogProps {
   initialCommentAllowed?: boolean;
   initialExpiresAt?: string | null;
   onShareTokenRegenerated?: (newToken: string) => void;
+  onDownloadAllowedChange?: (allowed: boolean) => void;
+  onCommentAllowedChange?: (allowed: boolean) => void;
   triggerToast: (msg: string) => void;
   features?: Record<string, any>;
   workspaceSlug?: string;
@@ -79,6 +81,8 @@ export function ShareLinkDialog({
   initialCommentAllowed = true,
   initialExpiresAt,
   onShareTokenRegenerated,
+  onDownloadAllowedChange,
+  onCommentAllowedChange,
   triggerToast,
   features,
   workspaceSlug,
@@ -136,6 +140,7 @@ export function ShareLinkDialog({
 
   const handleToggleComments = async (val: boolean) => {
     setShareComments(val);
+    onCommentAllowedChange?.(val);
     setIsUpdatingComments(true);
     try {
       const res = await updateDeliverySecurityAction(projectId, {
@@ -146,10 +151,12 @@ export function ShareLinkDialog({
       } else {
         toast.error(res.error || "Failed to update comments permission.");
         setShareComments(!val);
+        onCommentAllowedChange?.(!val);
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to update comments permission.");
       setShareComments(!val);
+      onCommentAllowedChange?.(!val);
     } finally {
       setIsUpdatingComments(false);
     }
@@ -157,6 +164,7 @@ export function ShareLinkDialog({
 
   const handleToggleDownloads = async (val: boolean) => {
     setShareDownloads(val);
+    onDownloadAllowedChange?.(val);
     setIsUpdatingDownloads(true);
     try {
       const res = await updateDeliverySecurityAction(projectId, {
@@ -167,10 +175,12 @@ export function ShareLinkDialog({
       } else {
         toast.error(res.error || "Failed to update download permissions.");
         setShareDownloads(!val);
+        onDownloadAllowedChange?.(!val);
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to update download permissions.");
       setShareDownloads(!val);
+      onDownloadAllowedChange?.(!val);
     } finally {
       setIsUpdatingDownloads(false);
     }
@@ -320,6 +330,8 @@ export function ShareLinkDialog({
         expiresAt: currentExpiryDate,
       });
       if (res.success) {
+        onDownloadAllowedChange?.(shareDownloads);
+        onCommentAllowedChange?.(shareComments);
         setExpiresAtState(currentExpiryDate);
         setIsPasscodeSaved(Boolean(res.passcodeProtected));
         setVerificationStatus("valid");

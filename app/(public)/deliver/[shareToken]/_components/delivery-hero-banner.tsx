@@ -34,7 +34,7 @@ export function DeliveryHeroBanner({
   isGlobalDownloadUnlocked,
   onDownloadAll,
 }: DeliveryHeroBannerProps) {
-  const canDownload = isGlobalDownloadUnlocked || approvedCount > 0;
+  const canDownload = Boolean(isGlobalDownloadUnlocked);
 
   return (
     <Card className="relative rounded-3xl overflow-hidden border border-white/10 min-h-[350px] sm:min-h-[560px] lg:min-h-[600px] flex flex-col justify-end shadow-2xl group bg-transparent py-0 hover:translate-y-0">
@@ -99,7 +99,12 @@ export function DeliveryHeroBanner({
         <div className="mt-5 sm:mt-6">
           <Button
             onClick={onDownloadAll}
-            className="w-full sm:w-auto rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs tracking-wider uppercase px-6 py-3.5 sm:py-3 shadow-lg shadow-primary/30 border border-primary/40 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer min-h-[44px] h-auto gap-2 justify-center"
+            disabled={!canDownload}
+            className={`w-full sm:w-auto rounded-full font-bold text-xs tracking-wider uppercase px-6 py-3.5 sm:py-3 shadow-lg transition-all duration-200 min-h-[44px] h-auto gap-2 justify-center ${
+              canDownload
+                ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/30 border border-primary/40 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                : "bg-white/10 text-zinc-400 border border-white/10 opacity-70 cursor-not-allowed hover:bg-white/10 hover:scale-100"
+            }`}
           >
             {canDownload ? (
               <Download className="size-4" />
@@ -107,11 +112,7 @@ export function DeliveryHeroBanner({
               <Lock className="size-4" />
             )}
             <TypographySpan>
-              {isGlobalDownloadUnlocked
-                ? "DOWNLOAD ALL"
-                : approvedCount > 0
-                ? `DOWNLOAD APPROVED (${approvedCount})`
-                : "DOWNLOADS LOCKED"}
+              {canDownload ? "DOWNLOAD ALL" : "DOWNLOADS RESTRICTED"}
             </TypographySpan>
           </Button>
         </div>

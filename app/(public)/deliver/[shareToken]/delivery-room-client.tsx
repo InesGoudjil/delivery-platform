@@ -129,6 +129,50 @@ export function DeliveryRoomClient(props: DeliveryRoomProps) {
                 whiteLabel={whiteLabel}
                 brandName={workspace?.brandName}
               />
+
+              {/* Hero Project Cover Banner */}
+              <DeliveryHeroBanner
+                title={delivery.title}
+                clientName={clientName}
+                heroCoverUrl={room.heroCoverUrl}
+                formattedDate={room.formattedDate}
+                displayLocation={room.displayLocation}
+                formattedTotalSize={room.formattedTotalSize}
+                displayAssetCount={room.displayAssetCount}
+                approvedCount={room.approvedCount}
+                isGlobalDownloadUnlocked={room.isGlobalDownloadUnlocked}
+                onDownloadAll={room.handleDownloadAll}
+              />
+
+              {/* Approval Progress & Action Bar */}
+              <DeliveryActionBar
+                brandName={workspace.brandName}
+                totalAssets={room.assets.length}
+                approvedCount={room.approvedCount}
+                allApproved={room.allApproved}
+                isApprovingAll={room.isApprovingAll}
+                onMessageCreator={room.handleMessageCreator}
+                onApproveAll={room.handleApproveAll}
+                onUnapproveAll={room.handleUnapproveAll}
+              />
+
+              {/* Asset Library / Project Files */}
+              <DeliveryAssetGrid
+                filteredAssets={room.filteredAssets}
+                activeTab={room.assetTab}
+                onTabChange={room.setAssetTab}
+                workspaceBrandName={workspace.brandName}
+                appearance={delivery.appearance}
+                isDeliveryWatermarked={delivery.isWatermarked}
+                isGlobalDownloadUnlocked={room.isGlobalDownloadUnlocked}
+                approvingAssetId={room.approvingAssetId}
+                onSelectAsset={room.openAssetModal}
+                onToggleApproval={room.handleToggleAssetApproval}
+                onDownloadAsset={room.handleSingleAssetDownload}
+              />
+
+              {/* Studio Branding Footer */}
+              <DeliveryRoomFooter />
             </div>
 
             {/* 📹 Interactive Video Review Lightbox Modal */}
@@ -143,15 +187,17 @@ export function DeliveryRoomClient(props: DeliveryRoomProps) {
               onReconcileFeedbackId={room.handleReconcileFeedbackId}
               onReconcileReplyId={room.handleReconcileReplyId}
               onToggleResolve={room.handleToggleResolve}
+              onDeleteFeedback={room.handleDeleteFeedback}
+              onDeleteReply={room.handleDeleteReply}
+              onEditFeedback={room.handleEditFeedback}
+              onEditReply={room.handleEditReply}
               onToggleApproval={room.handleToggleAssetApproval}
               authorName={room.commentAuthor}
               showFeedback={delivery.isCommentAllowed ?? true}
               showVersions={Boolean(
                 room.activeAsset?.versions && room.activeAsset.versions.length > 1
               )}
-              showDownload={
-                room.isGlobalDownloadUnlocked || Boolean(room.activeAsset?.isApproved)
-              }
+              showDownload={room.isGlobalDownloadUnlocked}
               onDownload={room.handleLightboxDownload}
               watermarkMedia={
                 Boolean(delivery.appearance?.watermarkMedia ?? delivery.isWatermarked) &&

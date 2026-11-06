@@ -17,6 +17,7 @@ export interface FeedbackReplyItem {
   authorName: string;
   commentText: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface FeedbackItem {
@@ -27,6 +28,7 @@ export interface FeedbackItem {
   timestampSeconds?: number | null;
   isResolved: boolean;
   createdAt: string;
+  updatedAt?: string;
   replies?: FeedbackReplyItem[];
 }
 

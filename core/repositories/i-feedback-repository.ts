@@ -21,6 +21,7 @@ export interface IFeedbackRepository {
   getByAssetVersionId?(assetVersionId: string): Promise<Feedback[]>;
   toggleResolve?(id: string, isResolved: boolean): Promise<Feedback>;
   createReply?(dto: CreateFeedbackReplyDTO): Promise<FeedbackReply>;
+  updateReply?(replyId: string, commentText: string): Promise<FeedbackReply>;
   deleteReply?(replyId: string): Promise<void>;
   listRepliesByFeedbackId?(feedbackId: string): Promise<FeedbackReply[]>;
 }
