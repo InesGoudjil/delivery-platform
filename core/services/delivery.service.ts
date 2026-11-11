@@ -1,4 +1,4 @@
-import { Delivery, DeliveryStatus, CreateDeliveryDTO, UpdateDeliveryDTO } from "@/core/entities/delivery";
+import { Delivery, DeliveryStatus, CreateDeliveryDTO, UpdateDeliveryDTO, DeliverySummaryItem } from "@/core/entities/delivery";
 import { Client } from "@/core/entities/client";
 import { Asset, AssetVersion } from "@/core/entities/asset";
 import { Feedback } from "@/core/entities/feedback";
@@ -79,6 +79,20 @@ export class DeliveryService {
 
   async listWorkspaceDeliveries(workspaceId: string): Promise<Delivery[]> {
     return this.deliveryRepo.listByWorkspaceId(workspaceId);
+  }
+
+  async listWorkspaceDeliveriesSummary(workspaceId: string): Promise<DeliverySummaryItem[]> {
+    if (this.deliveryRepo.listDeliveriesSummary) {
+      return this.deliveryRepo.listDeliveriesSummary(workspaceId);
+    }
+    const deliveries = await this.deliveryRepo.listByWorkspaceId(workspaceId);
+    return deliveries.map((d) => ({
+      ...d,
+      clientName: "Private Client",
+      assetsCount: 0,
+      commentsCount: 0,
+      passcodeProtected: Boolean(d.passcodeHash),
+    }));
   }
 
   async getDeliveryWithFullDetails(

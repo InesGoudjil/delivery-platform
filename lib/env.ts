@@ -59,6 +59,10 @@ const envSchema = z.object({
   ZEPTOMAIL_API_URL: z.string().optional().default("https://api.zeptomail.com/v1.1/email"),
   ZEPTOMAIL_BOUNCE_ADDRESS: z.string().optional().default(""),
 
+  // Upstash Redis Configuration (Rate Limiting & Serverless Caching)
+  UPSTASH_REDIS_REST_URL: z.string().optional().default(""),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional().default(""),
+
   // Resend Email Configuration (Legacy / Fallback during migration)
   RESEND_API_KEY: z.string().optional().default(""),
   RESEND_FROM_EMAIL: z.string().optional().default("onboarding@resend.dev"),
@@ -112,6 +116,7 @@ export type Env = z.infer<typeof envSchema> & {
   isPostHogServerEnabled: boolean;
   isPostHogSessionReplayEnabled: boolean;
   isZeptoMailConfigured: boolean;
+  isUpstashConfigured: boolean;
 };
 
 /**
@@ -175,6 +180,10 @@ function parseEnv(): Env {
     parsed.ZEPTOMAIL_API_TOKEN.trim() !== "" &&
     parsed.ZEPTOMAIL_API_TOKEN !== "your-zeptomail-token";
 
+  const isUpstashConfigured =
+    Boolean(parsed.UPSTASH_REDIS_REST_URL) &&
+    Boolean(parsed.UPSTASH_REDIS_REST_TOKEN);
+
   return {
     ...parsed,
     CLOUDFLARE_R2_PUBLIC_BUCKET: publicBucket,
@@ -188,6 +197,7 @@ function parseEnv(): Env {
     isPostHogServerEnabled,
     isPostHogSessionReplayEnabled,
     isZeptoMailConfigured,
+    isUpstashConfigured,
   };
 }
 

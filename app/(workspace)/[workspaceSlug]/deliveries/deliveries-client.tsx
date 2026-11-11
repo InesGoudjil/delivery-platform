@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { useOptionalEntitlements } from "@/components/providers/entitlements-provider";
 import { deleteDeliveryAction } from "@/app/actions/deliveries";
 import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
+import { useQueryParams } from "@/hooks/use-query-params";
+import { mutatePrefix } from "@/lib/swr/mutate";
 import { DeliveriesHeader } from "./_components/deliveries-header";
 import { DeliveryFilterBar } from "./_components/delivery-filter-bar";
 import { DeliveryCardGrid } from "./_components/delivery-card-grid";
@@ -40,10 +42,21 @@ export function DeliveriesClient({
   features,
 }: DeliveriesClientProps) {
   const [items, setItems] = useState<DeliveryProjectItem[]>(deliveries);
-  const [filter, setFilter] = useState<"all" | "in_review" | "approved">("all");
   const [deliveryToConfirmDelete, setDeliveryToConfirmDelete] =
     useState<DeliveryProjectItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const { queryParams, getParam } = useQueryParams();
+
+  // URL-driven status filter (?status=in_review | ?status=approved | all)
+  const statusParam = getParam("status");
+  const filter: "all" | "in_review" | "approved" =
+    statusParam === "in_review" || statusParam === "approved"
+      ? statusParam
+      : "all";
+
+  // URL-driven search query (?search=...)
+  const searchQuery = (getParam("search") || "").trim().toLowerCase();
 
   useEffect(() => {
     setItems(deliveries);
@@ -53,10 +66,19 @@ export function DeliveriesClient({
   const canSendWhatsApp = entitlements
     ? entitlements.can.sendWhatsApp
     : Boolean(features?.whatsapp_delivery);
-    
+
+  const handleFilterChange = (newFilter: "all" | "in_review" | "approved") => {
+    if (newFilter === "all") {
+      queryParams({ del: ["status", "page"] });
+    } else {
+      queryParams({ set: { status: newFilter }, del: "page" });
+    }
+  };
+
   const executeDeleteDelivery = async (target: DeliveryProjectItem) => {
     const previousItems = items;
     setDeletingId(target.id);
+    // Optimistic UI update: immediately remove from view
     setItems((prev) => prev.filter((d) => d.id !== target.id));
 
     try {
@@ -64,7 +86,13 @@ export function DeliveriesClient({
       if (res.success) {
         toast.success(`Delivery "${target.title}" deleted`);
         setDeliveryToConfirmDelete(null);
+        // Wildcard revalidation for active queries
+        await mutatePrefix([
+          `/api/workspaces/${workspace.id}/deliveries`,
+          `/${workspace.slug}/deliveries`,
+        ]);
       } else {
+        // Rollback on server error
         setItems(previousItems);
         toast.error(res.error || "Failed to delete delivery");
       }
@@ -86,9 +114,17 @@ export function DeliveriesClient({
   };
 
   const filteredDeliveries = items.filter((d) => {
-    if (filter === "all") return true;
-    if (filter === "in_review") return d.status === "in_review" || d.status === "draft";
-    if (filter === "approved") return d.status === "approved";
+    if (filter === "in_review" && !(d.status === "in_review" || d.status === "draft")) {
+      return false;
+    }
+    if (filter === "approved" && d.status !== "approved") {
+      return false;
+    }
+    if (searchQuery) {
+      const titleMatch = d.title.toLowerCase().includes(searchQuery);
+      const clientMatch = d.clientName.toLowerCase().includes(searchQuery);
+      return titleMatch || clientMatch;
+    }
     return true;
   });
 
@@ -107,13 +143,13 @@ export function DeliveriesClient({
         activeCount={activeDeliveriesCount}
       />
 
-      {/* 2. Filter Tab Bar */}
+      {/* 2. Filter Tab Bar (synced to URL ?status=...) */}
       <DeliveryFilterBar
         totalCount={items.length}
         inReviewCount={inReviewCount}
         approvedCount={approvedCount}
         activeFilter={filter}
-        onFilterChange={setFilter}
+        onFilterChange={handleFilterChange}
       />
 
       {/* 3. Deliveries Cards Grid */}

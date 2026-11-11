@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerServices } from "@/core/server";
-import { WorkspaceRole } from "@/core/entities/workspace-member";
+import {
+  WorkspaceRole,
+  WorkspaceInvitation,
+  EnrichedWorkspaceMember,
+} from "@/core/entities/workspace-member";
 import {
   inviteWorkspaceMemberSchema,
   updateWorkspaceMemberRoleSchema,
@@ -16,6 +20,21 @@ export interface MemberActionResult<T = any> {
   success: boolean;
   data?: T;
   error?: string;
+}
+
+export interface WorkspaceSeatStats {
+  maxSeats: number;
+  activeCount: number;
+  pendingCount: number;
+  usedSeats: number;
+  remainingSeats: number;
+  canInvite: boolean;
+}
+
+export interface WorkspaceMembersData {
+  seatStats: WorkspaceSeatStats;
+  members: EnrichedWorkspaceMember[];
+  pendingInvitations: WorkspaceInvitation[];
 }
 
 /**
@@ -250,5 +269,54 @@ export async function acceptWorkspaceInvitationAction(
     return { success: true, data: { workspaceSlug: workspace.slug } };
   } catch (err: any) {
     return { success: false, error: err.message || "Failed to accept invitation." };
+  }
+}
+
+/**
+ * Retrieves the complete members data for a workspace, including seat statistics,
+ * enriched active members, and pending invitations.
+ */
+export async function getWorkspaceMembersDataAction(
+  workspaceSlug: string
+): Promise<MemberActionResult<WorkspaceMembersData>> {
+  try {
+    if (!workspaceSlug || typeof workspaceSlug !== "string") {
+      return { success: false, error: "Invalid workspace slug." };
+    }
+
+    const services = await getServerServices();
+    const currentUser = await services.auth.getCurrentUser();
+    if (!currentUser) {
+      return { success: false, error: "Unauthorized: Please log in." };
+    }
+
+    const workspace = await services.workspace.getWorkspaceBySlug(workspaceSlug);
+    if (!workspace) {
+      return { success: false, error: "Workspace not found." };
+    }
+
+    const isOwner = workspace.ownerId === currentUser.id;
+    const member = await services.member.getMember(workspace.id, currentUser.id);
+
+    if (!isOwner && !member) {
+      return { success: false, error: "Permission denied." };
+    }
+
+    const [seatStats, members, pendingInvitations] = await Promise.all([
+      services.member.getWorkspaceSeatStats(workspace.id),
+      services.member.listMembers(workspace.id),
+      services.member.listPendingInvitations(workspace.id),
+    ]);
+
+    return {
+      success: true,
+      data: {
+        seatStats,
+        members,
+        pendingInvitations,
+      },
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to load members data." };
   }
 }

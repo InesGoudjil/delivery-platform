@@ -1,6 +1,67 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getServerServices } from "@/core/server";
 import { DeliveriesClient, DeliveryProjectItem } from "./deliveries-client";
+import DeliveriesLoading from "./loading";
+
+async function DeliveriesFeed({
+  workspace,
+}: {
+  workspace: { id: string; brandName: string; slug: string; accountType?: string };
+}) {
+  const services = await getServerServices();
+
+  // 1. Fetch real workspace deliveries and features in parallel (single roundtrip)
+  const [deliverySummaries, workspaceFeatures] = await Promise.all([
+    services.delivery.listWorkspaceDeliveriesSummary(workspace.id),
+    services.subscription.getFeatures(workspace.id),
+  ]);
+
+  // 2. Map deliveries synchronously in memory with zero N+1 database roundtrips
+  const deliveries: DeliveryProjectItem[] = deliverySummaries.map((item) => {
+    let durationStr = "01:00";
+    if (item.activeDurationSeconds && item.activeDurationSeconds > 0) {
+      const totalSec = Math.round(item.activeDurationSeconds);
+      const mins = Math.floor(totalSec / 60);
+      const secs = totalSec % 60;
+      durationStr = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    }
+
+    const updatedAt = new Date(item.updatedAt || item.createdAt);
+    const diffMins = Math.floor((Date.now() - updatedAt.getTime()) / (1000 * 60));
+    let lastActivity = "Just now";
+    if (diffMins > 60 * 24) {
+      lastActivity = `${Math.floor(diffMins / (60 * 24))} days ago`;
+    } else if (diffMins > 60) {
+      lastActivity = `${Math.floor(diffMins / 60)} hours ago`;
+    } else if (diffMins > 0) {
+      lastActivity = `${diffMins} mins ago`;
+    }
+
+    return {
+      id: item.id,
+      title: item.title,
+      clientName: item.clientName || "Private Client",
+      version: item.activeVersionNumber ? `v${item.activeVersionNumber}_DirectorCut` : "v1_Master",
+      duration: durationStr,
+      status: item.status,
+      shareToken: item.shareToken,
+      passcodeProtected: item.passcodeProtected,
+      downloadsAllowed: item.isDownloadAllowed,
+      assetsCount: item.assetsCount,
+      commentsCount: item.commentsCount,
+      lastActivity,
+    };
+  });
+
+  return (
+    <DeliveriesClient
+      workspace={workspace}
+      deliveries={deliveries}
+      features={workspaceFeatures}
+    />
+  );
+}
 
 export default async function DeliveriesPage({
   params,
@@ -20,87 +81,9 @@ export default async function DeliveriesPage({
     redirect("/");
   }
 
-  // 1. Fetch real workspace deliveries
-  const dbDeliveries = await services.delivery.listWorkspaceDeliveries(workspace.id);
-
-  // 2. Enrich with assets, versions, clients, and comments
-  const mappedDbDeliveries: DeliveryProjectItem[] = await Promise.all(
-    dbDeliveries.map(async (delivery) => {
-      const assets = await services.asset.listAssets(delivery.id);
-      const activeVersion =
-        assets.length > 0
-          ? await services.asset.getActiveVersion(assets[0].id)
-          : null;
-
-      let clientName = (delivery as { clientName?: string }).clientName || "Private Client";
-      if (delivery.clientId) {
-        const client = await services.client.getClientById(delivery.clientId);
-        if (client) clientName = client.name;
-      }
-
-      // Count comments for active version
-      let commentsCount = 0;
-      if (activeVersion) {
-        try {
-          const threads = await services.feedback.getThreadedFeedback(activeVersion.id);
-          commentsCount = threads.length;
-        } catch {
-          commentsCount = 0;
-        }
-      }
-
-      // Format duration (e.g. 47 -> 00:47)
-      let durationStr = "01:00";
-      if (activeVersion?.durationSeconds) {
-        const totalSec = Math.round(activeVersion.durationSeconds);
-        const mins = Math.floor(totalSec / 60);
-        const secs = totalSec % 60;
-        durationStr = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-      }
-
-      // Calculate relative time
-      const updatedAt = new Date(delivery.updatedAt || delivery.createdAt);
-      const diffMins = Math.floor((Date.now() - updatedAt.getTime()) / (1000 * 60));
-      let lastActivity = "Just now";
-      if (diffMins > 60 * 24) {
-        lastActivity = `${Math.floor(diffMins / (60 * 24))} days ago`;
-      } else if (diffMins > 60) {
-        lastActivity = `${Math.floor(diffMins / 60)} hours ago`;
-      } else if (diffMins > 0) {
-        lastActivity = `${diffMins} mins ago`;
-      }
-
-      return {
-        id: delivery.id,
-        title: delivery.title,
-        clientName,
-        version: activeVersion ? `v${activeVersion.versionNumber}_DirectorCut` : "v1_Master",
-        duration: durationStr,
-        status: (delivery.status as any) || "in_review",
-        shareToken: delivery.shareToken,
-        passcodeProtected: Boolean(delivery.passcodeHash),
-        downloadsAllowed: Boolean(delivery.isDownloadAllowed),
-        assetsCount: assets.length,
-        commentsCount,
-        lastActivity,
-      };
-    })
-  );
-
-
-
-  const workspaceFeatures = await services.subscription.getFeatures(workspace.id);
-
-  const deliveries =
-    mappedDbDeliveries.length > 0
-      ? [...mappedDbDeliveries]
-      : [];
-
   return (
-    <DeliveriesClient
-      workspace={workspace}
-      deliveries={deliveries}
-      features={workspaceFeatures}
-    />
+    <Suspense fallback={<DeliveriesLoading />}>
+      <DeliveriesFeed workspace={workspace} />
+    </Suspense>
   );
 }

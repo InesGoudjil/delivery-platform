@@ -31,6 +31,8 @@ export function PortfolioAbout({ profile }: PortfolioAboutProps) {
   const { setIsContactOpen } = usePortfolioModal();
   const extracted = useImageColor(profile.avatar, "#d24e02");
 
+  console.log("about",extracted,setIsContactOpen)
+
   return (
     <section className="relative rounded-[2rem] sm:rounded-[2.5rem] border border-white/10 overflow-hidden bg-[#0a0a0b] shadow-2xl">
       {/* 🎨 Ambient Color Glow Layers */}

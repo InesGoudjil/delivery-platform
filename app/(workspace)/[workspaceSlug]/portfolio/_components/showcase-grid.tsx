@@ -277,12 +277,12 @@ export function ShowcaseGrid({
                         }
                       />
                       <TooltipContent>
-                        {isHero ? "Currently Active Storefront Hero" : "Set as Cover Banner & Hero"}
+                        {isHero ? "Currently Active Storefront Hero" : "Set as Cover Banner"}
                       </TooltipContent>
                     </Tooltip>
                   )}
 
-                  <Tooltip>
+                  {/* <Tooltip>
                     <TooltipTrigger
                       render={
                         <Button
@@ -306,7 +306,7 @@ export function ShowcaseGrid({
                     <TooltipContent>
                       {isFeatured ? "Unpin from featured reel" : "Pin to featured reel"}
                     </TooltipContent>
-                  </Tooltip>
+                  </Tooltip> */}
 
                   {onEditItem && (
                     <Tooltip>

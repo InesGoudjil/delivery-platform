@@ -22,9 +22,10 @@ export function NavDocuments({
   title?: string;
   items: {
     name: string;
-    url: string;
+    url?: string;
     icon?: LucideIcon | React.ComponentType<{ className?: string }>;
     exact?: boolean;
+    onClick?: () => void;
   }[];
 }) {
   const pathname = usePathname();
@@ -43,9 +44,33 @@ export function NavDocuments({
       )}
       <SidebarMenu className="space-y-0.5">
         {items.map((item) => {
-          const isActive = item.exact
-            ? pathname === item.url || pathname === `${item.url}/`
-            : pathname === item.url || (item.url.includes("#") ? pathname === item.url.split("#")[0] : pathname.startsWith(item.url));
+          const isActive = item.url
+            ? item.exact
+              ? pathname === item.url || pathname === `${item.url}/`
+              : pathname === item.url || (item.url.includes("#") ? pathname === item.url.split("#")[0] : pathname.startsWith(item.url))
+            : false;
+
+          if (item.onClick) {
+            return (
+              <SidebarMenuItem key={item.name}>
+                <SidebarMenuButton
+                  tooltip={item.name}
+                  onClick={item.onClick}
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 h-auto group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50 cursor-pointer"
+                >
+                  {item.icon && (
+                    <item.icon className="size-4 shrink-0 transition-colors text-muted-foreground" />
+                  )}
+                  <TypographySpan
+                    variant="small"
+                    className="truncate group-data-[collapsible=icon]:hidden text-xs font-medium"
+                  >
+                    {item.name}
+                  </TypographySpan>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          }
 
           return (
             <SidebarMenuItem key={item.name}>
@@ -60,7 +85,7 @@ export function NavDocuments({
                     : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
                 )}
               >
-                <Link href={item.url}>
+                <Link href={item.url || "#"}>
                   {item.icon && (
                     <item.icon
                       className={cn(

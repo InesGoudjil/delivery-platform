@@ -75,3 +75,28 @@ export interface ProjectAssetRelation {
   assetId: string;
   displayOrder: number;
 }
+
+export interface ProjectAsset {
+  id: string;
+  title: string;
+  type: "film" | "still";
+  url: string;
+  thumbnailUrl: string;
+  aspectRatio?: string;
+  duration?: string | null;
+  category?: string;
+}
+
+export interface PortfolioItem {
+  id: string;
+  title: string;
+  category: string;
+  type: "film" | "still" | "project";
+  assetCount: number;
+  thumbnailUrl: string;
+  mediaUrl?: string;
+  description?: string | null;
+  aspectRatio?: string;
+  isFeatured?: boolean;
+  projectAssets?: ProjectAsset[];
+}

@@ -40,6 +40,7 @@ import { signOutAction } from "@/app/actions/auth";
 import { WorkspaceHeaderSwitcher, WorkspaceHeaderItem } from "./workspace-header-switcher";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { InstallPwaMenuItem } from "@/components/pwa/install-pwa-button";
+import { useWorkspace } from "@/lib/swr";
 import {
   Typography,
   TypographySpan,
@@ -84,7 +85,7 @@ export interface WorkspaceHeaderProps {
 }
 
 export function WorkspaceHeader({
-  workspace,
+  workspace: initialWorkspace,
   workspaces = [],
   user,
   profile,
@@ -92,6 +93,11 @@ export function WorkspaceHeader({
   features,
 }: WorkspaceHeaderProps) {
   const [isPending, startTransition] = React.useTransition();
+  const { workspace: liveWorkspace } = useWorkspace(
+    initialWorkspace?.slug,
+    initialWorkspace as any
+  );
+  const workspace = liveWorkspace || initialWorkspace;
 
   const brandName = workspace?.brandName || "Pedro Concreato";
   const workspaceSlug = workspace?.slug || "studio";
@@ -114,12 +120,15 @@ export function WorkspaceHeader({
   };
 
   const listToMap = workspaces.length > 0 ? workspaces : workspace ? [workspace] : [];
-  const headerWorkspaceItems: WorkspaceHeaderItem[] = listToMap.map((w) => ({
-    id: w.id,
-    name: w.brandName,
-    slug: w.slug,
-    plan: planName ? `${planName} plan` : "Studio plan",
-  }));
+  const headerWorkspaceItems: WorkspaceHeaderItem[] = listToMap.map((w) => {
+    const isCurrent = w.slug === workspaceSlug || w.id === workspace?.id;
+    return {
+      id: w.id,
+      name: isCurrent && workspace?.brandName ? workspace.brandName : w.brandName,
+      slug: w.slug,
+      plan: planName ? `${planName} plan` : "Studio plan",
+    };
+  });
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-between gap-2 sm:gap-4 border-b border-border/40 bg-background/10 backdrop-blur-xl px-3 sm:px-6 lg:px-8 sticky top-0 z-40 text-foreground transition-colors duration-200">

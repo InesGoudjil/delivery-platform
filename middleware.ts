@@ -1,83 +1,20 @@
-import { type NextRequest, NextResponse } from 'next/server';
-import { updateSession } from './lib/supabase/middleware';
+import { type NextRequest } from "next/server";
+import { updateSession } from "./lib/supabase/middleware";
+import { handleWaitlistMiddleware } from "./lib/middleware/waitlist";
 
 export async function middleware(request: NextRequest) {
-  const requestId = request.headers.get('x-request-id') || crypto.randomUUID();
-  request.headers.set('x-request-id', requestId);
+  const requestId = request.headers.get("x-request-id") || crypto.randomUUID();
+  request.headers.set("x-request-id", requestId);
 
-  const isWaitlistOnly =
-    process.env.WAITLIST_ONLY === 'true' ||
-    process.env.NEXT_PUBLIC_WAITLIST_ONLY === 'true';
-
-  if (isWaitlistOnly) {
-    const { pathname } = request.nextUrl;
-    const bypassSecret = process.env.WAITLIST_BYPASS_SECRET;
-    const previewParam =
-      request.nextUrl.searchParams.get('preview') ||
-      request.nextUrl.searchParams.get('bypass');
-    const bypassCookie = request.cookies.get('waitlist_bypass')?.value;
-
-    // Support clearing the bypass cookie to test waitlist view again
-    if (previewParam === 'clear') {
-      const cleanUrl = request.nextUrl.clone();
-      cleanUrl.searchParams.delete('preview');
-      cleanUrl.searchParams.delete('bypass');
-      const response = NextResponse.redirect(cleanUrl);
-      response.cookies.delete('waitlist_bypass');
-      return response;
-    }
-
-    // Check if team member is unlocking preview via secret query param (?preview=SECRET or ?bypass=SECRET)
-    if (bypassSecret && previewParam === bypassSecret) {
-      const cleanUrl = request.nextUrl.clone();
-      cleanUrl.searchParams.delete('preview');
-      cleanUrl.searchParams.delete('bypass');
-      const response = NextResponse.redirect(cleanUrl);
-      response.cookies.set('waitlist_bypass', bypassSecret, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 30, // 30 days
-        path: '/',
-      });
-      return response;
-    }
-
-    // Check if user has valid bypass cookie
-    const isBypassed = Boolean(bypassSecret && bypassCookie === bypassSecret);
-
-    if (!isBypassed) {
-      // Allow internal Next.js paths, API routes, favicon, and PWA assets
-      if (
-        pathname.startsWith('/_next') ||
-        pathname.startsWith('/api') ||
-        pathname === '/favicon.ico' ||
-        pathname === '/sw.js' ||
-        pathname === '/manifest.webmanifest'
-      ) {
-        return await updateSession(request);
-      }
-
-      // Only allow the waitlist and the client/delivery view demo
-      if (
-        pathname === '/waitlist' ||
-        pathname === '/delivery-view' ||
-        pathname === '/demo'
-      ) {
-        return await updateSession(request);
-      }
-
-      // Redirect any other route (root '/', '/login', '/signup', '/admin', workspaces) to /waitlist
-      const url = request.nextUrl.clone();
-      url.pathname = '/waitlist';
-      const redirectRes = NextResponse.redirect(url);
-      redirectRes.headers.set('x-request-id', requestId);
-      return redirectRes;
-    }
+  // 1. Waitlist gatekeeping, preview bypass tokens, and cookies
+  const waitlistResponse = handleWaitlistMiddleware(request, { requestId });
+  if (waitlistResponse) {
+    return waitlistResponse;
   }
 
+  // 2. Auth session refresh, session revocation & route guards
   const response = await updateSession(request);
-  response.headers.set('x-request-id', requestId);
+  response.headers.set("x-request-id", requestId);
   return response;
 }
 
@@ -90,6 +27,6 @@ export const config = {
      * - favicon.ico, sw.js, manifest.webmanifest
      * - images, media, and font assets
      */
-    '/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|mp4|webm)$).*)',
+    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|mp4|webm)$).*)",
   ],
 };

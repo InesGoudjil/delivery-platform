@@ -35,7 +35,7 @@ export function PortfolioHeader({ profile }: PortfolioHeaderProps) {
                   />
                 </div>
               )} */}
-              <div className="flex items-center gap-1.5 min-w-0">
+              <div className="flex items-baseline gap-1.5 min-w-0">
                 <TypographySpan className="block truncate font-heading font-extrabold text-base sm:text-2xl tracking-tight text-white group-hover:text-zinc-200 transition-colors whitespace-nowrap">
                   {profile.name}
                 </TypographySpan>

@@ -92,7 +92,7 @@ export function DeliveryAssetCard({
       showSubtitle={showCardInfo}
       textAlign="center"
       footerMode="overlay"
-      centerAction={isPhoto ? <ZoomButtonOverlay /> : <PlayButtonOverlay />}
+      centerAction={isPhoto ? null : <PlayButtonOverlay />}
       watermarkMedia={
         showWatermarkOnAsset
           ? {

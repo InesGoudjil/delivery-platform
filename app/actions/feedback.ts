@@ -22,6 +22,7 @@ import {
   type UpdateFeedbackReplyInput,
 } from "@/lib/validations";
 import { createScopedLogger } from "@/lib/logger";
+import { checkRateLimit, getClientIp, RATELIMIT_POLICIES } from "@/lib/upstash";
 
 const log = createScopedLogger({ actionGroup: "feedback" });
 
@@ -81,6 +82,15 @@ export async function addFeedbackAction(params: AddFeedbackParams) {
       shareToken,
       deliveryId,
     } = validated.data;
+
+    const ip = await getClientIp();
+    const rateLimit = await checkRateLimit({
+      policy: RATELIMIT_POLICIES.feedbackAdd,
+      identifier: [ip, deliveryId || shareToken || "global"],
+    });
+    if (!rateLimit.success) {
+      return { error: rateLimit.error };
+    }
 
     const adminServices = await getServerAdminServices();
     const userServices = await getServerServices();

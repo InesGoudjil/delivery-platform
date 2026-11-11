@@ -1,8 +1,10 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getServerServices } from "@/core/server";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 import { PortfolioClient, PortfolioItem } from "./portfolio-client";
 import { SelectableCoverAsset } from "@/lib/portfolio-data";
+import PortfolioLoading from "./loading";
 
 export default async function PortfolioPage({
   params,
@@ -21,6 +23,25 @@ export default async function PortfolioPage({
   if (!workspace) {
     redirect("/");
   }
+
+  return (
+    <Suspense fallback={<PortfolioLoading />}>
+      <PortfolioContent
+        workspace={workspace}
+        workspaceSlug={workspaceSlug}
+      />
+    </Suspense>
+  );
+}
+
+async function PortfolioContent({
+  workspace,
+  workspaceSlug,
+}: {
+  workspace: any;
+  workspaceSlug: string;
+}) {
+  const services = await getServerServices();
 
   // 1. Get or Create Portfolio domain entity
   const portfolio = await services.portfolio.getOrCreatePortfolio(

@@ -240,11 +240,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                     tiltIntensity={4}
                     glareIntensity={0.12}
                     topLeft={<MediaBadge type="film" />}
-                    topRight={
-                      film.tc ? (
-                        <AssetCountBadge count={film.tc} />
-                      ) : undefined
-                    }
+                    topRight={null}
                     centerAction={<PlayButtonOverlay />}
                     textAlign="center"
                     footerMode="overlay"
@@ -323,7 +319,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                   tiltIntensity={4}
                   glareIntensity={0.12}
                   topLeft={<MediaBadge type="still" />}
-                  centerAction={<ZoomButtonOverlay />}
+                  centerAction={null}
                   textAlign="center"
                   footerMode="overlay"
                 />

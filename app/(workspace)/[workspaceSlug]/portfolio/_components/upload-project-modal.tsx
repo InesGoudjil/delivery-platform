@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Upload,
   Plus,
@@ -76,7 +75,6 @@ export function UploadProjectModal({
   limit = 4,
   workspaceSlug,
 }: UploadProjectModalProps) {
-  const router = useRouter();
   const [dragActive, setDragActive] = useState(false);
   const [projectName, setProjectName] = useState("");
   const [category, setCategory] = useState("Commercial Project");
@@ -492,7 +490,6 @@ export function UploadProjectModal({
       };
 
       onProjectCreated(newItem);
-      router.refresh();
       resetForm();
       onClose();
     } catch (err: any) {

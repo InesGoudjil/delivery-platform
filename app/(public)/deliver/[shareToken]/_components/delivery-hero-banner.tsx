@@ -37,7 +37,7 @@ export function DeliveryHeroBanner({
   const canDownload = Boolean(isGlobalDownloadUnlocked);
 
   return (
-    <Card className="relative rounded-3xl overflow-hidden border border-white/10 min-h-[350px] sm:min-h-[560px] lg:min-h-[600px] flex flex-col justify-end shadow-2xl group bg-transparent py-0 hover:translate-y-0">
+    <Card className="relative w-full aspect-[4/5] sm:aspect-[21/9] min-h-[380px] sm:min-h-0 rounded-[1.75rem] sm:rounded-[2rem] overflow-hidden border border-white/10 flex flex-col justify-end shadow-2xl group bg-transparent py-0 hover:translate-y-0">
       {/* Project Cover Background */}
       <div
         className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-[1.02]"
@@ -47,17 +47,17 @@ export function DeliveryHeroBanner({
       <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0b] via-[#0a0a0b]/60 to-[#0a0a0b]/35" />
 
       {/* Inner Content - Positioned at bottom */}
-      <CardContent className="relative z-10 p-5 sm:p-10 lg:p-12 w-full mt-auto">
+      <CardContent className="relative z-10 p-5 sm:p-7 md:p-10 lg:p-12 w-full mt-auto">
         <TypographyKicker className="text-xs sm:text-sm font-semibold text-primary font-sans tracking-wide">
           Delivery for {clientName || "Prestige Rentals"}
         </TypographyKicker>
 
-        <TypographyH1 className="font-heading font-black text-2xl sm:text-5xl lg:text-6xl text-[#f6f3ec] uppercase tracking-tight leading-[1.05] mt-1.5 sm:mt-2">
+        <TypographyH1 className="font-heading font-black text-2xl sm:text-4xl lg:text-5xl xl:text-6xl text-[#f6f3ec] uppercase tracking-tight leading-[1.05] mt-1.5 sm:mt-2">
           {title}
         </TypographyH1>
 
         {/* 4 Metadata statistics */}
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-4 sm:gap-14 mt-5 sm:mt-6 pt-4 sm:pt-5 border-t border-white/15">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-3 sm:gap-8 lg:gap-14 mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-white/15">
           <div className="flex flex-col gap-0.5 sm:gap-1">
             <TypographySpan className="text-[10px] uppercase tracking-widest text-[#aeaeb4]">
               DELIVERED

@@ -1,8 +1,14 @@
 "use client";
 
 import React, { useState, useEffect, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { PortfolioAppearance, PortfolioExperience, PortfolioHeroCover, SocialLinks } from "@/core/entities/portfolio";
+import {
+  PortfolioAppearance,
+  PortfolioExperience,
+  PortfolioHeroCover,
+  SocialLinks,
+  PortfolioItem,
+  ProjectAsset,
+} from "@/core/entities/portfolio";
 import {
   toggleFeaturedItemAction,
   deletePortfolioItemAction,
@@ -10,8 +16,17 @@ import {
   updateAssetAction,
   updatePortfolioAction,
 } from "@/app/actions/portfolio";
+import {
+  useWorkspacePortfolio,
+  applyAddPortfolioItem,
+  applyRemovePortfolioItem,
+  applyRemoveProjectAsset,
+  applyUpdatePortfolioItem,
+  applyToggleFeaturedItem,
+  deriveAvailableCoverAssets,
+} from "@/lib/swr";
 import { EditAssetDialog, type EditableAssetItem } from "@/components/workspaces/edit-asset-dialog";
-import { TrashBinDialog } from "@/components/workspaces/trash-bin-dialog";
+import { useModals } from "@/components/modals";
 import { PortfolioHero } from "./_components/portfolio-hero";
 import { CoverBannerSection } from "./_components/cover-banner-section";
 import { AppearanceToolbar } from "./_components/appearance-toolbar";
@@ -28,33 +43,13 @@ import {
   ImageCropEditorDialog,
   ImageCropResult,
 } from "@/components/ui/image-crop-editor-dialog";
+import {
+  directUploadMediaFile,
+  formatBytes,
+} from "@/components/workspaces/video-uploader";
+import { createUploadProgressToast } from "@/lib/upload-toast";
 
-
-
-export interface ProjectAsset {
-  id: string;
-  title: string;
-  type: "film" | "still";
-  url: string;
-  thumbnailUrl: string;
-  aspectRatio?: string;
-  duration?: string | null;
-  category?: string;
-}
-
-export interface PortfolioItem {
-  id: string;
-  title: string;
-  category: string;
-  type: "film" | "still" | "project";
-  assetCount: number;
-  thumbnailUrl: string;
-  mediaUrl?: string;
-  description?: string | null;
-  aspectRatio?: string;
-  isFeatured?: boolean;
-  projectAssets?: ProjectAsset[];
-}
+export type { ProjectAsset, PortfolioItem };
 
 
 export interface PortfolioClientProps {
@@ -87,13 +82,28 @@ export function PortfolioClient({
   initialProjects,
   initialFeaturedIds,
   features,
-  availableAssets,
+  availableAssets: passedAvailableAssets,
 }: PortfolioClientProps) {
-  const router = useRouter();
-  const [projects, setProjects] = useState<PortfolioItem[]>(initialProjects);
-  const [featuredIds, setFeaturedIds] = useState<string[]>(initialFeaturedIds);
-  const [isTrashOpen, setIsTrashOpen] = useState(false);
+  const {
+    items: projects,
+    featuredIds,
+    mutate,
+  } = useWorkspacePortfolio(workspace.slug, {
+    items: initialProjects,
+    featuredIds: initialFeaturedIds,
+  });
+
+  const { setShowTrashModal } = useModals();
   const [isPending, startTransition] = useTransition();
+
+  const derivedAvailableAssets = React.useMemo(
+    () => deriveAvailableCoverAssets(projects),
+    [projects]
+  );
+  const availableAssets =
+    derivedAvailableAssets.length > 0
+      ? derivedAvailableAssets
+      : (passedAvailableAssets || []);
 
   // 1. Hero Cover Asset Configuration
   const initialHeroCover: PortfolioHeroCover = portfolio.appearance?.heroCover
@@ -147,6 +157,16 @@ export function PortfolioClient({
     }
   };
 
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const handleProjectCreated = (newItem: PortfolioItem) => {
+    mutate(
+      (current) => (current ? applyAddPortfolioItem(current, newItem) : current),
+      { revalidate: true }
+    );
+  };
+
   // Interactive Image Crop / Edit Dialog State for Custom Hero Cover
   const [cropEditor, setCropEditor] = useState<{
     isOpen: boolean;
@@ -158,28 +178,99 @@ export function PortfolioClient({
     fileName: "custom-cover.jpg",
   });
 
-  const handleCustomCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCustomCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
     e.target.value = "";
 
-    const objectUrl = URL.createObjectURL(file);
     const isVid = file.type.startsWith("video/");
 
     if (isVid) {
-      const updatedCover: PortfolioHeroCover = {
-        ...heroCover,
-        assetId: null,
-        type: "video",
-        mediaUrl: objectUrl,
-        thumbnailUrl: objectUrl,
-        title: file.name.replace(/\.[^/.]+$/, ""),
-        category: "Featured Film",
-      };
-      setHeroCover(updatedCover);
-      toast.success("Video preview loaded as cover!");
+      // 1. Direct Cloudflare Stream / R2 upload for video
+      const fileBaseName = file.name.replace(/\.[^/.]+$/, "");
+      const uploadToast = createUploadProgressToast();
+      uploadToast.start({
+        title: `Uploading Hero Video: ${fileBaseName}`,
+        fileName: file.name,
+        fileSize: formatBytes(file.size),
+        percentage: 0,
+        statusText: "Initiating Cloudflare upload...",
+      });
+
+      try {
+        setIsUploadingMedia(true);
+        setUploadProgress(0);
+
+        const result = await directUploadMediaFile({
+          workspaceId: workspace.id,
+          projectId: "", // standalone asset
+          file,
+          title: fileBaseName,
+          assetType: "video",
+          onProgress: (percent, loaded, total) => {
+            setUploadProgress(percent);
+            uploadToast.update({
+              loadedBytes: loaded,
+              totalBytes: total,
+              percentage: percent,
+              statusText:
+                percent < 100
+                  ? "Uploading directly to Cloudflare..."
+                  : "Finalizing video records...",
+            });
+          },
+          onStatusChange: (statusText) => {
+            uploadToast.update({ statusText });
+          },
+        });
+
+        uploadToast.success("Hero video uploaded to Cloudflare!");
+
+        const mediaUrl =
+          result.assetVersion?.rawFileUrl ||
+          result.assetVersion?.hlsManifestUrl ||
+          "";
+        const thumbnailUrl =
+          result.assetVersion?.thumbnailUrl ||
+          result.assetVersion?.rawFileUrl ||
+          "";
+
+        const updatedCover: PortfolioHeroCover = {
+          ...heroCover,
+          assetId: result.asset.id,
+          type: "video",
+          mediaUrl,
+          thumbnailUrl,
+          title: result.asset.title || fileBaseName,
+          category: "Featured Film",
+          videoBehavior: "ambient_loop",
+        };
+
+        setHeroCover(updatedCover);
+
+        // Add to workspace portfolio showcase projects
+        const newItem: PortfolioItem = {
+          id: result.asset.id,
+          title: result.asset.title || fileBaseName,
+          category: "Featured Film",
+          type: "film",
+          assetCount: 1,
+          thumbnailUrl,
+          mediaUrl,
+        };
+        handleProjectCreated(newItem);
+        toast.success('Hero video uploaded & ready! Click "Save Hero Banner" to publish.');
+      } catch (err: any) {
+        uploadToast.error(err.message || "Failed to upload video to Cloudflare");
+        toast.error(err.message || "Failed to upload video to Cloudflare");
+      } finally {
+        setIsUploadingMedia(false);
+        setUploadProgress(0);
+      }
     } else {
+      // 2. Image: open crop editor first so the filmmaker can frame the banner perfectly
+      const objectUrl = URL.createObjectURL(file);
       setCropEditor({
         isOpen: true,
         imageSrc: objectUrl,
@@ -188,16 +279,97 @@ export function PortfolioClient({
     }
   };
 
-  const handleApplyCropResult = (result: ImageCropResult) => {
-    const updated: PortfolioHeroCover = {
-      ...heroCover,
-      assetId: null,
-      type: "still",
-      mediaUrl: result.dataUrl,
-      thumbnailUrl: result.dataUrl,
-    };
-    setHeroCover(updated);
-    toast.success("Cover banner image updated!");
+  const handleApplyCropResult = async (result: ImageCropResult) => {
+    // Revoke objectUrl to avoid memory leaks
+    if (cropEditor.imageSrc && cropEditor.imageSrc.startsWith("blob:")) {
+      URL.revokeObjectURL(cropEditor.imageSrc);
+    }
+    const currentFileName = cropEditor.fileName || "custom-hero-cover.jpg";
+    setCropEditor({
+      isOpen: false,
+      imageSrc: null,
+      fileName: "custom-hero-cover.jpg",
+    });
+
+    try {
+      setIsUploadingMedia(true);
+      setUploadProgress(0);
+
+      const imageFile = result.file;
+      const fileBaseName = currentFileName.replace(/\.[^/.]+$/, "");
+      const uploadToast = createUploadProgressToast();
+      uploadToast.start({
+        title: `Uploading Hero Image: ${fileBaseName}`,
+        fileName: currentFileName,
+        fileSize: formatBytes(imageFile.size),
+        percentage: 0,
+        statusText: "Initiating Cloudflare upload...",
+      });
+
+      const uploadResult = await directUploadMediaFile({
+        workspaceId: workspace.id,
+        projectId: "", // standalone asset
+        file: imageFile,
+        title: fileBaseName,
+        assetType: "photo_gallery",
+        onProgress: (percent, loaded, total) => {
+          setUploadProgress(percent);
+          uploadToast.update({
+            loadedBytes: loaded,
+            totalBytes: total,
+            percentage: percent,
+            statusText:
+              percent < 100
+                ? "Uploading directly to Cloudflare..."
+                : "Finalizing image records...",
+          });
+        },
+        onStatusChange: (statusText) => {
+          uploadToast.update({ statusText });
+        },
+      });
+
+      uploadToast.success("Hero image uploaded to Cloudflare!");
+
+      const mediaUrl =
+        uploadResult.assetVersion?.rawFileUrl ||
+        uploadResult.assetVersion?.thumbnailUrl ||
+        "";
+      const thumbnailUrl =
+        uploadResult.assetVersion?.thumbnailUrl ||
+        uploadResult.assetVersion?.rawFileUrl ||
+        "";
+
+      const updated: PortfolioHeroCover = {
+        ...heroCover,
+        assetId: uploadResult.asset.id,
+        type: "still",
+        mediaUrl,
+        thumbnailUrl,
+        title: uploadResult.asset.title || fileBaseName,
+        category: "Featured Still",
+      };
+
+      setHeroCover(updated);
+
+      // Add to workspace portfolio showcase projects
+      const newItem: PortfolioItem = {
+        id: uploadResult.asset.id,
+        title: uploadResult.asset.title || fileBaseName,
+        category: "Photo Still",
+        type: "still",
+        assetCount: 1,
+        thumbnailUrl,
+        mediaUrl,
+      };
+      handleProjectCreated(newItem);
+      toast.success('Hero image uploaded & ready! Click "Save Hero Banner" to publish.');
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upload hero image to Cloudflare");
+    } finally {
+      setIsUploadingMedia(false);
+      setUploadProgress(0);
+    }
   };
 
   // Direct Set-as-Hero handler from Showcase Grid
@@ -225,36 +397,39 @@ export function PortfolioClient({
 
   const selectedCoverItem = projects.find((p) => p.id === heroCover.assetId);
 
-  useEffect(() => {
-    setProjects(initialProjects);
-  }, [initialProjects]);
-
-  useEffect(() => {
-    setFeaturedIds(initialFeaturedIds);
-  }, [initialFeaturedIds]);
-
-  const handleToggleFeature = (item: PortfolioItem) => {
+  const handleToggleFeature = async (item: PortfolioItem) => {
     const isCurrentlyFeatured = featuredIds.includes(item.id);
-    const updatedIds = isCurrentlyFeatured
-      ? featuredIds.filter((id) => id !== item.id)
-      : [...featuredIds, item.id];
 
-    setFeaturedIds(updatedIds);
-
-    startTransition(async () => {
-      const itemType = item.type === "project" ? "project" : "asset";
-      await toggleFeaturedItemAction(
-        portfolio.id,
-        item.id,
-        itemType,
-        !isCurrentlyFeatured
+    try {
+      await mutate(
+        async (current) => {
+          const itemType = item.type === "project" ? "project" : "asset";
+          const res = await toggleFeaturedItemAction(
+            portfolio.id,
+            item.id,
+            itemType,
+            !isCurrentlyFeatured
+          );
+          if (!res.success) {
+            throw new Error(res.error || "Failed to update featured reel.");
+          }
+          showFlash(
+            isCurrentlyFeatured
+              ? `Removed "${item.title}" from featured reel`
+              : `Pinned "${item.title}" to featured reel`
+          );
+          return current ? applyToggleFeaturedItem(current, item.id) : current;
+        },
+        {
+          optimisticData: (current) => (current ? applyToggleFeaturedItem(current, item.id) : current),
+          rollbackOnError: true,
+          populateCache: true,
+          revalidate: true,
+        }
       );
-      showFlash(
-        isCurrentlyFeatured
-          ? `Removed "${item.title}" from featured reel`
-          : `Pinned "${item.title}" to featured reel`
-      );
-    });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update featured reel.");
+    }
   };
 
   const initialApp: PortfolioAppearance = portfolio.appearance || {
@@ -290,85 +465,90 @@ export function PortfolioClient({
     toast.success(msg);
   };
 
-  const handleProjectCreated = (newItem: PortfolioItem) => {
-    setProjects((prev) => [newItem, ...prev]);
-    router.refresh();
-  };
-
   const handleDeleteItem = async (item: PortfolioItem | ProjectAsset) => {
-    startTransition(async () => {
-      const itemType =
-        "type" in item && item.type === "project"
-          ? "project"
-          : item.type === "still"
-          ? "still"
-          : "film";
+    const itemType =
+      "type" in item && item.type === "project"
+        ? "project"
+        : item.type === "still"
+        ? "still"
+        : "film";
 
-      const res = await deletePortfolioItemAction(
-        item.id,
-        itemType,
-        portfolio.id,
-        workspace.slug
+    try {
+      await mutate(
+        async (current) => {
+          const res = await deletePortfolioItemAction(
+            item.id,
+            itemType,
+            portfolio.id,
+            workspace.slug
+          );
+          if (!res.success) {
+            throw new Error(("error" in res && res.error) ? String(res.error) : "Failed to delete item");
+          }
+          showFlash(itemType === "project" ? `Deleted project "${item.title}"` : `Moved "${item.title}" to Trash`);
+          if (selectedStill?.id === item.id) {
+            setSelectedStill(null);
+            setActiveParentProject(null);
+          }
+          if (selectedFilm?.id === item.id) {
+            setSelectedFilm(null);
+            setActiveParentProject(null);
+          }
+          if (selectedProject?.id === item.id) {
+            setSelectedProject(null);
+            setActiveParentProject(null);
+          }
+          return current ? applyRemovePortfolioItem(current, item.id) : current;
+        },
+        {
+          optimisticData: (current) => (current ? applyRemovePortfolioItem(current, item.id) : current),
+          rollbackOnError: true,
+          populateCache: true,
+          revalidate: true,
+        }
       );
-
-      if (res.success) {
-        setProjects((prev) => prev.filter((p) => p.id !== item.id));
-        setFeaturedIds((prev) => prev.filter((id) => id !== item.id));
-        showFlash(itemType === "project" ? `Deleted project "${item.title}"` : `Moved "${item.title}" to Trash`);
-        if (selectedStill?.id === item.id) {
-          setSelectedStill(null);
-          setActiveParentProject(null);
-        }
-        if (selectedFilm?.id === item.id) {
-          setSelectedFilm(null);
-          setActiveParentProject(null);
-        }
-        if (selectedProject?.id === item.id) {
-          setSelectedProject(null);
-          setActiveParentProject(null);
-        }
-      } else {
-        toast.error(("error" in res && res.error) ? String(res.error) : "Failed to delete item");
-      }
-    });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete item");
+    }
   };
 
   const handleDeleteProjectAsset = async (asset: ProjectAsset) => {
-    startTransition(async () => {
-      const res = await deleteAssetAction(asset.id, {
-        portfolioId: portfolio.id,
-        workspaceSlug: workspace.slug,
-        projectId: selectedProject?.id,
-      });
+    if (!selectedProject) return;
+    const projectId = selectedProject.id;
 
-      if (res.success) {
-        setProjects((prev) =>
-          prev.map((p) => {
-            if (p.id === selectedProject?.id && p.projectAssets) {
-              const updatedAssets = p.projectAssets.filter((a) => a.id !== asset.id);
-              return {
-                ...p,
-                assetCount: updatedAssets.length,
-                projectAssets: updatedAssets,
-              };
-            }
-            return p;
-          })
-        );
-        setSelectedProject((prev) => {
-          if (!prev || !prev.projectAssets) return prev;
-          const updatedAssets = prev.projectAssets.filter((a) => a.id !== asset.id);
-          return {
-            ...prev,
-            assetCount: updatedAssets.length,
-            projectAssets: updatedAssets,
-          };
-        });
-        showFlash(`Moved "${asset.title}" to Trash`);
-      } else {
-        toast.error(res.error || "Failed to move asset to trash");
-      }
-    });
+    try {
+      await mutate(
+        async (current) => {
+          const res = await deleteAssetAction(asset.id, {
+            portfolioId: portfolio.id,
+            workspaceSlug: workspace.slug,
+            projectId,
+          });
+          if (!res.success) {
+            throw new Error(res.error || "Failed to delete asset.");
+          }
+          showFlash(`Moved "${asset.title}" to Trash`);
+          setSelectedProject((prev) => {
+            if (!prev || !prev.projectAssets) return prev;
+            const updatedAssets = prev.projectAssets.filter((a) => a.id !== asset.id);
+            return {
+              ...prev,
+              assetCount: updatedAssets.length,
+              projectAssets: updatedAssets,
+            };
+          });
+          return current ? applyRemoveProjectAsset(current, projectId, asset.id) : current;
+        },
+        {
+          optimisticData: (current) => (current ? applyRemoveProjectAsset(current, projectId, asset.id) : current),
+          rollbackOnError: true,
+          populateCache: true,
+          revalidate: true,
+        }
+      );
+    } catch (err: any) {
+      toast.error(err.message || "Failed to move asset to trash");
+    }
   };
 
   const handleOpenEdit = (item: PortfolioItem | ProjectAsset) => {
@@ -412,37 +592,9 @@ export function PortfolioClient({
       );
 
       if (res.success) {
-        setProjects((prev) =>
-          prev.map((p) => {
-            if (p.id === updated.id) {
-              return {
-                ...p,
-                title: updated.title,
-                description: updated.description !== undefined ? updated.description : p.description,
-                category: updated.category || p.category,
-                thumbnailUrl: updated.thumbnailUrl || p.thumbnailUrl,
-                aspectRatio: updated.aspectRatio || p.aspectRatio,
-              };
-            }
-            if (p.projectAssets) {
-              const updatedAssets = p.projectAssets.map((a) =>
-                a.id === updated.id
-                  ? {
-                      ...a,
-                      title: updated.title,
-                      category: updated.category || a.category,
-                      thumbnailUrl: updated.thumbnailUrl || a.thumbnailUrl,
-                      aspectRatio: updated.aspectRatio || a.aspectRatio,
-                    }
-                  : a
-              );
-              return {
-                ...p,
-                projectAssets: updatedAssets,
-              };
-            }
-            return p;
-          })
+        mutate(
+          (current) => (current ? applyUpdatePortfolioItem(current, updated) : current),
+          { revalidate: true }
         );
 
         if (selectedProject?.id === updated.id) {
@@ -530,6 +682,8 @@ export function PortfolioClient({
           isSavingHero={isSavingHero}
           isHeroDirty={isHeroDirty}
           selectedAssetRatio={selectedCoverItem?.aspectRatio}
+          isUploadingMedia={isUploadingMedia}
+          uploadProgress={uploadProgress}
         />
 
         {/* 4. Showcase Work Grid (with direct Set as Hero capability) */}
@@ -545,7 +699,7 @@ export function PortfolioClient({
           onSelectItem={handleSelectItem}
           onDeleteItem={handleDeleteItem}
           onEditItem={handleOpenEdit}
-          onOpenTrash={() => setIsTrashOpen(true)}
+          onOpenTrash={() => setShowTrashModal(true)}
           heroAssetId={heroCover.assetId}
           onSetAsHero={handleSetAsHero}
         />
@@ -572,6 +726,7 @@ export function PortfolioClient({
           onEditAsset={handleOpenEdit}
           showFeedback={false}
           showApproval={false}
+          showVersions={false}
         />
       )}
 
@@ -613,26 +768,24 @@ export function PortfolioClient({
         dialogTitle={itemToEdit?.type === "project" ? "EDIT PROJECT" : "EDIT ASSET"}
       />
 
-      {/* 9. Workspace Trash Bin Dialog */}
-      <TrashBinDialog
-        isOpen={isTrashOpen}
-        onOpenChange={setIsTrashOpen}
-        workspaceId={workspace.id}
-        workspaceSlug={workspace.slug}
-        onItemRestored={() => {
-          router.refresh();
-        }}
-      />
-
       {/* 10. Interactive Cover Image Crop & Edit Modal */}
       <ImageCropEditorDialog
         isOpen={cropEditor.isOpen}
-        onClose={() => setCropEditor((prev) => ({ ...prev, isOpen: false }))}
+        onClose={() => {
+          if (cropEditor.imageSrc && cropEditor.imageSrc.startsWith("blob:")) {
+            URL.revokeObjectURL(cropEditor.imageSrc);
+          }
+          setCropEditor({ isOpen: false, imageSrc: null, fileName: "custom-cover.jpg" });
+        }}
         imageSrc={cropEditor.imageSrc}
         title="EDIT & CROP COVER BANNER"
         subtitle="Adjust cover banner framing and aspect ratio."
-        defaultAspectRatio="16:9"
-        aspectRatioOptions={["16:9", "3:1", "2.39:1"]}
+        defaultAspectRatio={
+          heroCover.aspectRatio === "16:9" || heroCover.aspectRatio === "3:1"
+            ? heroCover.aspectRatio
+            : "2.39:1"
+        }
+        aspectRatioOptions={["2.39:1", "16:9", "3:1"]}
         outputFileName={cropEditor.fileName}
         onApply={handleApplyCropResult}
       />

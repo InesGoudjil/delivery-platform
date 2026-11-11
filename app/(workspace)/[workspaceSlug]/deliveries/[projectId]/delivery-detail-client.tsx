@@ -27,8 +27,17 @@ import {
   updateFeedbackReplyAction,
 } from "@/app/actions/feedback";
 import { resolveThumbnailUrl, resolveMediaUrl } from "@/lib/media";
+import {
+  useDeliveryAssets,
+  applyUploadComplete,
+  applyDeleteAsset,
+  applyToggleApproval,
+  applyApproveAll,
+  applyUpdateAsset,
+  mutatePrefix,
+} from "@/lib/swr";
 import { EditAssetDialog, type EditableAssetItem } from "@/components/workspaces/edit-asset-dialog";
-import { TrashBinDialog } from "@/components/workspaces/trash-bin-dialog";
+import { useModals } from "@/components/modals";
 import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useOptionalEntitlements } from "@/components/providers/entitlements-provider";
@@ -71,7 +80,6 @@ type ActiveDialog =
   | "share"
   | "edit-delivery"
   | "publish"
-  | "trash"
   | "download-package"
   | "confirm-delete-delivery"
   | null;
@@ -153,6 +161,8 @@ export function DeliveryDetailClient({
   const entitlements = useOptionalEntitlements();
   const canWatermark = entitlements?.can.watermark ?? (features ? Boolean(features.watermark) : false);
 
+  const { setShowTrashModal } = useModals();
+
   // 1. Consolidated Dialog Discriminator (Replaces 4 boolean useStates)
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
   const [isDeletingDelivery, setIsDeletingDelivery] = useState(false);
@@ -216,12 +226,26 @@ export function DeliveryDetailClient({
       : [];
   }, [assets, project.status]);
 
+  // SWR Hook for Delivery Assets & Revalidations
+  const {
+    items: swrItems,
+    totalCount: swrTotalCount,
+    hasMore: swrHasMore,
+    mutate,
+  } = useDeliveryAssets(project.id, {
+    items: initialItems,
+    totalCount: initialTotalAssetsCount ?? initialItems.length,
+    hasMore: initialHasMore,
+  });
+
   // Master loaded items state that persists across chunk loads
   const [loadedItems, setLoadedItems] = useState<GalleryItem[]>(initialItems);
 
   useEffect(() => {
-    setLoadedItems(initialItems);
-  }, [initialItems]);
+    if (swrItems && swrItems.length > 0) {
+      setLoadedItems(swrItems);
+    }
+  }, [swrItems]);
 
   // Pagination states
   const [page, setPage] = useState(1);
@@ -612,7 +636,8 @@ export function DeliveryDetailClient({
           toast.success("Project Thawed & Restored!", {
             description: "All master cut assets are back in active storage and ready.",
           });
-          router.refresh();
+          await mutate();
+          await mutatePrefix(`/api/workspaces/${workspace.slug}`);
         } else {
           toast.info("Glacier Thaw In Progress", {
             description: `${res.thawedVersionsCount} of ${res.totalVersionsCount} assets ready. AWS Glacier retrieval takes 12–48h.`,
@@ -1291,8 +1316,9 @@ export function DeliveryDetailClient({
               onUploadComplete={(asset, version) => {
                 handleAssetUploaded(asset, version);
               }}
-              onBatchComplete={() => {
-                router.refresh();
+              onBatchComplete={async () => {
+                await mutate();
+                await mutatePrefix(`/api/workspaces/${workspace.slug}`);
               }}
               onProgressChange={setUploadProgress}
               onClose={() => setShowUploader(false)}
@@ -1321,7 +1347,7 @@ export function DeliveryDetailClient({
           onToggleApproval={handleToggleAssetApproval}
           onDeleteAsset={handleDeleteAsset}
           onEditAsset={handleOpenEditAsset}
-          onOpenTrash={() => setActiveDialog("trash")}
+          onOpenTrash={() => setShowTrashModal(true)}
         />
 
         {/* 6. Project Details Card */}
@@ -1514,19 +1540,7 @@ export function DeliveryDetailClient({
           isSaving={isSavingAsset}
         />
 
-        {/* 13. Workspace Trash Bin Dialog */}
-        <TrashBinDialog
-          isOpen={activeDialog === "trash"}
-          onOpenChange={(open) => setActiveDialog(open ? "trash" : null)}
-          workspaceId={workspace.id}
-          workspaceSlug={workspace.slug}
-          deliveryId={project.id}
-          onItemRestored={() => {
-            router.refresh();
-          }}
-        />
-
-        {/* 14. Master Deliverables Download Package Modal */}
+        {/* 13. Master Deliverables Download Package Modal */}
         <DownloadPackageModal
           isOpen={activeDialog === "download-package"}
           onOpenChange={(open) => setActiveDialog(open ? "download-package" : null)}

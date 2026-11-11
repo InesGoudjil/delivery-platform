@@ -11,6 +11,7 @@ import {
   inviteCohortSchema,
 } from "@/lib/validations/waitlist";
 import { WaitlistPositionResult } from "@/core/entities/waitlist";
+import { checkRateLimit, getClientIp, RATELIMIT_POLICIES } from "@/lib/upstash";
 
 export interface WaitlistActionState {
   success?: boolean;
@@ -56,6 +57,19 @@ export async function joinWaitlistAction(
         priorityScore: 0,
         status: "pending",
       },
+    };
+  }
+
+  // Rate limit check per IP
+  const ip = await getClientIp();
+  const rateLimit = await checkRateLimit({
+    policy: RATELIMIT_POLICIES.waitlistJoin,
+    identifier: [ip],
+  });
+  if (!rateLimit.success) {
+    return {
+      success: false,
+      error: rateLimit.error,
     };
   }
 

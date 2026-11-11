@@ -8,6 +8,7 @@ import {
   CreateAssetVersionDTO,
   ListDeliveryAssetsOptions,
   PaginatedAssetsResult,
+  WorkspaceStorageBreakdown,
 } from "./i-asset-repository";
 
 export class SupabaseAssetRepository implements IAssetRepository {
@@ -56,6 +57,65 @@ export class SupabaseAssetRepository implements IAssetRepository {
 
     if (error) throw new Error(`Error listing assets for workspace: ${error.message}`);
     return (data || []).map(this.mapRowToEntity);
+  }
+
+  async getWorkspaceStorageBreakdown(workspaceId: string): Promise<WorkspaceStorageBreakdown> {
+    // 1. Try querying the optimized PostgreSQL View first
+    try {
+      const { data: viewData, error: viewError } = await (this.supabase as any)
+        .from("view_workspace_storage_breakdown")
+        .select("*")
+        .eq("workspace_id", workspaceId)
+        .maybeSingle();
+
+      if (!viewError && viewData) {
+        return {
+          totalAssets: Number(viewData.total_assets || 0),
+          totalStillBytes: Number(viewData.total_still_bytes || 0),
+          totalVideoBytes: Number(viewData.total_video_bytes || 0),
+          totalStreamBytes: Number(viewData.total_stream_bytes || 0),
+          totalUsedBytes: Number(viewData.total_used_bytes || 0),
+        };
+      }
+    } catch {
+      // Fall through to single-request relational query
+    }
+
+    // 2. High-performance fallback: Single relational query across all active versions (1 HTTP request)
+    const { data, error } = await (this.supabase as any)
+      .from("assets")
+      .select("id, type, versions:asset_versions(file_size_bytes, hls_manifest_url, is_active_version)")
+      .eq("workspace_id", workspaceId)
+      .eq("is_archived", false);
+
+    if (error) throw new Error(`Error calculating workspace storage: ${error.message}`);
+
+    let totalStillBytes = 0;
+    let totalVideoBytes = 0;
+    let totalStreamBytes = 0;
+
+    for (const a of data || []) {
+      const activeVer = (a.versions || []).find((v: any) => v.is_active_version) || (a.versions || [])[0];
+      if (activeVer) {
+        const bytes = Number(activeVer.file_size_bytes || 0);
+        if (a.type === "photo_gallery") {
+          totalStillBytes += bytes;
+        } else {
+          totalVideoBytes += bytes;
+          if (activeVer.hls_manifest_url) {
+            totalStreamBytes += Math.round(bytes * 0.35);
+          }
+        }
+      }
+    }
+
+    return {
+      totalAssets: (data || []).length,
+      totalStillBytes,
+      totalVideoBytes,
+      totalStreamBytes,
+      totalUsedBytes: totalStillBytes + totalVideoBytes + totalStreamBytes,
+    };
   }
 
   async listUnassignedByWorkspaceId(workspaceId: string): Promise<Asset[]> {

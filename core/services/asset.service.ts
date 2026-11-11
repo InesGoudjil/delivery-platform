@@ -6,6 +6,7 @@ import {
   CreateAssetVersionDTO,
   ListDeliveryAssetsOptions,
   PaginatedAssetsResult,
+  WorkspaceStorageBreakdown,
 } from "@/core/repositories/i-asset-repository";
 
 export class AssetService {
@@ -51,6 +52,20 @@ export class AssetService {
 
   async listWorkspaceAssets(workspaceId: string): Promise<Asset[]> {
     return this.assetRepo.listByWorkspaceId(workspaceId);
+  }
+
+  async getWorkspaceStorageBreakdown(workspaceId: string): Promise<WorkspaceStorageBreakdown> {
+    if (this.assetRepo.getWorkspaceStorageBreakdown) {
+      return this.assetRepo.getWorkspaceStorageBreakdown(workspaceId);
+    }
+    const assets = await this.assetRepo.listByWorkspaceId(workspaceId);
+    return {
+      totalAssets: assets.length,
+      totalStillBytes: 0,
+      totalVideoBytes: 0,
+      totalStreamBytes: 0,
+      totalUsedBytes: 0,
+    };
   }
 
   async listUnassignedAssets(workspaceId: string): Promise<Asset[]> {

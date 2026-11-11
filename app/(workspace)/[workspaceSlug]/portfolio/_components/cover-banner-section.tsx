@@ -12,17 +12,15 @@ import {
   Layers,
   Monitor,
   Type,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { AppImage } from "@/components/ui/app-image";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { TypographyH3, TypographyH4, TypographySpan } from "@/components/ui/typography";
-import { TiltCard } from "@/components/ui/motion";
 import { PortfolioHeroCover } from "@/core/entities/portfolio";
 import { cn } from "@/lib/utils";
 
@@ -38,17 +36,8 @@ interface CoverBannerSectionProps {
   isSavingHero?: boolean;
   isHeroDirty?: boolean;
   selectedAssetRatio?: string | null;
-}
-
-function parseRatioString(ratioStr?: string | null): number | null {
-  if (!ratioStr) return null;
-  if (ratioStr.includes(":")) {
-    const [w, h] = ratioStr.split(":").map(Number);
-    if (w && h && !isNaN(w) && !isNaN(h)) return w / h;
-  }
-  const val = parseFloat(ratioStr);
-  if (!isNaN(val) && val > 0) return val;
-  return null;
+  isUploadingMedia?: boolean;
+  uploadProgress?: number;
 }
 
 export function CoverBannerSection({
@@ -63,27 +52,30 @@ export function CoverBannerSection({
   isSavingHero = false,
   isHeroDirty = false,
   selectedAssetRatio,
+  isUploadingMedia = false,
+  uploadProgress = 0,
 }: CoverBannerSectionProps) {
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const [isTestSoundMuted, setIsTestSoundMuted] = useState(true);
 
-  const currentAspectRatio = heroCover.aspectRatio || "asset";
+  const currentAspectRatio =
+    heroCover.aspectRatio === "16:9" ||
+    heroCover.aspectRatio === "3:1" ||
+    heroCover.aspectRatio === "21:9"
+      ? heroCover.aspectRatio
+      : "21:9";
+
   const overlayOpacity = heroCover.overlayOpacity ?? 50;
   const isVideo = heroCover.type === "video";
   const showHeroText = heroCover.showHeroText ?? true;
 
-  // Compute live aspect ratio
-  let ratioValue = 21 / 9;
-  if (currentAspectRatio === "16:9") {
-    ratioValue = 16 / 9;
-  } else if (currentAspectRatio === "3:1") {
-    ratioValue = 3 / 1;
-  } else if (currentAspectRatio === "21:9") {
-    ratioValue = 21 / 9;
-  } else if (currentAspectRatio === "asset" || currentAspectRatio === "original") {
-    const parsed = parseRatioString(selectedAssetRatio);
-    ratioValue = parsed || (isVideo ? 21 / 9 : 16 / 9);
-  }
+  // Aspect ratio classes aligned with PortfolioHero and DeliveryHeroBanner
+  const aspectClass =
+    currentAspectRatio === "16:9"
+      ? "aspect-[4/5] sm:aspect-[16/9]"
+      : currentAspectRatio === "3:1"
+      ? "aspect-[4/5] sm:aspect-[24/8]"
+      : "aspect-[4/5] sm:aspect-[21/9]";
 
   return (
     <Card className="rounded-2xl bg-[#141416]/75 backdrop-blur-2xl border border-white/10 p-5 md:p-6 shadow-xl space-y-6 hover:translate-y-0">
@@ -97,21 +89,20 @@ export function CoverBannerSection({
             </TypographyH3>
             <Badge
               variant="outline"
-              className="bg-black/60  text-[10px] uppercase font-bold text-zinc-300 ml-1"
+              className="bg-black/60 text-[10px] uppercase font-bold text-zinc-300 ml-1"
             >
-              {currentAspectRatio === "asset" ? "Native Ratio" : currentAspectRatio}{" "}
-              {isVideo ? "Video" : "Still"}
+              {currentAspectRatio} {isVideo ? "Video" : "Still"}
             </Badge>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {isVideo && (
+            {isVideo && heroCover.mediaUrl && (
               <Button
                 type="button"
                 size="sm"
                 variant="ghost"
                 onClick={() => setIsTestSoundMuted((m) => !m)}
-                className="h-8 px-2.5 text-xs  gap-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+                className="h-8 px-2.5 text-xs gap-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"
               >
                 {isTestSoundMuted ? (
                   <VolumeX className="size-3.5 text-zinc-400" />
@@ -129,169 +120,198 @@ export function CoverBannerSection({
                   ref={uploadInputRef}
                   onChange={onCustomUpload}
                   accept="image/*,video/*"
+                  disabled={isUploadingMedia}
                   className="hidden"
                 />
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => uploadInputRef.current?.click()}
-                        className="h-8 rounded-full bg-white/5 hover:bg-white/10 border-white/15 text-xs font-semibold gap-1.5 px-3 text-zinc-300 hover:text-white cursor-pointer"
-                      >
-                        <Upload className="size-3.5 text-primary" />
-                        <TypographySpan>Upload File</TypographySpan>
-                      </Button>
-                    }
-                  />
-                  <TooltipContent side="top">
-                    Upload custom banner media directly from computer
-                  </TooltipContent>
-                </Tooltip>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isUploadingMedia || isSavingHero}
+                  onClick={() => uploadInputRef.current?.click()}
+                  className="h-8 rounded-full bg-white/5 hover:bg-white/10 border-white/15 text-xs font-semibold gap-1.5 px-3 text-zinc-300 hover:text-white cursor-pointer transition-all disabled:opacity-50"
+                >
+                  {isUploadingMedia ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin text-primary" />
+                      <TypographySpan>
+                        {uploadProgress && uploadProgress > 0
+                          ? `Uploading ${uploadProgress}%`
+                          : "Uploading..."}
+                      </TypographySpan>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="size-3.5 text-primary" />
+                      <TypographySpan>Upload File</TypographySpan>
+                    </>
+                  )}
+                </Button>
               </>
             )}
 
             {onSaveHero && (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={isSavingHero || !isHeroDirty}
-                      onClick={onSaveHero}
-                      className={cn(
-                        "rounded-full text-xs font-extrabold px-4 h-8 transition-all uppercase tracking-wider flex items-center gap-1.5 shrink-0 cursor-pointer",
-                        isHeroDirty
-                          ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 ring-2 ring-primary/40 ring-offset-2 ring-offset-background"
-                          : "bg-white/10 text-zinc-400 border border-white/10 shadow-none hover:bg-white/15 hover:text-white"
-                      )}
-                    >
-                      {isSavingHero ? (
-                        <>
-                          <Sparkles className="size-3.5 animate-spin text-primary" />
-                          <TypographySpan>Saving...</TypographySpan>
-                        </>
-                      ) : isHeroDirty ? (
-                        <>
-                          <Sparkles className="size-3.5" />
-                          <TypographySpan>Save Hero Banner</TypographySpan>
-                        </>
-                      ) : (
-                        <>
-                          <Check className="size-3.5 text-emerald-400" />
-                          <TypographySpan>Hero Saved</TypographySpan>
-                        </>
-                      )}
-                    </Button>
-                  }
-                />
-                <TooltipContent>
-                  {isHeroDirty
-                    ? "Save hero banner customizations live"
-                    : "Hero banner is up to date"}
-                </TooltipContent>
-              </Tooltip>
+              <Button
+                type="button"
+                size="sm"
+                disabled={isSavingHero || isUploadingMedia || !isHeroDirty}
+                onClick={onSaveHero}
+                className={cn(
+                  "rounded-full text-xs font-extrabold px-4 h-8 transition-all uppercase tracking-wider flex items-center gap-1.5 shrink-0 cursor-pointer",
+                  isHeroDirty
+                    ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 ring-2 ring-primary/40 ring-offset-2 ring-offset-background"
+                    : "bg-white/10 text-zinc-400 border border-white/10 shadow-none hover:bg-white/15 hover:text-white"
+                )}
+              >
+                {isSavingHero ? (
+                  <>
+                    <Sparkles className="size-3.5 animate-spin text-primary" />
+                    <TypographySpan>Saving...</TypographySpan>
+                  </>
+                ) : isHeroDirty ? (
+                  <>
+                    <Sparkles className="size-3.5" />
+                    <TypographySpan>Save Hero Banner</TypographySpan>
+                  </>
+                ) : (
+                  <>
+                    <Check className="size-3.5 text-emerald-400" />
+                    <TypographySpan>Hero Saved</TypographySpan>
+                  </>
+                )}
+              </Button>
             )}
           </div>
         </div>
 
-        {/* 🌟 1. LIVE HERO PREVIEW STAGE */}
+        {/* 🌟 1. LIVE HERO PREVIEW STAGE (Matches Public PortfolioHero & Delivery Room Banner) */}
         <div className="space-y-2">
-          <TiltCard tiltIntensity={2} glareIntensity={0.06} className="rounded-2xl overflow-hidden shadow-2xl">
-            <AspectRatio
-              ratio={ratioValue}
-              style={{ aspectRatio: "var(--preview-aspect, auto)" }}
-              className="relative overflow-hidden bg-black group max-sm:[--preview-aspect:4/5] sm:[--preview-aspect:var(--ratio)] min-h-[300px] sm:min-h-0"
-            >
-              {/* Visual Media Layer (Default to Ambient Loop for Videos) */}
-              {heroCover.mediaUrl ? (
-                isVideo ? (
+          <div
+            className={cn(
+              "group relative w-full min-h-[380px] sm:min-h-0 rounded-[1.75rem] sm:rounded-[2rem] overflow-hidden border border-white/10 bg-zinc-950 shadow-2xl select-none transition-all",
+              aspectClass
+            )}
+          >
+            {/* Visual Media Layer (Default to Ambient Loop for Videos) */}
+            {heroCover.mediaUrl || heroCover.thumbnailUrl ? (
+              isVideo ? (
+                <div className="absolute inset-0 transition-transform duration-700 ease-out group-hover:scale-105">
                   <video
                     key={heroCover.mediaUrl}
-                    src={heroCover.mediaUrl}
-                    poster={heroCover.thumbnailUrl}
+                    src={heroCover.mediaUrl || undefined}
+                    poster={heroCover.thumbnailUrl || undefined}
                     autoPlay
                     loop
                     muted={isTestSoundMuted}
                     playsInline
-                    className="size-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    className="size-full object-cover"
                   />
-                ) : (
+                </div>
+              ) : (
+                <div className="absolute inset-0 transition-transform duration-700 ease-out group-hover:scale-105">
                   <AppImage
                     src={heroCover.thumbnailUrl || heroCover.mediaUrl}
-                    alt={heroCover.title || "Hero Banner"}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
+                    alt={heroCover.title || brandName}
+                    fallbackIcon="image"
+                    containerClassName="size-full"
+                    className="size-full object-cover"
                   />
-                )
-              ) : (
-                <div className="w-full h-full bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 flex flex-col items-center justify-center text-zinc-600 gap-2">
-                  <Film className="size-10 opacity-40 text-primary" />
-                  <TypographySpan className="text-xs ">No cover asset selected</TypographySpan>
                 </div>
-              )}
-
-              {/* Dynamic Vignette & Overlay Darkness */}
-              <div
-                className="absolute inset-0 bg-black transition-opacity duration-300 pointer-events-none"
-                style={{ opacity: overlayOpacity / 100 }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/30 pointer-events-none" />
-
-              {/* Overlaid Badges */}
-              <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex items-center gap-1.5 sm:gap-2 z-10 pointer-events-none">
-                <Badge
-                  variant="outline"
-                  className="bg-black/80 backdrop-blur-md border-white/20 text-white text-[9px] sm:text-[10px] uppercase font-bold px-2 py-0.5"
-                >
-                  Live Storefront View
-                </Badge>
-                <Badge variant="orange" className="text-[9px] sm:text-[10px] uppercase font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 shadow-lg">
-                  {isVideo ? "Cinematic Video" : "High-Res Still"}
-                </Badge>
+              )
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 flex flex-col items-center justify-center text-zinc-600 gap-2">
+                <Film className="size-10 opacity-40 text-primary" />
+                <TypographySpan className="text-xs">No cover asset selected</TypographySpan>
               </div>
+            )}
 
-              {/* Overlaid Headline & Category */}
-              {showHeroText && (
-                <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 z-10 pointer-events-none space-y-1 sm:space-y-1.5">
-                  {(heroCover.category || (isVideo ? "Featured Film" : "Featured Still")) && (
-                    <div>
-                      <Badge variant="orange" className="text-[9px] sm:text-[10px] uppercase font-bold px-2 py-0.5 shadow-md">
-                        {heroCover.category || (isVideo ? "Featured Film" : "Featured Still")}
-                      </Badge>
-                    </div>
+            {/* Dynamic Vignette & Overlay Darkness Layer */}
+            <div
+              className="absolute inset-0 bg-black pointer-events-none transition-opacity duration-300"
+              style={{ opacity: overlayOpacity / 100 }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/20 group-hover:via-black/20 transition-all duration-300 pointer-events-none" />
+
+            {/* Overlaid Badges */}
+            <div className="absolute top-4 left-4 sm:top-5 sm:left-5 flex items-center gap-1.5 sm:gap-2 z-10 pointer-events-none">
+              <Badge
+                variant="outline"
+                className="bg-black/80 backdrop-blur-md border-white/20 text-white text-[9px] sm:text-[10px] uppercase font-bold px-2.5 py-1 shadow-lg"
+              >
+                Storefront Preview
+              </Badge>
+              <Badge
+                variant="orange"
+                className="text-[9px] sm:text-[10px] uppercase font-bold px-2.5 py-1 shadow-lg"
+              >
+                {isVideo ? "Cinematic Video" : "High-Res Still"}
+              </Badge>
+            </div>
+
+            {/* Interactive Sound Toggle (if video) */}
+            {isVideo && heroCover.mediaUrl && (
+              <div className="absolute top-4 right-4 sm:top-5 sm:right-5 z-20">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsTestSoundMuted((m) => !m)}
+                  className="min-h-[38px] px-3.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border-white/20 text-white text-xs gap-1.5 shadow-xl transition-all cursor-pointer active:scale-95 touch-manipulation"
+                >
+                  {isTestSoundMuted ? (
+                    <>
+                      <VolumeX className="size-3.5 text-zinc-400" />
+                      <TypographySpan className="hidden sm:inline">Unmute</TypographySpan>
+                    </>
+                  ) : (
+                    <>
+                      <Volume2 className="size-3.5 text-primary animate-pulse" />
+                      <TypographySpan className="hidden sm:inline">Mute</TypographySpan>
+                    </>
                   )}
-                  <TypographyH3 className="text-base sm:text-2xl text-white tracking-tight uppercase drop-shadow-md max-w-xl font-heading leading-tight truncate sm:whitespace-normal">
-                    {heroCover.title || brandName}
-                  </TypographyH3>
-                </div>
-              )}
-            </AspectRatio>
-          </TiltCard>
+                </Button>
+              </div>
+            )}
+
+            {/* Overlaid Headline & Category Text */}
+            {showHeroText && (
+              <div className="absolute bottom-5 left-5 right-5 sm:bottom-10 sm:left-10 sm:right-10 z-10 pointer-events-none space-y-2.5 max-w-3xl">
+                {(heroCover.category || (isVideo ? "Featured Film" : "Featured Still")) && (
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant="orange"
+                      className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 shadow-lg"
+                    >
+                      {heroCover.category || (isVideo ? "Featured Film" : "Featured Still")}
+                    </Badge>
+                  </div>
+                )}
+                <TypographyH3 className="font-heading font-extrabold text-2xl sm:text-4xl lg:text-5xl text-white tracking-tight drop-shadow-md uppercase break-words line-clamp-2">
+                  {heroCover.title || brandName}
+                </TypographyH3>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* 🌟 2. HERO CUSTOMIZATION PROPERTIES (Simplified) */}
+        {/* 🌟 2. HERO CUSTOMIZATION PROPERTIES */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-4">
           <div className="flex items-center gap-2 pb-1 border-b border-white/[0.08]">
             <Sliders className="size-4 text-primary" />
-            <TypographyH4 className="text-xs font-bold text-white uppercase tracking-wider ">
-              Hero Display Controls
+            <TypographyH4 className="text-xs font-bold text-white uppercase tracking-wider">
+              Reel Display Controls
             </TypographyH4>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Aspect Ratio Framing (Includes Asset Native Aspect) - Hidden per user request */}
-            <div className="hidden space-y-1.5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Aspect Ratio Framing */}
+            <div className="space-y-1.5">
               <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
                 <Layers className="size-3.5 text-primary" />
                 Aspect Ratio Framing
               </label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {[
-                  { id: "asset", label: "Asset", desc: "Native" },
                   { id: "21:9", label: "21:9", desc: "Cinematic" },
                   { id: "16:9", label: "16:9", desc: "Standard" },
                   { id: "3:1", label: "3:1", desc: "Panoramic" },
@@ -310,7 +330,7 @@ export function CoverBannerSection({
                         })
                       }
                       className={cn(
-                        "h-9 flex flex-col justify-center items-center py-1 rounded-xl text-xs  font-bold cursor-pointer transition-all",
+                        "h-9 flex flex-col justify-center items-center py-1 rounded-xl text-xs font-bold cursor-pointer transition-all",
                         isSelected
                           ? "bg-primary text-primary-foreground shadow-md"
                           : "bg-white/5 hover:bg-white/10 border-white/10 text-zinc-300 hover:text-white"
@@ -333,7 +353,7 @@ export function CoverBannerSection({
                   <Sparkles className="size-3.5 text-primary" />
                   Overlay Darkness
                 </label>
-                <TypographySpan className="text-xs  font-bold text-white">
+                <TypographySpan className="text-xs font-bold text-white">
                   {overlayOpacity}%
                 </TypographySpan>
               </div>
@@ -353,7 +373,7 @@ export function CoverBannerSection({
                         })
                       }
                       className={cn(
-                        "h-9 rounded-xl text-xs  font-semibold cursor-pointer",
+                        "h-9 rounded-xl text-xs font-semibold cursor-pointer",
                         isSelected
                           ? "bg-primary text-primary-foreground shadow-sm"
                           : "bg-white/5 hover:bg-white/10 border-white/10 text-zinc-300 hover:text-white"
@@ -464,7 +484,7 @@ export function CoverBannerSection({
                 )}
               </span>
             </div>
-            <TypographySpan className="text-[11px]  text-zinc-500">
+            <TypographySpan className="text-[11px] text-zinc-500">
               Click the ✨ button on any item in your showcase below to set it as hero
             </TypographySpan>
           </div>
