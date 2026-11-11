@@ -387,6 +387,14 @@ export function ShareLinkDialog({
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
+  const handleWhatsAppShare = () => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const message = sharePassphrase && passphraseValue
+      ? `🎬 Here is your private review link for "${projectTitle}":\n${origin}${shareUrl}\n\n🔐 Passphrase: ${passphraseValue}`
+      : `🎬 Here is your review link for "${projectTitle}":\n${origin}${shareUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <UniversalDialog
       open={isOpen}
@@ -795,26 +803,13 @@ export function ShareLinkDialog({
         <div className="grid grid-cols-2 gap-3 pt-2">
           {canWhatsApp ? (
             <Button
-              asChild
+              type="button"
               variant="outline"
-              className="rounded-full border-white/20 bg-black/40 hover:bg-white/10 text-white font-extrabold text-xs py-3 h-auto cursor-pointer"
+              onClick={handleWhatsAppShare}
+              className="rounded-full border-white/20 bg-black/40 hover:bg-white/10 text-white font-extrabold text-xs py-3 h-auto cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <a
-                href={`https://wa.me/?text=${encodeURIComponent(
-                  sharePassphrase && passphraseValue
-                    ? `🎬 Here is your private review link for "${projectTitle}":\n${
-                        typeof window !== "undefined" ? window.location.origin : ""
-                      }${shareUrl}\n\n🔐 Passphrase: ${passphraseValue}`
-                    : `🎬 Here is your review link for "${projectTitle}":\n${
-                        typeof window !== "undefined" ? window.location.origin : ""
-                      }${shareUrl}`
-                )}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <MessageCircle className="size-3.5 mr-1.5 text-emerald-400" />
-                SEND ON WHATSAPP
-              </a>
+              <MessageCircle className="size-3.5 text-emerald-400" />
+              SEND ON WHATSAPP
             </Button>
           ) : (
             <Button

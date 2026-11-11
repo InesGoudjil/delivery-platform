@@ -74,6 +74,13 @@ export function DeliveryHeroBanner({
   onDeleteDelivery,
   isDeletingDelivery = false,
 }: DeliveryHeroBannerProps) {
+  const handleWhatsAppShare = () => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const cleanPhone = clientPhone ? clientPhone.replace(/[^0-9]/g, "") : "";
+    const message = `Hi ${clientName}, your review cut for ${projectTitle} is ready: ${origin}${shareUrl}`;
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <Card className="relative rounded-3xl overflow-hidden border border-border/80 shadow-2xl bg-card hover:translate-y-0 hover:shadow-2xl">
       {/* Dark Hero Image Background with Gradient Overlay */}
@@ -150,24 +157,13 @@ export function DeliveryHeroBanner({
             </Button>
 
             <Button
-              asChild
+              type="button"
               variant="outline"
+              onClick={handleWhatsAppShare}
               className="flex-1 rounded-full border-border/60 bg-background/50 backdrop-blur-md hover:bg-muted text-foreground font-extrabold text-xs h-11 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
             >
-              <a
-                href={`https://wa.me/${
-                  clientPhone ? clientPhone.replace(/[^0-9]/g, "") : ""
-                }?text=${encodeURIComponent(
-                  `Hi ${clientName}, your review cut for ${projectTitle} is ready: ${
-                    typeof window !== "undefined" ? window.location.origin : ""
-                  }${shareUrl}`
-                )}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <MessageCircle className="size-4 text-emerald-400 shrink-0" />
-                <TypographySpan>{clientPhone ? "WHATSAPP" : "SEND"}</TypographySpan>
-              </a>
+              <MessageCircle className="size-4 text-emerald-400 shrink-0" />
+              <TypographySpan>{clientPhone ? "WHATSAPP" : "SEND"}</TypographySpan>
             </Button>
 
             {/* Mobile More Actions (•••) */}
@@ -273,24 +269,13 @@ export function DeliveryHeroBanner({
 
           {/* SEND TO CLIENT Button */}
           <Button
-            asChild
+            type="button"
             variant="outline"
+            onClick={handleWhatsAppShare}
             className="rounded-full border-border/60 bg-background/50 backdrop-blur-md hover:bg-muted text-foreground font-extrabold text-xs px-5 py-2.5 transition-all cursor-pointer flex items-center gap-2"
           >
-            <a
-              href={`https://wa.me/${
-                clientPhone ? clientPhone.replace(/[^0-9]/g, "") : ""
-              }?text=${encodeURIComponent(
-                `Hi ${clientName}, your review cut for ${projectTitle} is ready: ${
-                  typeof window !== "undefined" ? window.location.origin : ""
-                }${shareUrl}`
-              )}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <MessageCircle className="size-3.5 text-emerald-400" />
-              <TypographySpan>{clientPhone ? "WHATSAPP CLIENT" : "SEND TO CLIENT"}</TypographySpan>
-            </a>
+            <MessageCircle className="size-3.5 text-emerald-400" />
+            <TypographySpan>{clientPhone ? "WHATSAPP CLIENT" : "SEND TO CLIENT"}</TypographySpan>
           </Button>
 
           {/* EDIT DELIVERY Button -> Opens Edit Delivery Dialog */}

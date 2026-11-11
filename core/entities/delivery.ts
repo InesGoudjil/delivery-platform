@@ -67,3 +67,24 @@ export interface UpdateDeliveryDTO extends Partial<CreateDeliveryDTO> {
   approvedAt?: string | null;
   approvedByName?: string | null;
 }
+
+export interface DeliverySummaryItem {
+  id: string;
+  workspaceId: string;
+  clientId?: string | null;
+  title: string;
+  description?: string | null;
+  shareToken: string;
+  status: DeliveryStatus;
+  isDownloadAllowed: boolean;
+  isCommentAllowed: boolean;
+  passcodeProtected: boolean;
+  clientName: string;
+  assetsCount: number;
+  commentsCount: number;
+  activeVersionNumber?: number | null;
+  activeDurationSeconds?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+

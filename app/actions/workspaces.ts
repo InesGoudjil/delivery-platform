@@ -13,6 +13,17 @@ export interface WorkspaceActionResult<T = any> {
   error?: string;
 }
 
+export interface WorkspaceData {
+  id: string;
+  brandName: string;
+  slug: string;
+  logoUrl?: string | null;
+  accentColor?: string | null;
+  accountType?: "individual" | "studio";
+  ownerId?: string;
+  storageUsedBytes?: number;
+}
+
 /**
  * Checks whether the current user is eligible to create a collaborative team workspace.
  * Requires an active subscription that includes team seats (e.g. Studio plan, team_seats > 1).
@@ -89,6 +100,53 @@ export async function createTeamWorkspaceAction(formData: FormData): Promise<Wor
     return { success: true, data: { slug: newWorkspace.slug } };
   } catch (err: any) {
     return { success: false, error: err.message || "Failed to create team workspace." };
+  }
+}
+
+/**
+ * Retrieves workspace details (name, slug, logo, accent, storage)
+ * for SWR hydration, live caching, and multi-component synchronization.
+ */
+export async function getWorkspaceDataAction(
+  slug: string
+): Promise<WorkspaceActionResult<WorkspaceData>> {
+  try {
+    if (!slug?.trim()) {
+      return { success: false, error: "Workspace slug is required." };
+    }
+
+    const services = await getServerServices();
+    const user = await services.auth.getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized: Please log in." };
+    }
+
+    const workspace = await services.workspace.getWorkspaceBySlug(slug.trim());
+    if (!workspace) {
+      return { success: false, error: "Workspace not found." };
+    }
+
+    const isOwner = workspace.ownerId === user.id;
+    const isMember = await services.member.isMember(workspace.id, user.id);
+    if (!isOwner && !isMember) {
+      return { success: false, error: "Permission denied: Not a member of this workspace." };
+    }
+
+    return {
+      success: true,
+      data: {
+        id: workspace.id,
+        brandName: workspace.brandName,
+        slug: workspace.slug,
+        logoUrl: workspace.logoUrl,
+        accentColor: workspace.accentColor,
+        accountType: workspace.accountType,
+        ownerId: workspace.ownerId,
+        storageUsedBytes: workspace.storageUsedBytes,
+      },
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to load workspace data." };
   }
 }
 

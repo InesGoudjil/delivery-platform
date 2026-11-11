@@ -654,6 +654,9 @@ export function AssetLightboxModal({
                   triggerToast("Link copied to clipboard");
                 }
               }}
+              onEditAsset={
+                onEditAsset ? () => onEditAsset(activeItem) : undefined
+              }
               onDeleteAsset={
                 onDeleteAsset ? () => setShowDeleteConfirm(true) : undefined
               }

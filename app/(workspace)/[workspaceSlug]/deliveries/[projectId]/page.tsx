@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getServerServices } from "@/core/server";
 import { presignDeliveryAssets } from "@/lib/media-server";
@@ -7,6 +8,7 @@ import {
   FeedbackItem,
 } from "./delivery-detail-client";
 import { DeliveryNavHeader } from "./_components/delivery-nav-header";
+import DeliveryDetailLoading from "./loading";
 
 export default async function DeliveryDetailPage({
   params,
@@ -26,6 +28,24 @@ export default async function DeliveryDetailPage({
     redirect("/");
   }
 
+  return (
+    <Suspense fallback={<DeliveryDetailLoading />}>
+      <DeliveryDetailContent
+        workspace={workspace}
+        projectId={projectId}
+      />
+    </Suspense>
+  );
+}
+
+async function DeliveryDetailContent({
+  workspace,
+  projectId,
+}: {
+  workspace: any;
+  projectId: string;
+}) {
+  const services = await getServerServices();
   const INITIAL_PAGE_SIZE = 12;
 
   // 1. Fetch delivery details with first page of assets, versions, and counts

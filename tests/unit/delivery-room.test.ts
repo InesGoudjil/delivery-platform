@@ -1,4 +1,6 @@
+import React from "react";
 import { describe, it, expect } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
 import { DeliveryRoomClient } from "@/app/(public)/deliver/[shareToken]/delivery-room-client";
 import { DeliveryPasscodeDialog } from "@/app/(public)/deliver/[shareToken]/_components/delivery-passcode-dialog";
 import { DeliveryRoomHeader } from "@/app/(public)/deliver/[shareToken]/_components/delivery-room-header";
@@ -26,6 +28,31 @@ describe("DeliveryRoom Component Decomposition", () => {
     expect(typeof DeliveryAssetCard).toBe("function");
     expect(typeof DeliveryAssetGrid).toBe("function");
     expect(typeof DeliveryRoomFooter).toBe("function");
+  });
+
+  it("renders DeliveryHeroBanner with the same size and aspect ratio classes as PortfolioHero", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DeliveryHeroBanner, {
+        title: "Commercial Cut",
+        clientName: "Acme Studios",
+        heroCoverUrl: "/images/hero.jpg",
+        formattedDate: "Nov 11, 2026",
+        displayLocation: "Paris, FR",
+        formattedTotalSize: "1.2 GB",
+        displayAssetCount: 8,
+        approvedCount: 3,
+        isGlobalDownloadUnlocked: true,
+        onDownloadAll: () => {},
+      })
+    );
+
+    expect(html).toContain("w-full");
+    expect(html).toContain("aspect-[4/5]");
+    expect(html).toContain("sm:aspect-[21/9]");
+    expect(html).toContain("min-h-[380px]");
+    expect(html).toContain("sm:min-h-0");
+    expect(html).toContain("rounded-[1.75rem]");
+    expect(html).toContain("sm:rounded-[2rem]");
   });
 
   describe("Masonry & Aspect Ratio calculations", () => {

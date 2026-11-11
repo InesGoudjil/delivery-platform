@@ -1,6 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database.types";
-import { Delivery, DeliveryStatus, CreateDeliveryDTO, UpdateDeliveryDTO } from "@/core/entities/delivery";
+import { Delivery, DeliveryStatus, CreateDeliveryDTO, UpdateDeliveryDTO, DeliverySummaryItem } from "@/core/entities/delivery";
 import { IDeliveryRepository } from "./i-delivery-repository";
 
 export class SupabaseDeliveryRepository implements IDeliveryRepository {
@@ -71,6 +71,115 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
 
     if (error) throw new Error(`Error listing deliveries for workspace: ${error.message}`);
     return (data || []).map(this.mapRowToEntity);
+  }
+
+  async listDeliveriesSummary(workspaceId: string): Promise<DeliverySummaryItem[]> {
+    // 1. Try querying the optimized PostgreSQL View first
+    try {
+      const { data: viewData, error: viewError } = await (this.supabase as any)
+        .from("view_workspace_deliveries_summary")
+        .select("*")
+        .eq("workspace_id", workspaceId)
+        .order("created_at", { ascending: false });
+
+      if (!viewError && Array.isArray(viewData)) {
+        return viewData.map((row: any) => ({
+          id: row.id,
+          workspaceId: row.workspace_id,
+          clientId: row.client_id,
+          title: row.title,
+          description: row.description,
+          shareToken: row.share_token,
+          status: row.status as DeliveryStatus,
+          isDownloadAllowed: Boolean(row.is_download_allowed),
+          isCommentAllowed: Boolean(row.is_comment_allowed),
+          passcodeProtected: Boolean(row.passcode_protected),
+          clientName: row.client_name || "Private Client",
+          assetsCount: Number(row.assets_count || 0),
+          commentsCount: Number(row.comments_count || 0),
+          activeVersionNumber: row.active_version_number ? Number(row.active_version_number) : null,
+          activeDurationSeconds: row.active_duration_seconds ? Number(row.active_duration_seconds) : null,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        }));
+      }
+    } catch {
+      // Fall through to PostgREST relational query if view is pending creation
+    }
+
+    // 2. High-performance single PostgREST relational query (1 HTTP roundtrip)
+    const { data, error } = await (this.supabase as any)
+      .from("deliveries")
+      .select(`
+        id,
+        workspace_id,
+        client_id,
+        title,
+        description,
+        share_token,
+        passcode_hash,
+        status,
+        is_download_allowed,
+        is_comment_allowed,
+        created_at,
+        updated_at,
+        client:clients(name),
+        assets(
+          id,
+          title,
+          type,
+          sort_order,
+          is_archived,
+          versions:asset_versions(
+            id,
+            version_number,
+            duration_seconds,
+            is_active_version,
+            feedback(id)
+          )
+        )
+      `)
+      .eq("workspace_id", workspaceId)
+      .order("created_at", { ascending: false });
+
+    if (error) throw new Error(`Error listing delivery summaries: ${error.message}`);
+
+    return (data || []).map((row: any) => {
+      const rawAssets = (row.assets || []).filter((a: any) => !a.is_archived);
+      rawAssets.sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+      const primaryAsset = rawAssets[0];
+      const primaryActiveVersion =
+        primaryAsset?.versions?.find((v: any) => v.is_active_version) ||
+        primaryAsset?.versions?.[0];
+
+      let commentsCount = 0;
+      for (const a of rawAssets) {
+        for (const v of a.versions || []) {
+          commentsCount += (v.feedback || []).length;
+        }
+      }
+
+      return {
+        id: row.id,
+        workspaceId: row.workspace_id,
+        clientId: row.client_id,
+        title: row.title,
+        description: row.description,
+        shareToken: row.share_token,
+        status: row.status as DeliveryStatus,
+        isDownloadAllowed: Boolean(row.is_download_allowed),
+        isCommentAllowed: Boolean(row.is_comment_allowed ?? true),
+        passcodeProtected: Boolean(row.passcode_hash),
+        clientName: row.client?.name || "Private Client",
+        assetsCount: rawAssets.length,
+        commentsCount,
+        activeVersionNumber: primaryActiveVersion?.version_number ? Number(primaryActiveVersion.version_number) : null,
+        activeDurationSeconds: primaryActiveVersion?.duration_seconds ? Number(primaryActiveVersion.duration_seconds) : null,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      };
+    });
   }
 
   async listByClientId(clientId: string): Promise<Delivery[]> {

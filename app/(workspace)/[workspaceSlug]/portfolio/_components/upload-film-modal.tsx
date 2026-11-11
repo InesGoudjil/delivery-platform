@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Upload,
   X,
@@ -79,7 +78,6 @@ export function UploadFilmModal({
   limit = 4,
   workspaceSlug,
 }: UploadFilmModalProps) {
-  const router = useRouter();
   const [dragActive, setDragActive] = useState(false);
   const [queue, setQueue] = useState<QueuedFilmItem[]>([]);
   const [description, setDescription] = useState("");
@@ -434,7 +432,6 @@ export function UploadFilmModal({
           : `All ${completedItems.length} films & stills uploaded & ready!`,
         "Added to your portfolio showcase."
       );
-      router.refresh();
       resetForm();
       onClose();
     } else if (completedItems.length > 0 && failedCount > 0) {
@@ -442,7 +439,6 @@ export function UploadFilmModal({
         `Uploaded ${completedItems.length} of ${totalFiles} items (${failedCount} failed)`,
         lastError
       );
-      router.refresh();
     } else if (failedCount > 0) {
       uploadToast.error("Upload failed", lastError);
       setErrorMessage(lastError);

@@ -37,9 +37,18 @@ export interface PaginatedAssetsResult {
   totalCount: number;
 }
 
+export interface WorkspaceStorageBreakdown {
+  totalAssets: number;
+  totalStillBytes: number;
+  totalVideoBytes: number;
+  totalStreamBytes: number;
+  totalUsedBytes: number;
+}
+
 export interface IAssetRepository {
   findById(id: string): Promise<Asset | null>;
   listByWorkspaceId(workspaceId: string, includeArchived?: boolean): Promise<Asset[]>;
+  getWorkspaceStorageBreakdown?(workspaceId: string): Promise<WorkspaceStorageBreakdown>;
   listUnassignedByWorkspaceId(workspaceId: string): Promise<Asset[]>;
   listByDeliveryId(deliveryId: string, options?: ListDeliveryAssetsOptions): Promise<Asset[]>;
   listByDeliveryIdPaginated(deliveryId: string, options?: ListDeliveryAssetsOptions): Promise<PaginatedAssetsResult>;

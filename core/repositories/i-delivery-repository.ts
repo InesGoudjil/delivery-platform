@@ -1,9 +1,10 @@
-import { Delivery, DeliveryStatus, CreateDeliveryDTO, UpdateDeliveryDTO } from "../entities/delivery";
+import { Delivery, DeliveryStatus, CreateDeliveryDTO, UpdateDeliveryDTO, DeliverySummaryItem } from "../entities/delivery";
 
 export interface IDeliveryRepository {
   findById(id: string): Promise<Delivery | null>;
   findByShareToken(shareToken: string): Promise<Delivery | null>;
   listByWorkspaceId(workspaceId: string): Promise<Delivery[]>;
+  listDeliveriesSummary?(workspaceId: string): Promise<DeliverySummaryItem[]>;
   listByClientId(clientId: string): Promise<Delivery[]>;
   create(dto: CreateDeliveryDTO): Promise<Delivery>;
   update(id: string, data: UpdateDeliveryDTO): Promise<Delivery>;

@@ -11,6 +11,7 @@ import { AmbientBackground } from "@/components/ui/ambient-background";
 import { MetaComplregEcho } from "@/components/meta/MetaComplregEcho";
 import { AccentThemeProvider } from "@/components/theme/accent-theme-provider";
 import { EntitlementsProvider } from "@/components/providers/entitlements-provider";
+import { ModalProvider } from "@/components/modals";
 
 export default async function WorkspaceLayout({
   children,
@@ -62,38 +63,40 @@ export default async function WorkspaceLayout({
   return (
     <EntitlementsProvider entitlements={entitlements}>
       <AccentThemeProvider initialAccent={workspace.accentColor}>
-        <SidebarProvider defaultOpen={true}>
-          <AmbientBackground variant="subtle" showNoise={false} />
-          <MetaComplregEcho />
-          <WorkspaceSidebar
-            workspace={workspace}
-            workspaces={userWorkspaces}
-            user={user}
-            profile={profile}
-            plan={plan}
-          />
-          <SidebarInset className="bg-transparent text-foreground min-h-screen flex flex-col transition-colors duration-200 relative overflow-hidden">
-            {/* Top Header matching CineSpace Dashboard with LIVE PREVIEW */}
-            <div className="relative z-10">
-              <WorkspaceHeader
-                workspace={workspace}
-                workspaces={userWorkspaces}
-                user={user}
-                profile={profile}
-                plan={plan}
-                features={entitlements.features}
-              />
-            </div>
+        <ModalProvider workspace={workspace}>
+          <SidebarProvider defaultOpen={true}>
+            <AmbientBackground variant="subtle" showNoise={false} />
+            <MetaComplregEcho />
+            <WorkspaceSidebar
+              workspace={workspace}
+              workspaces={userWorkspaces}
+              user={user}
+              profile={profile}
+              plan={plan}
+            />
+            <SidebarInset className="bg-transparent text-foreground min-h-screen flex flex-col transition-colors duration-200 relative overflow-hidden">
+              {/* Top Header matching CineSpace Dashboard with LIVE PREVIEW */}
+              <div className="relative z-10">
+                <WorkspaceHeader
+                  workspace={workspace}
+                  workspaces={userWorkspaces}
+                  user={user}
+                  profile={profile}
+                  plan={plan}
+                  features={entitlements.features}
+                />
+              </div>
 
-            {/* Main Content View */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-28 md:pb-16 relative z-10">
-              {children}
-            </div>
+              {/* Main Content View */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-28 md:pb-16 relative z-10">
+                {children}
+              </div>
 
-            {/* Mobile Bottom Navigation Bar for Creators */}
-            <WorkspaceMobileBottomNav workspaceSlug={workspace.slug} />
-          </SidebarInset>
-        </SidebarProvider>
+              {/* Mobile Bottom Navigation Bar for Creators */}
+              <WorkspaceMobileBottomNav workspaceSlug={workspace.slug} />
+            </SidebarInset>
+          </SidebarProvider>
+        </ModalProvider>
       </AccentThemeProvider>
     </EntitlementsProvider>
   );

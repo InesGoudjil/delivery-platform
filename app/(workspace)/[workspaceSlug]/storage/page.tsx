@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import {
   HardDrive,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import { getServerServices, getServerAdminServices } from "@/core/server";
 import { createScopedLogger } from "@/lib/logger";
+import StorageLoading from "./loading";
 
 const log = createScopedLogger({ page: "StoragePage" });
 import {
@@ -80,41 +82,47 @@ export default async function StoragePage({
     }
   }
 
-  // 2. Fetch all assets for this workspace (covers client deliveries, projects, and standalone assets), plan, and features
-  const [allWorkspaceAssets, currentPlan, features] = await Promise.all([
-    services.asset.listWorkspaceAssets(workspace.id),
+  return (
+    <Suspense fallback={<StorageLoading />}>
+      <StorageContent
+        workspace={workspace}
+        workspaceSlug={workspaceSlug}
+        billing={billing}
+        storageUpgradeSuccess={storageUpgradeSuccess}
+      />
+    </Suspense>
+  );
+}
+
+async function StorageContent({
+  workspace,
+  workspaceSlug,
+  billing,
+  storageUpgradeSuccess,
+}: {
+  workspace: any;
+  workspaceSlug: string;
+  billing?: string;
+  storageUpgradeSuccess: boolean;
+}) {
+  const services = await getServerServices();
+
+  // 2. Fetch storage breakdown, plan, and features in a single parallel roundtrip
+  const [storageBreakdown, currentPlan, features] = await Promise.all([
+    services.asset.getWorkspaceStorageBreakdown(workspace.id),
     services.subscription.getCurrentPlan(workspace.id),
     services.subscription.getFeatures(workspace.id),
   ]);
 
-  // 2. Calculate real storage usage concurrently across all workspace assets
-  let totalVideoBytes = 0;
-  let totalStillBytes = 0;
-  let totalStreamBytes = 0;
-
-  const processAsset = async (asset: { id: string; type: string }) => {
-    const activeVer = await services.asset.getActiveVersion(asset.id);
-    if (activeVer) {
-      const bytes = Number(activeVer.fileSizeBytes || 0);
-      if (asset.type === "photo_gallery") {
-        totalStillBytes += bytes;
-      } else {
-        totalVideoBytes += bytes;
-        if (activeVer.hlsManifestUrl) {
-          totalStreamBytes += Math.round(bytes * 0.35);
-        }
-      }
-    }
-  };
-
-  await Promise.all(allWorkspaceAssets.map(processAsset));
-
-  const calculatedUsedBytes = totalVideoBytes + totalStillBytes + totalStreamBytes;
+  const totalVideoBytes = storageBreakdown.totalVideoBytes;
+  const totalStillBytes = storageBreakdown.totalStillBytes;
+  const totalStreamBytes = storageBreakdown.totalStreamBytes;
+  const calculatedUsedBytes = storageBreakdown.totalUsedBytes;
   const usedBytes = Math.max(workspace.storageUsedBytes || 0, calculatedUsedBytes);
 
   // Sync workspace.storage_used_bytes in database if it was out of sync
   if (calculatedUsedBytes > 0 && workspace.storageUsedBytes !== calculatedUsedBytes) {
-    await services.workspace.trackStorageUsage(workspace.id, calculatedUsedBytes - (workspace.storageUsedBytes || 0)).catch(() => {});
+    services.workspace.trackStorageUsage(workspace.id, calculatedUsedBytes - (workspace.storageUsedBytes || 0)).catch(() => {});
   }
 
   // 3. Quota allocation based on active subscription plan & features

@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Users,
   UserPlus,
@@ -44,8 +43,16 @@ import {
   removeWorkspaceMemberAction,
   revokeWorkspaceInvitationAction,
   acceptWorkspaceInvitationAction,
+  WorkspaceSeatStats,
 } from "@/app/actions/members";
 import { WorkspaceRole, WorkspaceInvitation, EnrichedWorkspaceMember } from "@/core/entities/workspace-member";
+import {
+  useWorkspaceMembers,
+  applyAddInvitation,
+  applyUpdateMemberRole,
+  applyRemoveMember,
+  applyRevokeInvitation,
+} from "@/lib/swr";
 
 interface MembersClientProps {
   workspace: {
@@ -61,14 +68,7 @@ interface MembersClientProps {
   };
   canManage: boolean;
   isOwner: boolean;
-  seatStats: {
-    maxSeats: number;
-    activeCount: number;
-    pendingCount: number;
-    usedSeats: number;
-    remainingSeats: number;
-    canInvite: boolean;
-  };
+  seatStats: WorkspaceSeatStats;
   members: EnrichedWorkspaceMember[];
   pendingInvitations: WorkspaceInvitation[];
 }
@@ -78,11 +78,21 @@ export function MembersClient({
   currentUser,
   canManage,
   isOwner,
-  seatStats,
-  members,
-  pendingInvitations,
+  seatStats: initialSeatStats,
+  members: initialMembers,
+  pendingInvitations: initialPendingInvitations,
 }: MembersClientProps) {
-  const router = useRouter();
+  const {
+    members,
+    pendingInvitations,
+    seatStats,
+    data: membersData,
+    mutate,
+  } = useWorkspaceMembers(workspace.slug, {
+    seatStats: initialSeatStats,
+    members: initialMembers,
+    pendingInvitations: initialPendingInvitations,
+  });
 
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -93,35 +103,66 @@ export function MembersClient({
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteEmail.trim()) return;
+    const trimmedEmail = inviteEmail.trim();
+    if (!trimmedEmail) return;
 
     setIsSubmitting(true);
-    const res = await inviteWorkspaceMemberAction(workspace.slug, inviteEmail.trim(), inviteRole);
+    try {
+      const res = await inviteWorkspaceMemberAction(workspace.slug, trimmedEmail, inviteRole);
 
-    if (!res.success) {
-      toast.error(res.error || "Failed to send invitation.");
+      if (!res.success) {
+        toast.error(res.error || "Failed to send invitation.");
+        return;
+      }
+
+      toast.success(`Invitation sent to ${trimmedEmail}`);
+      setInviteEmail("");
+      setShowInviteModal(false);
+
+      if (res.data) {
+        await mutate(
+          (current) => (current ? applyAddInvitation(current, res.data) : current),
+          { revalidate: true }
+        );
+      } else {
+        await mutate();
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send invitation.");
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    toast.success(`Invitation sent to ${inviteEmail.trim()}`);
-    setInviteEmail("");
-    setShowInviteModal(false);
-    setIsSubmitting(false);
-    router.refresh();
   };
 
   const handleRoleChange = async (memberUserId: string, newRole: WorkspaceRole) => {
     setLoadingActionId(`role_${memberUserId}`);
-    const res = await updateWorkspaceMemberRoleAction(workspace.slug, memberUserId, newRole);
 
-    if (!res.success) {
-      toast.error(res.error || "Failed to update role.");
-    } else {
-      toast.success("Collaborator role updated successfully.");
-      router.refresh();
+    const optimisticNext = membersData
+      ? applyUpdateMemberRole(membersData, memberUserId, newRole)
+      : undefined;
+
+    try {
+      await mutate(
+        async () => {
+          const res = await updateWorkspaceMemberRoleAction(workspace.slug, memberUserId, newRole);
+          if (!res.success) {
+            throw new Error(res.error || "Failed to update role.");
+          }
+          toast.success("Collaborator role updated successfully.");
+          return optimisticNext;
+        },
+        {
+          optimisticData: optimisticNext,
+          rollbackOnError: true,
+          populateCache: true,
+          revalidate: true,
+        }
+      );
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update role.");
+    } finally {
+      setLoadingActionId(null);
     }
-    setLoadingActionId(null);
   };
 
   const handleRemoveMember = async (memberUserId: string, memberName: string) => {
@@ -130,41 +171,82 @@ export function MembersClient({
     }
 
     setLoadingActionId(`remove_${memberUserId}`);
-    const res = await removeWorkspaceMemberAction(workspace.slug, memberUserId);
 
-    if (!res.success) {
-      toast.error(res.error || "Failed to remove member.");
-    } else {
-      toast.success(`Removed ${memberName} from workspace.`);
-      router.refresh();
+    const optimisticNext = membersData
+      ? applyRemoveMember(membersData, memberUserId)
+      : undefined;
+
+    try {
+      await mutate(
+        async () => {
+          const res = await removeWorkspaceMemberAction(workspace.slug, memberUserId);
+          if (!res.success) {
+            throw new Error(res.error || "Failed to remove member.");
+          }
+          toast.success(`Removed ${memberName} from workspace.`);
+          return optimisticNext;
+        },
+        {
+          optimisticData: optimisticNext,
+          rollbackOnError: true,
+          populateCache: true,
+          revalidate: true,
+        }
+      );
+    } catch (err: any) {
+      toast.error(err.message || "Failed to remove member.");
+    } finally {
+      setLoadingActionId(null);
     }
-    setLoadingActionId(null);
   };
 
   const handleRevokeInvite = async (invitationId: string, email: string) => {
     setLoadingActionId(`revoke_${invitationId}`);
-    const res = await revokeWorkspaceInvitationAction(workspace.slug, invitationId);
 
-    if (!res.success) {
-      toast.error(res.error || "Failed to revoke invitation.");
-    } else {
-      toast.success(`Revoked invitation for ${email}.`);
-      router.refresh();
+    const optimisticNext = membersData
+      ? applyRevokeInvitation(membersData, invitationId)
+      : undefined;
+
+    try {
+      await mutate(
+        async () => {
+          const res = await revokeWorkspaceInvitationAction(workspace.slug, invitationId);
+          if (!res.success) {
+            throw new Error(res.error || "Failed to revoke invitation.");
+          }
+          toast.success(`Revoked invitation for ${email}.`);
+          return optimisticNext;
+        },
+        {
+          optimisticData: optimisticNext,
+          rollbackOnError: true,
+          populateCache: true,
+          revalidate: true,
+        }
+      );
+    } catch (err: any) {
+      toast.error(err.message || "Failed to revoke invitation.");
+    } finally {
+      setLoadingActionId(null);
     }
-    setLoadingActionId(null);
   };
 
   const handleSimulateAccept = async (token: string, email: string) => {
     setLoadingActionId(`accept_${token}`);
-    const res = await acceptWorkspaceInvitationAction(token);
+    try {
+      const res = await acceptWorkspaceInvitationAction(token);
 
-    if (!res.success) {
-      toast.error(res.error || "Failed to simulate invitation acceptance.");
-    } else {
-      toast.success(`Collaborator invitation accepted for ${email}!`);
-      router.refresh();
+      if (!res.success) {
+        toast.error(res.error || "Failed to simulate invitation acceptance.");
+      } else {
+        toast.success(`Collaborator invitation accepted for ${email}!`);
+        await mutate();
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to simulate invitation acceptance.");
+    } finally {
+      setLoadingActionId(null);
     }
-    setLoadingActionId(null);
   };
 
   const handleCopyLink = (token: string) => {

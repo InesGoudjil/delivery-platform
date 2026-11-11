@@ -4,6 +4,8 @@ import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 import { getDownloadFilename, triggerDirectDownload } from "@/lib/download";
+import { useQueryParams } from "@/hooks/use-query-params";
+import { mutatePrefix } from "@/lib/swr/mutate";
 import {
   toggleAssetApprovalAction,
   approveAllAssetsAction,
@@ -56,7 +58,23 @@ export function useDeliveryRoom({
   });
   const [activeAssetId, setActiveAssetId] = useState<string | null>(null);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
-  const [assetTab, setAssetTab] = useState<AssetFilterTab>("all");
+
+  const { queryParams, getParam } = useQueryParams();
+  const tabParam = getParam("tab");
+  const [assetTab, setAssetTabState] = useState<AssetFilterTab>(() => {
+    if (tabParam === "video" || tabParam === "photo") return tabParam;
+    return "all";
+  });
+
+  const setAssetTab = (tab: AssetFilterTab) => {
+    setAssetTabState(tab);
+    if (tab === "all") {
+      queryParams({ del: "tab" });
+    } else {
+      queryParams({ set: { tab } });
+    }
+  };
+
   const [showDownloadModal, setShowDownloadModal] = useState(false);
 
   // Comments state
@@ -215,6 +233,7 @@ export function useDeliveryRoom({
         if (res.delivery?.status) {
           setDeliveryStatus(res.delivery.status);
         }
+        void mutatePrefix([`/deliver/${delivery.shareToken}`, "/api/deliveries"]);
       } else {
         // Revert on error
         setAssets((prev) =>
@@ -240,6 +259,7 @@ export function useDeliveryRoom({
       const res = await approveAllAssetsAction(delivery.id, commentAuthor);
       if (res.success) {
         toast.success("All delivery cuts approved & locked!");
+        void mutatePrefix([`/deliver/${delivery.shareToken}`, "/api/deliveries"]);
       } else {
         setAssets(prevAssets);
         setDeliveryStatus(prevStatus);
@@ -261,6 +281,7 @@ export function useDeliveryRoom({
       const res = await unapproveAllAssetsAction(delivery.id);
       if (res.success) {
         toast.info("Project approval undone — cuts returned to review");
+        void mutatePrefix([`/deliver/${delivery.shareToken}`, "/api/deliveries"]);
       } else {
         setAssets(prevAssets);
         setDeliveryStatus(prevStatus);

@@ -61,6 +61,13 @@ export function DeliveryCardGrid({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const handleWhatsAppShare = (item: DeliveryProjectItem) => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const url = `${origin}/deliver/${item.shareToken}`;
+    const message = `Hi ${item.clientName}, your review cut for ${item.title} is ready: ${url}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+  };
+
   const getStatusBadge = (status: DeliveryProjectItem["status"]) => {
     switch (status) {
       case "in_review":
@@ -214,19 +221,14 @@ export function DeliveryCardGrid({
 
                 {canSendWhatsApp && (
                   <Button
+                    type="button"
                     variant="outline"
                     size="icon-sm"
-                    asChild
-                    className="rounded-xl border-border bg-muted/40 hover:bg-muted text-emerald-500 hover:text-emerald-400 size-8 transition-colors"
+                    onClick={() => handleWhatsAppShare(item)}
+                    className="rounded-xl border-border bg-muted/40 hover:bg-muted text-emerald-500 hover:text-emerald-400 size-8 transition-colors cursor-pointer"
+                    title="Send via WhatsApp"
                   >
-                    <a
-                      href={`https://wa.me/?text=${encodeURIComponent(`Hi ${item.clientName}, your review cut for ${item.title} is ready: ${typeof window !== "undefined" ? window.location.origin : ""}/deliver/${item.shareToken}`)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      title="Send via WhatsApp"
-                    >
-                      <MessageCircle className="size-4" />
-                    </a>
+                    <MessageCircle className="size-4" />
                   </Button>
                 )}
 

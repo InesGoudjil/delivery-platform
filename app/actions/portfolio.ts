@@ -4,6 +4,7 @@ import { getServerServices } from "@/core/server";
 import { requireUser, requireWorkspaceMember } from "@/core/security/guards";
 import { revalidatePath } from "next/cache";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
+import { PortfolioItem } from "@/core/entities/portfolio";
 import {
   updatePortfolioSchema,
   updateBrandingSchema,
@@ -13,6 +14,11 @@ import {
   type UpdatePortfolioInput,
   type UpdateBrandingInput,
 } from "@/lib/validations";
+
+export interface WorkspacePortfolioData {
+  items: PortfolioItem[];
+  featuredIds: string[];
+}
 
 export async function updatePortfolioAction(
   portfolioId: string,
@@ -347,61 +353,293 @@ export async function getProjectAssetsAction(projectId: string) {
   }
 }
 
+import {
+  deleteAssetAction as rawDeleteAsset,
+  restoreAssetAction as rawRestoreAsset,
+  permanentDeleteAssetAction as rawPermanentDeleteAsset,
+  listTrashAssetsAction as rawListTrashAssets,
+  emptyTrashAction as rawEmptyTrash,
+  updateAssetAction as rawUpdateAsset,
+  type DeleteAssetOptions,
+  type UpdateAssetInput,
+  type UpdateAssetOptions,
+} from "./assets";
+
 export async function deleteAssetAction(
   assetId: string,
-  options?: { deliveryId?: string; workspaceSlug?: string; portfolioId?: string; projectId?: string }
+  options?: DeleteAssetOptions
 ) {
-  const { deleteAssetAction: del } = await import("./assets");
-  return del(assetId, options);
+  return rawDeleteAsset(assetId, options);
 }
 
+export async function restoreAssetAction(
+  assetId: string,
+  options?: DeleteAssetOptions
+) {
+  return rawRestoreAsset(assetId, options);
+}
+
+export async function permanentDeleteAssetAction(
+  assetId: string,
+  options?: DeleteAssetOptions
+) {
+  return rawPermanentDeleteAsset(assetId, options);
+}
+
+export async function listTrashAssetsAction(workspaceId: string) {
+  return rawListTrashAssets(workspaceId);
+}
+
+export async function emptyTrashAction(workspaceId: string, workspaceSlug?: string) {
+  return rawEmptyTrash(workspaceId, workspaceSlug);
+}
+
+export async function updateAssetAction(
+  itemId: string,
+  data: UpdateAssetInput,
+  options?: UpdateAssetOptions
+) {
+  return rawUpdateAsset(itemId, data, options);
+}
+
+/**
+ * Deletes a portfolio item which can be a standalone film/still (asset)
+ * or a showcase project container.
+ */
 export async function deletePortfolioItemAction(
   itemId: string,
   itemType: "film" | "still" | "project",
   portfolioId: string,
   workspaceSlug?: string
 ) {
-  const { deletePortfolioItemAction: del } = await import("./assets");
-  return del(itemId, itemType, portfolioId, workspaceSlug);
+  try {
+    const services = await getServerServices();
+    const user = await services.auth.getCurrentUser();
+
+    if (!user) {
+      return { success: false, error: "Unauthorized. Please log in." };
+    }
+
+    if (itemType === "project") {
+      let project = await services.project.getProjectById(itemId);
+      if (!project) {
+        const delivery = await services.delivery.getDeliveryById(itemId).catch(() => null);
+        if (delivery) {
+          await requireWorkspaceMember(delivery.workspaceId, "editor");
+
+          await services.delivery.deleteDelivery(delivery.id);
+          if (workspaceSlug) {
+            revalidatePath(`/${workspaceSlug}/portfolio`);
+            revalidatePath(`/p/${workspaceSlug}`);
+          }
+          revalidatePath("/[workspaceSlug]/portfolio", "page");
+          revalidatePath("/p/[handle]", "page");
+          return { success: true };
+        }
+        return { success: false, error: "Project not found." };
+      }
+
+      // Verify membership/role hierarchy (minimum: editor)
+      await requireWorkspaceMember(project.workspaceId, "editor");
+
+      // Clean up featured pinned item if needed
+      try {
+        const portfolio = await services.portfolio.getPortfolioById(portfolioId);
+        if (portfolio && Array.isArray(portfolio.appearance?.featuredItemIds)) {
+          if (portfolio.appearance.featuredItemIds.includes(itemId)) {
+            const updatedFeatured = portfolio.appearance.featuredItemIds.filter(
+              (id: string) => id !== itemId
+            );
+            await services.portfolio.updatePortfolio(portfolio.id, {
+              appearance: {
+                ...portfolio.appearance,
+                featuredItemIds: updatedFeatured,
+              },
+            });
+          }
+        }
+      } catch (portErr) {
+        // Non-critical
+      }
+
+      // Delete the project
+      await services.project.deleteProject(itemId);
+
+      if (workspaceSlug) {
+        revalidatePath(`/${workspaceSlug}/portfolio`);
+        revalidatePath(`/p/${workspaceSlug}`);
+      }
+      revalidatePath("/[workspaceSlug]/portfolio", "page");
+      revalidatePath("/p/[handle]", "page");
+
+      return { success: true };
+    } else {
+      // Standalone film or still
+      return await rawDeleteAsset(itemId, {
+        portfolioId,
+        workspaceSlug,
+      });
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || "Failed to delete portfolio item.",
+    };
+  }
 }
 
-export async function restoreAssetAction(
-  assetId: string,
-  options?: { deliveryId?: string; workspaceSlug?: string; portfolioId?: string; projectId?: string }
-) {
-  const { restoreAssetAction: res } = await import("./assets");
-  return res(assetId, options);
+/**
+ * Retrieves the complete portfolio showcase items and featured reel IDs
+ * for a workspace, suitable for SWR hydration and client-side mutations.
+ */
+export async function getWorkspacePortfolioDataAction(
+  workspaceSlug: string
+): Promise<{ success: boolean; data?: WorkspacePortfolioData; error?: string }> {
+  try {
+    if (!workspaceSlug?.trim()) {
+      return { success: false, error: "Workspace slug is required." };
+    }
+
+    const services = await getServerServices();
+    const user = await services.auth.getCurrentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized: Please log in." };
+    }
+
+    const workspace = await services.workspace.getWorkspaceBySlug(workspaceSlug);
+    if (!workspace) {
+      return { success: false, error: "Workspace not found." };
+    }
+
+    const portfolio = await services.portfolio.getOrCreatePortfolio(
+      workspace.id,
+      `${workspace.brandName} Portfolio`,
+      workspaceSlug
+    );
+
+    const [dbProjects, standaloneAssets] = await Promise.all([
+      services.project.listPortfolioProjects(portfolio.id),
+      services.asset.listUnassignedAssets(workspace.id),
+    ]);
+
+    const featuredItemIds: string[] = Array.isArray(portfolio.appearance?.featuredItemIds)
+      ? portfolio.appearance.featuredItemIds
+      : [];
+
+    const mappedDbProjects: PortfolioItem[] = await Promise.all(
+      dbProjects.map(async (p) => {
+        const deliveryIdToQuery = p.sourceDeliveryId || p.id;
+        let assets = await services.asset.listAssets(deliveryIdToQuery);
+        if (assets.length === 0 && p.id !== deliveryIdToQuery) {
+          assets = await services.asset.listAssets(p.id);
+        }
+        if (assets.length === 0) {
+          const projectWithAssets = await services.project.getProjectWithAssets(p.id);
+          if (projectWithAssets?.assets && projectWithAssets.assets.length > 0) {
+            assets = projectWithAssets.assets;
+          }
+        }
+
+        const projectAssets = await Promise.all(
+          assets.map(async (a) => {
+            const activeVersion = await services.asset.getActiveVersion(a.id);
+            const isStill = a.type === "photo_gallery";
+            const rawMedia =
+              activeVersion?.rawFileUrl ||
+              activeVersion?.hlsManifestUrl ||
+              activeVersion?.thumbnailUrl ||
+              "";
+            const resolvedThumb = resolveThumbnailUrl(
+              activeVersion?.thumbnailUrl,
+              rawMedia,
+              isStill
+            );
+            return {
+              id: a.id,
+              title: a.title,
+              type: isStill ? ("still" as const) : ("film" as const),
+              url: resolveMediaUrl(rawMedia),
+              thumbnailUrl: resolvedThumb,
+              aspectRatio: a.aspectRatio || "16:9",
+              duration: activeVersion?.durationSeconds
+                ? `${Math.floor(activeVersion.durationSeconds / 60)}:${String(
+                    Math.floor(activeVersion.durationSeconds % 60)
+                  ).padStart(2, "0")}`
+                : null,
+              category: isStill ? "Photo Still" : "Film Cut",
+            };
+          })
+        );
+
+        let thumbnailUrl = "";
+        if (projectAssets.length > 0) {
+          thumbnailUrl = projectAssets[0].thumbnailUrl;
+        }
+
+        const projectThumb = resolveThumbnailUrl(p.coverAssetUrl, thumbnailUrl, false);
+        const isFeatured = featuredItemIds.includes(p.id);
+
+        return {
+          id: p.id,
+          title: p.title,
+          category: p.clientName || p.category || "Commercial Project",
+          type: "project" as const,
+          assetCount: projectAssets.length,
+          thumbnailUrl: projectThumb || thumbnailUrl,
+          description: p.description,
+          isFeatured,
+          projectAssets,
+        };
+      })
+    );
+
+    const mappedStandaloneAssets: PortfolioItem[] = await Promise.all(
+      standaloneAssets.map(async (asset) => {
+        const activeVersion = await services.asset.getActiveVersion(asset.id);
+        const itemType = asset.type === "photo_gallery" ? ("still" as const) : ("film" as const);
+        const isStill = itemType === "still";
+        const rawMedia =
+          activeVersion?.rawFileUrl ||
+          activeVersion?.hlsManifestUrl ||
+          "";
+        const resolvedThumb = resolveThumbnailUrl(
+          activeVersion?.thumbnailUrl,
+          rawMedia,
+          isStill
+        );
+        const isFeatured = featuredItemIds.includes(asset.id);
+
+        return {
+          id: asset.id,
+          title: asset.title,
+          category: isStill ? "Photo Gallery" : "Film Cut",
+          type: itemType,
+          assetCount: 1,
+          thumbnailUrl: resolvedThumb,
+          mediaUrl: resolveMediaUrl(rawMedia || resolvedThumb),
+          aspectRatio: asset.aspectRatio || undefined,
+          isFeatured,
+        };
+      })
+    );
+
+    const allPortfolioItems = [...mappedDbProjects, ...mappedStandaloneAssets];
+    const initialFeaturedIds = featuredItemIds.filter((id) =>
+      allPortfolioItems.some((item) => item.id === id)
+    );
+
+    return {
+      success: true,
+      data: {
+        items: allPortfolioItems,
+        featuredIds: initialFeaturedIds,
+      },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || "Failed to load portfolio items.",
+    };
+  }
 }
 
-export async function permanentDeleteAssetAction(
-  assetId: string,
-  options?: { deliveryId?: string; workspaceSlug?: string; portfolioId?: string; projectId?: string }
-) {
-  const { permanentDeleteAssetAction: pdel } = await import("./assets");
-  return pdel(assetId, options);
-}
-
-export async function listTrashAssetsAction(workspaceId: string) {
-  const { listTrashAssetsAction: list } = await import("./assets");
-  return list(workspaceId);
-}
-
-export async function emptyTrashAction(workspaceId: string, workspaceSlug?: string) {
-  const { emptyTrashAction: empty } = await import("./assets");
-  return empty(workspaceId, workspaceSlug);
-}
-
-export async function updateAssetAction(
-  itemId: string,
-  data: {
-    title?: string;
-    description?: string;
-    category?: string;
-    thumbnailUrl?: string;
-    aspectRatio?: string;
-  },
-  options?: { deliveryId?: string; workspaceSlug?: string; portfolioId?: string; isProject?: boolean }
-) {
-  const { updateAssetAction: upd } = await import("./assets");
-  return upd(itemId, data, options);
-}

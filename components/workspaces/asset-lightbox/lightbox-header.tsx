@@ -6,6 +6,7 @@ import {
   Share2,
   Trash2,
   ArrowLeft,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -134,6 +135,25 @@ export function LightboxHeader({
           </Tooltip>
         )}
 
+        {onEditAsset && (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={onEditAsset}
+                  className="size-9 sm:size-8.5 rounded-full bg-white/5 hover:bg-white/15 text-white/80 hover:text-white cursor-pointer border border-white/10 transition-colors active:scale-95"
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+              }
+            />
+            <TooltipContent>Edit asset</TooltipContent>
+          </Tooltip>
+        )}
+
         {onDeleteAsset && (
           <Tooltip>
             <TooltipTrigger
@@ -149,7 +169,7 @@ export function LightboxHeader({
                 </Button>
               }
             />
-            <TooltipContent>Delete deliverable</TooltipContent>
+            <TooltipContent>Delete asset</TooltipContent>
           </Tooltip>
         )}
 

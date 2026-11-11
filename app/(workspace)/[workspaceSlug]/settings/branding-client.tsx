@@ -22,6 +22,7 @@ import {
   ImageCropEditorDialog,
   ImageCropResult,
 } from "@/components/ui/image-crop-editor-dialog";
+import { useWorkspace, mutatePrefix, applyUpdateWorkspaceBranding } from "@/lib/swr";
 
 interface BrandingClientProps {
   workspace: {
@@ -54,6 +55,7 @@ export function BrandingClient({
 }: BrandingClientProps) {
   const [isPending, startTransition] = useTransition();
   const { setAccent: setLiveAccent } = useAccentTheme();
+  const { mutate: mutateWorkspace } = useWorkspace(workspace.slug, workspace as any);
 
   const entitlements = useOptionalEntitlements();
   const canBranding = entitlements?.can.customBranding ?? (features ? Boolean(features.branding) : false);
@@ -202,14 +204,21 @@ export function BrandingClient({
 
   const handleRemoveLogo = () => {
     setLogoUrl(null);
+    mutateWorkspace(
+      (curr) => (curr ? applyUpdateWorkspaceBranding(curr, { logoUrl: null }) : curr),
+      { revalidate: false }
+    );
     startTransition(async () => {
       const res = await updateBrandingAction(workspace.id, portfolio.id, {
         logoUrl: null,
         slug: workspace.slug,
       });
       if (res.success) {
+        await mutatePrefix(`/api/workspaces/${workspace.slug}`);
+        await mutatePrefix("/api/workspaces");
         toast.success("Studio logo removed.");
       } else {
+        await mutateWorkspace();
         toast.error(res.error || "Failed to remove logo.");
       }
     });
@@ -249,6 +258,8 @@ export function BrandingClient({
         slug: workspace.slug,
       });
       if (res.success) {
+        await mutatePrefix(`/api/workspaces/${workspace.slug}`);
+        await mutatePrefix("/api/workspaces");
         toast.success("Profile photo removed.");
       } else {
         toast.error(res.error || "Failed to remove photo.");
@@ -263,14 +274,24 @@ export function BrandingClient({
       uploadToast.start("Saving brand logo...", "Persisting logo to workspace...");
       setLogoUrl(result.dataUrl);
 
+      if (canBranding) {
+        mutateWorkspace(
+          (curr) => (curr ? applyUpdateWorkspaceBranding(curr, { logoUrl: result.dataUrl }) : curr),
+          { revalidate: false }
+        );
+      }
+
       const res = await updateBrandingAction(workspace.id, portfolio.id, {
         logoUrl: canBranding ? result.dataUrl : undefined,
         slug: workspace.slug,
       });
 
       if (res.success) {
+        await mutatePrefix(`/api/workspaces/${workspace.slug}`);
+        await mutatePrefix("/api/workspaces");
         uploadToast.success("Brand logo saved!", "Updated across header and client rooms.");
       } else {
+        await mutateWorkspace();
         uploadToast.error(res.error || "Failed to save logo.");
       }
     } else if (cropEditor.mode === "avatar") {
@@ -284,6 +305,8 @@ export function BrandingClient({
       });
 
       if (res.success) {
+        await mutatePrefix(`/api/workspaces/${workspace.slug}`);
+        await mutatePrefix("/api/workspaces");
         uploadToast.success("Profile photo saved!", "Updated in your portfolio About section.");
       } else {
         uploadToast.error(res.error || "Failed to save photo.");
@@ -295,6 +318,19 @@ export function BrandingClient({
   const handleSaveAll = React.useCallback(
     (e?: React.FormEvent) => {
       if (e) e.preventDefault();
+      // Optimistic update of workspace branding in SWR
+      mutateWorkspace(
+        (curr) =>
+          curr
+            ? applyUpdateWorkspaceBranding(curr, {
+                brandName,
+                accentColor: canBranding ? accent : curr.accentColor,
+                logoUrl: canBranding ? logoUrl : curr.logoUrl,
+              })
+            : curr,
+        { revalidate: false }
+      );
+
       startTransition(async () => {
         const res = await updateBrandingAction(workspace.id, portfolio.id, {
           brandName,
@@ -319,8 +355,11 @@ export function BrandingClient({
             bio,
             stats: { ...stats },
           });
+          await mutatePrefix(`/api/workspaces/${workspace.slug}`);
+          await mutatePrefix("/api/workspaces");
           toast.success("Brand identity & bio settings saved!");
         } else {
+          await mutateWorkspace();
           toast.error(res.error || "Failed to update branding settings.");
         }
       });
@@ -341,6 +380,7 @@ export function BrandingClient({
       experiences,
       stats,
       handle,
+      mutateWorkspace,
     ]
   );
 

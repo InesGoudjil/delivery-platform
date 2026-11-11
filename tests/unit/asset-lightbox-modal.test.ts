@@ -5,6 +5,7 @@ import {
   AssetLightboxModal as PortfolioLightboxModal,
   StillLightboxModal,
   FilmPlayerModal,
+  ProjectExplorerModal,
 } from "@/app/(workspace)/[workspaceSlug]/portfolio/_components/portfolio-modals";
 import { PortfolioModals } from "@/app/(public)/p/[handle]/_components/portfolio-modals";
 import { DeliveryRoomClient } from "@/app/(public)/deliver/[shareToken]/delivery-room-client";
@@ -21,10 +22,11 @@ describe("AssetLightboxModal Centralization", () => {
     expect(DeliveryLightboxModal).toBe(AssetLightboxModal);
   });
 
-  it("re-exports AssetLightboxModal from workspace portfolio route for backward compatibility", () => {
+  it("re-exports AssetLightboxModal and ProjectExplorerModal from workspace portfolio route", () => {
     expect(PortfolioLightboxModal).toBe(AssetLightboxModal);
     expect(typeof StillLightboxModal).toBe("function");
     expect(typeof FilmPlayerModal).toBe("function");
+    expect(typeof ProjectExplorerModal).toBe("function");
   });
 
   it("exports PortfolioModals on public portfolio routes using the centralized modal pattern", () => {

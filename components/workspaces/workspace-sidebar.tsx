@@ -17,7 +17,9 @@ import {
   HelpCircle,
   ArrowRight,
   Users,
+  Trash2,
 } from "lucide-react";
+import { useModals } from "@/components/modals";
 
 import {
   Sidebar,
@@ -32,6 +34,7 @@ import {
 import { signOutAction } from "@/app/actions/auth";
 import { TypographySpan } from "@/components/ui/typography";
 import { NavDocuments } from "./nav-documents";
+import { useWorkspace } from "@/lib/swr";
 
 import { WorkspaceSwitcher, WorkspaceItem } from "./workspace-switcher";
 
@@ -77,7 +80,7 @@ export interface WorkspaceSidebarProps extends React.ComponentProps<
 }
 
 export function WorkspaceSidebar({
-  workspace,
+  workspace: initialWorkspace,
   workspaces = [],
   user,
   profile,
@@ -86,6 +89,12 @@ export function WorkspaceSidebar({
   ...props
 }: WorkspaceSidebarProps) {
   const [isPending, startTransition] = React.useTransition();
+  const { setShowTrashModal } = useModals();
+  const { workspace: liveWorkspace } = useWorkspace(
+    initialWorkspace?.slug,
+    initialWorkspace as any
+  );
+  const workspace = liveWorkspace || initialWorkspace;
   const workspaceSlug = workspace?.slug || "studio";
 
   const handleLogout = () => {
@@ -167,15 +176,18 @@ export function WorkspaceSidebar({
   const planName = plan?.name || "Studio";
 
   const listToMap = workspaces.length > 0 ? workspaces : workspace ? [workspace] : [];
-  const workspaceItems: WorkspaceItem[] = listToMap.map((w) => ({
-    id: w.id,
-    name: w.brandName,
-    slug: w.slug,
-    accountType: w.accountType,
-    plan: w.accountType === "studio"
-      ? "Studio • 5 Seats"
-      : (w.slug === workspace?.slug && planName ? `${planName} plan` : "Personal (1 Seat)"),
-  }));
+  const workspaceItems: WorkspaceItem[] = listToMap.map((w) => {
+    const isCurrent = w.slug === workspaceSlug || w.id === workspace?.id;
+    return {
+      id: w.id,
+      name: isCurrent && workspace?.brandName ? workspace.brandName : w.brandName,
+      slug: w.slug,
+      accountType: w.accountType,
+      plan: w.accountType === "studio"
+        ? "Studio • 5 Seats"
+        : (w.slug === workspace?.slug && planName ? `${planName} plan` : "Personal (1 Seat)"),
+    };
+  });
 
   return (
     <Sidebar
