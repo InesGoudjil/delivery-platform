@@ -3,6 +3,7 @@ import {
   requireUser,
   requireWorkspaceMember,
   requireDeliveryAccess,
+  requirePlatformAdmin,
 } from "@/core/security/guards";
 import * as serverModule from "@/core/server";
 
@@ -36,6 +37,27 @@ describe("core/security/guards", () => {
     };
 
     vi.spyOn(serverModule, "getServerServices").mockResolvedValue(mockServices);
+  });
+
+  describe("requirePlatformAdmin", () => {
+    it("rejects signed-in users without the admin platform role", async () => {
+      mockServices.profile = { getProfile: vi.fn().mockResolvedValue({ platformRole: "user" }) };
+      await expect(requirePlatformAdmin()).rejects.toThrow("Forbidden: Platform admin privileges required.");
+    });
+
+    it("rejects anonymous callers", async () => {
+      mockServices.auth.getCurrentUser.mockResolvedValue(null);
+      mockServices.profile = { getProfile: vi.fn() };
+      await expect(requirePlatformAdmin()).rejects.toThrow("Unauthorized");
+      expect(mockServices.profile.getProfile).not.toHaveBeenCalled();
+    });
+
+    it("returns the context for platform admins", async () => {
+      mockServices.profile = { getProfile: vi.fn().mockResolvedValue({ platformRole: "admin" }) };
+      const ctx = await requirePlatformAdmin();
+      expect(ctx.user.id).toBe("user_123");
+      expect(mockServices.profile.getProfile).toHaveBeenCalledWith("user_123");
+    });
   });
 
   describe("requireUser", () => {

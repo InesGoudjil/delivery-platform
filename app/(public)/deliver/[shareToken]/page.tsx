@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import type { Metadata } from "next";
-import { createHash } from "crypto";
 import { getServerServices, getServerAdminServices } from "@/core/server";
 import { presignDeliveryAssets } from "@/lib/media-server";
 import { hasValidDeliveryPasscodeCookie } from "@/lib/security/delivery-token";
+import { verifyDeliveryPasscode } from "@/lib/security/passcode";
+import { checkRateLimit, getClientIp, RATELIMIT_POLICIES } from "@/lib/upstash";
 import { DeliveryRoomClient, DeliveryAssetItem } from "./delivery-room-client";
 import { DeliveryExpiredScreen } from "./_components/delivery-expired-screen";
 
@@ -161,10 +162,14 @@ export default async function ClientDeliveryPage(props: PageProps) {
   const resolvedSearchParams = props.searchParams ? await props.searchParams : undefined;
   const deepLinkPassphrase = (resolvedSearchParams?.passphrase || resolvedSearchParams?.code)?.trim();
   let queryPassphraseMatched = false;
-  if (deepLinkPassphrase && isPasscodeProtected && fullDetails.passcodeHash) {
-    const hashedQuery = createHash("sha256").update(deepLinkPassphrase).digest("hex");
-    if (fullDetails.passcodeHash === deepLinkPassphrase || fullDetails.passcodeHash === hashedQuery) {
-      queryPassphraseMatched = true;
+  if (deepLinkPassphrase && isPasscodeProtected && fullDetails.passcodeHash && !hasAccessCookie) {
+    // Same limit as the passcode dialog, so deep links can't be used to guess passcodes.
+    const rateLimit = await checkRateLimit({
+      policy: RATELIMIT_POLICIES.deliveryPasscode,
+      identifier: [await getClientIp(), shareToken],
+    }).catch(() => ({ success: false }));
+    if (rateLimit.success) {
+      queryPassphraseMatched = await verifyDeliveryPasscode(deepLinkPassphrase, fullDetails.passcodeHash);
     }
   }
 

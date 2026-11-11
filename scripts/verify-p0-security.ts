@@ -46,7 +46,7 @@ async function runVerification() {
 
   // 5. Verify database migration file exists and contains RLS drop & trigger statements
   console.log("\n5. Checking database migration file...");
-  const migrationContent = fs.readFileSync("supabase/migrations/20261024000000_p0_security_lockdown.sql", "utf8");
+  const migrationContent = fs.readFileSync("supabase/migrations-archive/20261024000000_p0_security_lockdown.sql", "utf8");
   assert.ok(migrationContent.includes("prevent_role_escalation"), "Migration missing prevent_role_escalation trigger!");
   assert.ok(migrationContent.includes("DROP POLICY IF EXISTS \"Anyone with share_token can view project\""), "Migration missing project RLS drop!");
   assert.ok(migrationContent.includes("DROP POLICY IF EXISTS \"Anyone with share_token can view assets\""), "Migration missing assets RLS drop!");

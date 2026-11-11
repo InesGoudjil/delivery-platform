@@ -50,6 +50,7 @@ export function DeliveryExpiredScreen({
                 src={workspace.logoUrl}
                 alt={workspace.brandName}
                 fill
+                unoptimized
                 className="object-cover"
               />
             </div>

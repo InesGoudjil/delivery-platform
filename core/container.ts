@@ -33,6 +33,7 @@ import {
   SupabaseInquiryRepository,
   SupabaseWorkspaceSettingsRepository,
   SupabaseUserSessionRepository,
+  SupabaseProcessedBillingEventRepository,
 } from "./repositories";
 import { ZeptoMailEmailProvider, IEmailProvider } from "./providers/email";
 
@@ -149,6 +150,7 @@ export function createCoreServices(
   const inquiryRepo = new SupabaseInquiryRepository(systemClient);
   const workspaceSettingsRepo = new SupabaseWorkspaceSettingsRepository(supabase);
   const userSessionRepo = new SupabaseUserSessionRepository(systemClient);
+  const billingEventRepo = new SupabaseProcessedBillingEventRepository(systemClient);
 
   // Email Provider (Zoho ZeptoMail)
   const emailProvider = new ZeptoMailEmailProvider();
@@ -228,7 +230,8 @@ export function createCoreServices(
     subscriptionRepo,
     planRepo,
     workspaceMemberRepo,
-    workspaceRepo
+    workspaceRepo,
+    billingEventRepo
   );
   const waitlistService = new WaitlistService(waitlistRepo, emailProvider);
   const sessionService = new SessionService(userSessionRepo);

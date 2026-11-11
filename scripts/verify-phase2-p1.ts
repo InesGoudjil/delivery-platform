@@ -31,7 +31,7 @@ async function runVerification() {
   // 1. Verify Migration File
   const migrationPath = path.resolve(
     process.cwd(),
-    "supabase/migrations/20261101000001_phase2_p1_security_lockdown.sql"
+    "supabase/migrations-archive/20261101000001_phase2_p1_security_lockdown.sql"
   );
   assert(fs.existsSync(migrationPath), "Migration file 20261101000001 exists on disk");
   const migrationSql = fs.readFileSync(migrationPath, "utf-8");

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHash } from "crypto";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { getServerServices } from "@/core/server";
+import { getServerServices, getServerAdminServices } from "@/core/server";
 import { env } from "@/lib/env";
 import { hasValidDeliveryPasscodeCookie } from "@/lib/security/delivery-token";
+import { verifyDeliveryPasscode } from "@/lib/security/passcode";
+import { checkRateLimit, getClientIp, RATELIMIT_POLICIES } from "@/lib/upstash";
 import { createScopedLogger } from "@/lib/logger";
 
 const log = createScopedLogger({ route: "api/media" });
@@ -261,10 +262,16 @@ export async function GET(
           }
         }
 
-        // B. Client Delivery check (verified cookie or public/passcode access)
+        // B. Client Delivery check (verified cookie or public/passcode access).
+        // Guests can't read deliveries through RLS, so look the delivery up with the
+        // service role, scoped to the delivery ID (and workspace) in the object key.
+        // Expiry is deliberately not checked here: published portfolio pieces are
+        // served from their source delivery's files after the client link expires.
         if (!isAuthorized && deliveryId) {
-          const delivery = await services.delivery.getDeliveryById(deliveryId);
-          if (delivery) {
+          const adminServices = await getServerAdminServices();
+          const delivery = await adminServices.delivery.getDeliveryById(deliveryId);
+          const belongsToKeyWorkspace = !workspaceId || delivery?.workspaceId === workspaceId;
+          if (delivery && belongsToKeyWorkspace) {
             if (!delivery.passcodeHash) {
               // Unprotected public delivery cut
               isAuthorized = true;
@@ -273,11 +280,15 @@ export async function GET(
               if (hasValidDeliveryPasscodeCookie(req.cookies, delivery.shareToken)) {
                 isAuthorized = true;
               } else {
-                // Check query params (?passphrase=... or ?code=...)
+                // Check query params (?passphrase=... or ?code=...). Shares the passcode
+                // rate limit so this can't be used to guess passcodes or burn CPU.
                 const queryCode = (req.nextUrl.searchParams.get("passphrase") || req.nextUrl.searchParams.get("code"))?.trim();
                 if (queryCode) {
-                  const hashed = createHash("sha256").update(queryCode).digest("hex");
-                  if (delivery.passcodeHash === queryCode || delivery.passcodeHash === hashed) {
+                  const rateLimit = await checkRateLimit({
+                    policy: RATELIMIT_POLICIES.deliveryPasscode,
+                    identifier: [await getClientIp(), delivery.shareToken],
+                  });
+                  if (rateLimit.success && (await verifyDeliveryPasscode(queryCode, delivery.passcodeHash))) {
                     isAuthorized = true;
                   }
                 }

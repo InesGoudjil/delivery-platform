@@ -7,10 +7,10 @@ npm-debug.log*
 coverage
 
 
-/package-lock.json
 
 /supabase/*
 !/supabase/migrations/
+!/supabase/migrations-archive/
 
 .agents
 
@@ -21,7 +21,6 @@ skills-lock.json
 /prototype
 
 .env
-/package-lock.json
 
 CUTGRID-developer-brief.pdf
 template.html

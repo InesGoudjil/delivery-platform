@@ -40,6 +40,19 @@ export async function requireUser(): Promise<AuthContext> {
 }
 
 /**
+ * Ensures the caller is a platform admin, reading the role from the database
+ * (never from client-editable user metadata).
+ */
+export async function requirePlatformAdmin(): Promise<AuthContext> {
+  const ctx = await requireUser();
+  const profile = await ctx.services.profile.getProfile(ctx.user.id);
+  if (profile?.platformRole !== "admin") {
+    throw new Error("Forbidden: Platform admin privileges required.");
+  }
+  return ctx;
+}
+
+/**
  * Ensures the caller is a member of the target workspace with at least minRole permissions.
  * Checks workspace existence, ownership, and role hierarchy.
  */

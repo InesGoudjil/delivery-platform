@@ -135,13 +135,15 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     }
   }
 
-  // Merge unique showcase projects from DB (filter out unpublished)
+  // Merge unique showcase projects from DB (filter out unpublished). This page reads
+  // with the service role, so only keep projects owned by this workspace.
   const projectMap = new Map<string, any>();
+  const isOwnProject = (p: any) => Boolean(workspace) && p.workspaceId === workspace.id;
   dbProjects.forEach((p) => {
-    if (p.isPublished !== false) projectMap.set(p.id, p);
+    if (p.isPublished !== false && isOwnProject(p)) projectMap.set(p.id, p);
   });
   wsProjects.forEach((p) => {
-    if (p.isPublished !== false && !projectMap.has(p.id)) projectMap.set(p.id, p);
+    if (p.isPublished !== false && isOwnProject(p) && !projectMap.has(p.id)) projectMap.set(p.id, p);
   });
 
   const combinedProjects = Array.from(projectMap.values());
@@ -164,6 +166,9 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     if (assets.length === 0) {
       assets = await services.asset.listAssets(p.id);
     }
+
+    // Never render another workspace's files, whatever the project links point at.
+    assets = assets.filter((a) => a?.workspaceId === workspace.id);
 
     const projectAssetIds: string[] = [];
 

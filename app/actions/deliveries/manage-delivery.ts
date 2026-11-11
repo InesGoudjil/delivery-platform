@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createHash } from "crypto";
 import { requireDeliveryAccess, requireWorkspaceMember } from "@/core/security/guards";
+import { hashDeliveryPasscode } from "@/lib/security/passcode";
 import { getServerServices } from "@/core/server";
 import { createScopedLogger } from "@/lib/logger";
 import type { DeliveryAppearanceSettings } from "@/core/entities/delivery";
@@ -264,7 +264,7 @@ export async function updateDeliverySecurityAction(
     if (validated.data.passphrase !== undefined) {
       if (validated.data.passphrase && validated.data.passphrase.trim().length > 0) {
         const clean = validated.data.passphrase.trim();
-        passcodeHash = createHash("sha256").update(clean).digest("hex");
+        passcodeHash = await hashDeliveryPasscode(clean);
       } else {
         passcodeHash = null;
       }

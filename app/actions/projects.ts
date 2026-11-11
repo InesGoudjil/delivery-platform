@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerServices } from "@/core/server";
-import { requireWorkspaceMember } from "@/core/security/guards";
+import { requireUser, requireWorkspaceMember } from "@/core/security/guards";
 import {
   createWorkspaceProjectSchema,
   createShowcaseProjectSchema,
@@ -172,10 +172,24 @@ export async function createShowcaseProjectAction(
     });
     if (!validated.success) return { success: false, error: validated.error };
 
-    const services = await getServerServices();
+    const { workspaceId: cleanWorkspaceId, portfolioId: cleanPortfolioId } = validated.data;
+    const { services } = await requireWorkspaceMember(cleanWorkspaceId, "editor");
+
+    // The portfolio must belong to the caller's workspace.
+    const portfolio = await services.portfolio.getPortfolioById(cleanPortfolioId);
+    if (!portfolio || portfolio.workspaceId !== cleanWorkspaceId) {
+      return { success: false, error: "Portfolio not found in this workspace." };
+    }
+
+    const assetIds = await assertAssetsBelongToWorkspace(
+      services,
+      cleanWorkspaceId,
+      validated.data.assetIds || []
+    );
+
     const project = await services.project.createProject({
-      workspaceId: validated.data.workspaceId,
-      portfolioId: validated.data.portfolioId,
+      workspaceId: cleanWorkspaceId,
+      portfolioId: cleanPortfolioId,
       title: validated.data.title,
       clientName: validated.data.clientName,
       description: validated.data.description,
@@ -183,10 +197,8 @@ export async function createShowcaseProjectAction(
       coverAssetUrl: validated.data.coverAssetUrl,
     });
 
-    if (data.assetIds && data.assetIds.length > 0) {
-      for (let i = 0; i < data.assetIds.length; i++) {
-        await services.project.attachAssetToProject(project.id, data.assetIds[i], i);
-      }
+    for (let i = 0; i < assetIds.length; i++) {
+      await services.project.attachAssetToProject(project.id, assetIds[i], i);
     }
 
     revalidatePath("/[workspaceSlug]/portfolio", "page");
@@ -205,9 +217,11 @@ export async function attachAssetsToShowcaseProjectAction(
     if (!projectId || !assetIds || assetIds.length === 0) {
       return { success: true };
     }
-    const services = await getServerServices();
-    for (let i = 0; i < assetIds.length; i++) {
-      await services.project.attachAssetToProject(projectId, assetIds[i], i);
+    const { project, services } = await requireShowcaseProjectEditor(projectId);
+    const cleanAssetIds = await assertAssetsBelongToWorkspace(services, project.workspaceId, assetIds);
+
+    for (let i = 0; i < cleanAssetIds.length; i++) {
+      await services.project.attachAssetToProject(project.id, cleanAssetIds[i], i);
     }
     revalidatePath("/[workspaceSlug]/portfolio", "page");
     revalidatePath("/p/[handle]", "page");
@@ -222,8 +236,13 @@ export async function updateShowcaseProjectCoverAction(
   coverAssetUrl: string
 ) {
   try {
-    const services = await getServerServices();
-    const updated = await services.project.updateProject(projectId, { coverAssetUrl });
+    const cleanCoverUrl = typeof coverAssetUrl === "string" ? coverAssetUrl.trim() : "";
+    if (!cleanCoverUrl || cleanCoverUrl.length > 2048) {
+      return { success: false, error: "A valid cover image URL is required." };
+    }
+
+    const { project, services } = await requireShowcaseProjectEditor(projectId);
+    const updated = await services.project.updateProject(project.id, { coverAssetUrl: cleanCoverUrl });
     revalidatePath("/[workspaceSlug]/portfolio", "page");
     revalidatePath("/p/[handle]", "page");
     return { success: true, project: updated };
@@ -232,3 +251,49 @@ export async function updateShowcaseProjectCoverAction(
   }
 }
 
+
+type ServerServices = Awaited<ReturnType<typeof getServerServices>>;
+
+const MAX_SHOWCASE_ASSETS = 500;
+
+/**
+ * Loads a showcase project and requires the caller to be an editor (or above)
+ * of the workspace that owns it.
+ */
+async function requireShowcaseProjectEditor(projectId: string) {
+  const cleanId = typeof projectId === "string" ? projectId.trim() : "";
+  if (!cleanId) throw new Error("Project ID is required.");
+
+  const { services: userServices } = await requireUser();
+  const project = await userServices.project.getProjectById(cleanId);
+  if (!project) throw new Error("Showcase project not found.");
+
+  const { services } = await requireWorkspaceMember(project.workspaceId, "editor");
+  return { project, services };
+}
+
+/**
+ * Throws unless every asset exists and belongs to the given workspace, so a
+ * showcase can never surface another studio's files. Returns the trimmed IDs.
+ */
+async function assertAssetsBelongToWorkspace(
+  services: ServerServices,
+  workspaceId: string,
+  assetIds: unknown[]
+): Promise<string[]> {
+  if (!Array.isArray(assetIds)) {
+    throw new Error("Asset IDs must be a list.");
+  }
+  if (assetIds.length > MAX_SHOWCASE_ASSETS) {
+    throw new Error(`A showcase project can include at most ${MAX_SHOWCASE_ASSETS} assets.`);
+  }
+
+  const cleanIds = assetIds.map((assetId) => (typeof assetId === "string" ? assetId.trim() : ""));
+  const assets = await Promise.all(
+    cleanIds.map((id) => (id ? services.asset.getAssetById(id) : Promise.resolve(null)))
+  );
+  if (assets.some((asset) => !asset || asset.workspaceId !== workspaceId)) {
+    throw new Error("One or more assets do not belong to this workspace.");
+  }
+  return cleanIds;
+}

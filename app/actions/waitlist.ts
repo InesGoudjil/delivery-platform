@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { randomUUID } from "crypto";
 import { getServerServices } from "@/core/server";
+import { requirePlatformAdmin } from "@/core/security/guards";
 import { sendServerEvent } from "@/lib/meta";
 import { captureWaitlistLead } from "@/lib/posthog";
 import {
@@ -184,12 +185,14 @@ export async function inviteWaitlistCohortAction(limit: number = 20) {
   }
 
   try {
+    // Admin-only: this sends invite emails and returns the invited addresses.
+    const { services } = await requirePlatformAdmin();
+
     const headerList = await headers();
     const host = headerList.get("host") || "localhost:3000";
     const protocol = host.includes("localhost") ? "http" : "https";
     const baseUrl = `${protocol}://${host}`;
 
-    const services = await getServerServices();
     const result = await services.waitlist.inviteCohort(parsed.data.limit, baseUrl);
 
     return {

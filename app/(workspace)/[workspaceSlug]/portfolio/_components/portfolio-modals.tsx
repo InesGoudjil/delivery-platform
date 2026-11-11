@@ -331,7 +331,7 @@ export function ProjectExplorerModal({
                           </div>
                         ) : undefined
                       }
-                      centerAction={isVideo ? <PlayButtonOverlay /> : <ZoomButtonOverlay />}
+                      centerAction={isVideo ? <PlayButtonOverlay /> :null}
                       footerMode="overlay"
                     />
                   );
