@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { createHash } from "crypto";
 import { getServerAdminServices } from "@/core/server";
 import { setDeliveryPasscodeCookie, hasValidDeliveryPasscodeCookie } from "@/lib/security/delivery-token";
+import { verifyDeliveryPasscode } from "@/lib/security/passcode";
 import { presignDeliveryAssets } from "@/lib/media-server";
 import { verifyDeliveryPasscodeSchema, safeValidate } from "@/lib/validations";
 import { normalizeActionError } from "../safe-action";
@@ -66,8 +66,7 @@ export async function verifyDeliveryPasscodeAction(
       if (!cleanPasscode) {
         return { success: false, error: "Please enter the client passcode." };
       }
-      const hashed = createHash("sha256").update(cleanPasscode).digest("hex");
-      const isMatch = delivery.passcodeHash === cleanPasscode || delivery.passcodeHash === hashed;
+      const isMatch = await verifyDeliveryPasscode(cleanPasscode, delivery.passcodeHash);
       if (!isMatch) {
         return { success: false, error: "Incorrect passcode. Please try again." };
       }
@@ -163,8 +162,7 @@ export async function verifyPassphraseWithTokenAction(
       return { success: false, isProtected: true, error: "Please enter a passphrase to verify." };
     }
 
-    const hashed = createHash("sha256").update(clean).digest("hex");
-    const isMatch = delivery.passcodeHash === clean || delivery.passcodeHash === hashed;
+    const isMatch = await verifyDeliveryPasscode(clean, delivery.passcodeHash);
 
     if (!isMatch) {
       return {

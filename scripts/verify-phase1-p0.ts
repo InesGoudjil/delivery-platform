@@ -6,7 +6,7 @@ async function runPhase1Verification() {
 
   // 1. Verify Database Migration Script
   console.log("1. Checking SQL migration definitions...");
-  const migrationPath = "supabase/migrations/20261101000000_phase1_p0_security_lockdown.sql";
+  const migrationPath = "supabase/migrations-archive/20261101000000_phase1_p0_security_lockdown.sql";
   assert.ok(fs.existsSync(migrationPath), "Migration file does not exist!");
   const migrationContent = fs.readFileSync(migrationPath, "utf8");
   

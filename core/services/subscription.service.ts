@@ -141,6 +141,14 @@ export class SubscriptionService {
     return starterPlan;
   }
 
+  /**
+   * Returns only the per-workspace overrides (without the plan's features merged in).
+   */
+  async getFeatureOverrides(workspaceId: string): Promise<Partial<WorkspaceFeatureConfig>> {
+    const overridesRecord = await this.featuresRepo.findByWorkspaceId(workspaceId);
+    return (overridesRecord?.features || {}) as Partial<WorkspaceFeatureConfig>;
+  }
+
   async getFeatures(workspaceId: string): Promise<WorkspaceFeatureConfig> {
     const plan = await this.getCurrentPlan(workspaceId);
     const baselineFeatures: WorkspaceFeatureConfig =

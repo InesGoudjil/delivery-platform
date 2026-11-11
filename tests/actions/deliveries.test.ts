@@ -10,6 +10,7 @@ import * as guards from "@/core/security/guards";
 import * as serverModule from "@/core/server";
 import { createHash } from "crypto";
 import { cookies } from "next/headers";
+import { verifyDeliveryPasscode } from "@/lib/security/passcode";
 
 describe("app/actions/deliveries", () => {
   const mockDelivery = {
@@ -156,6 +157,12 @@ describe("app/actions/deliveries", () => {
       );
     });
 
+    it("rejects the stored hash when it is submitted as the passcode", async () => {
+      const result = await verifyDeliveryPasscodeAction("token_abc123", mockDelivery.passcodeHash);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Incorrect passcode");
+    });
+
     it("returns error when delivery share token is invalid or not found", async () => {
       mockAdminServices.delivery.getDeliveryByShareToken.mockResolvedValue(null);
 
@@ -233,6 +240,36 @@ describe("app/actions/deliveries", () => {
           isDownloadAllowed: false,
         })
       );
+    });
+
+    it("stores a new passcode as a salted scrypt hash", async () => {
+      const mockServices = {
+        delivery: {
+          updateDelivery: vi.fn().mockImplementation((id, data) =>
+            Promise.resolve({ ...mockDelivery, ...data })
+          ),
+        },
+        subscription: {
+          isPasswordProtectionAllowed: vi.fn().mockResolvedValue(true),
+          isDownloadNotificationAllowed: vi.fn().mockResolvedValue(true),
+        },
+      };
+
+      vi.spyOn(guards, "requireDeliveryAccess").mockResolvedValue({
+        services: mockServices as any,
+        delivery: mockDelivery as any,
+        workspace: { id: "ws_test" } as any,
+        role: "admin",
+        user: { id: "user_1" } as any,
+      });
+
+      const result = await updateDeliverySecurityAction("del_101", { passphrase: "new-code-42" });
+
+      expect(result.success).toBe(true);
+      const stored = mockServices.delivery.updateDelivery.mock.calls[0][1].passcodeHash;
+      expect(stored).toMatch(/^scrypt\$/);
+      expect(await verifyDeliveryPasscode("new-code-42", stored)).toBe(true);
+      expect(await verifyDeliveryPasscode(stored, stored)).toBe(false);
     });
   });
 

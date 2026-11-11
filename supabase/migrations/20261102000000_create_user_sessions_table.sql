@@ -24,6 +24,11 @@ CREATE INDEX IF NOT EXISTS idx_user_sessions_active ON public.user_sessions(user
 -- Enable Row Level Security
 ALTER TABLE public.user_sessions ENABLE ROW LEVEL SECURITY;
 
+-- Policies are dropped first so this migration can be re-run safely.
+DROP POLICY IF EXISTS "Users can view own active sessions" ON public.user_sessions;
+DROP POLICY IF EXISTS "Users can update own sessions" ON public.user_sessions;
+DROP POLICY IF EXISTS "Service role full access on user_sessions" ON public.user_sessions;
+
 -- Policy: Users can view their own non-revoked sessions
 CREATE POLICY "Users can view own active sessions"
   ON public.user_sessions FOR SELECT
