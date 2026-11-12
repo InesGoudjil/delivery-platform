@@ -1,236 +1,130 @@
 import { notFound } from "next/navigation";
-import { cookies } from "next/headers";
 import type { Metadata } from "next";
-import { getServerServices, getServerAdminServices } from "@/core/server";
-import { presignDeliveryAssets } from "@/lib/media-server";
-import { hasValidDeliveryPasscodeCookie } from "@/lib/security/delivery-token";
-import { verifyDeliveryPasscode } from "@/lib/security/passcode";
-import { checkRateLimit, getClientIp, RATELIMIT_POLICIES } from "@/lib/upstash";
-import { DeliveryRoomClient, DeliveryAssetItem } from "./delivery-room-client";
+import { getClientRoom } from "@/core/security/client-room";
+import { loadRoomAssets, signRoomCover } from "@/lib/client-room/content";
+import { DeliveryRoomClient } from "./delivery-room-client";
 import { DeliveryExpiredScreen } from "./_components/delivery-expired-screen";
+
+/**
+ * The client room. Everything goes through the room gate (core/security/client-room.ts):
+ * the share token is the only key, and nothing about the delivery's contents (files,
+ * comments, description, client name, cover) is loaded until the room is open for this
+ * visitor. Passcodes are entered in the dialog, never in the URL.
+ */
 
 interface PageProps {
   params: Promise<{ shareToken: string }>;
-  searchParams?: Promise<{ passphrase?: string; code?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { shareToken } = await params;
+  const generic: Metadata = {
+    title: "Private delivery | CineSpace",
+    description: "A private review room shared with you by a studio.",
+    robots: { index: false, follow: false },
+  };
   try {
-    const services = await getServerAdminServices();
-    const delivery = await services.delivery.getDeliveryByShareToken(shareToken, { allowExpired: true });
-    if (!delivery) {
-      return {
-        title: "Review Room | CineSpace",
-        description: "Client delivery cut review portal",
-      };
-    }
-
-    return {
-      title: `${delivery.title} — Review Room | CineSpace`,
-      description:
-        delivery.description ||
-        "Review video cuts, leave timecoded frame feedback, and approve deliverables.",
-    };
+    const room = await getClientRoom(shareToken);
+    if (!room || !room.canView || room.state !== "open") return generic;
+    return { ...generic, title: `${room.delivery.title} — Review Room | CineSpace` };
   } catch {
-    return {
-      title: "Review Room | CineSpace",
-    };
+    return generic;
   }
 }
 
 export default async function ClientDeliveryPage(props: PageProps) {
   const { shareToken } = await props.params;
-  const adminServices = await getServerAdminServices();
-  const userServices = await getServerServices();
-  const user = await userServices.auth.getCurrentUser();
+  const room = await getClientRoom(shareToken);
+  if (!room) notFound();
 
-  // 1. Fetch full delivery details (delivery, client, assets, versions, feedback)
-  const fullDetails = await adminServices.delivery.getDeliveryWithFullDetails(shareToken);
-
-  if (!fullDetails) {
-    notFound();
-  }
-
-  // 2. Fetch workspace identity, features, and portfolio branding
+  const { delivery, services } = room;
   const [workspace, workspaceFeatures, portfolio] = await Promise.all([
-    adminServices.workspace.getWorkspaceById(fullDetails.workspaceId),
-    adminServices.subscription.getFeatures(fullDetails.workspaceId),
-    adminServices.portfolio.getPortfolioByWorkspace(fullDetails.workspaceId).catch(() => null),
+    services.workspace.getWorkspaceById(delivery.workspaceId),
+    services.subscription.getFeatures(delivery.workspaceId),
+    services.portfolio.getPortfolioByWorkspace(delivery.workspaceId).catch(() => null),
   ]);
-  const brandName = workspace?.brandName || "Studio Workspace";
-  const workspaceSlug = workspace?.slug || "studio";
-  const logoUrl = workspace?.logoUrl || null;
-  const accentColor = workspace?.accentColor || "#f5551d";
-  const isWhiteLabel = Boolean(workspaceFeatures?.white_label);
-  const canWatermark = Boolean(workspaceFeatures?.watermark);
-  const effectiveWatermark = canWatermark && Boolean(fullDetails.appearance?.watermarkMedia ?? fullDetails.isWatermarked);
-  const brandingLocation = portfolio?.stats?.location || null;
+  const branding = {
+    brandName: workspace?.brandName || "Studio Workspace",
+    slug: workspace?.slug || "studio",
+    logoUrl: workspace?.logoUrl || null,
+    accentColor: workspace?.accentColor || "#f5551d",
+  };
+  const portfolioUrl = portfolio?.isPublished ? `/p/${portfolio.slug || branding.slug}` : undefined;
 
-  // Calculate delivery asset stats based strictly on the assets present on this delivery alone
-  const initialAssetCount = (fullDetails.assets || []).length;
-  const initialTotalSizeBytes = (fullDetails.assets || []).reduce((acc, asset) => {
-    const activeVer =
-      asset.versions?.find((v) => v.isActiveVersion) ||
-      asset.versions?.[0];
-    return acc + (Number(activeVer?.fileSizeBytes) || 0);
-  }, 0);
-
-  // 3. Resolve client name
-  const clientName = fullDetails.client?.name || null;
-
-  // 4. Map assets, versions, and existing feedback
-  const mappedAssets: DeliveryAssetItem[] = (fullDetails.assets || []).map((asset) => {
-    const mappedVersions = (asset.versions || []).map((v) => ({
-      id: v.id,
-      versionNumber: v.versionNumber,
-      rawFileUrl: v.rawFileUrl,
-      downloadUrl: v.rawFileUrl,
-      hlsManifestUrl: v.hlsManifestUrl || null,
-      thumbnailUrl: v.thumbnailUrl || null,
-      fileSizeBytes: v.fileSizeBytes || null,
-      durationSeconds: v.durationSeconds ? Number(v.durationSeconds) : null,
-      transcodingStatus: v.transcodingStatus || null,
-      isActiveVersion: v.isActiveVersion,
-    }));
-
-    const activeVersion =
-      mappedVersions.find((v) => v.isActiveVersion) ||
-      mappedVersions[0] ||
-      null;
-
-    const mappedFeedback = (asset.feedback || []).map((f) => ({
-      id: f.id,
-      assetVersionId: f.assetVersionId,
-      authorName: f.authorName,
-      commentText: f.commentText,
-      timestampSeconds: f.timestampSeconds ? Number(f.timestampSeconds) : null,
-      isResolved: f.isResolved,
-      createdAt: f.createdAt,
-      replies: (f.replies || []).map((r) => ({
-        id: r.id,
-        feedbackId: r.feedbackId,
-        authorName: r.authorName,
-        commentText: r.commentText,
-        createdAt: r.createdAt,
-      })),
-    }));
-
-    return {
-      id: asset.id,
-      title: asset.title,
-      type: asset.type,
-      aspectRatio: asset.aspectRatio || undefined,
-      isApproved: asset.isApproved,
-      sortOrder: asset.sortOrder,
-      versions: mappedVersions,
-      activeVersion,
-      feedback: mappedFeedback,
-    };
-  });
-
-  // 5. Check passcode cookie verification or creator ownership
-  const cookieStore = await cookies();
-  const hasAccessCookie = hasValidDeliveryPasscodeCookie(cookieStore, shareToken);
-  const isPasscodeProtected = Boolean(fullDetails.passcodeHash);
-
-  // Check if current user is owner or member of the workspace
-  const isWorkspaceMember = user
-    ? await adminServices.member.isMember(fullDetails.workspaceId, user.id).catch(() => false)
-    : false;
-
-  // Check if link has expired
-  const isExpired = fullDetails.expiresAt ? new Date(fullDetails.expiresAt) < new Date() : false;
-
-  if (isExpired && !isWorkspaceMember) {
+  if (!room.canView && (room.state === "expired" || room.state === "unavailable")) {
     return (
       <DeliveryExpiredScreen
-        title={fullDetails.title}
-        expiresAt={fullDetails.expiresAt}
-        workspace={{
-          brandName,
-          slug: workspaceSlug,
-          logoUrl,
-          accentColor,
-        }}
-        portfolioUrl={portfolio ? `/p/${portfolio.slug || workspaceSlug}` : undefined}
+        title={delivery.title}
+        expiresAt={delivery.expiresAt ?? null}
+        workspace={branding}
+        portfolioUrl={portfolioUrl}
+        reason={room.state}
       />
     );
   }
 
-  // Also support auto-unlock via deep link query param (?passphrase=... or ?code=...)
-  const resolvedSearchParams = props.searchParams ? await props.searchParams : undefined;
-  const deepLinkPassphrase = (resolvedSearchParams?.passphrase || resolvedSearchParams?.code)?.trim();
-  let queryPassphraseMatched = false;
-  if (deepLinkPassphrase && isPasscodeProtected && fullDetails.passcodeHash && !hasAccessCookie) {
-    // Same limit as the passcode dialog, so deep links can't be used to guess passcodes.
-    const rateLimit = await checkRateLimit({
-      policy: RATELIMIT_POLICIES.deliveryPasscode,
-      identifier: [await getClientIp(), shareToken],
-    }).catch(() => ({ success: false }));
-    if (rateLimit.success) {
-      queryPassphraseMatched = await verifyDeliveryPasscode(deepLinkPassphrase, fullDetails.passcodeHash);
-    }
-  }
+  const isLocked = !room.canView;
+  const canWatermark = Boolean(workspaceFeatures?.watermark);
+  const effectiveWatermark = canWatermark && Boolean(delivery.appearance?.watermarkMedia ?? delivery.isWatermarked);
 
-  // Do not silently bypass for workspace members, so creators can test the exact client dialog!
-  const isInitiallyUnlocked = hasAccessCookie || queryPassphraseMatched;
+  // Locked: only what the passcode screen shows. Open: the room's files, signed for this visitor.
+  const roomPage = isLocked ? null : await loadRoomAssets(room);
+  const [cover, profile] = isLocked
+    ? [null, null]
+    : await Promise.all([
+        signRoomCover(room),
+        room.member ? services.profile.getProfile(room.member.userId).catch(() => null) : null,
+      ]);
 
-  // 6. Current user info if filmmaker / team member is inspecting
-  let userProfile = null;
-  if (user) {
-    const profile = await adminServices.profile.getProfile(user.id);
-    userProfile = {
-      id: user.id,
-      name: profile?.fullName || user.email?.split("@")[0] || null,
-      email: user.email || null,
-    };
-  }
-
-  // 7. Media access gate: Only send assets/streams/comments if public or unlocked
-  const deliveredAssets = (isPasscodeProtected && !isInitiallyUnlocked)
-    ? []
-    : await presignDeliveryAssets(mappedAssets, adminServices.storage, 7200);
+  const initialAssets = roomPage?.assets ?? [];
+  const initialTotalSizeBytes = initialAssets.reduce((sum, asset) => {
+    const active = asset.activeVersion || asset.versions?.[0];
+    return sum + (Number(active?.fileSizeBytes) || 0);
+  }, 0);
 
   return (
     <DeliveryRoomClient
       delivery={{
-        id: fullDetails.id,
-        workspaceId: fullDetails.workspaceId,
-        title: fullDetails.title,
-        description: fullDetails.description,
-        shareToken: fullDetails.shareToken,
-        status: fullDetails.status,
-        isDownloadAllowed: fullDetails.isDownloadAllowed,
-        isCommentAllowed: fullDetails.isCommentAllowed ?? true,
+        id: delivery.id,
+        workspaceId: delivery.workspaceId,
+        title: delivery.title,
+        description: isLocked ? null : delivery.description,
+        shareToken: delivery.shareToken,
+        status: delivery.status,
+        isDownloadAllowed: room.canDownload,
+        isCommentAllowed: isLocked ? false : room.canComment,
         isWatermarked: effectiveWatermark,
         appearance: {
-          ...fullDetails.appearance,
+          ...delivery.appearance,
+          coverThumbnailUrl: cover,
           watermarkMedia: effectiveWatermark,
         },
-        approvedAt: fullDetails.approvedAt,
-        approvedByName: fullDetails.approvedByName,
-        expiresAt: fullDetails.expiresAt,
-        location: fullDetails.location,
-        deliveryDate: fullDetails.deliveryDate,
-        createdAt: fullDetails.createdAt,
+        approvedAt: isLocked ? null : delivery.approvedAt,
+        approvedByName: isLocked ? null : delivery.approvedByName,
+        expiresAt: delivery.expiresAt,
+        location: isLocked ? null : delivery.location,
+        deliveryDate: isLocked ? null : delivery.deliveryDate,
+        createdAt: delivery.createdAt,
       }}
-      workspace={{
-        brandName,
-        slug: workspaceSlug,
-        logoUrl,
-        accentColor,
-      }}
-      clientName={clientName}
-      brandingLocation={brandingLocation}
+      workspace={branding}
+      clientName={roomPage?.clientName ?? null}
+      brandingLocation={isLocked ? null : portfolio?.stats?.location || null}
       initialTotalSizeBytes={initialTotalSizeBytes}
-      initialAssetCount={initialAssetCount}
-      initialAssets={deliveredAssets}
-      isPasscodeProtected={isPasscodeProtected}
-      isInitiallyUnlocked={isInitiallyUnlocked}
-      currentUser={userProfile}
-      isWorkspaceMember={isWorkspaceMember}
-      whiteLabel={isWhiteLabel}
+      initialAssetCount={roomPage?.totalAssetsCount ?? 0}
+      initialAssets={initialAssets}
+      isPasscodeProtected={Boolean(delivery.passcodeHash)}
+      isInitiallyUnlocked={!isLocked}
+      currentUser={
+        room.member
+          ? {
+              id: room.member.userId,
+              name: profile?.fullName || room.member.email?.split("@")[0] || null,
+              email: room.member.email,
+            }
+          : null
+      }
+      isWorkspaceMember={room.member !== null}
+      whiteLabel={Boolean(workspaceFeatures?.white_label)}
     />
   );
 }

@@ -1,6 +1,6 @@
 "use server";
 
-import { getServerCore } from "@/core/server";
+import { getServerAdminServices, getServerCore } from "@/core/server";
 import {
   renderPortfolioLeadEmail,
   renderContactFormEmail,
@@ -34,15 +34,21 @@ export async function submitPortfolioInquiryAction(input: SubmitPortfolioInquiry
 
     const core = await getServerCore();
 
-    // 1. Resolve workspace and portfolio by handle
-    let workspace = await core.repositories.workspace.findBySlug(cleanHandle);
-    let portfolio = workspace ? await core.repositories.portfolio.findByWorkspaceId(workspace.id) : null;
-
+    // 1. The studio by workspace slug or portfolio slug. Visitors have no database access
+    //    of their own, so this reads with the service role, and only published portfolios
+    //    take inquiries.
+    const admin = await getServerAdminServices();
+    let workspace = await admin.workspace.getWorkspaceBySlug(cleanHandle).catch(() => null);
+    let portfolio = workspace ? await admin.portfolio.getPortfolioByWorkspace(workspace.id).catch(() => null) : null;
     if (!portfolio) {
-      portfolio = await core.repositories.portfolio.findBySlug(cleanHandle);
-      if (portfolio && !workspace) {
-        workspace = await core.repositories.workspace.findById(portfolio.workspaceId);
+      const publicView = await admin.portfolio.getPublicPortfolio(cleanHandle).catch(() => null);
+      if (publicView) {
+        workspace = await admin.workspace.getWorkspaceById(publicView.workspaceId).catch(() => null);
+        portfolio = workspace ? await admin.portfolio.getPortfolioByWorkspace(workspace.id).catch(() => null) : null;
       }
+    }
+    if (!workspace || !portfolio || !portfolio.isPublished) {
+      return { success: false, error: "This portfolio isn't accepting inquiries right now." };
     }
 
     const filmmakerName = workspace?.brandName || (portfolio ? portfolio.title : "Filmmaker");

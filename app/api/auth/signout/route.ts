@@ -1,8 +1,14 @@
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { getServerServices } from "@/core/server";
-import { redirect } from "next/navigation";
+import { signOutCurrentSession } from "@/lib/session-manager";
 
-export async function POST() {
+/**
+ * Signs this device out only (same as signOutAction): flags its session row revoked and ends its
+ * Supabase login. Other devices stay signed in. 303 so the browser follows with a GET.
+ */
+export async function POST(request: Request) {
   const services = await getServerServices();
-  await services.auth.signOut();
-  redirect("/login");
+  await signOutCurrentSession(services, await cookies());
+  return NextResponse.redirect(new URL("/login", request.url), { status: 303 });
 }

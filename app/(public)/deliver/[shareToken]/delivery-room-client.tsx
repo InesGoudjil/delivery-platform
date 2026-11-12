@@ -34,7 +34,16 @@ export type {
   AssetFilterTab,
 };
 
+/**
+ * A locked room is rendered without its contents. After the passcode is accepted the
+ * server re-renders the page unlocked (router.refresh in useDeliveryRoom); the key makes
+ * the room start over from the full props instead of the locked ones.
+ */
 export function DeliveryRoomClient(props: DeliveryRoomProps) {
+  return <DeliveryRoomView key={props.isInitiallyUnlocked ? "open" : "locked"} {...props} />;
+}
+
+function DeliveryRoomView(props: DeliveryRoomProps) {
   const { delivery, workspace, clientName, isWorkspaceMember, whiteLabel } = props;
   const room = useDeliveryRoom(props);
 

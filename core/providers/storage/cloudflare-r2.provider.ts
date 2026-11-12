@@ -3,14 +3,18 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { isUuid, parseStoredMedia } from "@/lib/storage/keys";
+import { UPLOAD_URL_TTL_SECONDS } from "@/lib/validations/upload";
 import {
   IStorageProvider,
   CreateUploadUrlParams,
   DirectUploadResult,
   PlaybackInfo,
   StorageAssetStatus,
+  StoredObjectInfo,
 } from "./storage.provider";
 
 export interface CloudflareR2Config {
@@ -23,6 +27,7 @@ export interface CloudflareR2Config {
   publicDomain?: string;
 }
 
+/** Fallback content type for server-side writes that don't pass one. Never SVG or HTML. */
 function getMimeType(filename: string, fallback: string = "application/octet-stream"): string {
   const lower = filename.toLowerCase();
   if (lower.endsWith(".avif")) return "image/avif";
@@ -30,11 +35,31 @@ function getMimeType(filename: string, fallback: string = "application/octet-str
   if (lower.endsWith(".png")) return "image/png";
   if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
   if (lower.endsWith(".gif")) return "image/gif";
-  if (lower.endsWith(".svg")) return "image/svg+xml";
   if (lower.endsWith(".mp4")) return "video/mp4";
   if (lower.endsWith(".mov")) return "video/quicktime";
   if (lower.endsWith(".webm")) return "video/webm";
   return fallback;
+}
+
+/**
+ * The file-name part of an object key: ASCII letters, digits, ".", "_" and "-" only, so the
+ * key survives URLs and `parseStoredMedia` unchanged (no "#", "?", "%", "/" or "..").
+ */
+export function safeObjectName(filename: string): string {
+  const trimmed = (filename || "").trim();
+  const dot = trimmed.lastIndexOf(".");
+  const base = dot > 0 ? trimmed.slice(0, dot) : trimmed;
+  const extension = dot > 0 ? trimmed.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8) : "";
+  const cleanBase =
+    base
+      .normalize("NFKD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^A-Za-z0-9._-]+/g, "_")
+      .replace(/\.{2,}/g, ".")
+      .replace(/_+/g, "_")
+      .replace(/^[._-]+|[._-]+$/g, "")
+      .slice(0, 80) || "file";
+  return extension ? `${cleanBase}.${extension}` : cleanBase;
 }
 
 export class CloudflareR2StorageProvider implements IStorageProvider {
@@ -90,86 +115,139 @@ export class CloudflareR2StorageProvider implements IStorageProvider {
     return this.publicBucket || this.privateBucket;
   }
 
+  /**
+   * The object key a stored value points at. Only keys under a workspace prefix
+   * ("[private/|public/]workspaces/<uuid>/...") are ever read, signed, written or deleted;
+   * anything else (other prefixes, path tricks, foreign URLs) is refused.
+   */
+  private requireKey(value: string): string {
+    const parsed = parseStoredMedia(value);
+    if (parsed?.kind !== "r2" || !parsed.workspaceId) {
+      throw new Error("Not a workspace storage key.");
+    }
+    return parsed.key;
+  }
+
+  /**
+   * Presigned PUT for one object. The key, content type and exact size are decided by the
+   * server and signed into the URL, so the browser can't store anything else there.
+   */
   async createDirectUploadUrl(params: CreateUploadUrlParams): Promise<DirectUploadResult> {
-    const isPublic = params.isPublic !== false; // Default to public if not explicitly marked private
-    const targetBucket = isPublic ? this.publicBucket : this.privateBucket;
-    const privacyPrefix = isPublic ? "public" : "private";
-
-    // Sanitize filename: replace spaces, slashes, and special characters with safe characters
-    const cleanFilename = params.filename
-      .replace(/[/\\?%*:|"<>]/g, "_")
-      .replace(/\s+/g, "_");
-
-    let subPath: string;
-
-    if (isPublic) {
-      const category = (params.category || params.metadata?.category || "").toLowerCase();
-      if (category === "branding" || params.metadata?.type === "branding") {
-        subPath = `branding/${Date.now()}-${cleanFilename}`;
-      } else if (category === "cover" || params.metadata?.type === "cover") {
-        subPath = `portfolio/covers/${Date.now()}-${cleanFilename}`;
-      } else if (
-        params.projectId &&
-        params.projectId.trim() !== "" &&
-        params.projectId !== "standalone" &&
-        params.projectId !== params.deliveryId
-      ) {
-        const mediaSubdir = params.assetType === "video" || category === "film" ? "films" : "stills";
-        subPath = `portfolio/projects/${params.projectId}/${mediaSubdir}/${Date.now()}-${cleanFilename}`;
-      } else {
-        const mediaSubdir = params.assetType === "video" || category === "film" ? "films" : "stills";
-        subPath = `portfolio/standalone/${mediaSubdir}/${Date.now()}-${cleanFilename}`;
-      }
-    } else {
-      // Private Bucket: Client Deliveries & Confidential Cuts
-      const deliveryId =
-        params.deliveryId ||
-        (params.projectId && params.projectId !== "standalone" ? params.projectId : null) ||
-        "general";
-      const category = (params.category || params.metadata?.category || "").toLowerCase();
-
-      if (category === "feedback" || params.metadata?.type === "feedback") {
-        const feedbackId = params.metadata?.feedbackId || "general";
-        subPath = `deliveries/${deliveryId}/feedback/${feedbackId}/${Date.now()}-${cleanFilename}`;
-      } else if (category === "raw" || params.assetType === "raw_file") {
-        subPath = `deliveries/${deliveryId}/raw/${Date.now()}-${cleanFilename}`;
-      } else {
-        const assetId = params.metadata?.assetId || "asset";
-        const versionNum = params.versionNumber || params.metadata?.versionNumber || 1;
-        subPath = `deliveries/${deliveryId}/assets/${assetId}/v${versionNum}/${Date.now()}-${cleanFilename}`;
-      }
+    const isPublic = params.isPublic === true;
+    if (!isUuid(params.workspaceId)) throw new Error("Uploads need a workspace id.");
+    if (!isUuid(params.assetId)) throw new Error("Uploads need a file id.");
+    if (!params.contentType) throw new Error("Uploads need a content type.");
+    if (!Number.isSafeInteger(params.fileSizeBytes) || params.fileSizeBytes <= 0) {
+      throw new Error("Uploads need the exact file size.");
     }
 
-    const key = `${privacyPrefix}/workspaces/${params.workspaceId}/${subPath}`;
+    const workspaceId = params.workspaceId.toLowerCase();
+    const assetId = params.assetId.toLowerCase();
+    const version = Number.isSafeInteger(params.versionNumber) && params.versionNumber > 0 ? params.versionNumber : 1;
+    const name = `${Date.now()}-${safeObjectName(params.filename)}`;
 
-    const contentType = getMimeType(
-      params.filename,
-      params.assetType === "image" ? "image/jpeg" : "application/octet-stream"
-    );
+    let subPath: string;
+    if (isPublic) {
+      const media = params.assetType === "video" ? "films" : "stills";
+      switch (params.placement) {
+        case "portfolio": // standalone portfolio pieces, and only those
+          subPath = `portfolio/standalone/${media}/${assetId}/v${version}/${name}`;
+          break;
+        case "project":
+          subPath = `portfolio/projects/${media}/${assetId}/v${version}/${name}`;
+          break;
+        case "cover":
+          subPath = `portfolio/covers/${assetId}/${name}`;
+          break;
+        case "hero":
+          subPath = `portfolio/hero/${assetId}/${name}`;
+          break;
+        case "branding":
+          subPath = `branding/${assetId}/${name}`;
+          break;
+        default:
+          subPath = `portfolio/media/${media}/${assetId}/v${version}/${name}`;
+      }
+    } else {
+      // Private bucket: files in a client delivery.
+      if (!isUuid(params.deliveryId)) throw new Error("Private uploads need a delivery.");
+      subPath = `deliveries/${params.deliveryId.toLowerCase()}/assets/${assetId}/v${version}/${name}`;
+    }
+
+    const key = `${isPublic ? "public" : "private"}/workspaces/${workspaceId}/${subPath}`;
 
     const command = new PutObjectCommand({
-      Bucket: targetBucket,
+      Bucket: isPublic ? this.publicBucket : this.privateBucket,
       Key: key,
-      ContentType: contentType,
+      ContentType: params.contentType,
+      ContentLength: params.fileSizeBytes,
     });
 
-    const uploadUrl = await getSignedUrl(this.s3Client, command, { expiresIn: 3600 });
+    // The presigner leaves Content-Type unsigned unless asked; sign it, and the length.
+    const uploadUrl = await getSignedUrl(this.s3Client, command, {
+      expiresIn: UPLOAD_URL_TTL_SECONDS,
+      signableHeaders: new Set(["content-type", "content-length"]),
+    });
 
     return {
       uploadUrl,
       providerUid: key,
       uploadType: "presigned_put",
+      expiresAt: new Date(Date.now() + UPLOAD_URL_TTL_SECONDS * 1000).toISOString(),
+      // The browser sets Content-Length itself (from the file); it must equal the signed size.
       headers: {
-        "Content-Type": contentType,
+        "Content-Type": params.contentType,
       },
     };
   }
 
-  private getAssetUrl(providerUid: string): string {
-    if (this.hasRealPublicDomain() && !providerUid.startsWith("private/")) {
-      return `${this.publicDomain}/${providerUid}`;
+  /** Size and content type of a stored object, or null when there is no such object. */
+  async headObject(value: string): Promise<StoredObjectInfo | null> {
+    const key = this.requireKey(value);
+    try {
+      const res = await this.s3Client.send(
+        new HeadObjectCommand({ Bucket: this.getTargetBucket(key), Key: key })
+      );
+      return {
+        sizeBytes: typeof res.ContentLength === "number" ? res.ContentLength : -1,
+        contentType: res.ContentType ?? null,
+      };
+    } catch (err: any) {
+      const status = err?.$metadata?.httpStatusCode;
+      if (status === 404 || err?.name === "NotFound" || err?.name === "NoSuchKey") return null;
+      throw err;
     }
-    return `/api/media/${providerUid}`;
+  }
+
+  /** The first bytes of a stored object (ranged GET), at most 64 KiB. */
+  async readObjectStart(value: string, length: number): Promise<Uint8Array> {
+    const key = this.requireKey(value);
+    const count = Math.max(1, Math.min(Math.floor(length) || 1, 65536));
+    const res = await this.s3Client.send(
+      new GetObjectCommand({
+        Bucket: this.getTargetBucket(key),
+        Key: key,
+        Range: `bytes=0-${count - 1}`,
+      })
+    );
+    const body: any = res.Body;
+    if (!body) return new Uint8Array();
+    if (typeof body.transformToByteArray === "function") {
+      const bytes: Uint8Array = await body.transformToByteArray();
+      return bytes.subarray(0, count);
+    }
+    const chunks: Buffer[] = [];
+    for await (const chunk of body as AsyncIterable<Buffer | Uint8Array | string>) {
+      chunks.push(Buffer.from(chunk as any));
+    }
+    return new Uint8Array(Buffer.concat(chunks)).subarray(0, count);
+  }
+
+  private getAssetUrl(key: string): string {
+    if (this.hasRealPublicDomain() && !key.startsWith("private/")) {
+      return `${this.publicDomain}/${key}`;
+    }
+    return `/api/media/${key}`;
   }
 
   /**
@@ -180,16 +258,17 @@ export class CloudflareR2StorageProvider implements IStorageProvider {
     isPublic?: boolean,
     expiresInSeconds: number = 3600
   ): Promise<string> {
-    const isExplicitlyPrivate = isPublic === false || providerUid.startsWith("private/");
+    const key = this.requireKey(providerUid);
+    const isExplicitlyPrivate = isPublic === false || key.startsWith("private/");
 
     if (!isExplicitlyPrivate && this.hasRealPublicDomain()) {
-      return `${this.publicDomain}/${providerUid}`;
+      return `${this.publicDomain}/${key}`;
     }
 
-    const bucket = this.getTargetBucket(providerUid, isPublic);
+    const bucket = this.getTargetBucket(key, isPublic);
     const command = new GetObjectCommand({
       Bucket: bucket,
-      Key: providerUid,
+      Key: key,
     });
 
     return getSignedUrl(this.s3Client, command, { expiresIn: expiresInSeconds });
@@ -205,13 +284,14 @@ export class CloudflareR2StorageProvider implements IStorageProvider {
     isPublic?: boolean,
     expiresInSeconds: number = 7200
   ): Promise<string> {
-    const bucket = this.getTargetBucket(providerUid, isPublic);
+    const key = this.requireKey(providerUid);
+    const bucket = this.getTargetBucket(key, isPublic);
     const safeFilename = filename.replace(/[/\\?%*:|"<>]/g, "_").trim() || "download";
     const cleanAscii = safeFilename.replace(/["\r\n]/g, "");
 
     const command = new GetObjectCommand({
       Bucket: bucket,
-      Key: providerUid,
+      Key: key,
       ResponseContentDisposition: `attachment; filename="${cleanAscii}"; filename*=UTF-8''${encodeURIComponent(cleanAscii)}`,
     });
 
@@ -219,7 +299,7 @@ export class CloudflareR2StorageProvider implements IStorageProvider {
   }
 
   async getPlaybackInfo(providerUid: string): Promise<PlaybackInfo | null> {
-    const assetUrl = this.getAssetUrl(providerUid);
+    const assetUrl = this.getAssetUrl(this.requireKey(providerUid));
 
     return {
       providerUid,
@@ -231,7 +311,7 @@ export class CloudflareR2StorageProvider implements IStorageProvider {
   }
 
   async getAssetStatus(providerUid: string): Promise<StorageAssetStatus> {
-    const assetUrl = this.getAssetUrl(providerUid);
+    const assetUrl = this.getAssetUrl(this.requireKey(providerUid));
 
     return {
       providerUid,
@@ -241,27 +321,9 @@ export class CloudflareR2StorageProvider implements IStorageProvider {
   }
 
   async deleteAsset(providerUid: string): Promise<void> {
-    let key = providerUid.split("?")[0].trim();
-    if (key.startsWith("http://") || key.startsWith("https://")) {
-      try {
-        const parsed = new URL(key);
-        key = parsed.pathname.replace(/^\/+/, "");
-        if (this.publicBucket && key.startsWith(`${this.publicBucket}/`)) {
-          key = key.slice(this.publicBucket.length + 1);
-        }
-        if (this.privateBucket && key.startsWith(`${this.privateBucket}/`)) {
-          key = key.slice(this.privateBucket.length + 1);
-        }
-      } catch {
-        // Fallback to raw key
-      }
-    }
-    if (key.startsWith("api/media/")) {
-      key = key.replace(/^api\/media\//, "");
-    }
-    const bucket = this.getTargetBucket(key);
+    const key = this.requireKey(providerUid);
     const command = new DeleteObjectCommand({
-      Bucket: bucket,
+      Bucket: this.getTargetBucket(key),
       Key: key,
     });
     await this.s3Client.send(command);
@@ -272,13 +334,9 @@ export class CloudflareR2StorageProvider implements IStorageProvider {
     contentType?: string;
     contentLength?: number;
   }> {
-    let key = providerUid.split("?")[0].trim();
-    if (key.startsWith("api/media/")) {
-      key = key.replace(/^api\/media\//, "");
-    }
-    const bucket = this.getTargetBucket(key);
+    const key = this.requireKey(providerUid);
     const command = new GetObjectCommand({
-      Bucket: bucket,
+      Bucket: this.getTargetBucket(key),
       Key: key,
     });
     const res = await this.s3Client.send(command);
@@ -295,13 +353,9 @@ export class CloudflareR2StorageProvider implements IStorageProvider {
     contentType?: string,
     contentLength?: number
   ): Promise<void> {
-    let key = providerUid.split("?")[0].trim();
-    if (key.startsWith("api/media/")) {
-      key = key.replace(/^api\/media\//, "");
-    }
-    const bucket = this.getTargetBucket(key);
+    const key = this.requireKey(providerUid);
     const command = new PutObjectCommand({
-      Bucket: bucket,
+      Bucket: this.getTargetBucket(key),
       Key: key,
       Body: body as any,
       ContentType: contentType || getMimeType(key),

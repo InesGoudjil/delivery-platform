@@ -9,8 +9,8 @@
  *          services.auth.getCurrentUser() call;
  *   authz  a check against the resource: requireWorkspaceMember / requireDeliveryAccess /
  *          requirePlatformAdmin, the createAuthWorkspace/DeliveryAction wrappers, the
- *          client delivery-room checks (requireDeliveryGuestOrMemberAccess, passcode
- *          cookie, verifyDeliveryPasscode), or an inline isMember()/getMember() call or
+ *          client-room gate (requireClientRoom in core/security/client-room.ts) or the
+ *          passcode check (verifyDeliveryPasscode), or an inline isMember()/getMember() call or
  *          `.platformRole` comparison (the older admin.ts actions count as guarded);
  *   rateLimit  checkRateLimit() / assertRateLimit().
  * Helpers and delegations (same file, helper modules, other actions) are followed.
@@ -87,25 +87,14 @@ const PUBLIC_ACTIONS: Record<string, PublicActionEntry> = {
 };
 
 /** No auth step today, but they need one. Ratchet: remove entries as they are fixed, never add. */
-const KNOWN_GAPS: Record<string, string> = {
-  "app/actions/projects.ts#approveCutAction":
-    "approves any deliveryId with no access check (deliveries/approvals.ts has the guarded twin); not imported anywhere, delete it",
-  "app/actions/projects.ts#archiveProjectAction":
-    "archives any deliveryId with no access check (archiveDeliveryAction is the guarded one); not imported anywhere, delete it",
-  "app/actions/portfolio.ts#getProjectAssetsAction":
-    "lists the assets of any project or delivery id; needs requireWorkspaceMember(project.workspaceId, 'viewer')",
-  "app/actions/silo.ts#checkDeliverySiloStatusAction":
-    "checks and finalizes a Glacier restore for any deliveryId; needs requireDeliveryAccess(deliveryId, 'viewer')",
-  "app/actions/deliveries/download-manifest.ts#recordClientDownloadAction":
-    "client-room action that can email a delivery's owners for any deliveryId; needs requireDeliveryGuestOrMemberAccess(deliveryId)",
-};
+const KNOWN_GAPS: Record<string, string> = {};
 
 /** Signed-in check only, and that is enough: they act on the caller's own account or data. */
 const USER_SCOPED_ACTIONS: Record<string, string> = {
   "app/actions/auth.ts#resetPasswordAction": "sets the caller's own password; Supabase rejects it without a recovery session",
   "app/actions/auth.ts#changePasswordAction": "changes the caller's own password after re-checking the current one",
   "app/actions/members.ts#acceptWorkspaceInvitationAction":
-    "the invitation token is the capability; it adds the caller to the inviting workspace",
+    "the invitation token plus the caller's confirmed email matching the invited one; it adds the caller to the inviting workspace",
   "app/actions/projects.ts#createProjectAction": "creates a delivery in the caller's own workspace (getOrCreateWorkspace(user.id))",
   "app/actions/sessions.ts#getActiveSessionsAction": "lists the caller's own sessions",
   "app/actions/sessions.ts#revokeSessionAction": "revokes one of the caller's own sessions (the query filters on user_id)",
@@ -115,15 +104,41 @@ const USER_SCOPED_ACTIONS: Record<string, string> = {
 };
 
 /** Signed-in check only, but they touch someone's workspace or delivery. Ratchet, like KNOWN_GAPS. */
-const KNOWN_AUTHZ_GAPS: Record<string, string> = {
-  "app/actions/portfolio.ts#getWorkspacePortfolioDataAction":
-    "any signed-in user can request any workspace slug; needs a membership check",
-  "app/actions/projects.ts#updateProjectDetailsAction":
-    "any signed-in user can edit any deliveryId (updateDeliveryDetailsAction is the guarded one); not imported anywhere, delete it",
-  "app/actions/silo.ts#getDeliverySiloDownloadUrlsAction":
-    "any signed-in user can request Glacier download links for any deliveryId; needs requireDeliveryAccess",
-  "app/actions/upload.ts#checkAssetStatusAction":
-    "returns provider status and media URLs for any providerUid; not tied to the caller's workspace (not imported anywhere)",
+const KNOWN_AUTHZ_GAPS: Record<string, string> = {};
+
+/**
+ * Use the service role (row-level security off) without the client-room gate or a
+ * lib/client-room/scope.ts loader. Each reason says what ties the ids it writes to a
+ * resource the caller is authorized for. A new entry needs the same review.
+ */
+const SERVICE_ROLE_ACTIONS: Record<string, string> = {
+  "app/actions/admin.ts#createPlanAction": "platform admins only (platformRole check); plans aren't tenant data",
+  "app/actions/admin.ts#updatePlanAction": "platform admins only (platformRole check); plans aren't tenant data",
+  "app/actions/admin.ts#deletePlanAction": "platform admins only (platformRole check); plans aren't tenant data",
+  "app/actions/admin.ts#updateWorkspacePlanAction":
+    "platform admins only (platformRole check); staff choose the workspace on purpose",
+  "app/actions/inquiries.ts#submitPortfolioInquiryAction":
+    "public form; the studio is resolved server-side from a published portfolio's slug, and it only inserts an inquiry",
+  "app/actions/inquiries.ts#submitContactFormAction": "public form; inserts an inquiry with no workspace id",
+  "app/actions/inquiries.ts#submitPartnershipAction": "public form; inserts an inquiry with no workspace id",
+  "app/actions/silo.ts#checkDeliverySiloStatusAction":
+    "requireDeliveryAccess(deliveryId, 'viewer') first; the finalize step acts on that delivery only",
+  "app/actions/upload.ts#requestAssetUploadAction":
+    "editor of the workspace; the server creates the rows and keys itself, and the asset/delivery are checked against the workspace",
+  "app/actions/upload.ts#requestVideoUploadAction": "delegates to requestAssetUploadAction",
+  "app/actions/upload.ts#confirmUploadCompletedAction":
+    "editor of the version's own workspace; it only finalizes the row and key the server issued at presign",
+  "app/actions/assets/update-asset.ts#updateAssetAction":
+    "editor of the asset's workspace; the service role writes only the thumbnail: an image in that workspace, a frame of the file's own Stream video, or a crop stored under the file's own prefix",
+  "app/actions/deliveries/delegates.ts#updateAssetAction": "re-export of assets/update-asset.ts#updateAssetAction",
+  "app/actions/portfolio.ts#updateAssetAction": "re-export of assets/update-asset.ts#updateAssetAction",
+  "app/actions/whatsapp.ts#startWhatsAppVerificationAction":
+    "admin of the workspace (requireWorkspaceMember 'admin'); writes only that workspace's pending number and code hash",
+  "app/actions/whatsapp.ts#confirmWhatsAppVerificationAction":
+    "admin of the workspace; the code is checked against that workspace's own pending number before it's saved",
+  "app/actions/whatsapp.ts#removeWhatsAppNumberAction": "admin of the workspace; clears only that workspace's number",
+  "app/actions/deliveries/whatsapp.ts#sendDeliveryWhatsAppAction":
+    "requireDeliveryAccess(deliveryId, 'editor') first; sends that delivery's own link, and the consent is written through the member's session",
 };
 
 const POLICY: AuthPolicy = {
@@ -131,6 +146,7 @@ const POLICY: AuthPolicy = {
   knownGaps: KNOWN_GAPS,
   userScopedActions: USER_SCOPED_ACTIONS,
   knownAuthzGaps: KNOWN_AUTHZ_GAPS,
+  serviceRoleActions: SERVICE_ROLE_ACTIONS,
 };
 
 describe("server actions: every action performs an authorization step", () => {
@@ -171,6 +187,10 @@ describe("server actions: every action performs an authorization step", () => {
 
   it("records correctly which public actions are rate limited", () => {
     expect(violations.rateLimit).toEqual([]);
+  });
+
+  it("ties every service-role write to an authorized resource, or lists why it's safe", () => {
+    expect(violations.unscopedServiceRole).toEqual([]);
   });
 });
 
@@ -361,6 +381,45 @@ describe("server action analyzer (self-test)", () => {
     expect(capabilitiesOf(id("rateLimitedOpenAction"))).toEqual(["rateLimit"]);
     const { unguarded } = checkAuthPolicy(fixture.actions, EMPTY_POLICY);
     expect(unguarded.some((message) => message.includes(" rateLimitedOpenAction "))).toBe(true);
+  });
+
+  it("requires service-role actions to scope the ids they write, or to be reviewed", () => {
+    const dir = "__service_role_fixtures__/actions";
+    const analysis = analyzeServerActions({
+      host: createOverlayHost(ROOT, {
+        [`${dir}/room.ts`]: [
+          '"use server";',
+          'import { getServerAdminServices } from "@/core/server";',
+          'import { requireDeliveryAccess } from "@/core/security/guards";',
+          'import { versionInDelivery } from "@/lib/client-room/scope";',
+          "export async function scopedWrite(deliveryId: string, versionId: string) {",
+          "  const { delivery } = await requireDeliveryAccess(deliveryId);",
+          "  const admin = await getServerAdminServices();",
+          "  await versionInDelivery(admin as any, delivery, versionId);",
+          "}",
+          "export async function rawWrite(deliveryId: string, versionId: string) {",
+          "  await requireDeliveryAccess(deliveryId);",
+          "  const admin = await getServerAdminServices();",
+          "  return admin.asset.getVersionById(versionId);",
+          "}",
+        ].join("\n"),
+      }),
+      actionsDir: dir,
+    });
+    const at = (name: string) => `${dir}/room.ts#${name}`;
+
+    const unreviewed = checkAuthPolicy(analysis.actions, EMPTY_POLICY);
+    expect(unreviewed.unscopedServiceRole).toHaveLength(1);
+    expect(unreviewed.unscopedServiceRole[0]).toContain("rawWrite uses the service role");
+
+    const reviewed = checkAuthPolicy(analysis.actions, {
+      ...EMPTY_POLICY,
+      serviceRoleActions: { [at("rawWrite")]: "reviewed", [at("scopedWrite")]: "not needed" },
+    });
+    expect(reviewed.unscopedServiceRole).toEqual([]);
+    expect(reviewed.staleEntries).toEqual([
+      `SERVICE_ROLE_ACTIONS["${at("scopedWrite")}"] is scoped now (versionInDelivery()); remove the entry.`,
+    ]);
   });
 
   it("enforces the ratchet: fixed gaps, missing names and wrong flags all fail", () => {

@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerServices } from "@/core/server";
+import { hasMinRole } from "@/core/security/guards";
 import {
-  WorkspaceRole,
+  WorkspaceMember,
   WorkspaceInvitation,
   EnrichedWorkspaceMember,
 } from "@/core/entities/workspace-member";
@@ -14,6 +15,7 @@ import {
   revokeWorkspaceInvitationSchema,
   acceptWorkspaceInvitationSchema,
   safeValidate,
+  type AssignableWorkspaceRole,
 } from "@/lib/validations";
 
 export interface MemberActionResult<T = any> {
@@ -34,6 +36,7 @@ export interface WorkspaceSeatStats {
 export interface WorkspaceMembersData {
   seatStats: WorkspaceSeatStats;
   members: EnrichedWorkspaceMember[];
+  /** With their join tokens, so only for owners and admins: empty for everyone else. */
   pendingInvitations: WorkspaceInvitation[];
 }
 
@@ -44,8 +47,8 @@ export interface WorkspaceMembersData {
 export async function inviteWorkspaceMemberAction(
   workspaceSlug: string,
   email: string,
-  role: "admin" | "editor" | "viewer" = "editor"
-): Promise<MemberActionResult> {
+  role: AssignableWorkspaceRole = "editor"
+): Promise<MemberActionResult<WorkspaceInvitation>> {
   try {
     const validated = safeValidate(inviteWorkspaceMemberSchema, {
       workspaceSlug,
@@ -69,9 +72,7 @@ export async function inviteWorkspaceMemberAction(
 
     // Permission check: owner or admin
     const member = await services.member.getMember(workspace.id, currentUser.id);
-    const isOwner = workspace.ownerId === currentUser.id;
-    const canInvite = isOwner || member?.role === "owner" || member?.role === "admin";
-    if (!canInvite) {
+    if (!hasMinRole(member?.role, "admin")) {
       return { success: false, error: "Permission denied: Only workspace owners and admins can invite team members." };
     }
 
@@ -92,14 +93,14 @@ export async function inviteWorkspaceMemberAction(
 }
 
 /**
- * Updates a collaborator's workspace permission role.
- * Protects workspace owner from being modified.
+ * Updates a collaborator's workspace role (admin, editor or viewer; "owner" can't be given).
+ * Owners and admins change roles; only owners change a co-owner's; the workspace owner's never changes.
  */
 export async function updateWorkspaceMemberRoleAction(
   workspaceSlug: string,
   memberUserId: string,
-  role: WorkspaceRole
-): Promise<MemberActionResult> {
+  role: AssignableWorkspaceRole
+): Promise<MemberActionResult<WorkspaceMember>> {
   try {
     const validated = safeValidate(updateWorkspaceMemberRoleSchema, {
       workspaceSlug,
@@ -121,20 +122,15 @@ export async function updateWorkspaceMemberRoleAction(
       return { success: false, error: "Workspace not found." };
     }
 
-    // Permission check: owner or admin
+    // Permission check: owner or admin. The service applies the owner rules.
     const callerMember = await services.member.getMember(workspace.id, currentUser.id);
-    const isOwner = workspace.ownerId === currentUser.id;
-    const canManage = isOwner || callerMember?.role === "owner" || callerMember?.role === "admin";
-    if (!canManage) {
+    if (!hasMinRole(callerMember?.role, "admin")) {
       return { success: false, error: "Permission denied: Only workspace owners and admins can manage roles." };
-    }
-
-    if (workspace.ownerId === validated.data.memberUserId) {
-      return { success: false, error: "The workspace owner's role cannot be modified." };
     }
 
     const updated = await services.member.updateMemberRole(
       workspace.id,
+      currentUser.id,
       validated.data.memberUserId,
       validated.data.role
     );
@@ -147,8 +143,8 @@ export async function updateWorkspaceMemberRoleAction(
 }
 
 /**
- * Removes a collaborator from the workspace.
- * Protects workspace owner from being removed.
+ * Removes a collaborator from the workspace, or lets the caller leave it.
+ * Owners and admins remove others; only owners remove a co-owner; the workspace owner can't be removed.
  */
 export async function removeWorkspaceMemberAction(
   workspaceSlug: string,
@@ -174,19 +170,14 @@ export async function removeWorkspaceMemberAction(
       return { success: false, error: "Workspace not found." };
     }
 
-    // Permission check: owner or admin
+    // Permission check: owner or admin, or a member leaving. The service applies the owner rules.
     const callerMember = await services.member.getMember(workspace.id, currentUser.id);
-    const isOwner = workspace.ownerId === currentUser.id;
-    const canRemove = isOwner || callerMember?.role === "owner" || callerMember?.role === "admin";
-    if (!canRemove && currentUser.id !== validated.data.memberUserId) {
+    const isLeaving = currentUser.id === validated.data.memberUserId;
+    if (!callerMember || (!isLeaving && !hasMinRole(callerMember.role, "admin"))) {
       return { success: false, error: "Permission denied: You do not have access to remove collaborators." };
     }
 
-    if (workspace.ownerId === validated.data.memberUserId) {
-      return { success: false, error: "Cannot remove the workspace owner." };
-    }
-
-    await services.member.removeMember(workspace.id, validated.data.memberUserId);
+    await services.member.removeMember(workspace.id, currentUser.id, validated.data.memberUserId);
 
     revalidatePath(`/${validated.data.workspaceSlug}/members`);
     revalidatePath(`/${validated.data.workspaceSlug}`);
@@ -224,9 +215,7 @@ export async function revokeWorkspaceInvitationAction(
     }
 
     const callerMember = await services.member.getMember(workspace.id, currentUser.id);
-    const isOwner = workspace.ownerId === currentUser.id;
-    const canRevoke = isOwner || callerMember?.role === "owner" || callerMember?.role === "admin";
-    if (!canRevoke) {
+    if (!hasMinRole(callerMember?.role, "admin")) {
       return { success: false, error: "Permission denied: Only workspace owners and admins can revoke invitations." };
     }
 
@@ -240,7 +229,8 @@ export async function revokeWorkspaceInvitationAction(
 }
 
 /**
- * Accepts an invitation token and adds the current user to the workspace.
+ * Accepts an invitation token and adds the current user to the workspace. The signed-in account's
+ * email must be the invited address, and confirmed; a token can only be used once.
  */
 export async function acceptWorkspaceInvitationAction(
   token: string
@@ -257,7 +247,11 @@ export async function acceptWorkspaceInvitationAction(
       return { success: false, error: "Please sign in or create an account to accept this invitation." };
     }
 
-    const member = await services.member.acceptInvitation(validated.data.token, currentUser.id);
+    const member = await services.member.acceptInvitation(validated.data.token, {
+      id: currentUser.id,
+      email: currentUser.email ?? null,
+      emailConfirmedAt: currentUser.email_confirmed_at ?? null,
+    });
     const workspace = await services.workspace.getWorkspaceById(member.workspaceId);
     if (!workspace) {
       return { success: false, error: "Workspace not found." };
@@ -274,7 +268,7 @@ export async function acceptWorkspaceInvitationAction(
 
 /**
  * Retrieves the complete members data for a workspace, including seat statistics,
- * enriched active members, and pending invitations.
+ * enriched active members, and (for owners and admins) pending invitations.
  */
 export async function getWorkspaceMembersDataAction(
   workspaceSlug: string
@@ -295,17 +289,16 @@ export async function getWorkspaceMembersDataAction(
       return { success: false, error: "Workspace not found." };
     }
 
-    const isOwner = workspace.ownerId === currentUser.id;
+    // getMember() also covers the owner in workspaces.owner_id.
     const member = await services.member.getMember(workspace.id, currentUser.id);
-
-    if (!isOwner && !member) {
+    if (!member) {
       return { success: false, error: "Permission denied." };
     }
 
     const [seatStats, members, pendingInvitations] = await Promise.all([
       services.member.getWorkspaceSeatStats(workspace.id),
       services.member.listMembers(workspace.id),
-      services.member.listPendingInvitations(workspace.id),
+      services.member.listPendingInvitations(workspace.id, currentUser.id),
     ]);
 
     return {

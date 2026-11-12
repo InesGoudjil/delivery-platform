@@ -17,6 +17,8 @@ interface DeliveryExpiredScreenProps {
     accentColor?: string;
   };
   portfolioUrl?: string | null;
+  /** "unavailable": the studio archived the delivery. */
+  reason?: "expired" | "unavailable";
 }
 
 export function DeliveryExpiredScreen({
@@ -24,7 +26,9 @@ export function DeliveryExpiredScreen({
   expiresAt,
   workspace,
   portfolioUrl,
+  reason = "expired",
 }: DeliveryExpiredScreenProps) {
+  const isArchived = reason === "unavailable";
   const formattedDate = expiresAt
     ? new Date(expiresAt).toLocaleDateString("en-US", {
         month: "short",
@@ -70,7 +74,7 @@ export function DeliveryExpiredScreen({
         <div className="flex items-center gap-2">
           <TypographySpan className="text-[10px]  uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
             <Clock className="size-3" />
-            Expired Link
+            {isArchived ? "Unavailable" : "Expired Link"}
           </TypographySpan>
         </div>
       </header>
@@ -87,7 +91,7 @@ export function DeliveryExpiredScreen({
               CLIENT REVIEW ROOM
             </TypographySpan>
             <h1 className="text-2xl font-bold font-heading text-white tracking-tight">
-              Review Link Expired
+              {isArchived ? "Delivery No Longer Available" : "Review Link Expired"}
             </h1>
             <p className="text-sm font-medium text-white/90 line-clamp-1">
               &ldquo;{title}&rdquo;
@@ -98,8 +102,14 @@ export function DeliveryExpiredScreen({
             <div className="flex items-start gap-2.5 text-xs text-neutral-400">
               <ShieldAlert className="size-4 text-amber-400 shrink-0 mt-0.5" />
               <TypographySpan>
-                Access to this delivery cut ended on{" "}
-                <strong className="text-white">{formattedDate}</strong>. Client review links are set with time-limited lifecycles to protect confidential unreleased media.
+                {isArchived ? (
+                  <>The studio has archived this delivery. Contact them if you still need these files.</>
+                ) : (
+                  <>
+                    Access to this delivery cut ended on{" "}
+                    <strong className="text-white">{formattedDate}</strong>. Client review links are set with time-limited lifecycles to protect confidential unreleased media.
+                  </>
+                )}
               </TypographySpan>
             </div>
           </div>

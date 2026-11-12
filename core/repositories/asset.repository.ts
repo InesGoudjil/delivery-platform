@@ -24,6 +24,7 @@ export class SupabaseAssetRepository implements IAssetRepository {
       sortOrder: row.sort_order ?? 0,
       isArchived: Boolean(row.is_archived),
       isApproved: Boolean(row.is_approved),
+      isPortfolio: Boolean(row.is_portfolio),
       aspectRatio: row.aspect_ratio || "16:9",
       category: row.category || "film",
       viewsCount: row.views_count ?? 0,
@@ -118,6 +119,39 @@ export class SupabaseAssetRepository implements IAssetRepository {
     };
   }
 
+  /**
+   * The file whose stored media (streaming manifest, thumbnail or raw URL) points at this
+   * Cloudflare Stream video. Those columns are written by the server only, so this is the
+   * mapping from a Stream UID to its workspace.
+   */
+  async findByStreamUid(uid: string): Promise<Asset | null> {
+    if (!/^[a-f0-9]{32}$/i.test(uid)) return null;
+    const pattern = `*${uid.toLowerCase()}*`;
+    const { data, error } = await (this.supabase as any)
+      .from("asset_versions")
+      .select("asset_id")
+      .or(`hls_manifest_url.ilike.${pattern},thumbnail_url.ilike.${pattern},raw_file_url.ilike.${pattern}`)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw new Error(`Error looking up a Stream video: ${error.message}`);
+    return data?.asset_id ? this.findById(data.asset_id) : null;
+  }
+
+  async listPortfolioAssets(workspaceId: string): Promise<Asset[]> {
+    const { data, error } = await (this.supabase as any)
+      .from("assets")
+      .select("*")
+      .eq("workspace_id", workspaceId)
+      .eq("is_portfolio", true)
+      .is("delivery_id", null)
+      .eq("is_archived", false)
+      .order("sort_order", { ascending: true });
+
+    if (error) throw new Error(`Error listing portfolio assets: ${error.message}`);
+    return (data || []).map(this.mapRowToEntity);
+  }
+
   async listUnassignedByWorkspaceId(workspaceId: string): Promise<Asset[]> {
     const { data, error } = await (this.supabase as any)
       .from("assets")
@@ -137,6 +171,10 @@ export class SupabaseAssetRepository implements IAssetRepository {
       .select("*")
       .eq("delivery_id", deliveryId)
       .eq("is_archived", false);
+
+    if (options?.workspaceId) {
+      query = query.eq("workspace_id", options.workspaceId);
+    }
 
     if (options?.type) {
       query = query.eq("type", options.type);
@@ -168,6 +206,10 @@ export class SupabaseAssetRepository implements IAssetRepository {
       .eq("delivery_id", deliveryId)
       .eq("is_archived", false);
 
+    if (options?.workspaceId) {
+      query = query.eq("workspace_id", options.workspaceId);
+    }
+
     if (options?.type) {
       query = query.eq("type", options.type);
     }
@@ -193,13 +235,17 @@ export class SupabaseAssetRepository implements IAssetRepository {
 
   async countByDeliveryId(
     deliveryId: string,
-    options?: { type?: string; isApproved?: boolean }
+    options?: { type?: string; isApproved?: boolean; workspaceId?: string }
   ): Promise<number> {
     let query = (this.supabase as any)
       .from("assets")
       .select("*", { count: "exact", head: true })
       .eq("delivery_id", deliveryId)
       .eq("is_archived", false);
+
+    if (options?.workspaceId) {
+      query = query.eq("workspace_id", options.workspaceId);
+    }
 
     if (options?.type) {
       query = query.eq("type", options.type);
@@ -259,6 +305,7 @@ export class SupabaseAssetRepository implements IAssetRepository {
         is_approved: dto.isApproved ?? false,
         aspect_ratio: dto.aspectRatio ?? "16:9",
         category: dto.category ?? "film",
+        is_portfolio: dto.deliveryId ? false : Boolean(dto.isPortfolio),
       })
       .select()
       .single();
@@ -270,7 +317,12 @@ export class SupabaseAssetRepository implements IAssetRepository {
   async assignToDelivery(assetId: string, deliveryId: string | null): Promise<Asset> {
     const { data, error } = await (this.supabase as any)
       .from("assets")
-      .update({ delivery_id: deliveryId, updated_at: new Date().toISOString() })
+      .update({
+        delivery_id: deliveryId,
+        // A file in a delivery is never a standalone portfolio piece (DB constraint).
+        ...(deliveryId ? { is_portfolio: false } : {}),
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", assetId)
       .select()
       .single();
@@ -279,24 +331,42 @@ export class SupabaseAssetRepository implements IAssetRepository {
     return this.mapRowToEntity(data);
   }
 
+  /**
+   * Detaches every file from a delivery that's being deleted. They go to Trash, never to
+   * the portfolio: a detached file isn't a portfolio piece (is_portfolio stays false).
+   */
   async detachAllFromDelivery(deliveryId: string): Promise<void> {
     const { error } = await (this.supabase as any)
       .from("assets")
-      .update({ delivery_id: null, updated_at: new Date().toISOString() })
+      .update({ delivery_id: null, is_archived: true, is_portfolio: false, updated_at: new Date().toISOString() })
       .eq("delivery_id", deliveryId);
 
     if (error) throw new Error(`Error detaching assets from delivery: ${error.message}`);
+    // Every file must have moved: the delivery is deleted right after, and its files would go with it.
+    const { count, error: countError } = await (this.supabase as any)
+      .from("assets")
+      .select("id", { count: "exact", head: true })
+      .eq("delivery_id", deliveryId);
+    if (countError) throw new Error(`Error checking detached assets: ${countError.message}`);
+    if ((count ?? 0) > 0) throw new Error(`Couldn't move ${count} file(s) to Trash, so the delivery was kept.`);
   }
 
-  async toggleApproval(assetId: string, isApproved: boolean): Promise<Asset> {
-    const { data, error } = await (this.supabase as any)
+  async toggleApproval(
+    assetId: string,
+    isApproved: boolean,
+    scope?: { deliveryId: string; workspaceId: string }
+  ): Promise<Asset> {
+    let query = (this.supabase as any)
       .from("assets")
       .update({ is_approved: isApproved, updated_at: new Date().toISOString() })
-      .eq("id", assetId)
-      .select()
-      .single();
+      .eq("id", assetId);
+    if (scope) {
+      query = query.eq("delivery_id", scope.deliveryId).eq("workspace_id", scope.workspaceId).eq("is_archived", false);
+    }
+    const { data, error } = await query.select().maybeSingle();
 
     if (error) throw new Error(`Error toggling asset approval: ${error.message}`);
+    if (!data) throw new Error("That file isn't part of this delivery.");
     return this.mapRowToEntity(data);
   }
 
@@ -333,12 +403,14 @@ export class SupabaseAssetRepository implements IAssetRepository {
       // Junction cleanup failure shouldn't abort deletion if table is missing/cascade
     }
 
-    const { error } = await (this.supabase as any)
+    const { data, error } = await (this.supabase as any)
       .from("assets")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .select("id");
 
     if (error) throw new Error(`Error deleting asset: ${error.message}`);
+    if (!data || data.length === 0) throw new Error("File not found, or you can't delete it (admins only).");
   }
 }
 
@@ -411,7 +483,8 @@ export class SupabaseAssetVersionRepository implements IAssetVersionRepository {
         file_size_bytes: dto.fileSizeBytes ?? 0,
         duration_seconds: dto.durationSeconds ?? null,
         transcoding_status: dto.transcodingStatus ?? "pending",
-        is_active_version: dto.isActiveVersion ?? true,
+        // A new version is pending until its upload is confirmed; it doesn't replace the active one.
+        is_active_version: dto.isActiveVersion ?? false,
       })
       .select()
       .single();
@@ -448,18 +521,59 @@ export class SupabaseAssetVersionRepository implements IAssetVersionRepository {
     return this.update(versionId, { label });
   }
 
+  /**
+   * Makes `versionId` the only active version of `assetId`. Throws, changing nothing, when
+   * the version isn't one of that file's versions (or the caller may not change it).
+   */
   async setActiveVersion(assetId: string, versionId: string): Promise<void> {
-    await (this.supabase as any)
+    const { data: target, error: findError } = await (this.supabase as any)
+      .from("asset_versions")
+      .select("id")
+      .eq("id", versionId)
+      .eq("asset_id", assetId)
+      .maybeSingle();
+
+    if (findError) throw new Error(`Error setting active version: ${findError.message}`);
+    if (!target) throw new Error("That version doesn't belong to this file.");
+
+    // Deactivate the others first: at most one version per file is active at any time.
+    const { error: clearError } = await (this.supabase as any)
       .from("asset_versions")
       .update({ is_active_version: false })
-      .eq("asset_id", assetId);
+      .eq("asset_id", assetId)
+      .eq("is_active_version", true)
+      .neq("id", versionId);
 
-    const { error } = await (this.supabase as any)
+    if (clearError) throw new Error(`Error setting active version: ${clearError.message}`);
+
+    const { data: activated, error } = await (this.supabase as any)
       .from("asset_versions")
       .update({ is_active_version: true })
-      .eq("id", versionId);
+      .eq("id", versionId)
+      .eq("asset_id", assetId)
+      .select("id");
 
     if (error) throw new Error(`Error setting active version: ${error.message}`);
+    if (!activated || activated.length !== 1) {
+      throw new Error("The version couldn't be made active.");
+    }
+  }
+
+  /**
+   * Versions whose server-written media columns mention this Stream UID. Callers re-check the
+   * exact UID with `streamUidOf`; the UID is validated here, so it is safe in the filter.
+   */
+  async listByStreamUid(uid: string): Promise<AssetVersion[]> {
+    if (!/^[a-f0-9]{32}$/i.test(uid)) return [];
+    const pattern = `*${uid.toLowerCase()}*`;
+    const { data, error } = await (this.supabase as any)
+      .from("asset_versions")
+      .select("*")
+      .or(`raw_file_url.ilike.${pattern},hls_manifest_url.ilike.${pattern}`)
+      .limit(20);
+
+    if (error) throw new Error(`Error looking up versions by Stream video: ${error.message}`);
+    return (data || []).map(this.mapRowToEntity);
   }
 
   async delete(id: string): Promise<void> {

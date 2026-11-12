@@ -39,8 +39,28 @@ export interface SiloRestoreStatusResult {
   status: "ready" | "restoring" | "archived" | "not_found";
 }
 
+/** What the archive bucket reports for a stored object (HeadObject). */
+export interface SiloArchiveObjectInfo {
+  sizeBytes: number;
+  storageClass: string;
+}
+
+export const SILO_UNAVAILABLE_MESSAGE = "The Silo archive is currently unavailable.";
+
+/**
+ * Thrown by every Silo operation while The Silo is switched off (SILO_ENABLED) or
+ * not backed by a real AWS archive bucket.
+ */
+export class SiloUnavailableError extends Error {
+  constructor(message: string = SILO_UNAVAILABLE_MESSAGE) {
+    super(message);
+    this.name = "SiloUnavailableError";
+  }
+}
+
 export interface ISiloStorageProvider {
   readonly providerName: string;
+  /** True only for a real, durable archive store. Archiving refuses to run otherwise. */
   isConfigured(): boolean;
 
   /**
@@ -68,6 +88,12 @@ export interface ISiloStorageProvider {
    * Inspects S3 object restore state via HeadObject to check if thawing is in progress or completed.
    */
   checkRestoreStatus(key: string): Promise<SiloRestoreStatusResult>;
+
+  /**
+   * Reads back a stored object's size and storage class (HeadObject), or null when it does
+   * not exist. Used to confirm an upload before the active-storage original is deleted.
+   */
+  getArchiveObjectInfo(key: string): Promise<SiloArchiveObjectInfo | null>;
 
   /**
    * Streams a thawed object from S3 Glacier to copy back to active storage (Cloudflare R2) or process.
@@ -177,7 +203,9 @@ export class AwsSiloGlacierProvider implements ISiloStorageProvider {
     }
 
     const parts: { ETag: string; PartNumber: number }[] = [];
-    const PART_SIZE = 10 * 1024 * 1024; // 10MB chunk (AWS minimum is 5MB)
+    // 10MB chunks (AWS minimum is 5MB), grown for very large masters so the upload stays
+    // under S3's 10,000-part limit.
+    const PART_SIZE = Math.max(10 * 1024 * 1024, Math.ceil((params.contentLength ?? 0) / 9000));
     let partNumber = 1;
     let totalBytes = 0;
     let buffer = Buffer.alloc(0);
@@ -372,6 +400,28 @@ export class AwsSiloGlacierProvider implements ISiloStorageProvider {
     }
   }
 
+  async getArchiveObjectInfo(key: string): Promise<SiloArchiveObjectInfo | null> {
+    const cleanKey = key.replace(/^\/+/, "");
+    try {
+      const res = await this.s3Client.send(
+        new HeadObjectCommand({
+          Bucket: this.bucket,
+          Key: cleanKey,
+        })
+      );
+      return {
+        sizeBytes: res.ContentLength ?? 0,
+        // S3 omits the storage class header for STANDARD objects.
+        storageClass: res.StorageClass ?? "STANDARD",
+      };
+    } catch (err: any) {
+      if (err.name === "NotFound" || err.$metadata?.httpStatusCode === 404) {
+        return null;
+      }
+      throw err;
+    }
+  }
+
   async getObjectStream(key: string): Promise<{
     stream: NodeJS.ReadableStream;
     contentType?: string;
@@ -422,11 +472,14 @@ export class AwsSiloGlacierProvider implements ISiloStorageProvider {
 }
 
 /**
- * Mock provider for local development or when AWS S3 credentials are not configured.
+ * In-memory stand-in for tests only. It keeps nothing beyond the process, so it reports
+ * itself as not configured and SiloService refuses to archive with it; tests that drive
+ * the archive flow subclass it and override isConfigured(). SiloProviderFactory hands it
+ * out only under NODE_ENV=test, and only when asked for.
  */
 export class MockSiloGlacierProvider implements ISiloStorageProvider {
   readonly providerName = "mock_s3_glacier";
-  private mockStore = new Map<
+  protected readonly mockStore = new Map<
     string,
     {
       buffer: Buffer;
@@ -440,6 +493,12 @@ export class MockSiloGlacierProvider implements ISiloStorageProvider {
 
   isConfigured(): boolean {
     return false;
+  }
+
+  private notFound(key: string): Error {
+    const err = new Error(`Mock Silo object not found: ${key}`);
+    err.name = "NotFound";
+    return err;
   }
 
   async archiveStream(params: {
@@ -476,19 +535,16 @@ export class MockSiloGlacierProvider implements ISiloStorageProvider {
     days?: number;
   }): Promise<SiloRestoreRequestResult> {
     const key = params.key.replace(/^\/+/, "");
-    const item = this.mockStore.get(key) || {
-      buffer: Buffer.from("mock video deliverable content"),
-      contentType: "video/mp4",
-    };
+    const item = this.mockStore.get(key);
+    if (!item) throw this.notFound(key);
 
     const days = params.days || 7;
     const tier = params.tier || "Bulk";
 
-    // In mock mode, mark as immediately restored after 1 second
+    // The mock thaws instantly once a restore is requested.
     item.restoreRequestedAt = new Date();
     item.tier = tier;
     item.restoredUntil = new Date(Date.now() + days * 24 * 3600 * 1000);
-    this.mockStore.set(key, item);
 
     return {
       status: "in_progress",
@@ -502,21 +558,22 @@ export class MockSiloGlacierProvider implements ISiloStorageProvider {
     const item = this.mockStore.get(cleanKey);
 
     if (!item) {
-      // Return ready in mock mode so developers can test the end-to-end flow immediately
-      return {
-        isRestored: true,
-        inProgress: false,
-        expiryDate: new Date(Date.now() + 7 * 24 * 3600 * 1000),
-        status: "ready",
-      };
+      return { isRestored: false, inProgress: false, status: "not_found" };
     }
-
+    if (!item.restoredUntil) {
+      return { isRestored: false, inProgress: false, status: "archived" };
+    }
     return {
       isRestored: true,
       inProgress: false,
-      expiryDate: item.restoredUntil || new Date(Date.now() + 7 * 24 * 3600 * 1000),
+      expiryDate: item.restoredUntil,
       status: "ready",
     };
+  }
+
+  async getArchiveObjectInfo(key: string): Promise<SiloArchiveObjectInfo | null> {
+    const item = this.mockStore.get(key.replace(/^\/+/, ""));
+    return item ? { sizeBytes: item.buffer.length, storageClass: "DEEP_ARCHIVE" } : null;
   }
 
   async getObjectStream(key: string): Promise<{
@@ -527,12 +584,12 @@ export class MockSiloGlacierProvider implements ISiloStorageProvider {
     const { Readable } = await import("stream");
     const cleanKey = key.replace(/^\/+/, "");
     const item = this.mockStore.get(cleanKey);
-    const buf = item?.buffer || Buffer.from("mock deliverable master content");
+    if (!item) throw this.notFound(cleanKey);
 
     return {
-      stream: Readable.from(buf),
-      contentType: item?.contentType || "video/mp4",
-      contentLength: buf.length,
+      stream: Readable.from(item.buffer),
+      contentType: item.contentType,
+      contentLength: item.buffer.length,
     };
   }
 
@@ -541,7 +598,7 @@ export class MockSiloGlacierProvider implements ISiloStorageProvider {
     filename: string,
     _expiresInSeconds?: number
   ): Promise<string> {
-    return `/api/media/${key}?download=true&filename=${encodeURIComponent(filename)}`;
+    return `mock-silo://${key.replace(/^\/+/, "")}?filename=${encodeURIComponent(filename)}`;
   }
 
   async deleteArchiveObject(key: string): Promise<void> {
@@ -550,18 +607,94 @@ export class MockSiloGlacierProvider implements ISiloStorageProvider {
   }
 }
 
+/**
+ * Used whenever The Silo is off or has no real archive bucket behind it: every call throws,
+ * so nothing can be "archived" into a store that does not keep it.
+ */
+export class UnavailableSiloProvider implements ISiloStorageProvider {
+  readonly providerName = "unavailable";
+
+  constructor(private readonly reason: string = "") {}
+
+  isConfigured(): boolean {
+    return false;
+  }
+
+  private fail(): never {
+    throw new SiloUnavailableError(this.reason ? `${SILO_UNAVAILABLE_MESSAGE} ${this.reason}` : SILO_UNAVAILABLE_MESSAGE);
+  }
+
+  async archiveStream(): Promise<SiloArchiveResult> {
+    return this.fail();
+  }
+
+  async requestRestore(): Promise<SiloRestoreRequestResult> {
+    return this.fail();
+  }
+
+  async checkRestoreStatus(): Promise<SiloRestoreStatusResult> {
+    return this.fail();
+  }
+
+  async getArchiveObjectInfo(): Promise<SiloArchiveObjectInfo | null> {
+    return this.fail();
+  }
+
+  async getObjectStream(): Promise<{ stream: NodeJS.ReadableStream; contentType?: string; contentLength?: number }> {
+    return this.fail();
+  }
+
+  async getPresignedDownloadUrl(): Promise<string> {
+    return this.fail();
+  }
+
+  async deleteArchiveObject(): Promise<void> {
+    return this.fail();
+  }
+}
+
+let reportedMisconfiguration = false;
+
 export class SiloProviderFactory {
-  static createProvider(): ISiloStorageProvider {
-    if (env.isAwsSiloConfigured) {
+  /**
+   * The AWS Glacier provider when The Silo is switched on (SILO_ENABLED=true) and AWS is
+   * configured; otherwise an UnavailableSiloProvider, whose every call throws. Archiving
+   * deletes the R2 originals, so The Silo never falls back to a store that loses files.
+   *
+   * SILO_ENABLED=true without AWS settings is logged as an error (once per process) and
+   * every Silo call fails. It does not throw here: the container builds this provider on
+   * every request, and a Silo misconfiguration must not take the rest of the app down.
+   *
+   * The in-memory mock is returned only when explicitly asked for, under NODE_ENV=test.
+   */
+  static createProvider(options?: { allowMock?: boolean }): ISiloStorageProvider {
+    if (options?.allowMock) {
+      if (process.env.NODE_ENV !== "test") {
+        throw new Error("MockSiloGlacierProvider is only available when NODE_ENV is \"test\".");
+      }
+      return new MockSiloGlacierProvider();
+    }
+
+    if (env.isSiloEnabled) {
       return new AwsSiloGlacierProvider({
         region: env.AWS_REGION || "us-east-1",
-        accessKeyId: env.AWS_ACCESS_KEY_ID!,
-        secretAccessKey: env.AWS_SECRET_ACCESS_KEY!,
-        bucket: env.AWS_S3_SILO_BUCKET!,
+        accessKeyId: env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
+        bucket: env.AWS_S3_SILO_BUCKET,
         storageClass: (env.AWS_SILO_STORAGE_CLASS as GlacierStorageClass) || "DEEP_ARCHIVE",
       });
     }
 
-    return new MockSiloGlacierProvider();
+    if (env.SILO_ENABLED) {
+      const reason =
+        "SILO_ENABLED is true but AWS S3 Glacier is not configured (AWS_S3_SILO_BUCKET, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY).";
+      if (!reportedMisconfiguration) {
+        reportedMisconfiguration = true;
+        log.error(`${reason} The Silo stays off until they are set.`);
+      }
+      return new UnavailableSiloProvider(reason);
+    }
+
+    return new UnavailableSiloProvider("It is switched off (SILO_ENABLED is not \"true\").");
   }
 }

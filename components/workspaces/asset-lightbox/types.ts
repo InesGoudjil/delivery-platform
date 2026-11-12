@@ -22,6 +22,8 @@ export interface FeedbackReplyItem {
   commentText: string;
   createdAt: string;
   updatedAt?: string;
+  /** False when this viewer can't edit, resolve or delete it (the server enforces this too). */
+  canModify?: boolean;
 }
 
 export interface FeedbackItem {
@@ -34,6 +36,8 @@ export interface FeedbackItem {
   updatedAt?: string;
   isResolved?: boolean;
   replies?: FeedbackReplyItem[];
+  /** False when this viewer can't edit, resolve or delete it (the server enforces this too). */
+  canModify?: boolean;
 }
 
 export interface LightboxAssetItem {

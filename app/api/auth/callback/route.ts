@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getServerServices } from '@/core/server';
 import { trackUserSession } from '@/lib/session-manager';
+import { readSessionIdentity } from '@/core/services/session.service';
 import { createScopedLogger } from '@/lib/logger';
 
 const log = createScopedLogger({ route: 'api/auth/callback' });
@@ -47,8 +48,11 @@ export async function GET(request: Request) {
           request.headers.get('x-real-ip') ||
           undefined;
 
-        // 2. Track device session
-        await trackUserSession(data.user.id, services.session).catch(() => {});
+        // 2. Record the device behind the new login (keyed on its Supabase session id, read
+        //    from the client that just exchanged the code).
+        await trackUserSession(services.session, await readSessionIdentity(supabase.auth), request.headers).catch(
+          (err) => log.warn({ err, userId: data.user.id }, 'Could not record the login session in callback')
+        );
 
         // 3. Sync OAuth user profile (name, avatar, last login)
         await services.profile.syncOAuthProfile(data.user.id, {

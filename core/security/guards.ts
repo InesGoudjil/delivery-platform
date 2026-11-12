@@ -12,6 +12,11 @@ const ROLE_HIERARCHY: Record<string, number> = {
   owner: 4,
 };
 
+/** True when `role` is at least `minRole` (viewer < editor < admin < owner). Unknown roles rank lowest. */
+export function hasMinRole(role: string | null | undefined, minRole: WorkspaceRoleLevel): boolean {
+  return (ROLE_HIERARCHY[role ?? ""] || 0) >= ROLE_HIERARCHY[minRole];
+}
+
 export interface AuthContext {
   user: User;
   services: Awaited<ReturnType<typeof getServerServices>>;
@@ -73,11 +78,10 @@ export async function requireWorkspaceMember(
     throw new Error("Forbidden: You do not have access to this workspace.");
   }
 
+  // Ranked like has_workspace_role() in the database: "owner" is workspaces.owner_id or a co-owner's
+  // row, and unknown roles (or an unknown minRole) fail closed.
   const effectiveRole = member.role as WorkspaceRoleLevel;
-  const userRank = ROLE_HIERARCHY[effectiveRole] || 0;
-  const requiredRank = ROLE_HIERARCHY[minRole] || 0;
-
-  if (userRank < requiredRank) {
+  if (!hasMinRole(effectiveRole, minRole)) {
     throw new Error(`Forbidden: Requires at least "${minRole}" role permissions.`);
   }
 

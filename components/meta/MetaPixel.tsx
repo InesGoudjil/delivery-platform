@@ -1,6 +1,8 @@
 "use client";
 
 import Script from "next/script";
+import { usePathname } from "next/navigation";
+import { isPrivateAnalyticsPath } from "@/lib/analytics/private-paths";
 
 interface MetaPixelProps {
   pixelId?: string;
@@ -15,10 +17,17 @@ interface MetaPixelProps {
  * initial PageView fires even if Next/Script's hydration swaps the
  * external script tag. The external `fbevents.js` library is what
  * actually defines `window.fbq` and processes the queue.
+ *
+ * Not loaded on private pages (client rooms, invitations, sign-in), and
+ * `disablePushState` stops the pixel's own history listener, so client-side
+ * navigation into a private page sends nothing. Later PageViews come from
+ * `MetaPageView`, which skips private pages too.
  */
 export function MetaPixel({ pixelId }: MetaPixelProps) {
+  const pathname = usePathname();
   const id = pixelId || process.env.NEXT_PUBLIC_META_PIXEL_ID || "";
   if (!id) return null;
+  if (isPrivateAnalyticsPath(pathname)) return null;
 
   // Skip in development unless explicitly enabled.
   if (
@@ -43,6 +52,7 @@ export function MetaPixel({ pixelId }: MetaPixelProps) {
             t.src=v;s=b.getElementsByTagName(e)[0];
             s.parentNode.insertBefore(t,s)}(window,
             document,'script','https://connect.facebook.net/en_US/fbevents.js');
+            fbq.disablePushState = true;
             fbq('init', '${id}');
             fbq('track', 'PageView');
           `,

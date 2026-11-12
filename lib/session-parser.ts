@@ -1,4 +1,4 @@
-import { headers } from 'next/headers';
+// Pure parsing (no next/headers): it's imported by the middleware, through lib/session-manager.ts.
 
 export interface DeviceInfo {
   browser: string;
@@ -38,41 +38,4 @@ export function parseUserAgentString(ua: string): {
   }
 
   return { browser, os, deviceType };
-}
-
-export async function parseClientDeviceInfo(): Promise<DeviceInfo> {
-  const headerList = await headers();
-
-  const ipAddress =
-    headerList.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    headerList.get('x-real-ip') ||
-    '127.0.0.1';
-
-  const rawCity =
-    headerList.get('x-vercel-ip-city') ||
-    headerList.get('cf-ipcity') ||
-    undefined;
-
-  const rawCountry =
-    headerList.get('x-vercel-ip-country') ||
-    headerList.get('cf-ipcountry') ||
-    undefined;
-
-  let city = rawCity ? decodeURIComponent(rawCity) : undefined;
-  // Fallback for localhost / private range
-  if (ipAddress === '127.0.0.1' || ipAddress === '::1' || ipAddress.startsWith('192.168.') || ipAddress.startsWith('10.')) {
-    if (!city) city = 'Local Development';
-  }
-
-  const ua = headerList.get('user-agent') || '';
-  const { browser, os, deviceType } = parseUserAgentString(ua);
-
-  return {
-    browser,
-    os,
-    deviceType,
-    ipAddress,
-    city,
-    country: rawCountry,
-  };
 }

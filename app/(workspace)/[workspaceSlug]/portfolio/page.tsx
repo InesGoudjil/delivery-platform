@@ -54,7 +54,7 @@ async function PortfolioContent({
   // 2. Query showcase projects, standalone assets, and plan features
   const [dbProjects, standaloneAssets, features] = await Promise.all([
     services.project.listPortfolioProjects(portfolio.id),
-    services.asset.listUnassignedAssets(workspace.id),
+    services.asset.listPortfolioAssets(workspace.id),
     services.subscription.getFeatures(workspace.id),
   ]);
 

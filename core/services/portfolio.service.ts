@@ -81,9 +81,8 @@ export class PortfolioService {
     const showcaseProjects = await this.projectRepo.listByPortfolioId(portfolio.id);
     const publishedProjects = showcaseProjects.filter((p) => p.isPublished);
 
-    // 2. Fetch standalone films and stills for this workspace
-    const workspaceAssets = await this.assetRepo.listByWorkspaceId(portfolio.workspaceId);
-    const standaloneAssets = workspaceAssets.filter((a) => !a.isArchived && a.deliveryId === null);
+    // 2. Standalone films and stills: only files explicitly marked as portfolio pieces
+    const standaloneAssets = await this.assetRepo.listPortfolioAssets(portfolio.workspaceId);
 
     const films = standaloneAssets.filter((a) => a.category === "film");
     const stills = standaloneAssets.filter((a) => a.category === "still" || a.type === "photo_gallery");

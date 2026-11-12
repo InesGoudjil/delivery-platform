@@ -1,59 +1,26 @@
-import { cookies, headers } from "next/headers";
-import { getServerServices, getServerAdminServices } from "@/core/server";
-import { hasValidDeliveryPasscodeCookie } from "@/lib/security/delivery-token";
-import type { Delivery } from "@/core/entities/delivery";
+import { headers } from "next/headers";
+import { getServerAdminServices } from "@/core/server";
+import { configuredAppOrigin } from "@/lib/app-origin";
+
+// Client-room access lives in core/security/client-room.ts (the gate) and
+// ./room-access.ts (actions shared by the client room and the studio).
 
 /**
- * Validates access to a delivery cut for either an authenticated workspace member
- * or a verified guest (with valid passcode cookie if required).
- */
-export async function requireDeliveryGuestOrMemberAccess(deliveryId: string) {
-  const adminServices = await getServerAdminServices();
-  const delivery = await adminServices.delivery.getDeliveryById(deliveryId.trim());
-  if (!delivery) {
-    throw new Error("Delivery cut not found.");
-  }
-
-  // Check if caller is authenticated workspace member
-  const userServices = await getServerServices();
-  const user = await userServices.auth.getCurrentUser();
-  if (user) {
-    const isMember = await adminServices.member
-      .isMember(delivery.workspaceId, user.id)
-      .catch(() => false);
-    if (isMember) {
-      return { delivery, services: adminServices, isMember: true, user };
-    }
-  }
-
-  // If guest, verify delivery is active and passcode (if required) is verified
-  if (delivery.status === "archived") {
-    throw new Error("This delivery has been archived.");
-  }
-
-  if (delivery.passcodeHash) {
-    const cookieStore = await cookies();
-    const verified = hasValidDeliveryPasscodeCookie(cookieStore, delivery.shareToken);
-    if (!verified) {
-      throw new Error("Passcode verification required to perform this action.");
-    }
-  }
-
-  return { delivery, services: adminServices, isMember: false, user: null };
-}
-
-/**
- * Resolves request origin safely from next/headers.
+ * The app's own origin, for links in emails. Uses the configured NEXT_PUBLIC_APP_URL; the
+ * request's Host header is only a fallback in development, because it's chosen by the
+ * caller and a forged one would put someone else's domain in real emails.
  */
 export async function resolveRequestOrigin(fallback = "https://cut.app"): Promise<string> {
-  try {
-    const headerList = await headers();
-    const host = headerList.get("host");
-    const proto =
-      headerList.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
-    if (host) return `${proto}://${host}`;
-  } catch {
-    // fallback
+  const configured = configuredAppOrigin();
+  if (configured) return configured;
+  if (process.env.NODE_ENV !== "production") {
+    try {
+      const headerList = await headers();
+      const host = headerList.get("host");
+      if (host) return `${host.includes("localhost") ? "http" : "https"}://${host}`;
+    } catch {
+      // fallback
+    }
   }
   return fallback;
 }

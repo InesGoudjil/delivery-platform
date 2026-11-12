@@ -83,7 +83,8 @@ describe("core/security/guards", () => {
       expect(ctx.role).toBe("editor");
     });
 
-    it("allows access when member has higher role (owner for admin/editor)", async () => {
+    it("treats a co-owner (a membership row with role owner) as owner, like has_workspace_role()", async () => {
+      // user_123 isn't workspaces.owner_id ("user_owner"): only owners can create such a row.
       mockServices.member.getMember.mockResolvedValue({
         userId: mockUser.id,
         workspaceId: mockWorkspace.id,
@@ -92,6 +93,48 @@ describe("core/security/guards", () => {
 
       const ctx = await requireWorkspaceMember("ws_456", "admin");
       expect(ctx.role).toBe("owner");
+      await expect(requireWorkspaceMember("ws_456", "owner")).resolves.toMatchObject({ role: "owner" });
+    });
+
+    // has_workspace_role(ws, min_role): array_position(['viewer','editor','admin','owner'], role) >= ... of min_role
+    const ROLES = ["viewer", "editor", "admin", "owner"] as const;
+    const matrix = ROLES.flatMap((role, rank) =>
+      ROLES.map((minRole, minRank) => [role, minRole, rank >= minRank] as const)
+    );
+
+    it.each(matrix)("ranks %s against a required %s like the database (allowed: %s)", async (role, minRole, allowed) => {
+      mockServices.member.getMember.mockResolvedValue({
+        userId: mockUser.id,
+        workspaceId: mockWorkspace.id,
+        role,
+      });
+
+      const result = requireWorkspaceMember("ws_456", minRole);
+      if (allowed) {
+        await expect(result).resolves.toMatchObject({ role });
+      } else {
+        await expect(result).rejects.toThrow(`Forbidden: Requires at least "${minRole}" role permissions.`);
+      }
+    });
+
+    it("fails closed on a role it doesn't know", async () => {
+      mockServices.member.getMember.mockResolvedValue({
+        userId: mockUser.id,
+        workspaceId: mockWorkspace.id,
+        role: "superadmin",
+      });
+
+      await expect(requireWorkspaceMember("ws_456", "viewer")).rejects.toThrow("Forbidden");
+    });
+
+    it("fails closed on a required role it doesn't know", async () => {
+      mockServices.member.getMember.mockResolvedValue({
+        userId: mockUser.id,
+        workspaceId: mockWorkspace.id,
+        role: "owner",
+      });
+
+      await expect(requireWorkspaceMember("ws_456", "superadmin" as any)).rejects.toThrow("Forbidden");
     });
 
     it("throws Forbidden when user has lower role than required (viewer for editor)", async () => {

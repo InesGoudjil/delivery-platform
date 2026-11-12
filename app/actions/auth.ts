@@ -15,7 +15,7 @@ import {
   resetPasswordSchema,
   changePasswordSchema,
 } from '@/lib/validations/auth';
-import { trackUserSession } from '@/lib/session-manager';
+import { signOutCurrentSession, trackUserSession } from '@/lib/session-manager';
 import { createScopedLogger } from '@/lib/logger';
 
 const log = createScopedLogger({ actionGroup: 'auth' });
@@ -142,7 +142,22 @@ export async function changePasswordAction(
       return { error: updateError.message };
     }
 
-    return { success: 'Account password updated successfully!' };
+    // A new password ends every other login: the one the check above replaced, and any device
+    // someone else may be using. This device stays signed in on its new login.
+    try {
+      const current = await services.auth.getSessionIdentity();
+      if (current && current.userId === user.id) {
+        await trackUserSession(services.session, current, await headers());
+        await services.session.revokeAllOtherSessions(current);
+      }
+      const { error: othersError } = await services.auth.signOutOthers();
+      if (othersError) throw othersError;
+    } catch (sessionErr) {
+      log.warn({ err: sessionErr }, 'Password changed, but signing out other devices failed');
+      return { success: 'Password updated. Sign out your other devices from the Security page.' };
+    }
+
+    return { success: 'Password updated. Your other devices were signed out.' };
   } catch (err: any) {
     return {
       error: err?.message || 'Failed to update password. Please try again.',
@@ -171,7 +186,10 @@ export async function loginAction(prevState: AuthState | null, formData: FormDat
     const user = await services.auth.getCurrentUser();
     let workspace = null;
     if (user) {
-      await trackUserSession(user.id, services.session).catch(() => {});
+      // Record the device behind the new login (keyed on its Supabase session id).
+      await trackUserSession(services.session, await services.auth.getSessionIdentity(), await headers()).catch(
+        (err) => log.warn({ err, userId: user.id }, 'Could not record the login session')
+      );
       const userWorkspaces = await services.workspace.getUserWorkspaces(user.id);
       workspace = userWorkspaces[0] || await services.workspace.getOrCreateWorkspace(user.id, user.user_metadata?.full_name || 'My Studio').catch(() => null);
     }
@@ -249,7 +267,10 @@ export async function signupAction(prevState: AuthState | null, formData: FormDa
     }
 
     if (data.session && data.user) {
-      await trackUserSession(data.user.id, services.session).catch(() => {});
+      // Record the device behind the new login (keyed on its Supabase session id).
+      await trackUserSession(services.session, await services.auth.getSessionIdentity(), await headers()).catch(
+        (err) => log.warn({ err, userId: data.user.id }, 'Could not record the login session')
+      );
       const waitlistToken = formData.get('waitlist_token') as string | null;
       if (waitlistToken) {
         try {
@@ -340,9 +361,10 @@ export async function signupAction(prevState: AuthState | null, formData: FormDa
   }
 }
 
+/** Signs this device out only: flags its session row revoked and ends its Supabase login. */
 export async function signOutAction() {
   const services = await getServerServices();
-  await services.auth.signOut();
+  await signOutCurrentSession(services, await cookies());
   revalidatePath('/', 'layout');
   redirect('/login');
 }

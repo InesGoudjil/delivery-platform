@@ -324,6 +324,7 @@ export function UploadProjectModal({
           const result = await directUploadMediaFile({
             workspaceId,
             projectId: "", // Ensures delivery_id is null so it never attaches to client deliveries!
+            placement: "project",
             file: item.file,
             title: itemTitle,
             assetType: item.assetType,
@@ -450,6 +451,7 @@ export function UploadProjectModal({
           const coverResult = await directUploadMediaFile({
             workspaceId,
             projectId: "",
+            placement: "cover",
             file: coverFile,
             title: `${cleanProjectName} Cover`,
             assetType: "photo_gallery",

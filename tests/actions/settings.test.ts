@@ -25,8 +25,16 @@ describe("app/actions/settings", () => {
     notifyComments: true,
     notifyDownloads: true,
     weeklyDigest: false,
-    whatsappNumber: "+971501234567",
+    whatsappNumber: "971501234567",
     whatsappEnabled: true,
+    whatsappVerifiedAt: new Date().toISOString(),
+    whatsappPendingNumber: "971502222222",
+    whatsappCodeHash: "a1b2c3",
+    whatsappCodeExpiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+    whatsappCodeAttempts: 1,
+    whatsappNotifyApprovals: true,
+    whatsappNotifyComments: true,
+    whatsappNotifyDownloads: true,
     defaultLinkExpirationDays: 30,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -69,6 +77,9 @@ describe("app/actions/settings", () => {
         isDownloadNotificationAllowed: vi.fn().mockResolvedValue(true),
         canDeliverWhatsApp: vi.fn().mockResolvedValue(true),
       },
+      whatsapp: {
+        isConfigured: vi.fn().mockReturnValue(true),
+      },
     };
 
     vi.spyOn(serverModule, "getServerServices").mockResolvedValue(mockServices);
@@ -89,6 +100,38 @@ describe("app/actions/settings", () => {
       expect(mockServices.settings.getOrCreate).toHaveBeenCalledWith("ws_1");
     });
 
+    it("never sends the verification code hash or the full WhatsApp number to the browser", async () => {
+      const res = await getWorkspaceSettingsAction("cinespace");
+      const json = JSON.stringify(res.data);
+      expect(json).not.toContain("a1b2c3");
+      expect(json).not.toContain("971501234567");
+      expect(json).not.toContain("971502222222");
+      expect(res.data?.whatsapp).toMatchObject({
+        available: true,
+        canManage: true,
+        verifiedNumber: "+971 ••• ••4567",
+        pendingNumber: "+971 ••• ••2222",
+        unverifiedNumber: null,
+      });
+    });
+
+    it("shows a number saved before verification existed as unverified", async () => {
+      mockServices.settings.getOrCreate.mockResolvedValueOnce({ ...mockSettings, whatsappVerifiedAt: null });
+      const res = await getWorkspaceSettingsAction("cinespace");
+      expect(res.data?.whatsapp).toMatchObject({ verifiedNumber: null, unverifiedNumber: "+971 ••• ••4567" });
+    });
+
+    it("lets only admins and owners manage the number", async () => {
+      vi.spyOn(guards, "requireWorkspaceMember").mockResolvedValueOnce({
+        user: { id: "user_viewer" } as any,
+        workspace: mockWorkspace as any,
+        role: "viewer",
+        services: mockServices,
+      });
+      const res = await getWorkspaceSettingsAction("cinespace");
+      expect(res.data?.whatsapp.canManage).toBe(false);
+    });
+
     it("returns error if workspace does not exist", async () => {
       const res = await getWorkspaceSettingsAction("unknown-workspace");
       expect(res.success).toBe(false);
@@ -97,10 +140,11 @@ describe("app/actions/settings", () => {
   });
 
   describe("updateWorkspaceNotificationSettingsAction", () => {
-    it("updates notification toggles and WhatsApp number", async () => {
+    it("updates the email and WhatsApp alert switches, never the number", async () => {
       const res = await updateWorkspaceNotificationSettingsAction("cinespace", {
         notifyComments: false,
-        whatsappNumber: "+971509999999",
+        whatsappNotifyDownloads: false,
+        ...({ whatsappNumber: "+971509999999" } as object),
       });
 
       expect(res.success).toBe(true);
@@ -109,9 +153,18 @@ describe("app/actions/settings", () => {
         notifyComments: false,
         notifyDownloads: undefined,
         weeklyDigest: undefined,
-        whatsappNumber: "+971509999999",
         whatsappEnabled: undefined,
+        whatsappNotifyApprovals: undefined,
+        whatsappNotifyComments: undefined,
+        whatsappNotifyDownloads: false,
       });
+    });
+
+    it("blocks turning on a WhatsApp alert when the plan doesn't include WhatsApp", async () => {
+      mockServices.subscription.canDeliverWhatsApp.mockResolvedValueOnce(false);
+      const res = await updateWorkspaceNotificationSettingsAction("cinespace", { whatsappNotifyComments: true });
+      expect(res.success).toBe(false);
+      expect(mockServices.settings.upsert).not.toHaveBeenCalled();
     });
 
     it("requires admin permission", async () => {

@@ -1,31 +1,37 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { getPostHogClient } from "@/lib/posthog/client";
+import {
+  getPostHogClient,
+  pauseReplayOnPrivatePage,
+  resumeReplayAfterPrivatePage,
+} from "@/lib/posthog/client";
+import { isPrivateAnalyticsPath } from "@/lib/analytics/private-paths";
 
 /**
- * Fires a `$pageview` event on every client-side route change. The
- * SDK also auto-captures pageviews with `capture_pageview: true`, but
- * App Router's client-side navigation can race the SDK's history
- * listener; explicit capture is more reliable.
+ * Captures `$pageview` on the first load and on every client-side route change
+ * (the SDK's own pageview capture is off, so there are no duplicates).
+ *
+ * Private pages (client rooms, invitations, sign-in) are skipped, and session
+ * replay is paused while one is open.
  */
 export function PostHogPageView() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const firstRun = useRef(true);
 
   useEffect(() => {
-    if (firstRun.current) {
-      firstRun.current = false;
+    if (isPrivateAnalyticsPath(pathname)) {
+      pauseReplayOnPrivatePage();
       return;
     }
+
     const client = getPostHogClient();
     if (!client) return;
-    let url = pathname;
+    resumeReplayAfterPrivatePage();
+
     const qs = searchParams?.toString();
-    if (qs) url += `?${qs}`;
-    client.capture("$pageview", { $current_url: url });
+    client.capture("$pageview", { $current_url: `${window.location.origin}${pathname}${qs ? `?${qs}` : ""}` });
   }, [pathname, searchParams]);
 
   return null;

@@ -2,12 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerServices } from "@/core/server";
-import { requireWorkspaceMember } from "@/core/security/guards";
-import {
-  WorkspaceSettings,
-  UpdateWorkspaceSettingsDTO,
-  DEFAULT_WORKSPACE_SETTINGS,
-} from "@/core/entities/workspace-settings";
+import { hasMinRole, requireWorkspaceMember } from "@/core/security/guards";
+import { toWorkspaceSettingsView, type WorkspaceSettingsView } from "@/core/entities/workspace-settings";
 import { NotificationLog } from "@/core/entities/notification";
 
 export interface SettingsActionResult<T = any> {
@@ -22,7 +18,7 @@ export interface SettingsActionResult<T = any> {
  */
 export async function getWorkspaceSettingsAction(
   workspaceSlug: string
-): Promise<SettingsActionResult<WorkspaceSettings>> {
+): Promise<SettingsActionResult<WorkspaceSettingsView>> {
   try {
     const services = await getServerServices();
     const workspace = await services.workspace.getWorkspaceBySlug(workspaceSlug);
@@ -30,18 +26,25 @@ export async function getWorkspaceSettingsAction(
       return { success: false, error: "Workspace not found." };
     }
 
-    await requireWorkspaceMember(workspace.id, "viewer");
+    const { role } = await requireWorkspaceMember(workspace.id, "viewer");
     const settings = await services.settings.getOrCreate(workspace.id);
 
-    return { success: true, data: settings };
+    return {
+      success: true,
+      data: toWorkspaceSettingsView(settings, {
+        whatsappAvailable: services.whatsapp.isConfigured(),
+        canManage: hasMinRole(role, "admin"),
+      }),
+    };
   } catch (err: any) {
     return { success: false, error: err.message || "Failed to load workspace settings." };
   }
 }
 
 /**
- * Updates notification preferences (approvals, comments, downloads, digest, whatsapp).
- * Requires admin or owner role.
+ * Updates notification preferences: which studio alerts go by email (notify*) and by
+ * WhatsApp (whatsappNotify*, whatsappEnabled). Requires admin or owner role.
+ * The WhatsApp number itself is set through verification (app/actions/whatsapp.ts).
  */
 export async function updateWorkspaceNotificationSettingsAction(
   workspaceSlug: string,
@@ -50,10 +53,12 @@ export async function updateWorkspaceNotificationSettingsAction(
     notifyComments?: boolean;
     notifyDownloads?: boolean;
     weeklyDigest?: boolean;
-    whatsappNumber?: string | null;
     whatsappEnabled?: boolean;
+    whatsappNotifyApprovals?: boolean;
+    whatsappNotifyComments?: boolean;
+    whatsappNotifyDownloads?: boolean;
   }
-): Promise<SettingsActionResult<WorkspaceSettings>> {
+): Promise<SettingsActionResult<WorkspaceSettingsView>> {
   try {
     const services = await getServerServices();
     const workspace = await services.workspace.getWorkspaceBySlug(workspaceSlug);
@@ -73,7 +78,12 @@ export async function updateWorkspaceNotificationSettingsAction(
       }
     }
 
-    if (dto.whatsappEnabled === true || (dto.whatsappNumber && dto.whatsappNumber.trim() !== "")) {
+    const turnsOnWhatsApp =
+      dto.whatsappEnabled === true ||
+      dto.whatsappNotifyApprovals === true ||
+      dto.whatsappNotifyComments === true ||
+      dto.whatsappNotifyDownloads === true;
+    if (turnsOnWhatsApp) {
       const canWhatsApp = await services.subscription.canDeliverWhatsApp(workspace.id);
       if (!canWhatsApp) {
         return {
@@ -88,12 +98,17 @@ export async function updateWorkspaceNotificationSettingsAction(
       notifyComments: dto.notifyComments,
       notifyDownloads: dto.notifyDownloads,
       weeklyDigest: dto.weeklyDigest,
-      whatsappNumber: dto.whatsappNumber,
       whatsappEnabled: dto.whatsappEnabled,
+      whatsappNotifyApprovals: dto.whatsappNotifyApprovals,
+      whatsappNotifyComments: dto.whatsappNotifyComments,
+      whatsappNotifyDownloads: dto.whatsappNotifyDownloads,
     });
 
     revalidatePath(`/${workspaceSlug}/notifications`);
-    return { success: true, data: updated };
+    return {
+      success: true,
+      data: toWorkspaceSettingsView(updated, { whatsappAvailable: services.whatsapp.isConfigured(), canManage: true }),
+    };
   } catch (err: any) {
     return { success: false, error: err.message || "Failed to update notification settings." };
   }
@@ -108,7 +123,7 @@ export async function updateWorkspaceSecuritySettingsAction(
   dto: {
     defaultLinkExpirationDays?: number | null;
   }
-): Promise<SettingsActionResult<WorkspaceSettings>> {
+): Promise<SettingsActionResult<WorkspaceSettingsView>> {
   try {
     const services = await getServerServices();
     const workspace = await services.workspace.getWorkspaceBySlug(workspaceSlug);
@@ -123,7 +138,10 @@ export async function updateWorkspaceSecuritySettingsAction(
     });
 
     revalidatePath(`/${workspaceSlug}/security`);
-    return { success: true, data: updated };
+    return {
+      success: true,
+      data: toWorkspaceSettingsView(updated, { whatsappAvailable: services.whatsapp.isConfigured(), canManage: true }),
+    };
   } catch (err: any) {
     return { success: false, error: err.message || "Failed to update security settings." };
   }

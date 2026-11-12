@@ -35,13 +35,23 @@ import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 
-export type Capability = "authn" | "authz" | "rateLimit";
+/**
+ * serviceRole  the action reaches a service-role client (row-level security bypassed):
+ *              getServerAdminServices(), getServerCore() or createAdminClient().
+ * scoped       it reaches a check that ties the ids it was sent to the resource it's
+ *              authorized for: the client-room gate or the lib/client-room/scope.ts loaders.
+ */
+export type Capability = "authn" | "authz" | "rateLimit" | "serviceRole" | "scoped";
 
 export interface Primitive {
   /** Repo-relative path of the module that declares the function. */
   module: string;
   name: string;
-  capability: Capability;
+  capability: Capability | readonly Capability[];
+}
+
+function capabilitiesOf(primitive: Primitive): readonly Capability[] {
+  return typeof primitive.capability === "string" ? [primitive.capability] : primitive.capability;
 }
 
 export const PRIMITIVES: readonly Primitive[] = [
@@ -52,11 +62,19 @@ export const PRIMITIVES: readonly Primitive[] = [
   { module: "app/actions/safe-action.ts", name: "createAuthUserAction", capability: "authn" },
   { module: "app/actions/safe-action.ts", name: "createAuthWorkspaceAction", capability: "authz" },
   { module: "app/actions/safe-action.ts", name: "createAuthDeliveryAction", capability: "authz" },
-  // Client delivery room: a workspace member, or a guest holding the share link
-  // (plus the signed passcode cookie when the delivery has a passcode).
-  { module: "app/actions/deliveries/helpers.ts", name: "requireDeliveryGuestOrMemberAccess", capability: "authz" },
-  { module: "lib/security/delivery-token.ts", name: "hasValidDeliveryPasscodeCookie", capability: "authz" },
-  { module: "lib/security/delivery-token.ts", name: "verifyDeliveryAccessToken", capability: "authz" },
+  // Client room: the gate lets in a guest holding the share link (plus the unlock cookie
+  // when the delivery has a passcode), or a member of the studio. It also hands back the
+  // authorized delivery, which room actions act on.
+  { module: "core/security/client-room.ts", name: "requireClientRoom", capability: ["authz", "scoped"] },
+  // Load a row by a caller-sent id and refuse it unless it belongs to the authorized delivery.
+  { module: "lib/client-room/scope.ts", name: "assetInDelivery", capability: "scoped" },
+  { module: "lib/client-room/scope.ts", name: "versionInDelivery", capability: "scoped" },
+  { module: "lib/client-room/scope.ts", name: "feedbackInDelivery", capability: "scoped" },
+  { module: "lib/client-room/scope.ts", name: "replyInDelivery", capability: "scoped" },
+  // Service-role clients: row-level security doesn't apply.
+  { module: "core/server.ts", name: "getServerAdminServices", capability: "serviceRole" },
+  { module: "core/server.ts", name: "getServerCore", capability: "serviceRole" },
+  { module: "lib/supabase/server.ts", name: "createAdminClient", capability: "serviceRole" },
   { module: "lib/security/passcode.ts", name: "verifyDeliveryPasscode", capability: "authz" },
   { module: "lib/upstash/assert-rate-limit.ts", name: "checkRateLimit", capability: "rateLimit" },
   { module: "lib/upstash/assert-rate-limit.ts", name: "assertRateLimit", capability: "rateLimit" },
@@ -511,7 +529,7 @@ class Analyzer {
   private onFunction(ref: FunctionRef, node: GraphNode): void {
     const primitive = this.primitiveFor(ref);
     if (primitive) {
-      this.reach(node, primitive.capability, `${primitive.name}()`);
+      for (const capability of capabilitiesOf(primitive)) this.reach(node, capability, `${primitive.name}()`);
     } else if (this.isTraversed(ref.moduleAbs)) {
       node.edges.add(this.node(ref).id);
     }
@@ -529,7 +547,9 @@ class Analyzer {
       // Unbound at module level (e.g. destructured from a dynamic import): match by name.
       const primitive = this.primitiveNamed.get(e.text);
       if (primitive && !mod.imports.has(e.text)) {
-        this.reach(node, primitive.capability, `${primitive.name}() (matched by name)`);
+        for (const capability of capabilitiesOf(primitive)) {
+          this.reach(node, capability, `${primitive.name}() (matched by name)`);
+        }
       }
     } else if (ts.isPropertyAccessExpression(e) && ts.isIdentifier(e.expression)) {
       // ns.fn() through `import * as ns from "..."`
@@ -736,6 +756,11 @@ export interface AuthPolicy {
   userScopedActions: Readonly<Record<string, string>>;
   /** Signed-in check only, but they act on someone's workspace or delivery. Ratchet. */
   knownAuthzGaps: Readonly<Record<string, string>>;
+  /**
+   * Reach the service role without a scope check (the room gate or a scope.ts loader).
+   * Each entry says why that's safe: what checks the ids it writes. Reviewed by hand.
+   */
+  serviceRoleActions?: Readonly<Record<string, string>>;
 }
 
 export interface PolicyViolations {
@@ -749,6 +774,8 @@ export interface PolicyViolations {
   rateLimit: string[];
   /** Missing reasons, or an action listed twice. */
   listErrors: string[];
+  /** Reach the service role without a scope check, and not listed in SERVICE_ROLE_ACTIONS. */
+  unscopedServiceRole: string[];
 }
 
 export function checkAuthPolicy(actions: readonly ServerAction[], policy: AuthPolicy): PolicyViolations {
@@ -758,6 +785,7 @@ export function checkAuthPolicy(actions: readonly ServerAction[], policy: AuthPo
     staleEntries: [],
     rateLimit: [],
     listErrors: [],
+    unscopedServiceRole: [],
   };
   const byId = new Map(actions.map((action) => [action.id, action]));
   const lists: Record<string, Readonly<Record<string, string | PublicActionEntry>>> = {
@@ -791,7 +819,7 @@ export function checkAuthPolicy(actions: readonly ServerAction[], policy: AuthPo
     if (!authn && !authz && !isPublic && !(action.id in policy.knownGaps)) {
       violations.unguarded.push(
         `${where} has no authorization step. Call a guard (requireWorkspaceMember, requireDeliveryAccess, ` +
-          `requirePlatformAdmin, requireDeliveryGuestOrMemberAccess, requireUser, ...) or, if it must work ` +
+          `requirePlatformAdmin, requireClientRoom, requireUser, ...) or, if it must work ` +
           `without a session, add "${action.id}" to PUBLIC_ACTIONS with a reason.`
       );
     }
@@ -825,6 +853,35 @@ export function checkAuthPolicy(actions: readonly ServerAction[], policy: AuthPo
       );
     }
   }
+  // Service-role writes must use ids from the authorized resource: reach the room gate or a
+  // scope.ts loader, or be listed (reviewed) in SERVICE_ROLE_ACTIONS.
+  const serviceRoleActions = policy.serviceRoleActions ?? {};
+  for (const [id, reason] of Object.entries(serviceRoleActions)) {
+    if (!reason?.trim()) violations.listErrors.push(`SERVICE_ROLE_ACTIONS["${id}"] needs a one-line reason.`);
+    const action = byId.get(id);
+    if (!action) {
+      violations.staleEntries.push(
+        `SERVICE_ROLE_ACTIONS["${id}"] does not match any server action (renamed, moved or deleted?); update or remove the entry.`
+      );
+    } else if (!action.capabilities.has("serviceRole")) {
+      violations.staleEntries.push(`SERVICE_ROLE_ACTIONS["${id}"] no longer uses the service role; remove the entry.`);
+    } else if (action.capabilities.has("scoped")) {
+      violations.staleEntries.push(
+        `SERVICE_ROLE_ACTIONS["${id}"] is scoped now (${action.evidence.scoped}); remove the entry.`
+      );
+    }
+  }
+  for (const action of actions) {
+    if (!action.capabilities.has("serviceRole") || action.capabilities.has("scoped") || action.id in serviceRoleActions) {
+      continue;
+    }
+    violations.unscopedServiceRole.push(
+      `${action.file}:${action.line} ${action.name} uses the service role (${action.evidence.serviceRole}) ` +
+        `without tying the ids it writes to an authorized resource. Use the client-room gate or a ` +
+        `lib/client-room/scope.ts loader, or add "${action.id}" to SERVICE_ROLE_ACTIONS saying what checks them.`
+    );
+  }
+
   for (const [id, entry] of Object.entries(policy.publicActions)) {
     const action = byId.get(id);
     if (!action) continue;

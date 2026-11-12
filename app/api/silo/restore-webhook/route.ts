@@ -1,11 +1,118 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerAdminServices } from "@/core/server";
+import { parseSiloArchiveKey } from "@/core/services/silo.service";
 import { env } from "@/lib/env";
 import { createScopedLogger } from "@/lib/logger";
 
 const log = createScopedLogger({ route: "api/silo/restore-webhook" });
 
+const MIN_SECRET_LENGTH = 32;
+const PLACEHOLDER_SECRET = "your-silo-webhook-secret";
+/** Upper bound on deliveries finalized per call; each one may copy large files. */
+const MAX_DELIVERIES_PER_EVENT = 25;
+
+/** SILO_WEBHOOK_SECRET, or null while it is unset, the .env.example placeholder, or too short to be safe. */
+function configuredSecret(): string | null {
+  const secret = env.SILO_WEBHOOK_SECRET.trim();
+  if (secret.length < MIN_SECRET_LENGTH || secret === PLACEHOLDER_SECRET) return null;
+  return secret;
+}
+
+/**
+ * The secret presented in a header: "Authorization: Bearer <secret>", "X-Silo-Secret: <secret>",
+ * or HTTP Basic auth with the secret as the password (AWS SNS sends the credentials of an
+ * https://user:secret@host/... subscription URL that way). Never read from the query string.
+ */
+function presentedSecret(req: NextRequest): string | null {
+  const authorization = req.headers.get("authorization")?.trim();
+  if (authorization) {
+    const bearer = authorization.match(/^Bearer\s+(.+)$/i);
+    if (bearer) return bearer[1].trim();
+
+    const basic = authorization.match(/^Basic\s+([A-Za-z0-9+/=]+)$/i);
+    if (basic) {
+      const decoded = Buffer.from(basic[1], "base64").toString("utf8");
+      const separator = decoded.indexOf(":");
+      return separator >= 0 ? decoded.slice(separator + 1) : null;
+    }
+  }
+  return req.headers.get("x-silo-secret")?.trim() || null;
+}
+
+/** Constant-time comparison; hashing first makes it independent of the inputs' lengths. */
+function secretsMatch(presented: string, expected: string): boolean {
+  const a = createHash("sha256").update(presented, "utf8").digest();
+  const b = createHash("sha256").update(expected, "utf8").digest();
+  return timingSafeEqual(a, b);
+}
+
+function decodeS3Key(raw: unknown): string {
+  if (typeof raw !== "string") return "";
+  try {
+    // S3 event keys are URL-encoded, with "+" for spaces.
+    return decodeURIComponent(raw.replace(/\+/g, " "));
+  } catch {
+    return raw;
+  }
+}
+
+interface RestoreTarget {
+  deliveryId: string;
+  workspaceId: string;
+}
+
+/**
+ * Delivery and workspace ids of the archive objects in an S3 "ObjectRestore:Completed"
+ * notification (direct or through SNS) or an EventBridge "Object Restore Completed" event.
+ * Only keys under The Silo's own prefix, in the configured archive bucket, count.
+ */
+function restoreTargets(payload: any): RestoreTarget[] {
+  const targets = new Map<string, RestoreTarget>();
+  const add = (bucket: unknown, rawKey: unknown) => {
+    if (typeof bucket === "string" && bucket && bucket !== env.AWS_S3_SILO_BUCKET) return;
+    const parsed = parseSiloArchiveKey(decodeS3Key(rawKey));
+    if (parsed) {
+      targets.set(parsed.deliveryId, { deliveryId: parsed.deliveryId, workspaceId: parsed.workspaceId });
+    }
+  };
+
+  if (Array.isArray(payload?.Records)) {
+    for (const record of payload.Records) {
+      if (typeof record?.eventName === "string" && !record.eventName.startsWith("ObjectRestore:Completed")) {
+        continue;
+      }
+      add(record?.s3?.bucket?.name, record?.s3?.object?.key);
+    }
+  }
+
+  if (payload?.["detail-type"] === "Object Restore Completed") {
+    add(payload.detail?.bucket?.name, payload.detail?.object?.key);
+  }
+
+  return Array.from(targets.values());
+}
+
 export async function POST(req: NextRequest) {
+  // The Silo kill switch: while it is off, this endpoint does not exist.
+  if (!env.isSiloEnabled) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const secret = configuredSecret();
+  if (!secret) {
+    log.error("SILO_WEBHOOK_SECRET is missing or too weak; refusing Silo restore events");
+    return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+  }
+
+  const presented = presentedSecret(req);
+  if (!presented || !secretsMatch(presented, secret)) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401, headers: { "WWW-Authenticate": 'Basic realm="silo-restore-webhook"' } }
+    );
+  }
+
   try {
     const rawBody = await req.text();
     let body: any;
@@ -16,25 +123,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
     }
 
-    // Webhook authentication check
-    if (env.SILO_WEBHOOK_SECRET) {
-      const authHeader = req.headers.get("authorization") || req.headers.get("x-silo-secret");
-      const urlSecret = req.nextUrl.searchParams.get("secret");
-      const matched =
-        authHeader === `Bearer ${env.SILO_WEBHOOK_SECRET}` ||
-        authHeader === env.SILO_WEBHOOK_SECRET ||
-        urlSecret === env.SILO_WEBHOOK_SECRET;
-
-      if (!matched) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-    } else if (process.env.NODE_ENV === "production") {
-      log.error("SILO_WEBHOOK_SECRET is not configured in production");
-      return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
-    }
-
     // Handle AWS SNS Subscription Confirmation with strict SSRF mitigation
-    if (body.Type === "SubscriptionConfirmation" && body.SubscribeURL) {
+    if (body?.Type === "SubscriptionConfirmation" && body.SubscribeURL) {
       try {
         const parsedUrl = new URL(body.SubscribeURL);
 
@@ -54,74 +144,65 @@ export async function POST(req: NextRequest) {
         log.info({ href: parsedUrl.href }, "Confirming AWS SNS Subscription");
         await fetch(parsedUrl.href);
         return NextResponse.json({ success: true, message: "Subscription confirmed" });
-      } catch (subErr: any) {
+      } catch (subErr: unknown) {
         log.error({ err: subErr }, "Failed to confirm SNS subscription");
-        return NextResponse.json({ error: subErr.message || "Subscription confirmation failed" }, { status: 500 });
+        return NextResponse.json({ error: "Subscription confirmation failed" }, { status: 500 });
       }
     }
 
     // Unwrap SNS Notification payload if wrapped
     let eventPayload = body;
-    if (body.Type === "Notification" && typeof body.Message === "string") {
+    if (body?.Type === "Notification" && typeof body.Message === "string") {
       try {
         eventPayload = JSON.parse(body.Message);
       } catch {
-        eventPayload = body.Message;
+        eventPayload = null;
       }
+    }
+
+    // Delivery ids come only from archive object keys in the event, never from a free-form
+    // field, and each one is re-checked against the database before anything runs.
+    const targets = restoreTargets(eventPayload);
+    if (targets.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: "No Silo archive objects matched in the restore event payload.",
+      });
+    }
+    if (targets.length > MAX_DELIVERIES_PER_EVENT) {
+      log.warn({ count: targets.length }, "Silo restore event names more deliveries than one call handles");
     }
 
     const services = await getServerAdminServices();
-    const deliveryIdsToProcess = new Set<string>();
+    const processed: { deliveryId: string; status: string; isReady?: boolean }[] = [];
+    let failed = false;
 
-    // 1. Direct deliveryId passed in request (e.g. manual trigger or internal webhook)
-    if (body.deliveryId) {
-      deliveryIdsToProcess.add(body.deliveryId);
-    }
-
-    // 2. AWS S3 Event Notification format (s3:ObjectRestore:Completed)
-    if (Array.isArray(eventPayload.Records)) {
-      for (const record of eventPayload.Records) {
-        const key = decodeURIComponent(record.s3?.object?.key || "");
-        // Format: silo/workspaces/{workspaceId}/deliveries/{deliveryId}/assets/...
-        const match = key.match(/deliveries\/([^/]+)\//);
-        if (match && match[1]) {
-          deliveryIdsToProcess.add(match[1]);
+    for (const target of targets.slice(0, MAX_DELIVERIES_PER_EVENT)) {
+      try {
+        const delivery = await services.delivery.getDeliveryById(target.deliveryId);
+        if (!delivery || delivery.workspaceId.toLowerCase() !== target.workspaceId) {
+          processed.push({ deliveryId: target.deliveryId, status: "unknown_delivery" });
+          continue;
         }
+        if (delivery.siloStatus !== "restoring") {
+          processed.push({ deliveryId: target.deliveryId, status: "not_restoring" });
+          continue;
+        }
+
+        // Re-reads the restore state of every archived file from S3; the event is only a hint.
+        const result = await services.silo.checkAndFinalizeRestore(delivery.id);
+        processed.push({ deliveryId: delivery.id, status: result.status, isReady: result.isReady });
+      } catch (err: unknown) {
+        failed = true;
+        log.error({ err, deliveryId: target.deliveryId }, "Failed to finalize Silo restore");
+        processed.push({ deliveryId: target.deliveryId, status: "error" });
       }
     }
 
-    // 3. AWS EventBridge Event format
-    if (eventPayload["detail-type"] === "Object Restore Completed" && eventPayload.detail?.object?.key) {
-      const key = eventPayload.detail.object.key;
-      const match = key.match(/deliveries\/([^/]+)\//);
-      if (match && match[1]) {
-        deliveryIdsToProcess.add(match[1]);
-      }
-    }
-
-    if (deliveryIdsToProcess.size === 0) {
-      return NextResponse.json({
-        success: true,
-        message: "No delivery IDs matched in the restore event payload.",
-      });
-    }
-
-    const results = [];
-    const origin = env.NEXT_PUBLIC_APP_URL || "https://cut.app";
-
-    for (const deliveryId of deliveryIdsToProcess) {
-      const restoreRes = await services.silo.checkAndFinalizeRestore(deliveryId, {
-        origin,
-      });
-      results.push({ deliveryId, result: restoreRes });
-    }
-
-    return NextResponse.json({
-      success: true,
-      processed: results,
-    });
-  } catch (err: any) {
+    // A 5xx makes SNS / EventBridge retry; finalizing is safe to repeat.
+    return NextResponse.json({ success: !failed, processed }, { status: failed ? 500 : 200 });
+  } catch (err: unknown) {
     log.error({ err }, "Unexpected error handling restore event");
-    return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

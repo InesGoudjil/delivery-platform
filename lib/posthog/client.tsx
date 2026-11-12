@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import posthog, { type PostHog as PostHogClient } from "posthog-js";
 import { PostHogProvider as PostHogReactProvider } from "posthog-js/react";
 import { env } from "@/lib/env";
+import { isOnPrivatePage, isPrivateAnalyticsUrl } from "@/lib/analytics/private-paths";
 
 /**
  * Browser-side PostHog client + React provider.
@@ -18,16 +20,24 @@ import { env } from "@/lib/env";
 
 let initialized = false;
 
+/**
+ * Nothing is captured on private pages (client rooms, invitations, sign-in): the SDK
+ * isn't started there, every event sent from one is dropped, and session replay is
+ * paused while one is open (see PostHogPageView).
+ */
 function ensureInitialized(): PostHogClient | null {
   if (typeof window === "undefined") return null;
   if (!env.isPostHogClientEnabled) return null;
   if (initialized) return posthog;
   if (!env.NEXT_PUBLIC_POSTHOG_KEY) return null;
+  if (isOnPrivatePage()) return null;
 
   posthog.init(env.NEXT_PUBLIC_POSTHOG_KEY, {
+    before_send: (event) => (event && isPrivateAnalyticsUrl(event.properties?.$current_url) ? null : event),
     api_host: env.NEXT_PUBLIC_POSTHOG_HOST || "/ingest",
     ui_host: env.NEXT_PUBLIC_POSTHOG_UI_HOST || "https://eu.posthog.com",
-    capture_pageview: true,
+    // PostHogPageView captures every pageview, including the first, and skips private pages.
+    capture_pageview: false,
     capture_pageleave: true,
     autocapture: true,
     // Don't create person profiles for anonymous visitors — saves quota.
@@ -49,18 +59,35 @@ export function getPostHogClient(): PostHogClient | null {
   return ensureInitialized();
 }
 
+let replayPausedOnPrivatePage = false;
+
+/** Stop session replay while a private page is open (resumed when the visitor leaves it). */
+export function pauseReplayOnPrivatePage(): void {
+  if (!initialized) return;
+  if (posthog.sessionRecordingStarted()) {
+    posthog.stopSessionRecording();
+    replayPausedOnPrivatePage = true;
+  }
+}
+
+/** Restart session replay if it was paused for a private page. */
+export function resumeReplayAfterPrivatePage(): void {
+  if (!initialized || !replayPausedOnPrivatePage) return;
+  replayPausedOnPrivatePage = false;
+  posthog.startSessionRecording();
+}
+
 export interface PostHogProviderProps {
   children: React.ReactNode;
 }
 
 export function PostHogProvider({ children }: PostHogProviderProps) {
-  const touched = useRef(false);
+  const pathname = usePathname();
 
+  // Starts the SDK on the first public page (it's never started on a private one).
   useEffect(() => {
-    if (touched.current) return;
-    touched.current = true;
     ensureInitialized();
-  }, []);
+  }, [pathname]);
 
   if (!env.isPostHogClientEnabled || !env.NEXT_PUBLIC_POSTHOG_KEY) {
     return <>{children}</>;

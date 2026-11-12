@@ -29,6 +29,30 @@ export const RATELIMIT_POLICIES = {
   },
 
   // Authentication: Sign-in / Log-in
+  // Across all visitors of one room: stops distributed guessing of a single passcode.
+  deliveryPasscodeRoom: {
+    attempts: 50,
+    window: "1 h",
+    keyPrefix: "rl:delivery:passcode-room",
+    message: ({ retryAfter }: RatelimitMessageContext) =>
+      `This delivery is temporarily locked after too many passcode attempts. Please try again in ${retryAfter}.`,
+  },
+
+  // Client-room approvals and download alerts email the studio, so they're limited per visitor.
+  deliveryApproval: {
+    attempts: 30,
+    window: "1 h",
+    keyPrefix: "rl:delivery:approval",
+    message: ({ retryAfter }: RatelimitMessageContext) =>
+      `Too many approval changes. Please try again in ${retryAfter}.`,
+  },
+
+  deliveryDownloadNotice: {
+    attempts: 5,
+    window: "1 h",
+    keyPrefix: "rl:delivery:download-notice",
+  },
+
   authLogin: {
     attempts: 5,
     window: "15 m",
@@ -80,6 +104,40 @@ export const RATELIMIT_POLICIES = {
     keyPrefix: "rl:upload:presign",
     message: ({ retryAfter }: RatelimitMessageContext) =>
       `Upload rate limit reached. Please wait ${retryAfter} before uploading more files.`,
+  },
+
+  // WhatsApp: every message is paid for and goes out from CineSpace's own number.
+  whatsappCodeSend: {
+    attempts: 5,
+    window: "1 h",
+    keyPrefix: "rl:whatsapp:code-send",
+    message: ({ retryAfter }: RatelimitMessageContext) =>
+      `Too many codes requested. Please try again in ${retryAfter}.`,
+  },
+
+  whatsappCodeCheck: {
+    attempts: 15,
+    window: "15 m",
+    keyPrefix: "rl:whatsapp:code-check",
+    message: ({ retryAfter }: RatelimitMessageContext) =>
+      `Too many attempts. Please try again in ${retryAfter}.`,
+  },
+
+  // Review links sent to clients on WhatsApp, per delivery and per workspace.
+  whatsappClientSendDelivery: {
+    attempts: 5,
+    window: "1 h",
+    keyPrefix: "rl:whatsapp:client-send:delivery",
+    message: ({ retryAfter }: RatelimitMessageContext) =>
+      `This review link was sent on WhatsApp several times already. Please try again in ${retryAfter}.`,
+  },
+
+  whatsappClientSendWorkspace: {
+    attempts: 100,
+    window: "1 d",
+    keyPrefix: "rl:whatsapp:client-send:workspace",
+    message: ({ retryAfter }: RatelimitMessageContext) =>
+      `Your studio reached today's WhatsApp sending limit. Please try again in ${retryAfter}.`,
   },
 
   // Direct media streaming / downloads

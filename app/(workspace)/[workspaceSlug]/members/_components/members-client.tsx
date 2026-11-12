@@ -42,10 +42,10 @@ import {
   updateWorkspaceMemberRoleAction,
   removeWorkspaceMemberAction,
   revokeWorkspaceInvitationAction,
-  acceptWorkspaceInvitationAction,
   WorkspaceSeatStats,
 } from "@/app/actions/members";
 import { WorkspaceRole, WorkspaceInvitation, EnrichedWorkspaceMember } from "@/core/entities/workspace-member";
+import type { AssignableWorkspaceRole } from "@/lib/validations/members";
 import {
   useWorkspaceMembers,
   applyAddInvitation,
@@ -66,10 +66,13 @@ interface MembersClientProps {
     id: string;
     email?: string | null;
   };
+  /** Owner or admin: invites, changes roles, removes members and sees pending invitations. */
   canManage: boolean;
-  isOwner: boolean;
+  /** "owner" for the workspace owner and co-owners: they also manage other owners. */
+  currentUserRole: WorkspaceRole;
   seatStats: WorkspaceSeatStats;
   members: EnrichedWorkspaceMember[];
+  /** Empty unless canManage: they carry the join tokens. */
   pendingInvitations: WorkspaceInvitation[];
 }
 
@@ -77,7 +80,7 @@ export function MembersClient({
   workspace,
   currentUser,
   canManage,
-  isOwner,
+  currentUserRole,
   seatStats: initialSeatStats,
   members: initialMembers,
   pendingInvitations: initialPendingInvitations,
@@ -119,9 +122,10 @@ export function MembersClient({
       setInviteEmail("");
       setShowInviteModal(false);
 
-      if (res.data) {
+      const invitation = res.data;
+      if (invitation) {
         await mutate(
-          (current) => (current ? applyAddInvitation(current, res.data) : current),
+          (current) => (current ? applyAddInvitation(current, invitation) : current),
           { revalidate: true }
         );
       } else {
@@ -134,7 +138,7 @@ export function MembersClient({
     }
   };
 
-  const handleRoleChange = async (memberUserId: string, newRole: WorkspaceRole) => {
+  const handleRoleChange = async (memberUserId: string, newRole: AssignableWorkspaceRole) => {
     setLoadingActionId(`role_${memberUserId}`);
 
     const optimisticNext = membersData
@@ -226,24 +230,6 @@ export function MembersClient({
       );
     } catch (err: any) {
       toast.error(err.message || "Failed to revoke invitation.");
-    } finally {
-      setLoadingActionId(null);
-    }
-  };
-
-  const handleSimulateAccept = async (token: string, email: string) => {
-    setLoadingActionId(`accept_${token}`);
-    try {
-      const res = await acceptWorkspaceInvitationAction(token);
-
-      if (!res.success) {
-        toast.error(res.error || "Failed to simulate invitation acceptance.");
-      } else {
-        toast.success(`Collaborator invitation accepted for ${email}!`);
-        await mutate();
-      }
-    } catch (err: any) {
-      toast.error(err.message || "Failed to simulate invitation acceptance.");
     } finally {
       setLoadingActionId(null);
     }
@@ -423,7 +409,11 @@ export function MembersClient({
               .toUpperCase() || "MB";
 
             const isCurrentCaller = mem.userId === currentUser.id;
-            const isWorkspaceOwner = mem.isOwner || mem.role === "owner" || mem.userId === workspace.ownerId;
+            const isPrimaryOwner = mem.userId === workspace.ownerId;
+            const isWorkspaceOwner = mem.isOwner || mem.role === "owner" || isPrimaryOwner;
+            // Admins manage everyone but owners, owners also manage co-owners; the workspace owner is fixed.
+            const canChangeMember =
+              canManage && !isPrimaryOwner && (!isWorkspaceOwner || currentUserRole === "owner");
             const isActionLoading = loadingActionId === `role_${mem.userId}` || loadingActionId === `remove_${mem.userId}`;
 
             return (
@@ -463,13 +453,19 @@ export function MembersClient({
 
                 <div className="flex items-center gap-3 self-end sm:self-auto">
                   {/* Role Selector or Badge */}
-                  {canManage && !isWorkspaceOwner ? (
+                  {canChangeMember ? (
                     <select
                       value={mem.role}
                       disabled={isActionLoading}
-                      onChange={(e) => handleRoleChange(mem.userId, e.target.value as WorkspaceRole)}
+                      onChange={(e) => handleRoleChange(mem.userId, e.target.value as AssignableWorkspaceRole)}
                       className="bg-muted border border-border rounded-xl px-2.5 py-1 text-xs  font-medium text-foreground focus:outline-none focus:border-primary cursor-pointer disabled:opacity-50"
                     >
+                      {/* A co-owner can be moved to another role, but nobody can be made owner. */}
+                      {mem.role === "owner" && (
+                        <option value="owner" disabled>
+                          Owner
+                        </option>
+                      )}
                       <option value="editor">Editor</option>
                       <option value="admin">Admin</option>
                       <option value="viewer">Viewer</option>
@@ -481,7 +477,7 @@ export function MembersClient({
                   )}
 
                   {/* Remove Member Button */}
-                  {canManage && !isWorkspaceOwner && (
+                  {canChangeMember && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -504,8 +500,8 @@ export function MembersClient({
         </div>
       </div>
 
-      {/* Pending Invitations Section */}
-      {pendingInvitations.length > 0 && (
+      {/* Pending Invitations Section: owners and admins only (the server sends nobody else any) */}
+      {canManage && pendingInvitations.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <TypographyH2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground  border-none pb-0">
@@ -515,8 +511,7 @@ export function MembersClient({
 
           <div className="rounded-2xl bg-card border border-border divide-y divide-border shadow-sm overflow-hidden">
             {pendingInvitations.map((invite) => {
-              const isActionLoading =
-                loadingActionId === `revoke_${invite.id}` || loadingActionId === `accept_${invite.token}`;
+              const isActionLoading = loadingActionId === `revoke_${invite.id}`;
 
               return (
                 <div
@@ -548,42 +543,28 @@ export function MembersClient({
                       {invite.role}
                     </TypographySpan>
 
-                    {/* Copy Invite Link */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCopyLink(invite.token)}
-                      className="rounded-xl text-xs gap-1.5 cursor-pointer h-8 px-2.5"
-                      title="Copy invitation link"
-                    >
-                      {copiedToken === invite.token ? (
-                        <>
-                          <CheckCheck className="size-3.5 text-primary" />
-                          <TypographySpan className="text-primary font-bold">Copied</TypographySpan>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="size-3.5" />
-                          <TypographySpan>Copy Link</TypographySpan>
-                        </>
-                      )}
-                    </Button>
-
-                    {/* Test/Demo Accept Button */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={isActionLoading}
-                      onClick={() => handleSimulateAccept(invite.token, invite.email)}
-                      className="rounded-xl text-[11px]  text-primary hover:bg-primary/10 cursor-pointer h-8 px-2"
-                      title="Quickly simulate invite acceptance in test mode"
-                    >
-                      {loadingActionId === `accept_${invite.token}` ? (
-                        <Loader2 className="size-3 animate-spin" />
-                      ) : (
-                        "Accept (Demo)"
-                      )}
-                    </Button>
+                    {/* Copy Invite Link: the link is the join token, so managers only */}
+                    {canManage && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCopyLink(invite.token)}
+                        className="rounded-xl text-xs gap-1.5 cursor-pointer h-8 px-2.5"
+                        title="Copy invitation link"
+                      >
+                        {copiedToken === invite.token ? (
+                          <>
+                            <CheckCheck className="size-3.5 text-primary" />
+                            <TypographySpan className="text-primary font-bold">Copied</TypographySpan>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="size-3.5" />
+                            <TypographySpan>Copy Link</TypographySpan>
+                          </>
+                        )}
+                      </Button>
+                    )}
 
                     {/* Revoke Invite */}
                     {canManage && (

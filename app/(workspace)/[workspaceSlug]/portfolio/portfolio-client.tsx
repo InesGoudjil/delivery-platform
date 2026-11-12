@@ -205,6 +205,7 @@ export function PortfolioClient({
         const result = await directUploadMediaFile({
           workspaceId: workspace.id,
           projectId: "", // standalone asset
+          placement: "hero",
           file,
           title: fileBaseName,
           assetType: "video",
@@ -309,6 +310,7 @@ export function PortfolioClient({
       const uploadResult = await directUploadMediaFile({
         workspaceId: workspace.id,
         projectId: "", // standalone asset
+        placement: "hero",
         file: imageFile,
         title: fileBaseName,
         assetType: "photo_gallery",

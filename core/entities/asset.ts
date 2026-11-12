@@ -10,6 +10,8 @@ export interface Asset {
   sortOrder: number;
   isArchived: boolean;
   isApproved: boolean;
+  /** A standalone piece on the public portfolio (explicit; "not in a delivery" doesn't mean public). */
+  isPortfolio: boolean;
   aspectRatio: string;
   category: string;
   viewsCount: number;

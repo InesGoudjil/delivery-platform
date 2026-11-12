@@ -1,14 +1,36 @@
 import crypto from "crypto";
 import { createScopedLogger } from "@/lib/logger";
+import { isStreamUid, streamUidOf } from "@/lib/storage/keys";
 import {
   IStorageProvider,
   CreateUploadUrlParams,
   DirectUploadResult,
   PlaybackInfo,
   StorageAssetStatus,
+  StreamVideoInfo,
 } from "./storage.provider";
 
 const log = createScopedLogger({ provider: "CloudflareStream" });
+
+/** Cloudflare caps direct uploads at 6 hours of video. */
+const MAX_DURATION_SECONDS = 21600;
+
+/**
+ * The 32-hex video UID in a value (a bare UID, "/api/media/<uid>", or a Stream delivery URL),
+ * or null. Every Stream API path is built from this, never from the raw value.
+ */
+export function toStreamUid(value: string | null | undefined): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (isStreamUid(trimmed)) return trimmed.toLowerCase();
+  return streamUidOf(trimmed);
+}
+
+function requireStreamUid(value: string | null | undefined): string {
+  const uid = toStreamUid(value);
+  if (!uid) throw new Error("Invalid Cloudflare Stream video id.");
+  return uid;
+}
 
 export interface CloudflareStreamConfig {
   accountId: string;
@@ -47,17 +69,22 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
   ): Promise<DirectUploadResult> {
     const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/stream/direct_upload`;
 
+    const requestedDuration = Math.floor(Number(params.maxDurationSeconds) || 7200); // Default 2 hours max
+    // Only server-decided values go into the video's metadata.
+    const meta: Record<string, string> = {
+      name: params.assetTitle,
+      workspaceId: params.workspaceId,
+      assetId: params.assetId,
+      filename: params.filename,
+    };
+    if (params.deliveryId) meta.deliveryId = params.deliveryId;
+
     const body: Record<string, any> = {
-      maxDurationSeconds: params.maxDurationSeconds || 7200, // Default 2 hours max
+      maxDurationSeconds: Math.min(Math.max(requestedDuration, 1), MAX_DURATION_SECONDS),
       uploadLength: params.fileSizeBytes,
       requireSignedURLs: false,
       creator: params.workspaceId,
-      meta: {
-        name: params.assetTitle,
-        projectId: params.projectId,
-        filename: params.filename,
-        ...(params.metadata || {}),
-      },
+      meta,
     };
 
     const response = await fetch(url, {
@@ -84,7 +111,11 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
       );
     }
 
-    const { uploadURL, uid } = json.result;
+    const { uploadURL } = json.result;
+    const uid = toStreamUid(json.result.uid);
+    if (!uid || typeof uploadURL !== "string") {
+      throw new Error("Cloudflare Stream returned an unexpected direct upload response.");
+    }
 
     return {
       uploadUrl: uploadURL,
@@ -147,7 +178,10 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
       );
     }
 
-    const uid = json.result.uid;
+    const uid = toStreamUid(json.result.uid);
+    if (!uid) {
+      throw new Error("Cloudflare Stream copy API returned an unexpected video id.");
+    }
     const status = json.result.status?.state || "processing";
 
     return { uid, status };
@@ -162,8 +196,8 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
     providerUid: string,
     waitUntilReadyMs: number = 0
   ): Promise<string | null> {
-    const cleanUid = providerUid.match(/([a-f0-9]{32})/i)?.[1] || providerUid.trim();
-    if (!/^[a-f0-9]{32}$/i.test(cleanUid)) return null;
+    const cleanUid = toStreamUid(providerUid);
+    if (!cleanUid) return null;
 
     const downloadsEndpoint = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/stream/${cleanUid}/downloads`;
     const fallbackUrl = `https://${this.deliveryDomain}/${cleanUid}/downloads/default.mp4`;
@@ -237,7 +271,7 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
     providerUid: string,
     filename: string
   ): Promise<string> {
-    const cleanUid = providerUid.match(/([a-f0-9]{32})/i)?.[1] || providerUid.trim();
+    const cleanUid = requireStreamUid(providerUid);
     // Warm up MP4 generation on Cloudflare Stream asynchronously when presigning
     void this.ensureMp4DownloadEnabled(cleanUid, 0);
     return `/api/media/${cleanUid}?download=true&filename=${encodeURIComponent(filename)}`;
@@ -247,7 +281,7 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
    * Builds standardized Cloudflare Stream HLS, DASH, and thumbnail URLs for a video UID
    */
   async getPlaybackInfo(providerUid: string): Promise<PlaybackInfo | null> {
-    const cleanUid = providerUid.match(/([a-f0-9]{32})/i)?.[1] || providerUid.trim();
+    const cleanUid = requireStreamUid(providerUid);
     let status: StorageAssetStatus = {
       providerUid: cleanUid,
       status: "processing",
@@ -287,7 +321,7 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
    * Polls Cloudflare for video processing/transcoding status
    */
   async getAssetStatus(providerUid: string): Promise<StorageAssetStatus> {
-    const cleanUid = providerUid.match(/([a-f0-9]{32})/i)?.[1] || providerUid.trim();
+    const cleanUid = requireStreamUid(providerUid);
     const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/stream/${cleanUid}`;
 
     try {
@@ -357,10 +391,55 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
   }
 
   /**
+   * A video's owner (`creator` / `meta.workspaceId`, set by this app when it created the
+   * video), size, duration and state; null when Stream has no such video.
+   */
+  async getStreamVideo(uid: string): Promise<StreamVideoInfo | null> {
+    const cleanUid = requireStreamUid(uid);
+    const response = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/stream/${cleanUid}`,
+      { method: "GET", headers: { Authorization: `Bearer ${this.apiToken}` } }
+    );
+
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw new Error(`Cloudflare Stream lookup failed (${response.status}).`);
+    }
+
+    const json = await response.json();
+    const result = json?.result;
+    if (!result) return null;
+    if (toStreamUid(result.uid) !== cleanUid) {
+      throw new Error("Cloudflare Stream returned a different video.");
+    }
+
+    const state = result.status?.state;
+    const status: StreamVideoInfo["status"] =
+      state === "ready"
+        ? "ready"
+        : state === "error"
+          ? "error"
+          : state === "inprogress" || state === "queued" || state === "downloading"
+            ? "processing"
+            : "pending";
+
+    const size = Number(result.size);
+    const duration = Number(result.duration);
+    return {
+      uid: cleanUid,
+      creator: typeof result.creator === "string" && result.creator ? result.creator : null,
+      workspaceId: typeof result.meta?.workspaceId === "string" && result.meta.workspaceId ? result.meta.workspaceId : null,
+      sizeBytes: Number.isFinite(size) && size > 0 ? size : null,
+      durationSeconds: Number.isFinite(duration) && duration > 0 ? duration : null,
+      status,
+    };
+  }
+
+  /**
    * Deletes a video from Cloudflare Stream
    */
   async deleteAsset(providerUid: string): Promise<void> {
-    const cleanUid = providerUid.match(/([a-f0-9]{32})/i)?.[1] || providerUid.trim();
+    const cleanUid = requireStreamUid(providerUid);
     const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/stream/${cleanUid}`;
 
     const response = await fetch(url, {
@@ -381,11 +460,9 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
    */
   verifyWebhookSignature(rawBody: string, headers: Record<string, string>): boolean {
     if (!this.webhookSecret) {
-      if (process.env.NODE_ENV === "production") {
-        log.error("Missing webhook secret in production environment");
-        return false;
-      }
-      return true; // Dev fallback
+      // Unsigned webhooks are never accepted, in any environment.
+      log.error("CLOUDFLARE_WEBHOOK_SECRET is not set; rejecting Stream webhook");
+      return false;
     }
 
     const signatureHeader =

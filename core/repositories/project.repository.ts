@@ -115,12 +115,15 @@ export class SupabaseProjectRepository implements IProjectRepository {
   }
 
   async delete(id: string): Promise<void> {
-    const { error } = await (this.supabase as any)
+    const { data, error } = await (this.supabase as any)
       .from("projects")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .select("id");
 
     if (error) throw new Error(`Error deleting showcase project: ${error.message}`);
+    // Row-level security refuses silently (0 rows): don't report success.
+    if (!data || data.length === 0) throw new Error("Showcase project not found, or you can't delete it.");
   }
 
   async attachAsset(projectId: string, assetId: string, displayOrder = 0): Promise<void> {
@@ -136,13 +139,15 @@ export class SupabaseProjectRepository implements IProjectRepository {
   }
 
   async detachAsset(projectId: string, assetId: string): Promise<void> {
-    const { error } = await (this.supabase as any)
+    const { data, error } = await (this.supabase as any)
       .from("project_assets")
       .delete()
       .eq("project_id", projectId)
-      .eq("asset_id", assetId);
+      .eq("asset_id", assetId)
+      .select("project_id");
 
     if (error) throw new Error(`Failed to detach asset from project: ${error.message}`);
+    if (!data || data.length === 0) throw new Error("That file isn't attached to this project, or you can't change it.");
   }
 
   async getProjectAssetIds(projectId: string): Promise<string[]> {

@@ -88,7 +88,8 @@ export class MockStorageProvider implements IStorageProvider {
     return { uid, status: "ready" };
   }
 
+  /** Nothing can sign a webhook for the mock provider, so none is ever accepted. */
   verifyWebhookSignature(): boolean {
-    return true;
+    return false;
   }
 }

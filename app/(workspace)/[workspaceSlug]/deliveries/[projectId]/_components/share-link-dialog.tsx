@@ -28,9 +28,11 @@ import {
   updateDeliverySecurityAction,
   verifyPassphraseWithTokenAction,
   sendDeliveryEmailAction,
+  sendDeliveryWhatsAppAction,
   regenerateDeliveryShareTokenAction,
 } from "@/app/actions/deliveries";
 import { toast } from "sonner";
+import { generatePassphrase, passcodeProblem } from "@/lib/security/passphrase";
 
 interface ShareLinkDialogProps {
   isOpen: boolean;
@@ -39,6 +41,9 @@ interface ShareLinkDialogProps {
   shareToken: string;
   projectTitle: string;
   clientEmail?: string | null;
+  clientPhone?: string | null;
+  /** CineSpace's WhatsApp sender is set up (Zoho CPaaS). */
+  whatsappAvailable?: boolean;
   initialPasscodeProtected: boolean;
   initialDownloadAllowed: boolean;
   initialCommentAllowed?: boolean;
@@ -76,6 +81,8 @@ export function ShareLinkDialog({
   shareToken,
   projectTitle,
   clientEmail: initialClientEmail,
+  clientPhone: initialClientPhone,
+  whatsappAvailable = false,
   initialPasscodeProtected,
   initialDownloadAllowed,
   initialCommentAllowed = true,
@@ -268,14 +275,44 @@ export function ShareLinkDialog({
     }
   };
 
+  // WhatsApp sharing: sent from the CineSpace WhatsApp number, after the client agreed.
+  const [clientPhone, setClientPhone] = useState(initialClientPhone || "");
+  const [showWhatsAppInput, setShowWhatsAppInput] = useState(false);
+  const [whatsAppConsent, setWhatsAppConsent] = useState(false);
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
+
+  useEffect(() => {
+    if (initialClientPhone) setClientPhone(initialClientPhone);
+  }, [initialClientPhone]);
+
+  const handleSendWhatsApp = async () => {
+    if (!clientPhone.trim()) {
+      toast.error("Enter the client's WhatsApp number.");
+      return;
+    }
+    if (!whatsAppConsent) {
+      toast.error("Confirm your client agreed to get WhatsApp messages first.");
+      return;
+    }
+    setIsSendingWhatsApp(true);
+    try {
+      const res = await sendDeliveryWhatsAppAction(projectId, { phone: clientPhone.trim(), clientConsent: true });
+      if (res.success) {
+        triggerToast(`Review link sent on WhatsApp to ${res.sentTo}`);
+        setShowWhatsAppInput(false);
+        setWhatsAppConsent(false);
+      } else {
+        toast.error(res.error || "Couldn't send the WhatsApp message.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Couldn't send the WhatsApp message.");
+    } finally {
+      setIsSendingWhatsApp(false);
+    }
+  };
+
   const generateRandomPassphrase = () => {
-    const adjectives = ["golden", "desert", "cinematic", "lunar", "swift", "hyper", "velvet", "stellar"];
-    const nouns = ["falcon", "frame", "dune", "lens", "shadow", "reel", "apex", "cut"];
-    const randAdj = adjectives[Math.floor(Math.random() * adjectives.length)];
-    const randNoun = nouns[Math.floor(Math.random() * nouns.length)];
-    const randNum = Math.floor(1000 + Math.random() * 9000);
-    const generated = `${randAdj}-${randNoun}-${randNum}`;
-    setPassphraseValue(generated);
+    setPassphraseValue(generatePassphrase());
     setIsPasscodeSaved(false);
     setVerificationStatus("idle");
     setVerificationMsg(null);
@@ -315,6 +352,11 @@ export function ShareLinkDialog({
       toast.error("Please enter or generate a passphrase first.");
       return;
     }
+    const lengthProblem = sharePassphrase ? passcodeProblem(passphraseValue) : null;
+    if (lengthProblem) {
+      toast.error(lengthProblem);
+      return;
+    }
     if (sharePassphrase && !canPasswordProtect) {
       toast.error("Passcode protection is available on Pro and Studio plans. Upgrade to unlock.");
       return;
@@ -352,7 +394,7 @@ export function ShareLinkDialog({
     }
     setIsVerifyingSecurity(true);
     try {
-      const res = await verifyPassphraseWithTokenAction(currentToken, passphraseValue);
+      const res = await verifyPassphraseWithTokenAction(projectId, passphraseValue);
       if (res.success) {
         setVerificationStatus("valid");
         setVerificationMsg(res.message || "Passphrase verified with token!");
@@ -799,6 +841,71 @@ export function ShareLinkDialog({
           )}
         </div>
 
+        {/* WhatsApp Direct Share (from the CineSpace WhatsApp number) */}
+        {canWhatsApp && whatsappAvailable && (
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <TypographySpan className="flex items-center gap-1.5 font-bold text-white">
+                <MessageCircle className="size-3.5 text-emerald-400" />
+                WhatsApp Review Link to Client
+              </TypographySpan>
+              <Button
+                type="button"
+                variant="link"
+                size="xs"
+                onClick={() => setShowWhatsAppInput(!showWhatsAppInput)}
+                className="text-[11px] text-primary hover:underline cursor-pointer p-0 h-auto"
+              >
+                {showWhatsAppInput ? "Cancel" : "Send on WhatsApp"}
+              </Button>
+            </div>
+            {showWhatsAppInput && (
+              <div className="space-y-2 pt-1">
+                <div className="flex gap-2">
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    placeholder="+971 50 123 4567"
+                    value={clientPhone}
+                    onChange={(e) => setClientPhone(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleSendWhatsApp();
+                      }
+                    }}
+                    aria-label="Client WhatsApp number"
+                    className="flex-1 bg-black/60 border border-white/15 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-muted-foreground focus:outline-none focus:border-primary"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={isSendingWhatsApp || !whatsAppConsent}
+                    onClick={handleSendWhatsApp}
+                    className="bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-xs h-auto py-1.5 px-3 rounded-lg cursor-pointer disabled:opacity-50"
+                  >
+                    {isSendingWhatsApp ? "Sending..." : "Send"}
+                  </Button>
+                </div>
+                <label className="flex items-start gap-2 text-[11px] text-muted-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={whatsAppConsent}
+                    onChange={(e) => setWhatsAppConsent(e.target.checked)}
+                    className="mt-0.5 accent-emerald-500"
+                  />
+                  <span>My client agreed to get WhatsApp messages from CineSpace about this delivery.</span>
+                </label>
+                {sharePassphrase && (
+                  <TypographyMuted className="text-[11px] text-amber-300/90">
+                    The passphrase isn&apos;t included. Share it with your client separately.
+                  </TypographyMuted>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-3 pt-2">
           {canWhatsApp ? (
@@ -809,7 +916,7 @@ export function ShareLinkDialog({
               className="rounded-full border-white/20 bg-black/40 hover:bg-white/10 text-white font-extrabold text-xs py-3 h-auto cursor-pointer flex items-center justify-center gap-1.5"
             >
               <MessageCircle className="size-3.5 text-emerald-400" />
-              SEND ON WHATSAPP
+              OPEN WHATSAPP
             </Button>
           ) : (
             <Button

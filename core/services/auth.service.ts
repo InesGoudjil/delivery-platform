@@ -4,6 +4,7 @@ import { Workspace } from '@/core/entities/workspace';
 import { UserProfile } from '@/core/entities/user-profile';
 import { IWorkspaceRepository } from '@/core/repositories/workspace.repository';
 import { IUserProfileRepository } from '@/core/repositories/user-profile.repository';
+import { readSessionIdentity, type SessionIdentity } from '@/core/services/session.service';
 
 export interface UserSessionData {
   user: User | null;
@@ -125,20 +126,34 @@ export class AuthService {
       };
     }
   }
-  async signOut(): Promise<void> {
+  /**
+   * The current login (user id and Supabase session id) from the verified access token.
+   * Device rows are keyed on it. Null when signed out or when the token can't be verified.
+   */
+  async getSessionIdentity(): Promise<SessionIdentity | null> {
+    return readSessionIdentity(this.supabase.auth);
+  }
+
+  /**
+   * Signs this device out: ends its Supabase login and clears the auth cookies. Other devices
+   * stay signed in. The local session is cleared even when Supabase Auth returns an error.
+   */
+  async signOut(): Promise<{ error: Error | null }> {
     try {
-      await this.supabase.auth.signOut();
-    } catch {
-      // Ignore signout network errors
+      const { error } = await this.supabase.auth.signOut({ scope: 'local' });
+      return { error };
+    } catch (err) {
+      return { error: err instanceof Error ? err : new Error(String(err)) };
     }
   }
 
+  /** Ends every other Supabase login of the signed-in user, with or without a device row. */
   async signOutOthers(): Promise<{ error: Error | null }> {
     try {
       const { error } = await this.supabase.auth.signOut({ scope: 'others' });
       return { error };
-    } catch (err: any) {
-      return { error: err };
+    } catch (err) {
+      return { error: err instanceof Error ? err : new Error(String(err)) };
     }
   }
 }

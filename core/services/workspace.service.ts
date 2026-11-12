@@ -240,14 +240,6 @@ export class WorkspaceService {
     return this.featuresRepo.upsertFeatures(workspaceId, features);
   }
 
-  async trackStorageUsage(workspaceId: string, addedBytes: number): Promise<Workspace> {
-    const ws = await this.workspaceRepo.findById(workspaceId);
-    if (!ws) throw new Error('Workspace not found');
-
-    const updatedUsed = Math.max(0, (ws.storageUsedBytes || 0) + addedBytes);
-    return this.workspaceRepo.update(workspaceId, { storageUsedBytes: updatedUsed });
-  }
-
   async updateWorkspace(workspaceId: string, data: Partial<Workspace>): Promise<Workspace> {
     return this.workspaceRepo.update(workspaceId, data);
   }

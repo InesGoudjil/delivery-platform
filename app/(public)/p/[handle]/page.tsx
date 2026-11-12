@@ -20,8 +20,33 @@ import { AmbientBackground } from "@/components/ui/ambient-background";
 import { AccentThemeProvider } from "@/components/theme/accent-theme-provider";
 import { notFound } from "next/navigation";
 import { createScopedLogger } from "@/lib/logger";
+import { presignPrivateMediaUrl } from "@/lib/media-server";
+import { isR2KeyInWorkspace, parseStoredMedia } from "@/lib/storage/keys";
+import type { IStorageProvider } from "@/core/providers/storage";
 
 const log = createScopedLogger({ page: "PublicPortfolio" });
+
+// Private files shown here (pieces published from a delivery) are signed for 6 hours, so
+// the rendered page must never be served from cache for longer than that.
+export const revalidate = 1800;
+const SIGNED_URL_SECONDS = 6 * 60 * 60;
+
+/**
+ * A stored media value as a URL a visitor can load: private files of this workspace are
+ * signed for a few hours, public files and Stream videos pass through, and anything that
+ * points outside this workspace is dropped.
+ */
+async function publicMediaUrl(value: string | null | undefined, storage: IStorageProvider, workspaceId: string) {
+  const parsed = parseStoredMedia(value);
+  if (!parsed) return "";
+  if (parsed.kind === "r2") {
+    if (!isR2KeyInWorkspace(parsed.key, workspaceId)) return "";
+    if (parsed.visibility === "private") {
+      return presignPrivateMediaUrl(parsed.key, storage, { workspaceId, expiresInSeconds: SIGNED_URL_SECONDS });
+    }
+  }
+  return resolveMediaUrl(value);
+}
 
 interface PageProps {
   params: Promise<{ handle: string }>;
@@ -44,17 +69,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       }
     }
 
+    if (!portfolio || !portfolio.isPublished) {
+      return { title: "Portfolio | CineSpace", robots: { index: false, follow: false } };
+    }
+
     const title = workspace?.brandName
       ? `${workspace.brandName} — Portfolio`
       : portfolio?.title || `${handle.charAt(0).toUpperCase() + handle.slice(1)} — Portfolio`;
     const description =
       portfolio?.bio || `${title} showcase and visual portfolio.`;
+    // Link previews are cached by other sites: only public images, never signed private ones.
+    const coverValue =
+      portfolio?.appearance?.heroCover?.thumbnailUrl ||
+      portfolio?.appearance?.heroCover?.mediaUrl ||
+      portfolio?.coverAssetUrl;
+    const cover = parseStoredMedia(coverValue);
     const coverUrl =
-      resolveMediaUrl(
-        portfolio?.appearance?.heroCover?.thumbnailUrl ||
-        portfolio?.appearance?.heroCover?.mediaUrl ||
-        portfolio?.coverAssetUrl
-      ) || "/images/hero.jpg";
+      (cover?.kind === "r2" && cover.visibility === "public" && workspace && isR2KeyInWorkspace(cover.key, workspace.id)
+        ? resolveMediaUrl(coverValue)
+        : "") || "/images/hero.jpg";
 
     return {
       title: `${title} | CineSpace`,
@@ -77,116 +110,59 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
   const { handle } = await params;
   const services = await getServerAdminServices();
 
-  let workspace = null;
-  let portfolio = null;
-
-  try {
-    // 1. Resolve Workspace by slug, public portfolio slug, or first workspace
-    workspace = await services.workspace.getWorkspaceBySlug(handle);
-
-    if (!workspace) {
-      const publicView = await services.portfolio.getPublicPortfolio(handle);
-      if (publicView) {
-        portfolio = publicView;
-        workspace = await services.workspace.getWorkspaceById(publicView.workspaceId);
-      }
+  // 1. The workspace by its slug, or by its portfolio's slug. Only published portfolios.
+  let workspace = await services.workspace.getWorkspaceBySlug(handle).catch(() => null);
+  let portfolio = workspace ? await services.portfolio.getPortfolioByWorkspace(workspace.id).catch(() => null) : null;
+  if (!workspace) {
+    const publicView = await services.portfolio.getPublicPortfolio(handle).catch(() => null);
+    if (publicView) {
+      workspace = await services.workspace.getWorkspaceById(publicView.workspaceId).catch(() => null);
+      portfolio = workspace ? await services.portfolio.getPortfolioByWorkspace(workspace.id).catch(() => null) : null;
     }
-
-    if (!workspace) {
-      const allWorkspaces = await services.workspace.listAllWorkspaces();
-      workspace =
-        allWorkspaces.find((w) => w.slug === handle) ||
-        notFound()||
-        null;
-    }
-
-    // 2. Fetch or Create Portfolio domain entity
-    if (workspace && !portfolio) {
-      portfolio = await services.portfolio.getOrCreatePortfolio(
-        workspace.id,
-        `${workspace.brandName} Portfolio`,
-        workspace.slug
-      );
-    }
-  } catch (err: any) {
-    log.warn({ err, handle }, "Notice resolving workspace/portfolio");
   }
+  if (!workspace || !portfolio || !portfolio.isPublished) notFound();
+  const workspaceId = workspace.id;
+  const storage = services.storage;
 
-  // 3. Fetch Real Projects and Standalone Assets from DB
+  // 2. Published showcase projects of this portfolio, and the standalone pieces.
   let dbProjects: any[] = [];
-  let wsProjects: any[] = [];
   let standaloneAssets: any[] = [];
-
   let workspaceFeatures: any = null;
-  if (workspace) {
-    try {
-      const [pProjects, wProjects, unassigned, features] = await Promise.all([
-        portfolio ? services.project.listPortfolioProjects(portfolio.id) : [],
-        services.project.listWorkspaceProjects(workspace.id),
-        services.asset.listUnassignedAssets(workspace.id),
-        services.subscription.getFeatures(workspace.id),
-      ]);
-      dbProjects = pProjects;
-      wsProjects = wProjects;
-      standaloneAssets = unassigned;
-      workspaceFeatures = features;
-    } catch (err: any) {
-      log.warn({ err, workspaceId: workspace.id }, "Notice fetching database assets/projects");
-    }
+  try {
+    const [pProjects, pieces, features] = await Promise.all([
+      services.project.listPortfolioProjects(portfolio.id),
+      services.asset.listPortfolioAssets(workspaceId),
+      services.subscription.getFeatures(workspaceId),
+    ]);
+    dbProjects = pProjects.filter((p: any) => p.isPublished !== false && p.workspaceId === workspaceId);
+    standaloneAssets = pieces;
+    workspaceFeatures = features;
+  } catch (err: any) {
+    log.warn({ err, workspaceId }, "Notice fetching portfolio projects and pieces");
   }
 
-  // Merge unique showcase projects from DB (filter out unpublished). This page reads
-  // with the service role, so only keep projects owned by this workspace.
-  const projectMap = new Map<string, any>();
-  const isOwnProject = (p: any) => Boolean(workspace) && p.workspaceId === workspace.id;
-  dbProjects.forEach((p) => {
-    if (p.isPublished !== false && isOwnProject(p)) projectMap.set(p.id, p);
-  });
-  wsProjects.forEach((p) => {
-    if (p.isPublished !== false && isOwnProject(p) && !projectMap.has(p.id)) projectMap.set(p.id, p);
-  });
-
-  const combinedProjects = Array.from(projectMap.values());
-
-  // 4. Extract Real Assets for each project
   const realProjects: PortfolioProject[] = [];
   const realAssets: PortfolioAsset[] = [];
 
-  for (const p of combinedProjects) {
-    let assets: any[] = [];
-    if (p.sourceDeliveryId) {
-      assets = await services.asset.listAssets(p.sourceDeliveryId);
-    }
-    if (assets.length === 0) {
-      const projectWithAssets = await services.project.getProjectWithAssets(p.id);
-      if (projectWithAssets?.assets && projectWithAssets.assets.length > 0) {
-        assets = projectWithAssets.assets;
-      }
-    }
-    if (assets.length === 0) {
-      assets = await services.asset.listAssets(p.id);
-    }
-
-    // Never render another workspace's files, whatever the project links point at.
-    assets = assets.filter((a) => a?.workspaceId === workspace.id);
+  // 3. Each project shows only the files linked to it (project_assets), never the rest of
+  //    its source delivery, and nothing in Trash or from another workspace.
+  for (const p of dbProjects) {
+    const projectWithAssets = await services.project.getProjectWithAssets(p.id).catch(() => null);
+    const assets = (projectWithAssets?.assets ?? []).filter(
+      (a: any) => a?.workspaceId === workspaceId && !a.isArchived
+    );
 
     const projectAssetIds: string[] = [];
-
     for (const a of assets) {
-      const activeVersion =
-        (a as any).activeVersion || (await services.asset.getActiveVersion(a.id));
+      const activeVersion = (a as any).activeVersion || (await services.asset.getActiveVersion(a.id));
       const isStill = a.type === "photo_gallery" || a.category === "still";
-      const rawMedia = resolveMediaUrl(
-        activeVersion?.rawFileUrl ||
-        activeVersion?.hlsManifestUrl ||
-        activeVersion?.thumbnailUrl ||
-        ""
+      const rawMedia = await publicMediaUrl(
+        activeVersion?.hlsManifestUrl || activeVersion?.rawFileUrl || activeVersion?.thumbnailUrl,
+        storage,
+        workspaceId
       );
-      const rawThumb = resolveThumbnailUrl(
-        activeVersion?.thumbnailUrl,
-        rawMedia,
-        isStill
-      );
+      const thumb = await publicMediaUrl(activeVersion?.thumbnailUrl, storage, workspaceId);
+      const rawThumb = resolveThumbnailUrl(thumb, rawMedia, isStill);
 
       let ar = 1.6;
       if (a.aspectRatio === "9:16") ar = 0.5625;
@@ -200,7 +176,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
         tc = `${mins}:${secs < 10 ? "0" : ""}${secs}`;
       }
 
-      const assetItem: PortfolioAsset = {
+      realAssets.push({
         id: a.id,
         kind: isStill ? "still" : "film",
         cat: p.clientName || p.category || p.title,
@@ -209,19 +185,15 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
         ar,
         tc,
         image: rawThumb || rawMedia || "/images/hero.jpg",
-        videoUrl: isStill ? undefined : (rawMedia || undefined),
+        videoUrl: isStill ? undefined : rawMedia || undefined,
         resolution: isStill ? "High Res" : "HD 60fps",
-      };
-
-      realAssets.push(assetItem);
+      });
       projectAssetIds.push(a.id);
     }
 
     const projectCover =
-      resolveMediaUrl(p.coverAssetUrl) ||
-      (projectAssetIds.length > 0
-        ? realAssets.find((a) => a.id === projectAssetIds[0])?.image
-        : "") ||
+      (await publicMediaUrl(p.coverAssetUrl, storage, workspaceId)) ||
+      (projectAssetIds.length > 0 ? realAssets.find((a) => a.id === projectAssetIds[0])?.image : "") ||
       "/images/hero.jpg";
 
     realProjects.push({
@@ -238,21 +210,17 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     });
   }
 
-  // 5. Extract Standalone Assets (unassigned stills and films)
+  // 4. Standalone pieces (explicitly marked as portfolio pieces)
   for (const a of standaloneAssets) {
     const activeVersion = await services.asset.getActiveVersion(a.id);
     const isStill = a.type === "photo_gallery" || a.category === "still";
-    const rawMedia = resolveMediaUrl(
-      activeVersion?.rawFileUrl ||
-      activeVersion?.hlsManifestUrl ||
-      activeVersion?.thumbnailUrl ||
-      ""
+    const rawMedia = await publicMediaUrl(
+      activeVersion?.hlsManifestUrl || activeVersion?.rawFileUrl || activeVersion?.thumbnailUrl,
+      storage,
+      workspaceId
     );
-    const rawThumb = resolveThumbnailUrl(
-      activeVersion?.thumbnailUrl,
-      rawMedia,
-      isStill
-    );
+    const thumb = await publicMediaUrl(activeVersion?.thumbnailUrl, storage, workspaceId);
+    const rawThumb = resolveThumbnailUrl(thumb, rawMedia, isStill);
 
     let ar = 1.6;
     if (a.aspectRatio === "9:16") ar = 0.5625;
@@ -275,7 +243,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
       ar,
       tc,
       image: rawThumb || rawMedia || "/images/hero.jpg",
-      videoUrl: isStill ? undefined : (rawMedia || undefined),
+      videoUrl: isStill ? undefined : rawMedia || undefined,
       resolution: isStill ? "High Res" : "HD 60fps",
     });
   }
@@ -384,10 +352,14 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
 
   const filmmakerAvatar = ownerAvatarUrl || brandLogo || "";
   const heroCover = portfolio?.appearance?.heroCover || null;
+  // The hero can be a file picked from a delivery: sign private ones like any other piece.
+  const heroMediaUrl = await publicMediaUrl(heroCover?.mediaUrl, storage, workspaceId);
+  const heroThumbUrl = await publicMediaUrl(heroCover?.thumbnailUrl || heroCover?.mediaUrl, storage, workspaceId);
+  const portfolioCoverUrl = await publicMediaUrl(portfolio?.coverAssetUrl, storage, workspaceId);
 
   const coverSelected =
-    (heroCover?.mediaUrl ? resolveMediaUrl(heroCover.mediaUrl) : null) ||
-    resolveMediaUrl(portfolio?.coverAssetUrl) ||
+    (heroCover?.mediaUrl ? heroMediaUrl || null : null) ||
+    portfolioCoverUrl ||
     featuredItems[0]?.thumbnailUrl ||
     (finalProjects.length > 0 ? finalProjects[0].coverImage : "") ||
     (finalAssets.length > 0 ? finalAssets[0].image : "") ||
@@ -451,8 +423,8 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
       title: heroCover.title || (matchedAsset?.title) || brandName,
       category: heroCover.category || (heroCover.type === "video" ? "Featured Film" : "Featured Still"),
       type: heroCover.type === "still" ? "still" : "film",
-      thumbnailUrl: resolveMediaUrl(heroCover.thumbnailUrl || heroCover.mediaUrl),
-      videoUrl: heroCover.type === "video" ? resolveMediaUrl(heroCover.mediaUrl) : undefined,
+      thumbnailUrl: heroThumbUrl,
+      videoUrl: heroCover.type === "video" ? heroMediaUrl || undefined : undefined,
       aspectRatio: heroCover.aspectRatio,
       asset: matchedAsset || {
         id: heroCover.assetId || "hero_cover",
@@ -462,8 +434,8 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
         desc: "",
         ar: heroCover.aspectRatio === "21:9" ? 21 / 9 : 16 / 9,
         tc: "",
-        image: resolveMediaUrl(heroCover.thumbnailUrl || heroCover.mediaUrl),
-        videoUrl: heroCover.type === "video" ? resolveMediaUrl(heroCover.mediaUrl) : undefined,
+        image: heroThumbUrl,
+        videoUrl: heroCover.type === "video" ? heroMediaUrl || undefined : undefined,
       },
     };
   } else if (featuredItems.length > 0) {

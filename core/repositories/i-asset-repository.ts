@@ -10,8 +10,15 @@ export interface CreateAssetDTO {
   isApproved?: boolean;
   aspectRatio?: string;
   category?: string;
+  /** Shown on the studio's public portfolio as a standalone piece. Never true for delivery files. */
+  isPortfolio?: boolean;
 }
 
+/**
+ * A new file version. The media columns (raw file, streaming copy, thumbnail, size, status,
+ * duration) are written only by the service role, after the server decided or checked them;
+ * signed-in API users can't write them (20261111120300_protect_file_locations.sql).
+ */
 export interface CreateAssetVersionDTO {
   assetId: string;
   versionNumber: number;
@@ -22,6 +29,7 @@ export interface CreateAssetVersionDTO {
   fileSizeBytes?: number;
   durationSeconds?: number | null;
   transcodingStatus?: TranscodingStatus;
+  /** Default false: a new version becomes active when its upload is confirmed (setActiveVersion). */
   isActiveVersion?: boolean;
 }
 
@@ -30,6 +38,8 @@ export interface ListDeliveryAssetsOptions {
   offset?: number;
   type?: string;
   isApproved?: boolean;
+  /** Only files of this workspace. Pass the delivery's own workspace when listing a client room. */
+  workspaceId?: string;
 }
 
 export interface PaginatedAssetsResult {
@@ -52,13 +62,18 @@ export interface IAssetRepository {
   listUnassignedByWorkspaceId(workspaceId: string): Promise<Asset[]>;
   listByDeliveryId(deliveryId: string, options?: ListDeliveryAssetsOptions): Promise<Asset[]>;
   listByDeliveryIdPaginated(deliveryId: string, options?: ListDeliveryAssetsOptions): Promise<PaginatedAssetsResult>;
-  countByDeliveryId(deliveryId: string, options?: { type?: string; isApproved?: boolean }): Promise<number>;
+  countByDeliveryId(deliveryId: string, options?: { type?: string; isApproved?: boolean; workspaceId?: string }): Promise<number>;
   listArchivedByWorkspaceId(workspaceId: string): Promise<Asset[]>;
   listByIds(ids: string[]): Promise<Asset[]>;
+  /** The workspace's standalone portfolio pieces (explicitly marked, not in Trash, not in a delivery). */
+  listPortfolioAssets(workspaceId: string): Promise<Asset[]>;
+  /** The file whose server-written media columns point at this Stream UID. */
+  findByStreamUid(uid: string): Promise<Asset | null>;
   create(dto: CreateAssetDTO): Promise<Asset>;
   assignToDelivery(assetId: string, deliveryId: string | null): Promise<Asset>;
   detachAllFromDelivery(deliveryId: string): Promise<void>;
-  toggleApproval(assetId: string, isApproved: boolean): Promise<Asset>;
+  /** Changes approval of a file in the given delivery and workspace; throws if the file isn't there. */
+  toggleApproval(assetId: string, isApproved: boolean, scope?: { deliveryId: string; workspaceId: string }): Promise<Asset>;
   archive(id: string): Promise<Asset>;
   restore(id: string): Promise<Asset>;
   update(id: string, data: Partial<Asset>): Promise<Asset>;
@@ -72,6 +87,9 @@ export interface IAssetVersionRepository {
   create(dto: CreateAssetVersionDTO): Promise<AssetVersion>;
   update(id: string, data: Partial<AssetVersion>): Promise<AssetVersion>;
   updateLabel(versionId: string, label: string): Promise<AssetVersion>;
+  /** Makes the version the file's only active one; throws when it isn't one of the file's versions. */
   setActiveVersion(assetId: string, versionId: string): Promise<void>;
+  /** Versions whose raw file or streaming copy mentions this Stream UID (re-check the exact UID). */
+  listByStreamUid(uid: string): Promise<AssetVersion[]>;
   delete(id: string): Promise<void>;
 }

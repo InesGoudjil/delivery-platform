@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   createDeliveryAction,
   verifyDeliveryPasscodeAction,
-  checkDeliveryAccessAction,
   updateDeliverySecurityAction,
   archiveDeliveryAction,
 } from "@/app/actions/deliveries";
@@ -11,6 +10,7 @@ import * as serverModule from "@/core/server";
 import { createHash } from "crypto";
 import { cookies } from "next/headers";
 import { verifyDeliveryPasscode } from "@/lib/security/passcode";
+import { createRoomAccessToken, roomAccessCookieName, verifyRoomAccessToken } from "@/lib/security/delivery-token";
 
 describe("app/actions/deliveries", () => {
   const mockDelivery = {
@@ -133,10 +133,10 @@ describe("app/actions/deliveries", () => {
   });
 
   describe("verifyDeliveryPasscodeAction", () => {
-    it("fails when passcode is missing for protected cut", async () => {
+    it("asks for the passcode when none is given", async () => {
       const result = await verifyDeliveryPasscodeAction("token_abc123", "");
       expect(result.success).toBe(false);
-      expect(result.error).toBe("Please enter the client passcode.");
+      expect(result.error).toBe("Please enter the passcode.");
     });
 
     it("fails when passcode does not match", async () => {
@@ -145,16 +145,17 @@ describe("app/actions/deliveries", () => {
       expect(result.error).toContain("Incorrect passcode");
     });
 
-    it("succeeds when passcode matches and sets access cookie", async () => {
+    it("succeeds when the passcode matches and sets an unlock cookie bound to the room", async () => {
       const result = await verifyDeliveryPasscodeAction("token_abc123", "secret123");
       expect(result.success).toBe(true);
 
       const cookieStore = await cookies();
       expect(cookieStore.set).toHaveBeenCalledWith(
-        "delivery_access_token_abc123",
-        expect.stringMatching(/^v1:\d+:[a-f0-9]{64}$/),
-        expect.any(Object)
+        roomAccessCookieName("token_abc123"),
+        expect.stringMatching(/^v2\.\d+\.[A-Za-z0-9_-]+$/),
+        expect.objectContaining({ httpOnly: true, sameSite: "lax", path: "/" })
       );
+      expect(roomAccessCookieName("token_abc123")).not.toContain("token_abc123");
     });
 
     it("rejects the stored hash when it is submitted as the passcode", async () => {
@@ -163,40 +164,51 @@ describe("app/actions/deliveries", () => {
       expect(result.error).toContain("Incorrect passcode");
     });
 
-    it("returns error when delivery share token is invalid or not found", async () => {
+    it("returns an error for an unknown share token", async () => {
       mockAdminServices.delivery.getDeliveryByShareToken.mockResolvedValue(null);
 
       const result = await verifyDeliveryPasscodeAction("invalid_token", "secret123");
       expect(result.success).toBe(false);
-      expect(result.error).toContain("Delivery not found");
+      expect(result.error).toContain("isn't valid");
+    });
+
+    it("refuses expired links, even with the right passcode", async () => {
+      mockAdminServices.delivery.getDeliveryByShareToken.mockResolvedValue({
+        ...mockDelivery,
+        expiresAt: new Date(Date.now() - 60_000).toISOString(),
+      });
+      const result = await verifyDeliveryPasscodeAction("token_abc123", "secret123");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("expired");
+    });
+
+    it("opens the room without a passcode only for a member of the studio (checked on the server)", async () => {
+      const stranger = await verifyDeliveryPasscodeAction("token_abc123", "");
+      expect(stranger.success).toBe(false);
+
+      mockUserServices.auth = { getCurrentUser: vi.fn().mockResolvedValue({ id: "user_1", email: "o@s.test" }) };
+      mockUserServices.member = { getMember: vi.fn().mockResolvedValue({ role: "editor" }) };
+      const member = await verifyDeliveryPasscodeAction("token_abc123", "");
+      expect(member.success).toBe(true);
     });
   });
 
-  describe("checkDeliveryAccessAction", () => {
-    it("returns hasAccess: false when cookie is missing", async () => {
-      const cookieStore = await cookies();
-      vi.mocked(cookieStore.get).mockReturnValue(undefined);
+  describe("client-room unlock cookie", () => {
+    const subject = { id: "del_101", shareToken: "token_abc123", passcodeHash: "scrypt$hash" };
 
-      const result = await checkDeliveryAccessAction("token_abc123");
-      expect(result.hasAccess).toBe(false);
+    it("rejects a missing, forged or tampered cookie", () => {
+      const valid = createRoomAccessToken(subject);
+      expect(verifyRoomAccessToken(undefined, subject)).toBe(false);
+      expect(verifyRoomAccessToken("verified", subject)).toBe(false);
+      expect(verifyRoomAccessToken(valid.slice(0, -4) + "AAAA", subject)).toBe(false);
+      expect(verifyRoomAccessToken(valid, subject)).toBe(true);
     });
 
-    it("returns hasAccess: true when cookie is verified with valid signature", async () => {
-      const { generateDeliveryAccessToken } = await import("@/lib/security/delivery-token");
-      const validToken = generateDeliveryAccessToken("token_abc123");
-      const cookieStore = await cookies();
-      vi.mocked(cookieStore.get).mockReturnValue({ name: "delivery_access_token_abc123", value: validToken });
-
-      const result = await checkDeliveryAccessAction("token_abc123");
-      expect(result.hasAccess).toBe(true);
-    });
-
-    it("returns hasAccess: false when cookie is forged static 'verified'", async () => {
-      const cookieStore = await cookies();
-      vi.mocked(cookieStore.get).mockReturnValue({ name: "delivery_access_token_abc123", value: "verified" });
-
-      const result = await checkDeliveryAccessAction("token_abc123");
-      expect(result.hasAccess).toBe(false);
+    it("stops working when the passcode or the share link changes, or it expires", () => {
+      const valid = createRoomAccessToken(subject);
+      expect(verifyRoomAccessToken(valid, { ...subject, passcodeHash: "scrypt$other" })).toBe(false);
+      expect(verifyRoomAccessToken(valid, { ...subject, shareToken: "token_rotated" })).toBe(false);
+      expect(verifyRoomAccessToken(createRoomAccessToken(subject, 60), subject, Date.now() + 61_000)).toBe(false);
     });
   });
 
@@ -274,6 +286,28 @@ describe("app/actions/deliveries", () => {
   });
 
   describe("archiveDeliveryAction", () => {
+    const withSilo = async (enabled: boolean, run: () => Promise<void>) => {
+      const { env } = await import("@/lib/env");
+      const previous = env.isSiloEnabled;
+      env.isSiloEnabled = enabled;
+      try {
+        await run();
+      } finally {
+        env.isSiloEnabled = previous;
+      }
+    };
+
+    it("refuses while The Silo kill switch is off, before any access check", async () => {
+      const { SILO_UNAVAILABLE_MESSAGE } = await import("@/core/providers/storage/silo-glacier.provider");
+      const accessCheck = vi.spyOn(guards, "requireDeliveryAccess");
+
+      await withSilo(false, async () => {
+        const result = await archiveDeliveryAction("del_101");
+        expect(result.error).toBe(SILO_UNAVAILABLE_MESSAGE);
+      });
+      expect(accessCheck).not.toHaveBeenCalled();
+    });
+
     it("rejects Silo archiving if workspace plan does not allow silo archive", async () => {
       const mockServices = {
         subscription: {
@@ -292,8 +326,10 @@ describe("app/actions/deliveries", () => {
         user: { id: "user_1" } as any,
       });
 
-      const result = await archiveDeliveryAction("del_101");
-      expect(result.error).toContain("The Silo Glacier Cold Storage archive requires a Studio or Enterprise plan");
+      await withSilo(true, async () => {
+        const result = await archiveDeliveryAction("del_101");
+        expect(result.error).toContain("The Silo Glacier Cold Storage archive requires a Studio or Enterprise plan");
+      });
       expect(mockServices.silo.archiveDelivery).not.toHaveBeenCalled();
     });
   });

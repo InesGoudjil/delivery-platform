@@ -301,6 +301,7 @@ export function UploadFilmModal({
         const result = await directUploadMediaFile({
           workspaceId,
           projectId: "",
+          placement: "portfolio",
           file: item.file,
           title: itemTitle,
           assetType: item.assetType,

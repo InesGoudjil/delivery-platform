@@ -12,6 +12,8 @@
  *   page load will find it.
  */
 
+import { isOnPrivatePage } from "@/lib/analytics/private-paths";
+
 declare global {
   interface Window {
     fbq?: ((...args: unknown[]) => void) & {
@@ -33,6 +35,8 @@ export function isPixelEnabled(): boolean {
   if (!PIXEL_ID) return false;
   if (typeof window === "undefined") return false;
   if (process.env.NODE_ENV === "development" && !ALLOW_IN_DEV) return false;
+  // Never on client rooms, invitations or sign-in pages: their URLs carry secrets.
+  if (isOnPrivatePage()) return false;
   return true;
 }
 

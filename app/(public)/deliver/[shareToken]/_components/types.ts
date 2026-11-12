@@ -9,6 +9,7 @@ export interface AssetVersionItem {
   durationSeconds?: number | null;
   transcodingStatus?: string | null;
   isActiveVersion?: boolean;
+  createdAt?: string;
 }
 
 export interface FeedbackReplyItem {
@@ -18,6 +19,8 @@ export interface FeedbackReplyItem {
   commentText: string;
   createdAt: string;
   updatedAt?: string;
+  /** False when this viewer can't edit, resolve or delete it (the server enforces this too). */
+  canModify?: boolean;
 }
 
 export interface FeedbackItem {
@@ -30,6 +33,8 @@ export interface FeedbackItem {
   createdAt: string;
   updatedAt?: string;
   replies?: FeedbackReplyItem[];
+  /** False when this viewer can't edit, resolve or delete it (the server enforces this too). */
+  canModify?: boolean;
 }
 
 export interface DeliveryAssetItem {

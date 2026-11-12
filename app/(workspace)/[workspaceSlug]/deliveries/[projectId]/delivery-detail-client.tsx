@@ -153,6 +153,7 @@ export function DeliveryDetailClient({
   initialHasMore = false,
   initialFeedback,
   features,
+  whatsappAvailable = false,
 }: DeliveryDetailClientProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -160,6 +161,8 @@ export function DeliveryDetailClient({
 
   const entitlements = useOptionalEntitlements();
   const canWatermark = entitlements?.can.watermark ?? (features ? Boolean(features.watermark) : false);
+  // Plan includes The Silo and its kill switch (SILO_ENABLED) is on; hidden otherwise.
+  const canUseSilo = entitlements?.can.useSiloArchive ?? false;
 
   const { setShowTrashModal } = useModals();
 
@@ -1279,6 +1282,7 @@ export function DeliveryDetailClient({
           clientPhone={projectMeta.clientPhone}
           siloStatus={projectMeta.siloStatus}
           siloTier={projectMeta.siloTier}
+          showSiloControls={canUseSilo}
           onOpenShareDialog={() => setActiveDialog("share")}
           onOpenEditDialog={() => setActiveDialog("edit-delivery")}
           onArchive={handleArchive}
@@ -1379,6 +1383,8 @@ export function DeliveryDetailClient({
           shareToken={currentShareToken}
           projectTitle={projectMeta.title}
           clientEmail={projectMeta.clientEmail}
+          clientPhone={projectMeta.clientPhone}
+          whatsappAvailable={whatsappAvailable}
           initialPasscodeProtected={project.passcodeProtected ?? false}
           initialDownloadAllowed={isDownloadAllowed}
           initialCommentAllowed={isCommentAllowed}
