@@ -6,8 +6,11 @@ import { log, revalidateAssetPaths, cleanupPortfolioFeaturedItem } from "./helpe
 import type { DeleteAssetOptions } from "./types";
 
 /**
- * Permanently purges an asset and its versions from the workspace and remote Cloudflare storage,
- * recovering workspace storage quota. This action is irreversible.
+ * Permanently deletes a file: its database rows first, then its stored files. Irreversible.
+ *
+ * Storage is cleaned up only after the database confirms the file is gone, so a refused
+ * delete never wipes files. Only objects under the file's own workspace and Stream videos
+ * created for that workspace are deleted. The storage counter follows by database trigger.
  */
 export async function permanentDeleteAssetAction(
   assetId: string,
@@ -32,63 +35,22 @@ export async function permanentDeleteAssetAction(
       }
     }
 
-    // Clean up storage versions and recover storage quota
+    // What to clean up afterwards: the versions go with the file (ON DELETE CASCADE).
+    const versions = await services.asset.listVersions(asset.id);
+
+    // Delete the asset from database (cascades to asset_versions and feedback). The repository
+    // throws when no row was deleted (row-level security refused it), so nothing below runs
+    // and no stored file is touched unless the file is really gone.
+    await services.asset.deleteAsset(asset.id);
+
+    // Unpin it from the portfolio appearance, if it was featured
+    await cleanupPortfolioFeaturedItem(services, asset.workspaceId, asset.id, options?.portfolioId);
+
     try {
-      const versions = await services.asset.listVersions(assetId);
-      let totalBytesToFree = 0;
-
-      for (const version of versions) {
-        if (version.fileSizeBytes) {
-          totalBytesToFree += version.fileSizeBytes;
-        }
-
-        const targets = [
-          version.rawFileUrl,
-          version.hlsManifestUrl,
-          version.thumbnailUrl,
-        ].filter(Boolean) as string[];
-
-        for (const target of targets) {
-          if (
-            target &&
-            !target.includes("files.vidstack.io") &&
-            !target.includes("/api/mock-upload/") &&
-            !target.includes("unsplash.com") &&
-            services.storage &&
-            typeof services.storage.deleteAsset === "function"
-          ) {
-            try {
-              await services.storage.deleteAsset(target);
-            } catch (storageErr) {
-              log.warn({ err: storageErr, target }, "Storage deletion notice");
-            }
-          }
-        }
-      }
-
-      // Recover workspace storage quota
-      if (totalBytesToFree > 0) {
-        try {
-          const currentWorkspace = await services.workspace.getWorkspaceById(asset.workspaceId);
-          if (currentWorkspace) {
-            const updatedStorage = Math.max(0, (currentWorkspace.storageUsedBytes || 0) - totalBytesToFree);
-            await services.workspace.updateWorkspace(currentWorkspace.id, {
-              storageUsedBytes: updatedStorage,
-            });
-          }
-        } catch (wsErr) {
-          log.warn({ err: wsErr, workspaceId: asset.workspaceId }, "Workspace storage quota update notice");
-        }
-      }
-    } catch (verErr) {
-      log.warn({ err: verErr, assetId }, "Version listing for cleanup notice");
+      await services.upload.deleteStoredFiles(asset, versions);
+    } catch (storageErr) {
+      log.warn({ err: storageErr, assetId: asset.id }, "Storage cleanup notice");
     }
-
-    // Check if asset is pinned in the portfolio appearance
-    await cleanupPortfolioFeaturedItem(services, asset.workspaceId, assetId, options?.portfolioId);
-
-    // Delete the asset from database (cascades to asset_versions and feedback)
-    await services.asset.deleteAsset(assetId);
 
     // Revalidate relevant cache paths
     const deliveryIdToRevalidate = asset.deliveryId || options?.deliveryId;

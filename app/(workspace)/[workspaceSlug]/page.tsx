@@ -36,6 +36,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CopyReviewLinkButton } from "./_components/dashboard-client-actions";
+import { env } from "@/lib/env";
 
 export default async function WorkspaceDashboardPage({
   params,
@@ -58,6 +59,7 @@ export default async function WorkspaceDashboardPage({
   ]);
 
   const planName = plan?.name || entitlements?.planName || "Starter Plan";
+  const siloEnabled = env.isSiloEnabled;
 
   const studioWorkflows = [
     {
@@ -80,16 +82,28 @@ export default async function WorkspaceDashboardPage({
       iconBg: "bg-[#86b98f]/15 text-[#86b98f] border border-[#86b98f]/25",
       tags: ["4K Reel", "Inquiry Forms", "Custom Bio"],
     },
-    {
-      title: "Storage & Deep Vault",
-      subtitle: "R2 master assets & Silo cold glacier",
-      description: "Track Cloudflare R2 proxy delivery, AWS Glacier deep vault storage, and original master downloads.",
-      href: `/${workspaceSlug}/storage`,
-      icon: HardDrive,
-      glowColor: "from-sky-500/20 to-blue-500/10",
-      iconBg: "bg-sky-500/15 text-sky-400 border border-sky-500/25",
-      tags: ["R2 Proxies", "Silo Glacier", "Zero Egress"],
-    },
+    // The Silo is only mentioned while its kill switch (SILO_ENABLED) is on.
+    siloEnabled
+      ? {
+          title: "Storage & Deep Vault",
+          subtitle: "R2 master assets & Silo cold glacier",
+          description: "Track Cloudflare R2 proxy delivery, AWS Glacier deep vault storage, and original master downloads.",
+          href: `/${workspaceSlug}/storage`,
+          icon: HardDrive,
+          glowColor: "from-sky-500/20 to-blue-500/10",
+          iconBg: "bg-sky-500/15 text-sky-400 border border-sky-500/25",
+          tags: ["R2 Proxies", "Silo Glacier", "Zero Egress"],
+        }
+      : {
+          title: "Storage",
+          subtitle: "R2 master assets & usage",
+          description: "Track Cloudflare R2 proxy delivery, storage usage, and original master downloads.",
+          href: `/${workspaceSlug}/storage`,
+          icon: HardDrive,
+          glowColor: "from-sky-500/20 to-blue-500/10",
+          iconBg: "bg-sky-500/15 text-sky-400 border border-sky-500/25",
+          tags: ["R2 Proxies", "Zero Egress"],
+        },
     {
       title: "Team & Collaborators",
       subtitle: "Director, editors & colorists",
@@ -295,7 +309,7 @@ export default async function WorkspaceDashboardPage({
                   Media Engine & Cloud Proxies
                 </TypographyH3>
                 <TypographyMuted className="text-[11px] text-muted-foreground">
-                  Global Cloudflare R2 & Silo Glacier Storage
+                  {siloEnabled ? "Global Cloudflare R2 & Silo Glacier Storage" : "Global Cloudflare R2 Storage"}
                 </TypographyMuted>
               </div>
             </div>

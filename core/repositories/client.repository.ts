@@ -29,6 +29,8 @@ export class SupabaseClientRepository implements IClientRepository {
       name: row.name,
       email: row.email,
       phoneNumber: row.phone_number,
+      whatsappConsentAt: row.whatsapp_consent_at ?? null,
+      whatsappConsentBy: row.whatsapp_consent_by ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -101,6 +103,8 @@ export class SupabaseClientRepository implements IClientRepository {
     if (data.name !== undefined) payload.name = data.name;
     if (data.email !== undefined) payload.email = data.email;
     if (data.phoneNumber !== undefined) payload.phone_number = data.phoneNumber;
+    if (data.whatsappConsentAt !== undefined) payload.whatsapp_consent_at = data.whatsappConsentAt;
+    if (data.whatsappConsentBy !== undefined) payload.whatsapp_consent_by = data.whatsappConsentBy;
 
     const { data: updated, error } = await (this.supabase as any)
       .from('clients')
@@ -114,11 +118,14 @@ export class SupabaseClientRepository implements IClientRepository {
   }
 
   async delete(id: string): Promise<void> {
-    const { error } = await (this.supabase as any)
+    const { data, error } = await (this.supabase as any)
       .from('clients')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .select('id');
 
     if (error) throw new Error(`Failed to delete client: ${error.message}`);
+    // Row-level security refuses silently (0 rows): don't report success.
+    if (!data || data.length === 0) throw new Error("Client not found, or you can't delete it.");
   }
 }

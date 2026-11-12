@@ -14,6 +14,8 @@ import { createScopedLogger } from "@/lib/logger";
 
 const log = createScopedLogger({ service: "DeliveryService" });
 
+export const RECOVERED_DELIVERY_TITLE = "Recovered files";
+
 export interface DeliveryWithDetails extends Delivery {
   client?: Client | null;
   totalAssetsCount?: number;
@@ -51,6 +53,25 @@ export class DeliveryService {
       }
     }
     return this.deliveryRepo.create(dto);
+  }
+
+  /**
+   * The workspace's draft delivery for files restored from Trash after their own delivery
+   * was deleted. It's never shared (no one has its link) and isn't a client delivery, so it
+   * doesn't count against the plan's delivery limit.
+   */
+  async findOrCreateRecoveryDelivery(workspaceId: string): Promise<Delivery> {
+    const existing = (await this.deliveryRepo.listByWorkspaceId(workspaceId)).find(
+      (d) => d.title === RECOVERED_DELIVERY_TITLE && d.status === "draft"
+    );
+    if (existing) return existing;
+    return this.deliveryRepo.create({
+      workspaceId,
+      title: RECOVERED_DELIVERY_TITLE,
+      description: "Files restored from Trash after their delivery was deleted.",
+      status: "draft",
+      isDownloadAllowed: false,
+    });
   }
 
   async getDeliveryById(id: string): Promise<Delivery | null> {
@@ -95,15 +116,19 @@ export class DeliveryService {
     }));
   }
 
+  /**
+   * A delivery with its files, versions and comments. Pass the delivery the caller is
+   * already authorized for (the client-room gate, or a member's RLS-scoped lookup), or a
+   * delivery id. Share tokens aren't accepted here: client rooms go through
+   * core/security/client-room.ts first. Only files of the delivery's own workspace load.
+   */
   async getDeliveryWithFullDetails(
-    identifier: string,
+    target: Delivery | string,
     options?: { page?: number; limit?: number; type?: string }
   ): Promise<DeliveryWithDetails | null> {
-    let delivery = await this.deliveryRepo.findByShareToken(identifier);
-    if (!delivery) {
-      delivery = await this.deliveryRepo.findById(identifier);
-    }
+    const delivery = typeof target === "string" ? await this.deliveryRepo.findById(target) : target;
     if (!delivery) return null;
+    const workspaceId = delivery.workspaceId;
 
     let client: Client | null = null;
     if (delivery.clientId) {
@@ -122,13 +147,14 @@ export class DeliveryService {
         limit: options.limit,
         offset,
         type: options.type,
+        workspaceId,
       });
       assets = res.assets;
       totalAssetsCount = res.totalCount;
-      approvedAssetsCount = await this.assetRepo.countByDeliveryId(delivery.id, { isApproved: true });
+      approvedAssetsCount = await this.assetRepo.countByDeliveryId(delivery.id, { isApproved: true, workspaceId });
       hasMore = offset + assets.length < totalAssetsCount;
     } else {
-      assets = await this.assetRepo.listByDeliveryId(delivery.id);
+      assets = await this.assetRepo.listByDeliveryId(delivery.id, { workspaceId });
       totalAssetsCount = assets.length;
       approvedAssetsCount = assets.filter((a) => a.isApproved).length;
       hasMore = false;
@@ -165,7 +191,7 @@ export class DeliveryService {
   }
 
   async getDeliveryAssetsPage(
-    deliveryId: string,
+    delivery: Delivery,
     options?: { page?: number; limit?: number; type?: "all" | "video" | "photo" }
   ): Promise<{
     assets: Array<
@@ -191,12 +217,13 @@ export class DeliveryService {
     }
 
     const [paginatedResult, approvedCount] = await Promise.all([
-      this.assetRepo.listByDeliveryIdPaginated(deliveryId, {
+      this.assetRepo.listByDeliveryIdPaginated(delivery.id, {
         limit,
         offset,
         type: dbType,
+        workspaceId: delivery.workspaceId,
       }),
-      this.assetRepo.countByDeliveryId(deliveryId, { isApproved: true }),
+      this.assetRepo.countByDeliveryId(delivery.id, { isApproved: true, workspaceId: delivery.workspaceId }),
     ]);
 
     const enrichedAssets = await Promise.all(
@@ -235,17 +262,20 @@ export class DeliveryService {
     return this.deliveryRepo.updateStatus(id, status, approvedByName);
   }
 
+  /** Approves every file of an authorized delivery and marks the delivery approved. */
   async approveCut(
-    id: string,
+    target: Delivery,
     approvedByName?: string,
     options?: { origin?: string; notifyEmails?: string[] }
   ): Promise<Delivery> {
-    const allAssets = await this.assetRepo.listByDeliveryId(id);
+    const id = target.id;
+    const scope = { deliveryId: target.id, workspaceId: target.workspaceId };
+    const allAssets = await this.assetRepo.listByDeliveryId(id, { workspaceId: target.workspaceId });
     if (allAssets.length > 0) {
       await Promise.all(
         allAssets
           .filter((a) => !a.isApproved)
-          .map((a) => this.assetRepo.toggleApproval(a.id, true))
+          .map((a) => this.assetRepo.toggleApproval(a.id, true, scope))
       );
     }
 
@@ -280,9 +310,15 @@ export class DeliveryService {
     return this.notificationService.sendDeliveryEmail(params);
   }
 
-  async toggleAssetApproval(deliveryId: string, assetId: string, isApproved: boolean): Promise<Asset> {
+  /** Approves or unapproves one file of an authorized delivery; throws if the file isn't in it. */
+  async toggleAssetApproval(target: Delivery, assetId: string, isApproved: boolean): Promise<Asset> {
+    const deliveryId = target.id;
+    const scope = { deliveryId: target.id, workspaceId: target.workspaceId };
     const currentDelivery = await this.deliveryRepo.findById(deliveryId);
-    const allAssets = await this.assetRepo.listByDeliveryId(deliveryId);
+    const allAssets = await this.assetRepo.listByDeliveryId(deliveryId, { workspaceId: target.workspaceId });
+    if (!allAssets.some((a) => a.id === assetId)) {
+      throw new Error("That file isn't part of this delivery.");
+    }
 
     // If delivery was previously marked approved at the project level without asset flags,
     // and one asset is being unapproved, persist approval on the remaining assets first.
@@ -295,11 +331,11 @@ export class DeliveryService {
       await Promise.all(
         allAssets
           .filter((a) => a.id !== assetId)
-          .map((a) => this.assetRepo.toggleApproval(a.id, true))
+          .map((a) => this.assetRepo.toggleApproval(a.id, true, scope))
       );
     }
 
-    const updatedAsset = await this.assetRepo.toggleApproval(assetId, isApproved);
+    const updatedAsset = await this.assetRepo.toggleApproval(assetId, isApproved, scope);
 
     // Auto-update delivery status based on all assets
     if (allAssets.length > 0) {
@@ -322,23 +358,24 @@ export class DeliveryService {
   }
 
   async approveAllAssets(
-    deliveryId: string,
+    target: Delivery,
     approvedByName?: string,
     options?: { origin?: string; notifyEmails?: string[] }
   ): Promise<void> {
-    await this.approveCut(deliveryId, approvedByName, options);
+    await this.approveCut(target, approvedByName, options);
   }
 
-  async unapproveAllAssets(deliveryId: string): Promise<Delivery> {
-    const allAssets = await this.assetRepo.listByDeliveryId(deliveryId);
+  async unapproveAllAssets(target: Delivery): Promise<Delivery> {
+    const scope = { deliveryId: target.id, workspaceId: target.workspaceId };
+    const allAssets = await this.assetRepo.listByDeliveryId(target.id, { workspaceId: target.workspaceId });
     if (allAssets.length > 0) {
       await Promise.all(
         allAssets
           .filter((a) => a.isApproved)
-          .map((a) => this.assetRepo.toggleApproval(a.id, false))
+          .map((a) => this.assetRepo.toggleApproval(a.id, false, scope))
       );
     }
-    return this.deliveryRepo.updateStatus(deliveryId, "in_review");
+    return this.deliveryRepo.updateStatus(target.id, "in_review");
   }
 
   /**
@@ -381,7 +418,7 @@ export class DeliveryService {
       clientName = client?.name || null;
     }
 
-    const assets = await this.assetRepo.listByDeliveryId(deliveryId);
+    const assets = await this.assetRepo.listByDeliveryId(deliveryId, { workspaceId: delivery.workspaceId });
 
     // Pick first active asset thumbnail as cover if not provided
     let coverUrl = options?.coverAssetUrl || null;

@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/typography";
 import { StorageUpgradeButton } from "./_components/storage-upgrade-button";
 import { ArchiveManagerButton } from "./_components/archive-manager-button";
+import { env } from "@/lib/env";
 
 export default async function StoragePage({
   params,
@@ -118,17 +119,16 @@ async function StorageContent({
   const totalStillBytes = storageBreakdown.totalStillBytes;
   const totalStreamBytes = storageBreakdown.totalStreamBytes;
   const calculatedUsedBytes = storageBreakdown.totalUsedBytes;
+  // workspaces.storage_used_bytes is kept up to date by database triggers; nothing writes it here.
   const usedBytes = Math.max(workspace.storageUsedBytes || 0, calculatedUsedBytes);
-
-  // Sync workspace.storage_used_bytes in database if it was out of sync
-  if (calculatedUsedBytes > 0 && workspace.storageUsedBytes !== calculatedUsedBytes) {
-    services.workspace.trackStorageUsage(workspace.id, calculatedUsedBytes - (workspace.storageUsedBytes || 0)).catch(() => {});
-  }
 
   // 3. Quota allocation based on active subscription plan & features
   const GB_IN_BYTES = 1024 * 1024 * 1024;
   const totalGB = features.storage_gb || 2;
-  const canSiloArchive = Boolean(features.silo_archive);
+  // The Silo card shows only while its kill switch (SILO_ENABLED) is on; the plan decides
+  // between "included" and the upgrade prompt (same rule as isSiloArchiveAllowed).
+  const siloEnabled = env.isSiloEnabled;
+  const canSiloArchive = siloEnabled && Boolean(features.silo_archive);
   const totalBytesQuota = totalGB * GB_IN_BYTES;
 
   const usedGB = Number((usedBytes / GB_IN_BYTES).toFixed(2));
@@ -370,53 +370,55 @@ async function StorageContent({
         </TiltCard>
 
         {/* The Silo — Cold Storage Archive */}
-        <TiltCard tiltIntensity={1.5} glareIntensity={0.04} className="rounded-2xl">
-          <Card className="rounded-2xl border border-border p-4 sm:p-6 md:p-8 gap-5 shadow-sm hover:translate-y-0">
-            <CardHeader className="p-0 flex flex-col sm:flex-row items-stretch sm:items-start justify-between gap-4">
-              <div className="flex items-start gap-3 min-w-0 flex-1">
-                <div className="p-2.5 sm:p-3 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30 shrink-0">
-                  <Archive className="size-5 sm:size-6" />
-                </div>
-                <div className="space-y-1.5 min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <CardTitle className="p-0 border-none">
-                      <TypographyH3 className="font-heading text-base sm:text-lg font-bold text-card-foreground leading-snug">
-                        The Silo — Deep Cold Archive
-                      </TypographyH3>
-                    </CardTitle>
-                    <Badge variant="outline" className="text-[10px] font-semibold bg-blue-500/15 text-blue-400 border-blue-500/30">
-                      Secure Archival
-                    </Badge>
+        {siloEnabled && (
+          <TiltCard tiltIntensity={1.5} glareIntensity={0.04} className="rounded-2xl">
+            <Card className="rounded-2xl border border-border p-4 sm:p-6 md:p-8 gap-5 shadow-sm hover:translate-y-0">
+              <CardHeader className="p-0 flex flex-col sm:flex-row items-stretch sm:items-start justify-between gap-4">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <div className="p-2.5 sm:p-3 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30 shrink-0">
+                    <Archive className="size-5 sm:size-6" />
                   </div>
-                  <TypographyMuted className="text-xs text-muted-foreground max-w-xl leading-relaxed">
-                    Move delivered, completed commercial projects to long-term cold storage. Keep your active workspace uncluttered while preserving immutable master backups.
-                  </TypographyMuted>
+                  <div className="space-y-1.5 min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CardTitle className="p-0 border-none">
+                        <TypographyH3 className="font-heading text-base sm:text-lg font-bold text-card-foreground leading-snug">
+                          The Silo — Deep Cold Archive
+                        </TypographyH3>
+                      </CardTitle>
+                      <Badge variant="outline" className="text-[10px] font-semibold bg-blue-500/15 text-blue-400 border-blue-500/30">
+                        Secure Archival
+                      </Badge>
+                    </div>
+                    <TypographyMuted className="text-xs text-muted-foreground max-w-xl leading-relaxed">
+                      Move delivered, completed commercial projects to long-term cold storage. Keep your active workspace uncluttered while preserving immutable master backups.
+                    </TypographyMuted>
+                  </div>
                 </div>
-              </div>
 
-              <div className="w-full sm:w-auto shrink-0 self-stretch sm:self-start">
-                <ArchiveManagerButton canSiloArchive={canSiloArchive} workspaceSlug={workspaceSlug} />
-              </div>
-            </CardHeader>
+                <div className="w-full sm:w-auto shrink-0 self-stretch sm:self-start">
+                  <ArchiveManagerButton canSiloArchive={canSiloArchive} workspaceSlug={workspaceSlug} />
+                </div>
+              </CardHeader>
 
-            <CardContent className="p-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-muted-foreground">
-                <Card className="flex flex-row items-center gap-2.5 p-3 rounded-xl bg-muted/40 border border-border hover:translate-y-0 shadow-none">
-                  <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
-                  <TypographySpan>
-                    {canSiloArchive
-                      ? `${quotaDisplay} cold storage included in your ${currentPlan?.name || "Studio"} Plan`
-                      : "Cold storage archive requires Studio or Enterprise plan"}
-                  </TypographySpan>
-                </Card>
-                <Card className="flex flex-row items-center gap-2.5 p-3 rounded-xl bg-muted/40 border border-border hover:translate-y-0 shadow-none">
-                  <Shield className="size-4 text-blue-500 shrink-0" />
-                  <TypographySpan>Encrypted triple-redundancy storage</TypographySpan>
-                </Card>
-              </div>
-            </CardContent>
-          </Card>
-        </TiltCard>
+              <CardContent className="p-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-muted-foreground">
+                  <Card className="flex flex-row items-center gap-2.5 p-3 rounded-xl bg-muted/40 border border-border hover:translate-y-0 shadow-none">
+                    <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+                    <TypographySpan>
+                      {canSiloArchive
+                        ? `${quotaDisplay} cold storage included in your ${currentPlan?.name || "Studio"} Plan`
+                        : "Cold storage archive requires Studio or Enterprise plan"}
+                    </TypographySpan>
+                  </Card>
+                  <Card className="flex flex-row items-center gap-2.5 p-3 rounded-xl bg-muted/40 border border-border hover:translate-y-0 shadow-none">
+                    <Shield className="size-4 text-blue-500 shrink-0" />
+                    <TypographySpan>Encrypted triple-redundancy storage</TypographySpan>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
+          </TiltCard>
+        )}
       </div>
     </TooltipProvider>
   );

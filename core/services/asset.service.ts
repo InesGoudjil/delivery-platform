@@ -19,6 +19,10 @@ export class AssetService {
     return this.assetRepo.create(params);
   }
 
+  async findAssetByStreamUid(uid: string): Promise<Asset | null> {
+    return this.assetRepo.findByStreamUid(uid);
+  }
+
   async getAssetById(id: string): Promise<Asset | null> {
     return this.assetRepo.findById(id);
   }
@@ -68,6 +72,12 @@ export class AssetService {
     };
   }
 
+  /** The workspace's standalone portfolio pieces (explicitly marked; see assets.is_portfolio). */
+  async listPortfolioAssets(workspaceId: string): Promise<Asset[]> {
+    return this.assetRepo.listPortfolioAssets(workspaceId);
+  }
+
+  /** Files outside any delivery. Not the same as portfolio pieces: use listPortfolioAssets for those. */
   async listUnassignedAssets(workspaceId: string): Promise<Asset[]> {
     return this.assetRepo.listUnassignedByWorkspaceId(workspaceId);
   }
@@ -96,9 +106,6 @@ export class AssetService {
     return this.assetVersionRepo.listByAssetId(assetId);
   }
 
-  async addVersion(params: CreateAssetVersionDTO): Promise<AssetVersion> {
-    return this.assetVersionRepo.create(params);
-  }
 
   async renameVersion(versionId: string, label: string): Promise<AssetVersion> {
     return this.assetVersionRepo.updateLabel(versionId, label);
@@ -112,28 +119,11 @@ export class AssetService {
     return this.assetVersionRepo.setActiveVersion(assetId, versionId);
   }
 
-  async updateTranscodingStatus(
-    versionId: string,
-    status: TranscodingStatus,
-    hlsManifestUrl?: string,
-    thumbnailUrl?: string,
-    durationSeconds?: number
-  ): Promise<AssetVersion> {
-    return this.assetVersionRepo.update(versionId, {
-      transcodingStatus: status,
-      ...(hlsManifestUrl && { hlsManifestUrl }),
-      ...(thumbnailUrl && { thumbnailUrl }),
-      ...(durationSeconds && { durationSeconds }),
-    });
-  }
 
   async updateAsset(id: string, data: Partial<Asset>): Promise<Asset> {
     return this.assetRepo.update(id, data);
   }
 
-  async updateThumbnail(versionId: string, thumbnailUrl: string): Promise<AssetVersion> {
-    return this.assetVersionRepo.update(versionId, { thumbnailUrl });
-  }
 
   async archiveAsset(id: string): Promise<Asset> {
     return this.assetRepo.archive(id);

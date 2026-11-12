@@ -7,6 +7,7 @@ import { IPlanRepository } from '@/core/repositories/plan.repository';
 import { IWorkspaceFeaturesRepository } from '@/core/repositories/workspace.repository';
 import { IDeliveryRepository } from '@/core/repositories/i-delivery-repository';
 import { IInvoiceRepository } from '@/core/repositories/invoice.repository';
+import { env } from '@/lib/env';
 
 export class SubscriptionService {
   constructor(
@@ -229,7 +230,8 @@ export class SubscriptionService {
         whiteLabel: Boolean(features.white_label),
         sendWhatsApp: Boolean(features.whatsapp_delivery),
         receiveDownloadNotifications: Boolean(features.download_notifications),
-        useSiloArchive: Boolean(features.silo_archive),
+        // The Silo kill switch (SILO_ENABLED) overrides every plan.
+        useSiloArchive: env.isSiloEnabled && Boolean(features.silo_archive),
         bilingual: Array.isArray(features.languages) && features.languages.length > 1,
         prioritySupport: Boolean(features.priority_support),
       },
@@ -401,7 +403,9 @@ export class SubscriptionService {
     return Boolean(features.download_notifications);
   }
 
+  /** Plan includes The Silo and the global kill switch (SILO_ENABLED) is on. */
   async isSiloArchiveAllowed(workspaceId: string): Promise<boolean> {
+    if (!env.isSiloEnabled) return false;
     const features = await this.getFeatures(workspaceId);
     return Boolean(features.silo_archive);
   }

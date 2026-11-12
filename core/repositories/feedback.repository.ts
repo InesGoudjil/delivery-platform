@@ -5,6 +5,7 @@ import { Feedback, FeedbackReply } from '@/core/entities/feedback';
 export interface CreateFeedbackDTO {
   assetVersionId: string;
   authorUserId?: string | null;
+  guestAuthorKeyHash?: string | null;
   authorName: string;
   commentText: string;
   timestampSeconds?: number | null;
@@ -14,12 +15,14 @@ export interface CreateFeedbackDTO {
 export interface CreateFeedbackReplyDTO {
   feedbackId: string;
   authorUserId?: string | null;
+  guestAuthorKeyHash?: string | null;
   authorName: string;
   commentText: string;
 }
 
 export interface IFeedbackRepository {
   findById(id: string): Promise<Feedback | null>;
+  findReplyById(id: string): Promise<FeedbackReply | null>;
   listByAssetVersionId(assetVersionId: string): Promise<Feedback[]>;
   listByAssetVersionIds(assetVersionIds: string[]): Promise<Feedback[]>;
   create(dto: CreateFeedbackDTO): Promise<Feedback>;
@@ -40,6 +43,7 @@ export class SupabaseFeedbackRepository implements IFeedbackRepository {
       id: row.id,
       feedbackId: row.feedback_id,
       authorUserId: row.author_user_id,
+      guestAuthorKeyHash: row.guest_author_key_hash ?? null,
       authorName: row.author_name,
       commentText: row.comment_text,
       createdAt: row.created_at,
@@ -62,6 +66,7 @@ export class SupabaseFeedbackRepository implements IFeedbackRepository {
       id: row.id,
       assetVersionId: row.asset_version_id,
       authorUserId: row.author_user_id,
+      guestAuthorKeyHash: row.guest_author_key_hash ?? null,
       authorName: row.author_name,
       commentText: row.comment_text,
       timestampSeconds: row.timestamp_seconds !== null ? Number(row.timestamp_seconds) : null,
@@ -115,6 +120,7 @@ export class SupabaseFeedbackRepository implements IFeedbackRepository {
       .insert({
         asset_version_id: dto.assetVersionId,
         author_user_id: dto.authorUserId,
+        guest_author_key_hash: dto.guestAuthorKeyHash ?? null,
         author_name: dto.authorName,
         comment_text: dto.commentText,
         timestamp_seconds: dto.timestampSeconds,
@@ -156,12 +162,14 @@ export class SupabaseFeedbackRepository implements IFeedbackRepository {
   }
 
   async delete(id: string): Promise<void> {
-    const { error } = await (this.supabase as any)
+    const { data, error } = await (this.supabase as any)
       .from('feedback')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .select('id');
 
     if (error) throw new Error(`Failed to delete feedback: ${error.message}`);
+    if (!data || data.length === 0) throw new Error('Comment not found, or you can\'t delete it.');
   }
 
   async createReply(dto: CreateFeedbackReplyDTO): Promise<FeedbackReply> {
@@ -170,6 +178,7 @@ export class SupabaseFeedbackRepository implements IFeedbackRepository {
       .insert({
         feedback_id: dto.feedbackId,
         author_user_id: dto.authorUserId,
+        guest_author_key_hash: dto.guestAuthorKeyHash ?? null,
         author_name: dto.authorName,
         comment_text: dto.commentText,
       })
@@ -193,12 +202,25 @@ export class SupabaseFeedbackRepository implements IFeedbackRepository {
   }
 
   async deleteReply(replyId: string): Promise<void> {
-    const { error } = await (this.supabase as any)
+    const { data, error } = await (this.supabase as any)
       .from('feedback_replies')
       .delete()
-      .eq('id', replyId);
+      .eq('id', replyId)
+      .select('id');
 
     if (error) throw new Error(`Failed to delete feedback reply: ${error.message}`);
+    if (!data || data.length === 0) throw new Error('Reply not found, or you can\'t delete it.');
+  }
+
+  async findReplyById(id: string): Promise<FeedbackReply | null> {
+    const { data, error } = await (this.supabase as any)
+      .from('feedback_replies')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) throw new Error(`Error fetching feedback reply: ${error.message}`);
+    return data ? this.mapReplyRowToEntity(data) : null;
   }
 
   async listRepliesByFeedbackId(feedbackId: string): Promise<FeedbackReply[]> {

@@ -62,7 +62,8 @@ export function DeliveryPasscodeDialog({
 
   const handleCreatorUnlock = () => {
     startPasscodeTransition(async () => {
-      const res = await verifyDeliveryPasscodeAction(shareToken, "", true);
+      // No passcode: the server opens the room only if you're a member of this studio.
+      const res = await verifyDeliveryPasscodeAction(shareToken, "");
       if (res.success) {
         onUnlockSuccess((res.assets as DeliveryAssetItem[]) || []);
         toast.success("Unlocked as workspace creator");

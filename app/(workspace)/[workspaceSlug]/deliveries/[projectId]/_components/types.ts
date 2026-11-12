@@ -112,4 +112,6 @@ export interface DeliveryDetailClientProps {
   initialHasMore?: boolean;
   initialFeedback: FeedbackItem[];
   features?: Record<string, any>;
+  /** CineSpace's WhatsApp sender is set up, so review links can go out on WhatsApp. */
+  whatsappAvailable?: boolean;
 }

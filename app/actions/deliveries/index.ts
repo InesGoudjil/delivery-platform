@@ -1,7 +1,6 @@
 export {
   verifyDeliveryPasscodeAction,
   verifyPassphraseWithTokenAction,
-  checkDeliveryAccessAction,
 } from "./auth-access";
 
 export { createDeliveryAction } from "./create-delivery";
@@ -31,6 +30,8 @@ export {
 } from "./download-manifest";
 
 export { sendDeliveryEmailAction } from "./email";
+
+export { sendDeliveryWhatsAppAction } from "./whatsapp";
 
 export {
   deleteAssetAction,

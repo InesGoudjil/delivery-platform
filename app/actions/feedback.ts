@@ -1,400 +1,335 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
-import { getServerServices, getServerAdminServices } from "@/core/server";
-import { requireUser, requireWorkspaceMember } from "@/core/security/guards";
-import { hasValidDeliveryPasscodeCookie } from "@/lib/security/delivery-token";
+import type { Feedback, FeedbackReply } from "@/core/entities/feedback";
+import { actorViewer, resolveDeliveryActor, type DeliveryActor } from "./deliveries/room-access";
+import { resolveRequestOrigin } from "./deliveries/helpers";
+import { feedbackInDelivery, replyInDelivery, versionInDelivery } from "@/lib/client-room/scope";
+import { canModifyComment, type RoomViewer } from "@/lib/client-room/content";
+import { ensureGuestAuthorKeyHash } from "@/lib/security/delivery-token";
 import {
   addFeedbackSchema,
   addFeedbackReplySchema,
   toggleFeedbackResolvedSchema,
-  deleteFeedbackSchema,
-  deleteFeedbackReplySchema,
   updateFeedbackSchema,
   updateFeedbackReplySchema,
   safeValidate,
   type AddFeedbackInput,
   type AddFeedbackReplyInput,
-  type DeleteFeedbackInput,
-  type DeleteFeedbackReplyInput,
   type UpdateFeedbackInput,
   type UpdateFeedbackReplyInput,
 } from "@/lib/validations";
 import { createScopedLogger } from "@/lib/logger";
 import { checkRateLimit, getClientIp, RATELIMIT_POLICIES } from "@/lib/upstash";
+import { normalizeActionError } from "./safe-action";
+import { runAfterResponse } from "@/lib/after-response";
+
+/**
+ * Comments and replies, from the client room (share token: guests and members) or the
+ * studio (delivery id: members only).
+ *
+ * Every id the caller sends is loaded and checked against the delivery they're
+ * authorized for before anything is written. Members write through their own session
+ * (RLS: they post as themselves; the author or an editor edits, resolves and deletes).
+ * Guests write with the service role, and may change only comments written from their
+ * own browser (the guest author key cookie).
+ */
 
 const log = createScopedLogger({ actionGroup: "feedback" });
 
-type AddFeedbackParams = AddFeedbackInput;
-type AddFeedbackReplyParams = AddFeedbackReplyInput;
+type FeedbackDto = ReturnType<typeof feedbackDto>;
+type ReplyDto = ReturnType<typeof replyDto>;
 
-/**
- * Helper to verify guest or member access to a delivery cut
- */
-async function verifyDeliveryAccessContext(shareToken?: string, deliveryId?: string) {
-  const adminServices = await getServerAdminServices();
-  let delivery = null;
-
-  if (shareToken) {
-    delivery = await adminServices.delivery.getDeliveryByShareToken(shareToken);
-  } else if (deliveryId) {
-    delivery = await adminServices.delivery.getDeliveryById(deliveryId);
-  }
-
-  const userServices = await getServerServices();
-  const user = await userServices.auth.getCurrentUser();
-
-  if (delivery && user) {
-    const isMember = await adminServices.member.isMember(delivery.workspaceId, user.id).catch(() => false);
-    if (isMember) {
-      return { isAuthorized: true, delivery, user, adminServices };
-    }
-  }
-
-  if (delivery) {
-    if (!delivery.passcodeHash) {
-      return { isAuthorized: true, delivery, user, adminServices };
-    }
-
-    const cookieStore = await cookies();
-    if (hasValidDeliveryPasscodeCookie(cookieStore, delivery.shareToken)) {
-      return { isAuthorized: true, delivery, user, adminServices };
-    }
-  }
-
-  return { isAuthorized: false, delivery, user, adminServices };
+/** One result shape for every comment action, so callers can read `error` directly. */
+export interface FeedbackActionResult {
+  success?: boolean;
+  error?: string;
+  feedback?: FeedbackDto;
+  reply?: ReplyDto;
 }
 
-export async function addFeedbackAction(params: AddFeedbackParams) {
-  try {
-    const validated = safeValidate(addFeedbackSchema, params);
-    if (!validated.success) {
-      return { error: validated.error };
-    }
+const CHANGE_REFUSED = "You can only change your own comments.";
 
-    const {
-      assetVersionId,
+interface DeliveryRef {
+  shareToken?: string | null;
+  deliveryId?: string | null;
+}
+
+const viewerFor = actorViewer;
+
+function cleanName(name: string | null | undefined): string {
+  return (name || "").replace(/[\r\n\t]+/g, " ").trim().slice(0, 80);
+}
+
+async function authorNameFor(actor: DeliveryActor, requested?: string): Promise<string> {
+  const chosen = cleanName(requested);
+  if (actor.kind === "guest") return chosen || "Client";
+  if (chosen) return chosen;
+  const profile = await actor.services.profile.getProfile(actor.userId).catch(() => null);
+  return cleanName(profile?.fullName) || "Studio";
+}
+
+function replyDto(reply: FeedbackReply, canModify = true) {
+  return {
+    id: reply.id,
+    feedbackId: reply.feedbackId,
+    authorName: reply.authorName,
+    commentText: reply.commentText,
+    createdAt: reply.createdAt,
+    updatedAt: reply.updatedAt,
+    canModify,
+  };
+}
+
+function feedbackDto(feedback: Feedback, viewer?: RoomViewer) {
+  return {
+    id: feedback.id,
+    assetVersionId: feedback.assetVersionId,
+    authorName: feedback.authorName,
+    commentText: feedback.commentText,
+    timestampSeconds: feedback.timestampSeconds ?? null,
+    isResolved: feedback.isResolved,
+    createdAt: feedback.createdAt,
+    updatedAt: feedback.updatedAt,
+    canModify: viewer ? canModifyComment(viewer, feedback) : true,
+    replies: (feedback.replies || []).map((r) => replyDto(r, viewer ? canModifyComment(viewer, r) : true)),
+  };
+}
+
+function revalidateRoom(actor: DeliveryActor) {
+  revalidatePath(`/deliver/${actor.delivery.shareToken}`);
+  revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+  revalidatePath("/[workspaceSlug]/deliveries", "page");
+}
+
+/** Guests are limited per visitor and room; signed-in members aren't. */
+async function limitComments(actor: DeliveryActor): Promise<string | null> {
+  if (actor.kind === "member") return null;
+  const rateLimit = await checkRateLimit({
+    policy: RATELIMIT_POLICIES.feedbackAdd,
+    identifier: [await getClientIp(), actor.delivery.id],
+  });
+  return rateLimit.success ? null : rateLimit.error || "Too many comments. Please slow down.";
+}
+
+async function notifyStudioOfComment(actor: DeliveryActor, authorName: string, commentText: string, timestampSeconds?: number | null) {
+  try {
+    const services = actor.adminServices;
+    const settings = await services.settings.findByWorkspaceId(actor.delivery.workspaceId);
+    if (settings && !settings.notifyComments) return;
+    const members = await services.member.listMembers(actor.delivery.workspaceId);
+    const recipientEmails = members
+      .filter((m) => (m.role === "owner" || m.role === "admin") && Boolean(m.email))
+      .filter((m) => actor.kind !== "member" || m.userId !== actor.userId)
+      .map((m) => m.email as string);
+    if (recipientEmails.length === 0) return;
+
+    await services.notification.notifyNewFeedback({
+      deliveryId: actor.delivery.id,
+      recipientEmails,
       authorName,
       commentText,
       timestampSeconds,
-      parentId,
-      shareToken,
-      deliveryId,
-    } = validated.data;
-
-    const ip = await getClientIp();
-    const rateLimit = await checkRateLimit({
-      policy: RATELIMIT_POLICIES.feedbackAdd,
-      identifier: [ip, deliveryId || shareToken || "global"],
+      origin: await resolveRequestOrigin(),
     });
-    if (!rateLimit.success) {
-      return { error: rateLimit.error };
-    }
-
-    const adminServices = await getServerAdminServices();
-    const userServices = await getServerServices();
-    const user = await userServices.auth.getCurrentUser();
-
-    // Verify access
-    let deliveryContext: any = null;
-    if (shareToken || deliveryId) {
-      const authCtx = await verifyDeliveryAccessContext(shareToken, deliveryId);
-      if (!authCtx.isAuthorized) {
-        return { error: "Passcode verification required to leave feedback on this cut." };
-      }
-      deliveryContext = authCtx.delivery;
-      if (deliveryContext && deliveryContext.isCommentAllowed === false) {
-        return { error: "Comments are disabled for this delivery cut." };
-      }
-    } else {
-      if (!user) {
-        return { error: "Unauthorized. Authentication or delivery share token required." };
-      }
-    }
-
-    // If a parentId is provided, delegate to addReply for backward compatibility
-    if (parentId) {
-      const reply = await adminServices.feedback.addReply({
-        feedbackId: parentId,
-        authorUserId: user?.id,
-        authorName: authorName || (user?.email ? user.email.split("@")[0] : "Client Guest"),
-        commentText,
-      });
-
-      if (shareToken) {
-        revalidatePath(`/deliver/${shareToken}`);
-      }
-      revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
-      revalidatePath("/[workspaceSlug]/deliveries", "page");
-      return { success: true, reply };
-    }
-
-    const feedback = await adminServices.feedback.addFeedback({
-      assetVersionId,
-      authorUserId: user?.id,
-      authorName: authorName || (user?.email ? user.email.split("@")[0] : "Client Guest"),
-      commentText,
-      timestampSeconds,
-    });
-
-    // Dispatch real-time note alert to studio members if notification preference is active
-    if (deliveryContext) {
-      try {
-        const settings = await adminServices.settings.findByWorkspaceId(deliveryContext.workspaceId);
-        const shouldNotify = settings ? settings.notifyComments : true;
-        if (shouldNotify) {
-          const members = await adminServices.member.listMembers(deliveryContext.workspaceId);
-          const notifyEmails = members
-            .filter((m) => (m.role === "owner" || m.role === "admin") && Boolean(m.email))
-            .map((m) => m.email as string);
-
-          if (notifyEmails.length > 0) {
-            let origin = "https://cut.app";
-            try {
-              const { headers } = await import("next/headers");
-              const headerList = await headers();
-              const host = headerList.get("host");
-              const proto = headerList.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
-              if (host) origin = `${proto}://${host}`;
-            } catch {
-              // fallback
-            }
-
-            await adminServices.notification
-              .notifyNewFeedback({
-                deliveryId: deliveryContext.id,
-                recipientEmails: notifyEmails,
-                authorName: authorName || (user?.email ? user.email.split("@")[0] : "Client Guest"),
-                commentText,
-                timestampSeconds,
-                origin,
-              })
-              .catch((err) => log.warn({ err }, "Failed to dispatch note notification"));
-          }
-        }
-      } catch (notifyErr) {
-        log.warn({ err: notifyErr }, "Feedback notification warning");
-      }
-    }
-
-    if (shareToken) {
-      revalidatePath(`/deliver/${shareToken}`);
-    }
-    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
-    revalidatePath("/[workspaceSlug]/deliveries", "page");
-    return { success: true, feedback };
-  } catch (err: any) {
-    return { error: err.message || "Failed to add feedback." };
+  } catch (err) {
+    log.warn({ err }, "Failed to send the new comment notification");
   }
 }
 
-export async function addFeedbackReplyAction(params: AddFeedbackReplyParams) {
+/** A client comment or reply counts toward the studio's grouped WhatsApp alert. */
+function countForWhatsApp(actor: DeliveryActor, authorName: string, commentText: string) {
+  if (actor.kind !== "guest") return;
+  runAfterResponse("whatsapp:comment", async () =>
+    actor.adminServices.whatsapp.recordClientComment({
+      deliveryId: actor.delivery.id,
+      authorName,
+      commentText,
+      origin: await resolveRequestOrigin(),
+    })
+  );
+}
+
+async function addReplyAs(
+  actor: DeliveryActor,
+  feedbackId: string,
+  commentText: string,
+  requestedName?: string
+): Promise<FeedbackActionResult> {
+  const { feedback } = await feedbackInDelivery(actor.adminServices, actor.delivery, feedbackId);
+  const authorName = await authorNameFor(actor, requestedName);
+
+  const reply =
+    actor.kind === "guest"
+      ? await actor.services.feedback.addReply({
+          feedbackId: feedback.id,
+          authorUserId: null,
+          guestAuthorKeyHash: await ensureGuestAuthorKeyHash(actor.shareToken),
+          authorName,
+          commentText,
+        })
+      : await actor.services.feedback.addReply({
+          feedbackId: feedback.id,
+          authorUserId: actor.userId,
+          authorName,
+          commentText,
+        });
+
+  countForWhatsApp(actor, authorName, commentText);
+  revalidateRoom(actor);
+  return { success: true, reply: replyDto(reply) };
+}
+
+export async function addFeedbackAction(params: AddFeedbackInput): Promise<FeedbackActionResult> {
+  try {
+    const validated = safeValidate(addFeedbackSchema, params);
+    if (!validated.success) return { error: validated.error };
+    const { assetVersionId, authorName, commentText, timestampSeconds, parentId, shareToken, deliveryId } = validated.data;
+    if (!shareToken && !deliveryId) return { error: "Open the delivery to leave a comment." };
+
+    const actor = await resolveDeliveryActor({ shareToken, deliveryId }, "comment");
+    const limited = await limitComments(actor);
+    if (limited) return { error: limited };
+
+    // Older clients send replies through this action with a parentId.
+    if (parentId) return await addReplyAs(actor, parentId, commentText, authorName);
+
+    await versionInDelivery(actor.adminServices, actor.delivery, assetVersionId);
+    const name = await authorNameFor(actor, authorName);
+
+    const feedback =
+      actor.kind === "guest"
+        ? await actor.services.feedback.addFeedback({
+            assetVersionId,
+            authorUserId: null,
+            guestAuthorKeyHash: await ensureGuestAuthorKeyHash(actor.shareToken),
+            authorName: name,
+            commentText,
+            timestampSeconds,
+          })
+        : await actor.services.feedback.addFeedback({
+            assetVersionId,
+            authorUserId: actor.userId,
+            authorName: name,
+            commentText,
+            timestampSeconds,
+          });
+
+    await notifyStudioOfComment(actor, name, commentText, timestampSeconds);
+    countForWhatsApp(actor, name, commentText);
+    revalidateRoom(actor);
+    return { success: true, feedback: feedbackDto(feedback) };
+  } catch (err: unknown) {
+    return { error: normalizeActionError(err, "Failed to add feedback.") };
+  }
+}
+
+export async function addFeedbackReplyAction(params: AddFeedbackReplyInput): Promise<FeedbackActionResult> {
   try {
     const validated = safeValidate(addFeedbackReplySchema, params);
-    if (!validated.success) {
-      return { error: validated.error };
-    }
-
+    if (!validated.success) return { error: validated.error };
     const { feedbackId, commentText, authorName, shareToken, deliveryId } = validated.data;
+    if (!shareToken && !deliveryId) return { error: "Open the delivery to reply." };
 
-    const adminServices = await getServerAdminServices();
-    const userServices = await getServerServices();
-    const user = await userServices.auth.getCurrentUser();
+    const actor = await resolveDeliveryActor({ shareToken, deliveryId }, "comment");
+    const limited = await limitComments(actor);
+    if (limited) return { error: limited };
 
-    // Verify access
-    if (shareToken || deliveryId) {
-      const { isAuthorized, delivery } = await verifyDeliveryAccessContext(shareToken, deliveryId);
-      if (!isAuthorized) {
-        return { error: "Passcode verification required to reply to feedback." };
-      }
-      if (delivery && delivery.isCommentAllowed === false) {
-        return { error: "Comments are disabled for this delivery cut." };
-      }
-    } else {
-      if (!user) {
-        return { error: "Unauthorized. Authentication or delivery share token required." };
-      }
-    }
-
-    const reply = await adminServices.feedback.addReply({
-      feedbackId,
-      authorUserId: user?.id,
-      authorName: authorName || (user?.email ? user.email.split("@")[0] : "Client Guest"),
-      commentText,
-    });
-
-    if (shareToken) {
-      revalidatePath(`/deliver/${shareToken}`);
-    }
-    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
-    revalidatePath("/[workspaceSlug]/deliveries", "page");
-    return { success: true, reply };
-  } catch (err: any) {
-    return { error: err.message || "Failed to add reply." };
+    return await addReplyAs(actor, feedbackId, commentText, authorName);
+  } catch (err: unknown) {
+    return { error: normalizeActionError(err, "Failed to add reply.") };
   }
 }
 
-/**
- * Helper to verify mutation permission (delete/update) for feedback or reply
- */
-async function verifyFeedbackMutationPermission(shareToken?: string, deliveryId?: string) {
-  const { isAuthorized, delivery, user, adminServices } = await verifyDeliveryAccessContext(shareToken, deliveryId);
-
-  if (delivery && user) {
-    const isMember = await adminServices.member.isMember(delivery.workspaceId, user.id).catch(() => false);
-    if (isMember) {
-      return { allowed: true, delivery, user, adminServices };
-    }
-  }
-
-  if (isAuthorized) {
-    return { allowed: true, delivery, user, adminServices };
-  }
-
-  try {
-    const { user: authedUser } = await requireUser();
-    const targetDelivery = delivery || (deliveryId ? await adminServices.delivery.getDeliveryById(deliveryId) : null);
-    if (targetDelivery) {
-      const isMember = await adminServices.member.isMember(targetDelivery.workspaceId, authedUser.id).catch(() => false);
-      if (isMember) {
-        return { allowed: true, delivery: targetDelivery, user: authedUser, adminServices };
-      }
-    }
-  } catch {
-    // not logged in
-  }
-
-  return { allowed: false, delivery, user, adminServices };
-}
-
-export async function deleteFeedbackReplyAction(replyId: string, shareToken?: string, deliveryId?: string) {
+export async function deleteFeedbackReplyAction(replyId: string, shareToken?: string, deliveryId?: string): Promise<FeedbackActionResult> {
   try {
     if (!replyId?.trim()) return { error: "Reply ID is required." };
+    const actor = await resolveDeliveryActor({ shareToken, deliveryId } satisfies DeliveryRef, "view");
+    const { reply } = await replyInDelivery(actor.adminServices, actor.delivery, replyId.trim());
+    if (!canModifyComment(await viewerFor(actor), reply)) return { error: CHANGE_REFUSED };
 
-    const { allowed, adminServices } = await verifyFeedbackMutationPermission(shareToken, deliveryId);
-    if (!allowed) {
-      return { error: "Unauthorized to delete feedback reply." };
-    }
-
-    await adminServices.feedback.deleteReply(replyId.trim());
-
-    if (shareToken) {
-      revalidatePath(`/deliver/${shareToken}`);
-    }
-    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
-    revalidatePath("/[workspaceSlug]/deliveries", "page");
+    await actor.services.feedback.deleteReply(reply.id);
+    revalidateRoom(actor);
     return { success: true };
-  } catch (err: any) {
-    return { error: err.message || "Failed to delete reply." };
+  } catch (err: unknown) {
+    return { error: normalizeActionError(err, "Failed to delete reply.") };
   }
 }
 
-export async function updateFeedbackReplyAction(params: UpdateFeedbackReplyInput) {
+export async function updateFeedbackReplyAction(params: UpdateFeedbackReplyInput): Promise<FeedbackActionResult> {
   try {
     const validated = safeValidate(updateFeedbackReplySchema, params);
-    if (!validated.success) {
-      return { error: validated.error };
-    }
-
+    if (!validated.success) return { error: validated.error };
     const { replyId, commentText, shareToken, deliveryId } = validated.data;
-    const { allowed, adminServices } = await verifyFeedbackMutationPermission(shareToken, deliveryId);
-    if (!allowed) {
-      return { error: "Unauthorized to update reply." };
-    }
 
-    const reply = await adminServices.feedback.updateReply(replyId.trim(), commentText.trim());
+    const actor = await resolveDeliveryActor({ shareToken, deliveryId }, "comment");
+    const { reply } = await replyInDelivery(actor.adminServices, actor.delivery, replyId);
+    if (!canModifyComment(await viewerFor(actor), reply)) return { error: CHANGE_REFUSED };
 
-    if (shareToken) {
-      revalidatePath(`/deliver/${shareToken}`);
-    }
-    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
-    revalidatePath("/[workspaceSlug]/deliveries", "page");
-    return { success: true, reply };
-  } catch (err: any) {
-    return { error: err.message || "Failed to update reply." };
+    const updated = await actor.services.feedback.updateReply(reply.id, commentText);
+    revalidateRoom(actor);
+    return { success: true, reply: replyDto(updated) };
+  } catch (err: unknown) {
+    return { error: normalizeActionError(err, "Failed to update reply.") };
   }
 }
 
-export async function toggleFeedbackResolvedAction(feedbackId: string, isResolved: boolean, shareToken?: string, deliveryId?: string) {
+export async function toggleFeedbackResolvedAction(
+  feedbackId: string,
+  isResolved: boolean,
+  shareToken?: string,
+  deliveryId?: string
+): Promise<FeedbackActionResult> {
   try {
-    const validated = safeValidate(toggleFeedbackResolvedSchema, {
-      feedbackId,
-      isResolved,
-      shareToken,
-      deliveryId,
-    });
-    if (!validated.success) {
-      return { error: validated.error };
-    }
+    const validated = safeValidate(toggleFeedbackResolvedSchema, { feedbackId, isResolved, shareToken, deliveryId });
+    if (!validated.success) return { error: validated.error };
 
-    const { isAuthorized, adminServices } = await verifyDeliveryAccessContext(
-      validated.data.shareToken,
-      validated.data.deliveryId
+    const actor = await resolveDeliveryActor(
+      { shareToken: validated.data.shareToken, deliveryId: validated.data.deliveryId },
+      "view"
     );
-    if (!isAuthorized) {
-      return { error: "Unauthorized: Passcode or workspace membership required." };
-    }
+    const { feedback } = await feedbackInDelivery(actor.adminServices, actor.delivery, validated.data.feedbackId);
+    const viewer = await viewerFor(actor);
+    if (!canModifyComment(viewer, feedback)) return { error: CHANGE_REFUSED };
 
-    const feedback = await adminServices.feedback.toggleResolved(
-      validated.data.feedbackId,
-      validated.data.isResolved
-    );
-
-    if (validated.data.shareToken) {
-      revalidatePath(`/deliver/${validated.data.shareToken}`);
-    }
-    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
-    return { success: true, feedback };
-  } catch (err: any) {
-    return { error: err.message || "Failed to toggle feedback status." };
+    const updated = await actor.services.feedback.toggleResolved(feedback.id, validated.data.isResolved);
+    revalidateRoom(actor);
+    return { success: true, feedback: feedbackDto(updated, viewer) };
+  } catch (err: unknown) {
+    return { error: normalizeActionError(err, "Failed to toggle feedback status.") };
   }
 }
 
-export async function updateFeedbackAction(params: UpdateFeedbackInput) {
+export async function updateFeedbackAction(params: UpdateFeedbackInput): Promise<FeedbackActionResult> {
   try {
     const validated = safeValidate(updateFeedbackSchema, params);
-    if (!validated.success) {
-      return { error: validated.error };
-    }
-
+    if (!validated.success) return { error: validated.error };
     const { feedbackId, commentText, shareToken, deliveryId } = validated.data;
-    const { allowed, adminServices } = await verifyFeedbackMutationPermission(shareToken, deliveryId);
-    if (!allowed) {
-      return { error: "Unauthorized to update feedback." };
-    }
 
-    const feedback = await adminServices.feedback.updateFeedback(feedbackId.trim(), commentText.trim());
+    const actor = await resolveDeliveryActor({ shareToken, deliveryId }, "comment");
+    const { feedback } = await feedbackInDelivery(actor.adminServices, actor.delivery, feedbackId);
+    const viewer = await viewerFor(actor);
+    if (!canModifyComment(viewer, feedback)) return { error: CHANGE_REFUSED };
 
-    if (shareToken) {
-      revalidatePath(`/deliver/${shareToken}`);
-    }
-    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
-    revalidatePath("/[workspaceSlug]/deliveries", "page");
-    return { success: true, feedback };
-  } catch (err: any) {
-    return { error: err.message || "Failed to update feedback." };
+    const updated = await actor.services.feedback.updateFeedback(feedback.id, commentText);
+    revalidateRoom(actor);
+    return { success: true, feedback: feedbackDto(updated, viewer) };
+  } catch (err: unknown) {
+    return { error: normalizeActionError(err, "Failed to update feedback.") };
   }
 }
 
-export async function deleteFeedbackAction(feedbackId: string, shareToken?: string, deliveryId?: string) {
+export async function deleteFeedbackAction(feedbackId: string, shareToken?: string, deliveryId?: string): Promise<FeedbackActionResult> {
   try {
     if (!feedbackId?.trim()) return { error: "Feedback ID is required." };
+    const actor = await resolveDeliveryActor({ shareToken, deliveryId } satisfies DeliveryRef, "view");
+    const { feedback } = await feedbackInDelivery(actor.adminServices, actor.delivery, feedbackId.trim());
+    if (!canModifyComment(await viewerFor(actor), feedback)) return { error: CHANGE_REFUSED };
 
-    const { allowed, adminServices } = await verifyFeedbackMutationPermission(shareToken, deliveryId);
-    if (!allowed) {
-      return { error: "Unauthorized to delete feedback." };
-    }
-
-    await adminServices.feedback.deleteFeedback(feedbackId.trim());
-
-    if (shareToken) {
-      revalidatePath(`/deliver/${shareToken}`);
-    }
-    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
-    revalidatePath("/[workspaceSlug]/deliveries", "page");
+    await actor.services.feedback.deleteFeedback(feedback.id);
+    revalidateRoom(actor);
     return { success: true };
-  } catch (err: any) {
-    return { error: err.message || "Failed to delete feedback." };
+  } catch (err: unknown) {
+    return { error: normalizeActionError(err, "Failed to delete feedback.") };
   }
 }

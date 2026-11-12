@@ -40,6 +40,8 @@ interface DeliveryHeroBannerProps {
   clientPhone?: string | null;
   siloStatus?: "archived" | "restoring" | "restored" | null;
   siloTier?: "Bulk" | "Standard" | null;
+  /** Show the Silo archive/restore controls (entitlements.can.useSiloArchive). Hidden by default. */
+  showSiloControls?: boolean;
   onOpenShareDialog: () => void;
   onOpenEditDialog: () => void;
   onArchive: () => void;
@@ -63,6 +65,7 @@ export function DeliveryHeroBanner({
   clientPhone,
   siloStatus,
   siloTier,
+  showSiloControls = false,
   onOpenShareDialog,
   onOpenEditDialog,
   onArchive,
@@ -221,25 +224,26 @@ export function DeliveryHeroBanner({
 
                 <DropdownMenuSeparator className="bg-border my-1" />
 
-                {projectStatus === "archived" || siloStatus === "archived" ? (
-                  <DropdownMenuItem
-                    onClick={() => onRestoreFromSilo?.("Bulk")}
-                    disabled={isSiloActionPending}
-                    className="flex items-center gap-2.5 p-2.5 rounded-xl text-xs font-semibold text-blue-400 cursor-pointer"
-                  >
-                    <ArchiveRestore className="size-4 text-blue-400 shrink-0" />
-                    <span>Restore from Silo</span>
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem
-                    onClick={onArchive}
-                    disabled={isSiloActionPending}
-                    className="flex items-center gap-2.5 p-2.5 rounded-xl text-xs font-semibold cursor-pointer"
-                  >
-                    <Lock className="size-4 text-zinc-400 shrink-0" />
-                    <span>Archive to Silo</span>
-                  </DropdownMenuItem>
-                )}
+                {showSiloControls &&
+                  (projectStatus === "archived" || siloStatus === "archived" ? (
+                    <DropdownMenuItem
+                      onClick={() => onRestoreFromSilo?.("Bulk")}
+                      disabled={isSiloActionPending}
+                      className="flex items-center gap-2.5 p-2.5 rounded-xl text-xs font-semibold text-blue-400 cursor-pointer"
+                    >
+                      <ArchiveRestore className="size-4 text-blue-400 shrink-0" />
+                      <span>Restore from Silo</span>
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={onArchive}
+                      disabled={isSiloActionPending}
+                      className="flex items-center gap-2.5 p-2.5 rounded-xl text-xs font-semibold cursor-pointer"
+                    >
+                      <Lock className="size-4 text-zinc-400 shrink-0" />
+                      <span>Archive to Silo</span>
+                    </DropdownMenuItem>
+                  ))}
 
                 {onDeleteDelivery && (
                   <DropdownMenuItem
@@ -288,8 +292,8 @@ export function DeliveryHeroBanner({
             <TypographySpan>EDIT DELIVERY</TypographySpan>
           </Button>
 
-          {/* THE SILO — AWS S3 Glacier Deep Archive Button & Status */}
-          {siloStatus === "restoring" ? (
+          {/* THE SILO — AWS S3 Glacier Deep Archive Button & Status (only when The Silo is allowed) */}
+          {!showSiloControls ? null : siloStatus === "restoring" ? (
             <div className="flex items-center gap-2">
               <Button
                 disabled

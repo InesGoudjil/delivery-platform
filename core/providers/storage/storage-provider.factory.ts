@@ -9,6 +9,7 @@ import { CloudflareStreamStorageProvider } from "./cloudflare-stream.provider";
 import { CloudflareR2StorageProvider } from "./cloudflare-r2.provider";
 import { MockStorageProvider } from "./mock-storage.provider";
 import { env } from "@/lib/env";
+import { parseStoredMedia } from "@/lib/storage/keys";
 
 export interface StorageFactoryOptions {
   providerType?: "cloudflare" | "mock" | "auto";
@@ -20,16 +21,62 @@ export interface StorageFactoryOptions {
   };
 }
 
+type StorageRoute =
+  | { kind: "stream"; uid: string }
+  | { kind: "r2"; key: string }
+  | { kind: "mock"; value: string };
+
+/** Values the mock provider hands out in development ("mock_stream_..." ids, mock upload paths). */
+const MOCK_LOCATION = /^(?:mock_stream_[A-Za-z0-9_]+|\/api\/mock-upload\/[A-Za-z0-9_-]+)$/;
+
+/**
+ * Which backend a stored location belongs to. Stream calls only ever get a validated 32-hex
+ * UID and R2 calls a clean workspace key; anything else is refused instead of guessed.
+ */
+export function routeStorageLocation(location: string | null | undefined): StorageRoute | null {
+  const parsed = parseStoredMedia(location);
+  if (parsed?.kind === "stream") return { kind: "stream", uid: parsed.uid };
+  if (parsed?.kind === "r2") return parsed.workspaceId ? { kind: "r2", key: parsed.key } : null;
+  const value = (location ?? "").trim().split(/[?#]/)[0];
+  if (MOCK_LOCATION.test(value)) return { kind: "mock", value };
+  return null;
+}
+
+function unrecognised(): Error {
+  return new Error("Unrecognised storage location.");
+}
+
 /**
  * Composite Storage Provider that routes video uploads to Cloudflare Stream and image/photo gallery uploads to Cloudflare R2.
  */
 class CompositeStorageProvider implements IStorageProvider {
   readonly providerName = "composite_cloudflare";
 
+  // Capabilities exist only when the backend behind them is configured.
+  readonly headObject?: IStorageProvider["headObject"];
+  readonly readObjectStart?: IStorageProvider["readObjectStart"];
+  readonly getStreamVideo?: IStorageProvider["getStreamVideo"];
+  readonly copyFromUrl?: IStorageProvider["copyFromUrl"];
+
   constructor(
     private readonly streamProvider: IStorageProvider,
     private readonly r2Provider: IStorageProvider
-  ) {}
+  ) {
+    const r2 = r2Provider;
+    const stream = streamProvider;
+    if (typeof r2.headObject === "function") {
+      this.headObject = (key) => r2.headObject!(key);
+    }
+    if (typeof r2.readObjectStart === "function") {
+      this.readObjectStart = (key, length) => r2.readObjectStart!(key, length);
+    }
+    if (typeof stream.getStreamVideo === "function") {
+      this.getStreamVideo = (uid) => stream.getStreamVideo!(uid);
+    }
+    if (stream.providerName === "cloudflare_stream" && typeof stream.copyFromUrl === "function") {
+      this.copyFromUrl = (sourceUrl, metadata) => stream.copyFromUrl!(sourceUrl, metadata);
+    }
+  }
 
   private getProviderForAsset(assetType: string): IStorageProvider {
     // If Cloudflare R2 is configured, route master uploads (videos, images, raw files) to R2
@@ -43,82 +90,39 @@ class CompositeStorageProvider implements IStorageProvider {
     return this.streamProvider;
   }
 
+  /** The mock provider standing in for an unconfigured backend, if any. */
+  private mockProvider(): IStorageProvider | null {
+    if (this.streamProvider.providerName === "mock_storage") return this.streamProvider;
+    if (this.r2Provider.providerName === "mock_storage") return this.r2Provider;
+    return null;
+  }
+
+  private providerFor(route: StorageRoute | null): { provider: IStorageProvider; location: string } {
+    if (route?.kind === "stream") return { provider: this.streamProvider, location: route.uid };
+    if (route?.kind === "r2") return { provider: this.r2Provider, location: route.key };
+    const mock = route?.kind === "mock" ? this.mockProvider() : null;
+    if (route?.kind === "mock" && mock) return { provider: mock, location: route.value };
+    throw unrecognised();
+  }
+
   async createDirectUploadUrl(params: CreateUploadUrlParams): Promise<DirectUploadResult> {
     const provider = this.getProviderForAsset(params.assetType);
     return provider.createDirectUploadUrl(params);
   }
 
-  private isStreamAsset(providerUid: string): boolean {
-    return (
-      /^[a-f0-9]{32}$/i.test(providerUid) ||
-      providerUid.startsWith("mock_stream_") ||
-      providerUid.startsWith("stream_") ||
-      providerUid.includes("videodelivery.net") ||
-      providerUid.includes("cloudflarestream.com")
-    );
-  }
-
-  private isR2Asset(providerUid: string): boolean {
-    return (
-      providerUid.startsWith("workspaces/") ||
-      (providerUid.includes("/") && !providerUid.startsWith("http")) ||
-      /\.(jpe?g|png|avif|webp|gif|svg|bmp|tiff)$/i.test(providerUid)
-    );
-  }
-
   async getPlaybackInfo(providerUid: string): Promise<PlaybackInfo | null> {
-    if (this.isStreamAsset(providerUid)) {
-      return this.streamProvider.getPlaybackInfo(providerUid);
-    }
-
-    if (this.isR2Asset(providerUid)) {
-      return this.r2Provider.getPlaybackInfo(providerUid);
-    }
-
-    // Fallback: try Stream provider first
-    try {
-      const streamInfo = await this.streamProvider.getPlaybackInfo(providerUid);
-      if (streamInfo) return streamInfo;
-    } catch {
-      // Ignore and check R2
-    }
-    return this.r2Provider.getPlaybackInfo(providerUid);
+    const { provider, location } = this.providerFor(routeStorageLocation(providerUid));
+    return provider.getPlaybackInfo(location);
   }
 
   async getAssetStatus(providerUid: string): Promise<StorageAssetStatus> {
-    if (this.isStreamAsset(providerUid)) {
-      return this.streamProvider.getAssetStatus(providerUid);
-    }
-
-    if (this.isR2Asset(providerUid)) {
-      return this.r2Provider.getAssetStatus(providerUid);
-    }
-
-    try {
-      const status = await this.streamProvider.getAssetStatus(providerUid);
-      if (status) return status;
-    } catch {
-      // Ignore and check R2
-    }
-    return this.r2Provider.getAssetStatus(providerUid);
+    const { provider, location } = this.providerFor(routeStorageLocation(providerUid));
+    return provider.getAssetStatus(location);
   }
 
   async deleteAsset(providerUid: string): Promise<void> {
-    if (this.isStreamAsset(providerUid)) {
-      await this.streamProvider.deleteAsset(providerUid);
-      return;
-    }
-
-    if (this.isR2Asset(providerUid)) {
-      await this.r2Provider.deleteAsset(providerUid);
-      return;
-    }
-
-    try {
-      await this.streamProvider.deleteAsset(providerUid);
-    } catch {
-      await this.r2Provider.deleteAsset(providerUid);
-    }
+    const { provider, location } = this.providerFor(routeStorageLocation(providerUid));
+    await provider.deleteAsset(location);
   }
 
   async getSecurePlaybackUrl(
@@ -126,19 +130,16 @@ class CompositeStorageProvider implements IStorageProvider {
     isPublic?: boolean,
     expiresInSeconds?: number
   ): Promise<string> {
-    if (this.isStreamAsset(providerUid)) {
-      if (typeof this.streamProvider.getSecurePlaybackUrl === "function") {
-        return this.streamProvider.getSecurePlaybackUrl(providerUid, isPublic, expiresInSeconds);
-      }
-      const streamInfo = await this.streamProvider.getPlaybackInfo(providerUid);
-      return streamInfo?.hlsManifestUrl || providerUid;
+    const route = routeStorageLocation(providerUid);
+    const { provider, location } = this.providerFor(route);
+    if (route?.kind === "mock") return location;
+    if (typeof provider.getSecurePlaybackUrl === "function") {
+      return provider.getSecurePlaybackUrl(location, isPublic, expiresInSeconds);
     }
-
-    if (typeof this.r2Provider.getSecurePlaybackUrl === "function") {
-      return this.r2Provider.getSecurePlaybackUrl(providerUid, isPublic, expiresInSeconds);
-    }
-    const info = await this.r2Provider.getPlaybackInfo(providerUid);
-    return info?.rawDownloadUrl || info?.hlsManifestUrl || providerUid;
+    const info = await provider.getPlaybackInfo(location);
+    const url = route?.kind === "stream" ? info?.hlsManifestUrl : info?.rawDownloadUrl || info?.hlsManifestUrl;
+    if (!url) throw unrecognised();
+    return url;
   }
 
   async getSecureDownloadUrl(
@@ -147,35 +148,22 @@ class CompositeStorageProvider implements IStorageProvider {
     isPublic?: boolean,
     expiresInSeconds?: number
   ): Promise<string> {
-    if (this.isStreamAsset(providerUid)) {
-      if (typeof this.streamProvider.getSecureDownloadUrl === "function") {
-        return this.streamProvider.getSecureDownloadUrl(
-          providerUid,
-          filename,
-          isPublic,
-          expiresInSeconds
-        );
-      }
-      const cleanUid = providerUid.match(/([a-f0-9]{32})/i)?.[1] || providerUid;
-      return `/api/media/${cleanUid}?download=true&filename=${encodeURIComponent(filename)}`;
+    const route = routeStorageLocation(providerUid);
+    const { provider, location } = this.providerFor(route);
+    if (typeof provider.getSecureDownloadUrl === "function") {
+      return provider.getSecureDownloadUrl(location, filename, isPublic, expiresInSeconds);
     }
-
-    if (typeof this.r2Provider.getSecureDownloadUrl === "function") {
-      return this.r2Provider.getSecureDownloadUrl(
-        providerUid,
-        filename,
-        isPublic,
-        expiresInSeconds
-      );
+    if (route?.kind === "stream" || route?.kind === "mock") {
+      return `/api/media/${location.replace(/^\/api\/media\//, "")}?download=true&filename=${encodeURIComponent(filename)}`;
     }
-    return this.getSecurePlaybackUrl(providerUid, isPublic, expiresInSeconds);
+    return this.getSecurePlaybackUrl(location, isPublic, expiresInSeconds);
   }
 
   verifyWebhookSignature(rawBody: string, headers: Record<string, string>): boolean {
     if (typeof this.streamProvider.verifyWebhookSignature === "function") {
       return this.streamProvider.verifyWebhookSignature(rawBody, headers);
     }
-    return true;
+    return false;
   }
 
   async getObjectStream(providerUid: string): Promise<{
@@ -199,21 +187,6 @@ class CompositeStorageProvider implements IStorageProvider {
       return this.r2Provider.putObjectStream(providerUid, body, contentType, contentLength);
     }
     throw new Error("putObjectStream not implemented on current storage provider");
-  }
-
-  async copyFromUrl(
-    sourceUrl: string,
-    metadata?: {
-      name?: string;
-      creator?: string;
-      allowedOrigins?: string[];
-      meta?: Record<string, string>;
-    }
-  ): Promise<{ uid: string; status?: string }> {
-    if (typeof this.streamProvider.copyFromUrl === "function") {
-      return this.streamProvider.copyFromUrl(sourceUrl, metadata);
-    }
-    throw new Error("copyFromUrl not implemented on current storage provider");
   }
 }
 

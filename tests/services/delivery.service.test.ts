@@ -154,12 +154,7 @@ describe("core/services/DeliveryService", () => {
 
   describe("getDeliveryWithFullDetails", () => {
     it("enriches delivery with client, assets, active versions, and feedback", async () => {
-      vi.mocked(deliveryRepo.findByShareToken!).mockResolvedValue({
-        ...mockDelivery,
-        clientId: "client_1",
-      });
-
-      const fullDetails = await service.getDeliveryWithFullDetails("token_123");
+      const fullDetails = await service.getDeliveryWithFullDetails({ ...mockDelivery, clientId: "client_1" } as any);
 
       expect(fullDetails).toBeDefined();
       expect(fullDetails?.client?.name).toBe("Acme Corp");
@@ -167,6 +162,13 @@ describe("core/services/DeliveryService", () => {
       expect(fullDetails?.assets[0].activeVersion?.id).toBe("ver_1");
       expect(fullDetails?.assets[0].feedback).toHaveLength(1);
       expect(fullDetails?.assets[0].feedback[0].commentText).toBe("Great cut!");
+      expect(assetRepo.listByDeliveryId).toHaveBeenCalledWith(mockDelivery.id, { workspaceId: mockDelivery.workspaceId });
+    });
+
+    it("looks up by delivery id only: a share token never resolves here", async () => {
+      vi.mocked(deliveryRepo.findById).mockResolvedValue(null);
+      expect(await service.getDeliveryWithFullDetails("token_123")).toBeNull();
+      expect(deliveryRepo.findByShareToken).not.toHaveBeenCalled();
     });
   });
 });

@@ -147,11 +147,14 @@ export class SupabasePortfolioRepository implements IPortfolioRepository {
   }
 
   async delete(id: string): Promise<void> {
-    const { error } = await (this.supabase as any)
+    const { data, error } = await (this.supabase as any)
       .from("portfolios")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .select("id");
 
     if (error) throw new Error(`Failed to delete portfolio: ${error.message}`);
+    // Row-level security refuses silently (0 rows): don't report success.
+    if (!data || data.length === 0) throw new Error("Portfolio not found, or you can't delete it.");
   }
 }

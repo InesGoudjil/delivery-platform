@@ -1,96 +1,100 @@
 import { IStorageProvider } from "@/core/providers/storage";
 import { createScopedLogger } from "@/lib/logger";
+import { isR2KeyInWorkspace, parseStoredMedia } from "@/lib/storage/keys";
 
 const log = createScopedLogger({ service: "MediaServer" });
 
 /**
- * Server-side helper that generates a direct, short-lived presigned GET URL (default 2 hours)
- * for private Cloudflare R2 assets.
- * 
- * Public assets, Cloudflare Stream URLs, or already-signed URLs are left untouched.
+ * Server-side signing of stored media for the browser.
+ *
+ * Private R2 objects get short-lived presigned GET URLs; Cloudflare Stream URLs and
+ * public objects pass through. Every caller says which workspace it's signing for, and
+ * an R2 key outside that workspace's prefix is dropped (signed as nothing), because a
+ * stored value could point at another studio's files.
  */
+
+export interface PresignScope {
+  /** Only R2 keys under this workspace's prefix are signed. */
+  workspaceId: string;
+  expiresInSeconds?: number;
+}
+
+const DEFAULT_EXPIRY_SECONDS = 7200;
+
 export async function presignPrivateMediaUrl(
   url: string | null | undefined,
   storageProvider: IStorageProvider,
-  expiresInSeconds: number = 7200,
+  scope: PresignScope,
   downloadFilename?: string
 ): Promise<string> {
   if (!url || typeof url !== "string") return "";
   const trimmed = url.trim();
   if (!trimmed) return "";
+  const expiresInSeconds = scope.expiresInSeconds ?? DEFAULT_EXPIRY_SECONDS;
+  const parsed = parseStoredMedia(trimmed);
 
-  // 1. Check if this is a Cloudflare Stream video URL or 32-char Stream UID
-  const streamUidMatch =
-    trimmed.includes("videodelivery.net/") || trimmed.includes("cloudflarestream.com/")
-      ? trimmed.match(/\/([a-f0-9]{32})(?:\/|$|\?)/i)
-      : trimmed.match(/^(?:\/api\/media\/)?([a-f0-9]{32})(?:\?|$)/i);
-
-  if (streamUidMatch && downloadFilename) {
-    const streamUid = streamUidMatch[1];
+  if (parsed?.kind === "stream") {
+    if (!downloadFilename) return trimmed;
     try {
       if (typeof storageProvider.getSecureDownloadUrl === "function") {
-        return await storageProvider.getSecureDownloadUrl(
-          streamUid,
-          downloadFilename,
-          false,
-          expiresInSeconds
-        );
+        return await storageProvider.getSecureDownloadUrl(parsed.uid, downloadFilename, false, expiresInSeconds);
       }
     } catch (err) {
-      log.error({ err, streamUid }, "Failed to resolve Stream download URL");
+      log.error({ err, streamUid: parsed.uid }, "Failed to resolve Stream download URL");
     }
-    return `/api/media/${streamUid}?download=true&filename=${encodeURIComponent(downloadFilename)}`;
+    return "";
   }
 
-  // 2. Extract canonical R2 key (private/workspaces/... or public/workspaces/...)
-  let key: string | null = null;
-  if (trimmed.startsWith("private/") || trimmed.startsWith("public/") || trimmed.startsWith("workspaces/")) {
-    key = trimmed.split("?")[0];
-  } else if (trimmed.startsWith("/api/media/")) {
-    const rawKey = trimmed.replace(/^\/api\/media\//, "").split("?")[0];
-    if (rawKey && !/^[a-f0-9]{32}$/i.test(rawKey) && rawKey !== "placeholder.svg" && rawKey !== "fallback.svg") {
-      key = rawKey;
+  if (parsed?.kind === "r2") {
+    if (!isR2KeyInWorkspace(parsed.key, scope.workspaceId)) {
+      log.warn({ workspaceId: scope.workspaceId }, "Refused to sign a storage key outside the workspace");
+      return "";
     }
-  } else if (trimmed.includes("/private/workspaces/") || trimmed.includes("/public/workspaces/")) {
-    const match = trimmed.match(/((?:private|public)\/workspaces\/[^\s?#]+)/);
-    if (match) key = match[1];
-  }
-
-  const isPrivateKey = Boolean(key && key.startsWith("private/"));
-
-  if (key) {
+    const isPrivateKey = parsed.visibility === "private";
     try {
-      // Whenever a downloadFilename is provided, always sign with ResponseContentDisposition: attachment
-      // (even for public R2 keys so the browser downloads instead of navigating inline)
+      // With a filename, sign as an attachment (even public keys, so the browser downloads).
       if (downloadFilename && typeof storageProvider.getSecureDownloadUrl === "function") {
-        return await storageProvider.getSecureDownloadUrl(
-          key,
-          downloadFilename,
-          !isPrivateKey,
-          expiresInSeconds
-        );
+        return await storageProvider.getSecureDownloadUrl(parsed.key, downloadFilename, !isPrivateKey, expiresInSeconds);
       }
       if (isPrivateKey && typeof storageProvider.getSecurePlaybackUrl === "function") {
-        return await storageProvider.getSecurePlaybackUrl(key, false, expiresInSeconds);
+        return await storageProvider.getSecurePlaybackUrl(parsed.key, false, expiresInSeconds);
       }
     } catch (err) {
-      log.error({ err, key, isPrivateKey }, "Failed to presign R2 URL");
+      log.error({ err, isPrivateKey }, "Failed to presign R2 URL");
+      return "";
     }
+    // A public key without a filename: the stored value (public CDN URL or key) is fine.
+    return trimmed;
   }
 
-  // If internal route and downloadFilename is specified, attach query parameters
-  if (downloadFilename && (trimmed.startsWith("/api/media/") || trimmed.startsWith("/api/mock-upload/"))) {
-    const base = trimmed.split("?")[0];
-    return `${base}?download=true&filename=${encodeURIComponent(downloadFilename)}`;
+  // Local mock uploads and static app images.
+  if (trimmed.startsWith("/api/mock-upload/") || trimmed.startsWith("/images/")) {
+    if (downloadFilename && trimmed.startsWith("/api/mock-upload/")) {
+      return `${trimmed.split("?")[0]}?download=true&filename=${encodeURIComponent(downloadFilename)}`;
+    }
+    return trimmed;
   }
 
-  return trimmed;
+  return "";
+}
+
+export interface PresignAssetsOptions extends PresignScope {
+  /**
+   * Whether the viewer may download. Off: no attachment links and no MP4 proxy, and a
+   * video that has a streaming copy doesn't expose its master file at all.
+   */
+  allowDownload: boolean;
+  /** The client room's share token, for /api/media download links a guest can use. */
+  roomShareToken?: string;
+}
+
+function isVideoType(type: string | undefined): boolean {
+  return type !== "photo" && type !== "photo_gallery" && type !== "still" && type !== "image";
 }
 
 /**
- * Batch-presigns all private media (raw files, thumbnails, and direct attachment download URLs)
- * in a list of delivery assets on the server.
- * Enables zero-proxy, high-speed direct streaming and downloads from Cloudflare R2.
+ * Signs every version of a list of delivery files for display: raw file (or nothing, see
+ * `allowDownload`), thumbnail, and attachment download links when downloads are allowed.
  */
 export async function presignDeliveryAssets<
   V extends {
@@ -108,15 +112,12 @@ export async function presignDeliveryAssets<
     versions: V[];
     activeVersion?: V | null;
   }
->(
-  assets: A[],
-  storageProvider: IStorageProvider,
-  expiresInSeconds: number = 7200
-): Promise<A[]> {
+>(assets: A[], storageProvider: IStorageProvider, options: PresignAssetsOptions): Promise<A[]> {
   if (!assets || assets.length === 0) return [];
 
   return Promise.all(
     assets.map(async (asset) => {
+      const isVideo = isVideoType(asset.type);
       const presignedVersions = await Promise.all(
         asset.versions.map(async (v) => {
           let ext = "mp4";
@@ -126,7 +127,7 @@ export async function presignDeliveryAssets<
             if (matchExt) {
               const rawExt = matchExt[1].toLowerCase();
               ext = rawExt === "m3u8" || rawExt === "mpd" ? "mp4" : rawExt;
-            } else if (asset.type === "photo" || asset.type === "photo_gallery" || asset.type === "still") {
+            } else if (!isVideo) {
               ext = "jpg";
             }
           }
@@ -134,41 +135,42 @@ export async function presignDeliveryAssets<
           const versionSuffix = v.versionNumber ? `_V${v.versionNumber}` : "";
           const downloadFilename = `${safeTitle}${versionSuffix}.${ext}`;
 
-          // Detect Cloudflare Stream UID if available (to provide optional fast web-proxy download)
-          let streamUid: string | null = null;
-          const streamSource = v.hlsManifestUrl || v.rawFileUrl || "";
-          const streamMatch =
-            streamSource.match(/\/([a-f0-9]{32})(?:\/|$|\?)/i) ||
-            streamSource.match(/^([a-f0-9]{32})$/i);
-          if (streamMatch) {
-            streamUid = streamMatch[1];
-          }
+          const streamUid =
+            parseStoredMedia(v.hlsManifestUrl)?.kind === "stream"
+              ? (parseStoredMedia(v.hlsManifestUrl) as { uid: string }).uid
+              : parseStoredMedia(v.rawFileUrl)?.kind === "stream"
+                ? (parseStoredMedia(v.rawFileUrl) as { uid: string }).uid
+                : null;
 
-          const proxyDownloadFilename = `${safeTitle}${versionSuffix}_WebProxy.mp4`;
-          const proxyDownloadUrl = streamUid
-            ? `/api/media/${streamUid}?download=true&filename=${encodeURIComponent(proxyDownloadFilename)}`
-            : null;
+          // Without downloads, a video with a streaming copy plays from the stream only.
+          const exposeMaster = options.allowDownload || !isVideo || !v.hlsManifestUrl;
 
           const [presignedRaw, presignedThumb, presignedDownload] = await Promise.all([
-            presignPrivateMediaUrl(v.rawFileUrl, storageProvider, expiresInSeconds),
-            presignPrivateMediaUrl(v.thumbnailUrl, storageProvider, expiresInSeconds),
-            presignPrivateMediaUrl(v.rawFileUrl, storageProvider, expiresInSeconds, downloadFilename),
+            exposeMaster ? presignPrivateMediaUrl(v.rawFileUrl, storageProvider, options) : Promise.resolve(""),
+            presignPrivateMediaUrl(v.thumbnailUrl, storageProvider, options),
+            options.allowDownload
+              ? presignPrivateMediaUrl(v.rawFileUrl, storageProvider, options, downloadFilename)
+              : Promise.resolve(""),
           ]);
+
+          const proxyDownloadUrl =
+            options.allowDownload && streamUid
+              ? `/api/media/${streamUid}?download=true&filename=${encodeURIComponent(
+                  `${safeTitle}${versionSuffix}_WebProxy.mp4`
+                )}${options.roomShareToken ? `&room=${encodeURIComponent(options.roomShareToken)}` : ""}`
+              : null;
 
           return {
             ...v,
             rawFileUrl: presignedRaw,
             thumbnailUrl: presignedThumb,
-            downloadUrl: presignedDownload || presignedRaw,
+            downloadUrl: options.allowDownload ? presignedDownload || presignedRaw : null,
             proxyDownloadUrl,
           };
         })
       );
 
-      const activeVersion =
-        presignedVersions.find((v) => v.isActiveVersion) ||
-        presignedVersions[0] ||
-        null;
+      const activeVersion = presignedVersions.find((v) => v.isActiveVersion) || presignedVersions[0] || null;
 
       return {
         ...asset,

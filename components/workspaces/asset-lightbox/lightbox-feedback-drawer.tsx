@@ -235,7 +235,7 @@ export function LightboxFeedbackDrawer({
                       </TooltipContent>
                     </Tooltip>
 
-                    {(onEditFeedback || onDeleteFeedback) && (
+                    {(onEditFeedback || onDeleteFeedback) && f.canModify !== false && (
                       <div onClick={(e) => e.stopPropagation()} className="shrink-0">
                         <DropdownMenu>
                           <DropdownMenuTrigger className="size-5 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
@@ -354,7 +354,7 @@ export function LightboxFeedbackDrawer({
                     <span />
                   )}
 
-                  {onToggleResolve && (
+                  {onToggleResolve && f.canModify !== false && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -454,7 +454,7 @@ export function LightboxFeedbackDrawer({
                           </div>
                         </div>
 
-                        {(onEditReply || onDeleteReply) && editingReplyId !== r.id && (
+                        {(onEditReply || onDeleteReply) && r.canModify !== false && editingReplyId !== r.id && (
                           <div onClick={(e) => e.stopPropagation()} className="shrink-0">
                             <DropdownMenu>
                               <DropdownMenuTrigger className="size-5 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 transition-colors opacity-70 sm:opacity-0 sm:group-hover:opacity-100 cursor-pointer">

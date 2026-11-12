@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { emailSchema } from "./common";
+import { MAX_PASSCODE_LENGTH, MIN_PASSCODE_LENGTH, passcodeProblem } from "@/lib/security/passphrase";
 import type { DeliveryStatus } from "@/core/entities/delivery";
 
 export const deliveryStatusSchema = z.enum(["draft", "in_review", "approved", "archived"]);
 
 export const verifyDeliveryPasscodeSchema = z.object({
-  shareToken: z.string().trim().min(1, "Share token is required"),
-  passcode: z.string().default(""),
-  isCreatorBypass: z.boolean().default(false),
+  shareToken: z.string().trim().min(1, "Share token is required").max(128),
+  passcode: z.string().max(MAX_PASSCODE_LENGTH).default(""),
 });
 
 export type VerifyDeliveryPasscodeInput = z.infer<typeof verifyDeliveryPasscodeSchema>;
@@ -55,7 +55,15 @@ export const deliveryAppearanceSchema = z
 export type DeliveryAppearanceInput = z.infer<typeof deliveryAppearanceSchema>;
 
 export const updateDeliverySecuritySchema = z.object({
-  passphrase: z.string().nullable().optional(),
+  // "" or null removes the passcode; anything else must pass the length rule.
+  passphrase: z
+    .string()
+    .trim()
+    .refine((value) => value.length === 0 || passcodeProblem(value) === null, {
+      message: `Passcodes need ${MIN_PASSCODE_LENGTH} to ${MAX_PASSCODE_LENGTH} characters.`,
+    })
+    .nullable()
+    .optional(),
   isDownloadAllowed: z.boolean().optional(),
   isCommentAllowed: z.boolean().optional(),
   notifyOnDownload: z.boolean().optional(),
@@ -98,9 +106,9 @@ export const getDeliveryDownloadManifestSchema = z
 export type GetDeliveryDownloadManifestInput = z.infer<typeof getDeliveryDownloadManifestSchema>;
 
 export const recordClientDownloadSchema = z.object({
-  deliveryId: z.string().trim().min(1, "Delivery ID is required"),
-  assetTitle: z.string().optional(),
-  downloadedCount: z.number().int().nonnegative().optional(),
+  shareToken: z.string().trim().min(1, "Share token is required").max(128),
+  assetId: z.string().trim().uuid().optional(),
+  downloadedCount: z.number().int().nonnegative().max(10000).optional(),
 });
 
 export type RecordClientDownloadInput = z.infer<typeof recordClientDownloadSchema>;

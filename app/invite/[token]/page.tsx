@@ -1,9 +1,10 @@
-import { getServerServices } from "@/core/server";
+import { getServerServices, getServerAdminServices } from "@/core/server";
 import Link from "next/link";
-import { Users, CheckCircle2, AlertTriangle, ArrowRight } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { InviteClient } from "./invite-client";
+import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { getInvitationAcceptBlocker, isInvitationExpired } from "@/core/services/member.service";
+import { InviteClient, type InviteViewerState } from "./invite-client";
 import { WaitlistInviteClaim } from "@/components/waitlist/WaitlistInviteClaim";
 
 export default async function InvitePage({
@@ -14,7 +15,11 @@ export default async function InvitePage({
   const { token } = await params;
   const services = await getServerServices();
   const user = await services.auth.getCurrentUser();
-  const invite = await services.member.getInvitationByToken(token);
+
+  // The token is the capability to view its invitation. The invitee isn't a member yet (and may be
+  // signed out), so RLS would hide the invitation and its workspace: read both with the service role.
+  const adminServices = await getServerAdminServices();
+  const invite = await adminServices.member.getInvitationByToken(token);
 
   // If not a workspace member invitation, check if this is a SaaS waitlist invite
   if (!invite) {
@@ -49,7 +54,16 @@ export default async function InvitePage({
     );
   }
 
-  const workspace = await services.workspace.getWorkspaceById(invite.workspaceId);
+  const workspace = await adminServices.workspace.getWorkspaceById(invite.workspaceId);
+  const status = invite.status === "pending" && isInvitationExpired(invite) ? "expired" : invite.status;
+
+  // Same check as acceptInvitation(): the signed-in account's email must be the invited one, confirmed.
+  const viewerState: InviteViewerState = !user
+    ? "signed_out"
+    : getInvitationAcceptBlocker(invite.email, {
+        email: user.email,
+        emailConfirmedAt: user.email_confirmed_at,
+      }) ?? "ready";
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background text-foreground">
@@ -59,8 +73,8 @@ export default async function InvitePage({
         workspaceSlug={workspace?.slug || "studio"}
         role={invite.role}
         invitedEmail={invite.email}
-        status={invite.status}
-        isLoggedIn={Boolean(user)}
+        status={status}
+        viewerState={viewerState}
         currentUserEmail={user?.email || null}
       />
     </div>

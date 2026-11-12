@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 import { getDownloadFilename, triggerDirectDownload } from "@/lib/download";
@@ -41,6 +42,8 @@ export function useDeliveryRoom({
   isInitiallyUnlocked,
   currentUser,
 }: DeliveryRoomProps) {
+  const router = useRouter();
+
   // Passcode gate state
   const [isLocked, setIsLocked] = useState(isPasscodeProtected && !isInitiallyUnlocked);
 
@@ -194,15 +197,14 @@ export function useDeliveryRoom({
     return true;
   });
 
-  // Unlock callback
+  // Unlock callback: show the files right away, then re-render the room from the server
+  // (the locked page carries no description, comments setting or cover).
   const handleUnlockSuccess = (unlockedAssets: DeliveryAssetItem[]) => {
     if (unlockedAssets && unlockedAssets.length > 0) {
       setAssets(unlockedAssets);
-      if (!activeAssetId) {
-        setActiveAssetId(unlockedAssets[0].id);
-      }
     }
     setIsLocked(false);
+    router.refresh();
   };
 
   // Single Asset Approval
@@ -223,7 +225,7 @@ export function useDeliveryRoom({
 
     setApprovingAssetId(assetId);
     try {
-      const res = await toggleAssetApprovalAction(delivery.id, assetId, nextApproved);
+      const res = await toggleAssetApprovalAction({ shareToken: delivery.shareToken }, assetId, nextApproved);
       if (res.success) {
         if (nextApproved) {
           toast.success(`"${asset.title}" approved!`);
@@ -256,7 +258,7 @@ export function useDeliveryRoom({
 
     setIsApprovingAll(true);
     try {
-      const res = await approveAllAssetsAction(delivery.id, commentAuthor);
+      const res = await approveAllAssetsAction({ shareToken: delivery.shareToken }, commentAuthor);
       if (res.success) {
         toast.success("All delivery cuts approved & locked!");
         void mutatePrefix([`/deliver/${delivery.shareToken}`, "/api/deliveries"]);
@@ -278,7 +280,7 @@ export function useDeliveryRoom({
 
     setIsApprovingAll(true);
     try {
-      const res = await unapproveAllAssetsAction(delivery.id);
+      const res = await unapproveAllAssetsAction({ shareToken: delivery.shareToken });
       if (res.success) {
         toast.info("Project approval undone — cuts returned to review");
         void mutatePrefix([`/deliver/${delivery.shareToken}`, "/api/deliveries"]);
@@ -375,12 +377,7 @@ export function useDeliveryRoom({
       }))
     );
 
-    const res = await toggleFeedbackResolvedAction(
-      feedbackId,
-      nextResolved,
-      delivery.shareToken,
-      delivery.id
-    );
+    const res = await toggleFeedbackResolvedAction(feedbackId, nextResolved, delivery.shareToken);
 
     if (res?.error) {
       toast.error(res.error);
@@ -404,7 +401,7 @@ export function useDeliveryRoom({
       }))
     );
 
-    const res = await deleteFeedbackAction(feedbackId, delivery.shareToken, delivery.id);
+    const res = await deleteFeedbackAction(feedbackId, delivery.shareToken);
     if (res?.error) {
       toast.error(res.error || "Failed to delete feedback");
     } else {
@@ -427,7 +424,7 @@ export function useDeliveryRoom({
       }))
     );
 
-    const res = await deleteFeedbackReplyAction(replyId, delivery.shareToken, delivery.id);
+    const res = await deleteFeedbackReplyAction(replyId, delivery.shareToken);
     if (res?.error) {
       toast.error(res.error || "Failed to delete reply");
     } else {
@@ -450,7 +447,6 @@ export function useDeliveryRoom({
       feedbackId,
       commentText: newText,
       shareToken: delivery.shareToken,
-      deliveryId: delivery.id,
     });
     if (res?.error) {
       toast.error(res.error || "Failed to update feedback");
@@ -481,7 +477,6 @@ export function useDeliveryRoom({
       replyId,
       commentText: newText,
       shareToken: delivery.shareToken,
-      deliveryId: delivery.id,
     });
     if (res?.error) {
       toast.error(res.error || "Failed to update reply");
@@ -511,14 +506,15 @@ export function useDeliveryRoom({
   const isGlobalDownloadUnlocked = Boolean(delivery.isDownloadAllowed);
 
   const notifyCreatorOfDownload = (info: {
+    assetId?: string;
     assetTitle?: string;
     downloadedCount?: number;
   }) => {
     if (hasNotifiedDownloadRef.current) return;
     hasNotifiedDownloadRef.current = true;
     void recordClientDownloadAction({
-      deliveryId: delivery.id,
-      assetTitle: info.assetTitle,
+      shareToken: delivery.shareToken,
+      assetId: info.assetId,
       downloadedCount: info.downloadedCount,
     });
   };
@@ -559,7 +555,7 @@ export function useDeliveryRoom({
     toast.success(`Downloading ${asset.title}`, {
       description: `Saving as ${filename}`,
     });
-    notifyCreatorOfDownload({ assetTitle: asset.title, downloadedCount: 1 });
+    notifyCreatorOfDownload({ assetId: asset.id, downloadedCount: 1 });
   };
 
   const handleDownloadAll = () => {

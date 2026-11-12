@@ -19,6 +19,12 @@ import {
 import { createUploadProgressToast } from "@/lib/upload-toast";
 import { inspectMediaFile } from "@/lib/media-inspector";
 import {
+  UPLOAD_ACCEPT,
+  assetTypeForFile,
+  checkUploadFile,
+  type UploadPlacement,
+} from "@/lib/validations/upload";
+import {
   Attachment,
   AttachmentContent,
   AttachmentDescription,
@@ -30,15 +36,40 @@ import {
 
 export interface DirectUploadParams {
   workspaceId: string;
+  /** The delivery the file goes into; "" for an upload outside a delivery (portfolio, branding). */
   projectId: string;
   file: File;
   title?: string;
   assetType?: "video" | "photo_gallery";
   assetId?: string | null;
   aspectRatio?: string;
+  /**
+   * For uploads outside a delivery: which flow this is. Only "portfolio" (the upload
+   * film/still flow) makes the new file a standalone piece on the public portfolio.
+   */
+  placement?: UploadPlacement;
   onProgress?: (percent: number, loaded: number, total: number) => void;
   onStatusChange?: (statusText: string) => void;
   onXhrCreated?: (xhr: XMLHttpRequest) => void;
+}
+
+/** Headers a page can't set itself; the browser sends them (Content-Length comes from the file). */
+const BROWSER_CONTROLLED_HEADERS = new Set(["content-length", "host", "connection", "expect", "transfer-encoding"]);
+
+/** The asset type for a picked file: by extension first (browsers often report "" for HEIC, MKV, MXF). */
+export function resolveUploadAssetType(file: File): "video" | "photo_gallery" {
+  return assetTypeForFile(file.name) ?? (file.type.startsWith("image/") ? "photo_gallery" : "video");
+}
+
+/** Why a picked file can't be uploaded (unsupported type, too big, empty), or null when it can. */
+export function uploadFileProblem(file: File, assetType?: "video" | "photo_gallery"): string | null {
+  const check = checkUploadFile({
+    assetType: assetType || resolveUploadAssetType(file),
+    filename: file.name,
+    declaredType: file.type,
+    sizeBytes: file.size,
+  });
+  return check.ok ? null : check.error;
 }
 
 export interface DirectUploadResult {
@@ -62,13 +93,19 @@ export async function directUploadMediaFile({
   assetType,
   assetId,
   aspectRatio,
+  placement,
   onProgress,
   onStatusChange,
   onXhrCreated,
 }: DirectUploadParams): Promise<DirectUploadResult> {
-  const resolvedType =
-    assetType || (file.type.startsWith("image/") ? "photo_gallery" : "video");
+  const resolvedType = assetType || resolveUploadAssetType(file);
   const resolvedTitle = title || file.name.replace(/\.[^/.]+$/, "");
+
+  // Same allowlist and size limit the server enforces; fail before uploading anything.
+  const problem = uploadFileProblem(file, resolvedType);
+  if (problem) {
+    throw new Error(problem);
+  }
 
   // Auto-detect filmmaker aspect ratio from media file if not explicitly supplied
   let resolvedAspectRatio = aspectRatio;
@@ -88,7 +125,7 @@ export async function directUploadMediaFile({
 
   onStatusChange?.("Requesting direct upload token...");
 
-  // 1. Request direct upload URL from server (validates storage quota)
+  // 1. Request direct upload URL from server (checks the file type, size and storage quota)
   const initRes = await requestAssetUploadAction({
     workspaceId,
     projectId,
@@ -96,15 +133,17 @@ export async function directUploadMediaFile({
     title: resolvedTitle,
     filename: file.name,
     fileSizeBytes: file.size,
+    contentType: file.type || undefined,
     assetType: resolvedType,
     aspectRatio: resolvedAspectRatio,
+    placement,
   });
 
   if (!initRes.success || !initRes.directUpload || !initRes.assetVersion) {
     throw new Error(initRes.error || "Failed to initialize upload.");
   }
 
-  const { uploadUrl, providerUid, uploadType, headers } = initRes.directUpload;
+  const { uploadUrl, uploadType, headers } = initRes.directUpload;
   const assetVersionId = initRes.assetVersion.id;
 
   onStatusChange?.(`Uploading directly (${uploadType})...`);
@@ -134,8 +173,11 @@ export async function directUploadMediaFile({
 
     if (uploadType === "presigned_put") {
       xhr.open("PUT", uploadUrl, true);
+      // The URL is signed for exactly these headers (Content-Type) and this file's size.
       if (headers) {
-        Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+        Object.entries(headers).forEach(([k, v]) => {
+          if (!BROWSER_CONTROLLED_HEADERS.has(k.toLowerCase())) xhr.setRequestHeader(k, v);
+        });
       }
       xhr.send(file);
     } else {
@@ -148,10 +190,9 @@ export async function directUploadMediaFile({
 
   // 3. Confirm upload on backend and fetch playback & transcoding records
   onStatusChange?.("Finalizing transcoding and storage records...");
+  // Only the version: the server knows where the file went and checks it.
   const confirmRes = await confirmUploadCompletedAction({
     assetVersionId,
-    providerUid,
-    fileSizeBytes: file.size,
   });
 
   if (!confirmRes.success) {
@@ -211,14 +252,11 @@ export function VideoUploader({
       setTitle(file.name.replace(/\.[^/.]+$/, ""));
     }
     
-    // Auto-detect asset type based on mime type
-    if (file.type.startsWith("image/")) {
-      setAssetType("photo_gallery");
-    } else {
-      setAssetType("video");
-    }
+    // Asset type from the file's extension (falls back to its MIME type)
+    const detectedType = resolveUploadAssetType(file);
+    setAssetType(detectedType);
 
-    setErrorMessage(null);
+    setErrorMessage(uploadFileProblem(file, detectedType));
     setCompletedAsset(null);
     setProgress(0);
   };
@@ -412,7 +450,7 @@ export function VideoUploader({
           <input
             ref={fileInputRef}
             type="file"
-            accept="video/*,image/*,.mov,.mp4,.mkv,.m4v,.png,.jpg,.jpeg,.webp"
+            accept={UPLOAD_ACCEPT}
             className="hidden"
             onChange={(e) => handleFiles(e.target.files)}
           />
@@ -426,7 +464,7 @@ export function VideoUploader({
               Click to select or drag and drop your video cut or photo asset
             </div>
             <TypographyMuted className="text-xs text-muted-foreground">
-              Supports ProRes 422/4444, MP4, MOV, PNG, JPG, WEBP up to 5.0 GB
+              MP4, MOV, M4V, WebM, MKV, MXF, AVI, JPG, PNG, WebP, AVIF, HEIC, TIFF or GIF, up to 5 GB
             </TypographyMuted>
           </div>
         </div>

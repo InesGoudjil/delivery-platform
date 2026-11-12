@@ -1,150 +1,101 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getServerServices } from "@/core/server";
-import { GlacierTier } from "@/core/providers/storage/silo-glacier.provider";
-import {
-  archiveDeliveryToSiloSchema,
-  restoreDeliveryFromSiloSchema,
-  safeValidate,
-} from "@/lib/validations";
+import { requireDeliveryAccess } from "@/core/security/guards";
+import { getServerAdminServices } from "@/core/server";
+import { SILO_UNAVAILABLE_MESSAGE, type GlacierTier } from "@/core/providers/storage/silo-glacier.provider";
+import { env } from "@/lib/env";
+import { restoreDeliveryFromSiloSchema, safeValidate } from "@/lib/validations";
 import { createScopedLogger } from "@/lib/logger";
+import { normalizeActionError } from "./safe-action";
 
 const log = createScopedLogger({ actionGroup: "silo" });
 
-export async function archiveDeliveryToSiloAction(deliveryId: string) {
-  try {
-    const validated = safeValidate(archiveDeliveryToSiloSchema, { deliveryId });
-    if (!validated.success) {
-      return { success: false, error: validated.error };
-    }
-
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-    if (!user) {
-      return { success: false, error: "Authentication required to archive to The Silo." };
-    }
-
-    const delivery = await services.delivery.getDeliveryById(validated.data.deliveryId);
-    if (!delivery) {
-      return { success: false, error: "Delivery project not found." };
-    }
-
-    const isMember = await services.member.isMember(delivery.workspaceId, user.id);
-    if (!isMember) {
-      return { success: false, error: "You do not have permission to manage this workspace." };
-    }
-
-    const result = await services.silo.archiveDelivery(validated.data.deliveryId, {
-      userId: user.id,
-    });
-
-    const workspace = await services.workspace.getWorkspaceById(delivery.workspaceId);
-    if (workspace?.slug) {
-      revalidatePath(`/${workspace.slug}/deliveries`);
-      revalidatePath(`/${workspace.slug}/deliveries/${validated.data.deliveryId}`);
-      revalidatePath(`/${workspace.slug}/storage`);
-    }
-    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
-    revalidatePath("/[workspaceSlug]/storage", "page");
-
-    return {
-      success: true,
-      bytesArchived: result.bytesArchived,
-      assetsArchived: result.assetsArchived,
-      deliveryId: validated.data.deliveryId,
-    };
-  } catch (err: any) {
-    log.error({ err, deliveryId }, "archiveDeliveryToSiloAction error");
-    return { success: false, error: err.message || "Failed to archive to The Silo." };
+function revalidateSiloPages(workspaceSlug: string | undefined, deliveryId: string) {
+  if (workspaceSlug) {
+    revalidatePath(`/${workspaceSlug}/deliveries/${deliveryId}`);
+    revalidatePath(`/${workspaceSlug}/deliveries`);
+    revalidatePath(`/${workspaceSlug}/storage`);
   }
+  revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+  revalidatePath("/[workspaceSlug]/storage", "page");
 }
 
+/**
+ * Starts thawing an archived delivery. Workspace admins only, on a plan that includes The
+ * Silo. (Archiving is archiveDeliveryAction in deliveries/manage-delivery.ts.)
+ */
 export async function restoreDeliveryFromSiloAction(
   deliveryId: string,
   tier: GlacierTier = "Bulk"
 ) {
+  if (!env.isSiloEnabled) {
+    return { success: false, error: SILO_UNAVAILABLE_MESSAGE };
+  }
+
   try {
     const validated = safeValidate(restoreDeliveryFromSiloSchema, { deliveryId, tier });
     if (!validated.success) {
       return { success: false, error: validated.error };
     }
-
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-    if (!user) {
-      return { success: false, error: "Authentication required to request Silo restore." };
+    // Deep Archive has no Expedited tier.
+    const restoreTier = validated.data.tier;
+    if (restoreTier !== "Bulk" && restoreTier !== "Standard") {
+      return { success: false, error: "Choose the Bulk or Standard restore tier." };
     }
 
-    const delivery = await services.delivery.getDeliveryById(validated.data.deliveryId);
-    if (!delivery) {
-      return { success: false, error: "Delivery project not found." };
-    }
-
-    const isMember = await services.member.isMember(delivery.workspaceId, user.id);
-    if (!isMember) {
-      return { success: false, error: "You do not have permission to manage this workspace." };
-    }
-
-    const result = await services.silo.requestRestoreDelivery(
+    const { services, delivery, workspace } = await requireDeliveryAccess(
       validated.data.deliveryId,
-      validated.data.tier as GlacierTier,
-      7
+      "admin"
     );
 
-    const workspace = await services.workspace.getWorkspaceById(delivery.workspaceId);
-    if (workspace?.slug) {
-      revalidatePath(`/${workspace.slug}/deliveries/${validated.data.deliveryId}`);
-      revalidatePath(`/${workspace.slug}/deliveries`);
-      revalidatePath(`/${workspace.slug}/storage`);
+    const canUseSilo = await services.subscription.isSiloArchiveAllowed(delivery.workspaceId);
+    if (!canUseSilo) {
+      return {
+        success: false,
+        error:
+          "The Silo Glacier Cold Storage archive requires a Studio or Enterprise plan. Please upgrade your subscription.",
+      };
     }
+
+    const result = await services.silo.requestRestoreDelivery(delivery.id, restoreTier, 7);
+    revalidateSiloPages(workspace.slug, delivery.id);
 
     return {
       success: true,
       status: result.status,
       tier: result.tier,
       estimatedHours: result.estimatedHours,
-      deliveryId: validated.data.deliveryId,
+      deliveryId: delivery.id,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error({ err, deliveryId }, "restoreDeliveryFromSiloAction error");
-    return { success: false, error: err.message || "Failed to request Silo restore." };
+    return { success: false, error: normalizeActionError(err, "Failed to request Silo restore.") };
   }
 }
 
+/**
+ * Checks a restoring delivery and, once every file has thawed, copies the files back into
+ * active storage. Any workspace member may check; the copy-back writes files and rows a
+ * viewer cannot, so it runs with the service role after the access check.
+ */
 export async function checkDeliverySiloStatusAction(deliveryId: string) {
+  if (!env.isSiloEnabled) {
+    return { success: false, error: SILO_UNAVAILABLE_MESSAGE };
+  }
+
   try {
     if (!deliveryId?.trim()) {
       return { success: false, error: "Delivery ID is required." };
     }
 
-    const services = await getServerServices();
-    const delivery = await services.delivery.getDeliveryById(deliveryId.trim());
-    if (!delivery) {
-      return { success: false, error: "Delivery project not found." };
-    }
+    const { delivery, workspace } = await requireDeliveryAccess(deliveryId, "viewer");
 
-    let origin = "https://cut.app";
-    try {
-      const { headers } = await import("next/headers");
-      const headerList = await headers();
-      const host = headerList.get("host");
-      const proto =
-        headerList.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
-      if (host) origin = `${proto}://${host}`;
-    } catch {
-      // fallback
-    }
+    const adminServices = await getServerAdminServices();
+    const result = await adminServices.silo.checkAndFinalizeRestore(delivery.id);
 
-    const result = await services.silo.checkAndFinalizeRestore(deliveryId.trim(), {
-      origin,
-    });
-
-    const workspace = await services.workspace.getWorkspaceById(delivery.workspaceId);
-    if (result.isReady && workspace?.slug) {
-      revalidatePath(`/${workspace.slug}/deliveries/${deliveryId.trim()}`);
-      revalidatePath(`/${workspace.slug}/deliveries`);
-      revalidatePath(`/${workspace.slug}/storage`);
+    if (result.isReady) {
+      revalidateSiloPages(workspace.slug, delivery.id);
     }
 
     return {
@@ -154,38 +105,10 @@ export async function checkDeliverySiloStatusAction(deliveryId: string) {
       expiryDate: result.expiryDate?.toISOString(),
       thawedVersionsCount: result.thawedVersionsCount,
       totalVersionsCount: result.totalVersionsCount,
-      deliveryId: deliveryId.trim(),
+      deliveryId: delivery.id,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     log.error({ err, deliveryId }, "checkDeliverySiloStatusAction error");
-    return { success: false, error: err.message || "Failed to check Silo status." };
-  }
-}
-
-export async function getDeliverySiloDownloadUrlsAction(deliveryId: string) {
-  try {
-    if (!deliveryId?.trim()) {
-      return { success: false, error: "Delivery ID is required." };
-    }
-
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-    if (!user) {
-      return { success: false, error: "Authentication required to generate download links." };
-    }
-
-    const delivery = await services.delivery.getDeliveryById(deliveryId.trim());
-    if (!delivery) {
-      return { success: false, error: "Delivery project not found." };
-    }
-
-    const downloads = await services.silo.getDeliverySiloDownloadUrls(deliveryId.trim());
-    return {
-      success: true,
-      downloads,
-    };
-  } catch (err: any) {
-    log.error({ err, deliveryId }, "getDeliverySiloDownloadUrlsAction error");
-    return { success: false, error: err.message || "Failed to generate Silo download links." };
+    return { success: false, error: normalizeActionError(err, "Failed to check Silo status.") };
   }
 }

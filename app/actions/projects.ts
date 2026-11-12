@@ -6,7 +6,6 @@ import { requireUser, requireWorkspaceMember } from "@/core/security/guards";
 import {
   createWorkspaceProjectSchema,
   createShowcaseProjectSchema,
-  updateDeliveryDetailsSchema,
   safeValidate,
   type CreateShowcaseProjectInput,
 } from "@/lib/validations";
@@ -67,88 +66,6 @@ export async function createProjectAction(formData: FormData) {
     return { success: true, project: delivery, delivery };
   } catch (err: any) {
     return { error: err.message || "Failed to create delivery." };
-  }
-}
-
-export async function approveCutAction(deliveryId: string, approvedByName?: string) {
-  try {
-    if (!deliveryId?.trim()) return { error: "Delivery ID is required." };
-
-    const services = await getServerServices();
-    const delivery = await services.delivery.approveCut(deliveryId.trim(), approvedByName?.trim());
-
-    revalidatePath(`/deliver/${delivery.shareToken}`);
-    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
-    revalidatePath("/[workspaceSlug]/deliveries", "page");
-    return { success: true, project: delivery, delivery };
-  } catch (err: any) {
-    return { error: err.message || "Failed to approve cut." };
-  }
-}
-
-export async function updateProjectDetailsAction(
-  deliveryId: string,
-  data: { title?: string; description?: string; clientName?: string; status?: any; location?: string; deliveryDate?: string }
-) {
-  try {
-    if (!deliveryId?.trim()) return { error: "Delivery ID is required." };
-
-    const validated = safeValidate(updateDeliveryDetailsSchema, data);
-    if (!validated.success) return { error: validated.error };
-
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-    if (!user) return { error: "User is not authenticated." };
-
-    let clientId: string | undefined = undefined;
-    if (validated.data.clientName) {
-      const workspace = await services.workspace.getOrCreateWorkspace(user.id);
-      const existingClients = await services.client.listClients(workspace.id);
-      const existingClient = existingClients.find(
-        (c) => c.name.toLowerCase() === validated.data.clientName?.toLowerCase()
-      );
-
-      if (existingClient) {
-        clientId = existingClient.id;
-      } else {
-        const newClient = await services.client.createClient({
-          workspaceId: workspace.id,
-          name: validated.data.clientName,
-        });
-        clientId = newClient.id;
-      }
-    }
-
-    const updated = await services.delivery.updateDelivery(deliveryId.trim(), {
-      ...(validated.data.title !== undefined ? { title: validated.data.title } : {}),
-      ...(validated.data.description !== undefined ? { description: validated.data.description } : {}),
-      ...(clientId !== undefined ? { clientId } : {}),
-      ...(validated.data.status !== undefined ? { status: validated.data.status } : {}),
-      ...(validated.data.location !== undefined ? { location: validated.data.location } : {}),
-      ...(validated.data.deliveryDate !== undefined ? { deliveryDate: validated.data.deliveryDate } : {}),
-    });
-
-    revalidatePath(`/deliver/${updated.shareToken}`);
-    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
-    revalidatePath("/[workspaceSlug]/deliveries", "page");
-    return { success: true, project: updated, delivery: updated };
-  } catch (err: any) {
-    return { error: err.message || "Failed to update project details." };
-  }
-}
-
-export async function archiveProjectAction(deliveryId: string) {
-  try {
-    if (!deliveryId?.trim()) return { error: "Delivery ID is required." };
-
-    const services = await getServerServices();
-    const delivery = await services.delivery.updateStatus(deliveryId.trim(), "archived");
-
-    revalidatePath("/[workspaceSlug]/deliveries", "page");
-    revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
-    return { success: true, project: delivery, delivery };
-  } catch (err: any) {
-    return { error: err.message || "Failed to archive delivery." };
   }
 }
 

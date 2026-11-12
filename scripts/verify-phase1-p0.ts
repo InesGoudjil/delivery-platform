@@ -34,51 +34,38 @@ async function runPhase1Verification() {
 
   // 2. Verify Delivery Passcode HMAC Signing Module
   console.log("\n2. Checking cryptographic delivery passcode HMAC module...");
-  const {
-    generateDeliveryAccessToken,
-    verifyDeliveryAccessToken,
-    DELIVERY_COOKIE_PREFIX,
-  } = await import("../lib/security/delivery-token");
-
-  assert.strictEqual(DELIVERY_COOKIE_PREFIX, "delivery_access_");
-
-  const testShareToken = "cut_share_token_abcdef123456";
-  const validToken = generateDeliveryAccessToken(testShareToken);
-
-  // Test valid signature
-  assert.strictEqual(
-    verifyDeliveryAccessToken(validToken, testShareToken),
-    true,
-    "FAILED: Valid token verification returned false!"
+  const { createRoomAccessToken, verifyRoomAccessToken, roomAccessCookieName } = await import(
+    "../lib/security/delivery-token"
   );
 
-  // Test tampered signature
-  const tamperedToken = validToken.slice(0, -6) + "abcdef";
+  const subject = {
+    id: "00000000-0000-4000-8000-000000000001",
+    shareToken: "cut_share_token_abcdef123456",
+    passcodeHash: "scrypt$hash",
+  };
+  assert.ok(roomAccessCookieName(subject.shareToken).startsWith("room_"));
+  assert.ok(!roomAccessCookieName(subject.shareToken).includes(subject.shareToken), "FAILED: cookie name leaks the share token!");
+
+  const validToken = createRoomAccessToken(subject);
+  assert.strictEqual(verifyRoomAccessToken(validToken, subject), true, "FAILED: Valid token verification returned false!");
   assert.strictEqual(
-    verifyDeliveryAccessToken(tamperedToken, testShareToken),
+    verifyRoomAccessToken(validToken.slice(0, -6) + "abcdef", subject),
     false,
     "FAILED: Tampered HMAC signature was accepted!"
   );
-
-  // Test static "verified" string spoofing rejection
+  assert.strictEqual(verifyRoomAccessToken("verified", subject), false, "FAILED: Static string 'verified' was accepted!");
   assert.strictEqual(
-    verifyDeliveryAccessToken("verified", testShareToken),
-    false,
-    "FAILED: Static unauthenticated string 'verified' was accepted!"
-  );
-
-  // Test token replay against a different delivery
-  assert.strictEqual(
-    verifyDeliveryAccessToken(validToken, "other_delivery_token_999"),
+    verifyRoomAccessToken(validToken, { ...subject, shareToken: "other_delivery_token_999" }),
     false,
     "FAILED: Token generated for one delivery was accepted for another!"
   );
-
-  // Test expired token rejection
-  const expiredTimestamp = Math.floor(Date.now() / 1000) - 100000;
-  const expiredToken = `v1:${expiredTimestamp}:fakehmac`;
   assert.strictEqual(
-    verifyDeliveryAccessToken(expiredToken, testShareToken, 3600),
+    verifyRoomAccessToken(validToken, { ...subject, passcodeHash: "scrypt$new" }),
+    false,
+    "FAILED: Token survived a passcode change!"
+  );
+  assert.strictEqual(
+    verifyRoomAccessToken(createRoomAccessToken(subject, 1), subject, Date.now() + 5000),
     false,
     "FAILED: Expired token was accepted!"
   );

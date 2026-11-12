@@ -257,7 +257,10 @@ async function DeliveryDetailContent({
   }
 
   // Batch presign private delivery assets so creator streams/views directly from Cloudflare R2
-  mappedAssets = await presignDeliveryAssets(mappedAssets, services.storage, 7200);
+  mappedAssets = await presignDeliveryAssets(mappedAssets, services.storage, {
+    workspaceId: fullDetails?.workspaceId ?? workspace.id,
+    allowDownload: true,
+  });
 
   // Fetch workspace features to enforce plan tier controls
   const workspaceFeatures = await services.subscription.getFeatures(workspace.id);
@@ -284,6 +287,7 @@ async function DeliveryDetailContent({
         initialHasMore={fullDetails?.hasMore ?? false}
         initialFeedback={initialFeedback}
         features={workspaceFeatures}
+        whatsappAvailable={services.whatsapp.isConfigured()}
       />
     </div>
   );

@@ -19,6 +19,14 @@ export class FeedbackService {
     return this.feedbackRepo.create(dto);
   }
 
+  async getFeedback(id: string): Promise<Feedback | null> {
+    return this.feedbackRepo.findById(id);
+  }
+
+  async getReply(id: string): Promise<FeedbackReply | null> {
+    return this.feedbackRepo.findReplyById(id);
+  }
+
   async addReply(dto: CreateFeedbackReplyDTO): Promise<FeedbackReply> {
     return this.feedbackRepo.createReply(dto);
   }

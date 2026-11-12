@@ -1,6 +1,6 @@
 "use server";
 
-import { getServerServices } from "@/core/server";
+import { getServerAdminServices, getServerServices } from "@/core/server";
 import { requireWorkspaceMember } from "@/core/security/guards";
 import {
   updateAssetDataSchema,
@@ -100,6 +100,18 @@ export async function updateAssetAction(
     // Verify asset ownership and role hierarchy (minimum: editor)
     await requireWorkspaceMember(asset.workspaceId, "editor");
 
+    // Thumbnail first, so a refused one changes nothing. It must be an image in this workspace's
+    // storage or a frame of this file's own video (a cropped data URL is stored for the file);
+    // the server writes it, because API users can't write file-location columns.
+    const activeVersion = await services.asset.getActiveVersion(asset.id);
+    let updatedThumb = activeVersion?.thumbnailUrl;
+    if (activeVersion && data.thumbnailUrl !== undefined && data.thumbnailUrl.trim()) {
+      const versions = await services.asset.listVersions(asset.id);
+      const admin = await getServerAdminServices();
+      const thumbnail = await admin.upload.setVersionThumbnail(asset, activeVersion, data.thumbnailUrl, versions);
+      updatedThumb = thumbnail.thumbnailUrl ?? updatedThumb;
+    }
+
     // Update asset table
     const assetUpdates: any = {};
     if (data.title !== undefined) assetUpdates.title = data.title.trim();
@@ -111,17 +123,9 @@ export async function updateAssetAction(
       updatedAsset = await services.asset.updateAsset(itemId, assetUpdates);
     }
 
-    // Update active version thumbnail / label if provided
-    const activeVersion = await services.asset.getActiveVersion(itemId);
-    let updatedThumb = activeVersion?.thumbnailUrl;
-    if (activeVersion) {
-      if (data.thumbnailUrl !== undefined && data.thumbnailUrl.trim()) {
-        await services.asset.updateThumbnail(activeVersion.id, data.thumbnailUrl.trim());
-        updatedThumb = data.thumbnailUrl.trim();
-      }
-      if (data.description !== undefined) {
-        await services.asset.renameVersion(activeVersion.id, data.description.trim());
-      }
+    // Version label
+    if (activeVersion && data.description !== undefined) {
+      await services.asset.renameVersion(activeVersion.id, data.description.trim());
     }
 
     const deliveryIdToRevalidate = asset.deliveryId || options?.deliveryId;

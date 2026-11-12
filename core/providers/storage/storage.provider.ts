@@ -1,24 +1,39 @@
+import type { UploadPlacement } from "@/lib/validations/upload";
+
 export type StorageAssetType = "video" | "image" | "raw_file";
 
+/**
+ * Everything the server decided about an upload. Nothing here comes from the browser
+ * unchecked: the upload service resolves the workspace, delivery and file, picks the
+ * visibility, and takes the content type from the allowlist in lib/validations/upload.ts.
+ */
 export interface CreateUploadUrlParams {
   workspaceId: string;
-  projectId?: string;
+  /** The delivery the file is in. Private uploads always have one. */
   deliveryId?: string;
+  /** The file (asset) this upload is a version of. Part of the object key. */
+  assetId: string;
+  versionNumber: number;
   assetTitle: string;
   assetType: StorageAssetType;
+  /** Exact size in bytes; signed into presigned uploads. */
   fileSizeBytes: number;
   filename: string;
+  /** Stored content type, from the allowlist; signed into presigned uploads. */
+  contentType: string;
   maxDurationSeconds?: number;
-  isPublic?: boolean;
-  category?: string;
-  versionNumber?: number;
-  metadata?: Record<string, string>;
+  /** Public bucket (portfolio, branding) or private bucket (anything in a delivery). */
+  isPublic: boolean;
+  /** Which flow a public upload comes from; decides its key prefix (see uploadPlacementSchema). */
+  placement?: UploadPlacement;
 }
 
 export interface DirectUploadResult {
   uploadUrl: string;
+  /** Where the file will be stored: an R2 object key, a Stream video UID, or a mock id. */
   providerUid: string;
   expiresAt?: string;
+  /** Headers the browser must send with the upload, exactly as given. */
   headers?: Record<string, string>;
   uploadType: "direct_post" | "tus_chunked" | "presigned_put";
 }
@@ -48,6 +63,24 @@ export interface StorageAssetStatus {
   fileSizeBytes?: number;
 }
 
+/** What R2 reports for a stored object (HeadObject). */
+export interface StoredObjectInfo {
+  sizeBytes: number;
+  contentType: string | null;
+}
+
+/** A Cloudflare Stream video, as the Stream API reports it. */
+export interface StreamVideoInfo {
+  uid: string;
+  /** `creator` set when the video was created: the workspace id, for videos this app made. */
+  creator: string | null;
+  /** `meta.workspaceId` set when the video was created. */
+  workspaceId: string | null;
+  sizeBytes: number | null;
+  durationSeconds: number | null;
+  status: "ready" | "processing" | "pending" | "error";
+}
+
 export interface IStorageProvider {
   readonly providerName: string;
 
@@ -67,7 +100,8 @@ export interface IStorageProvider {
   getAssetStatus(providerUid: string): Promise<StorageAssetStatus>;
 
   /**
-   * Deletes the media file from the storage provider
+   * Deletes the media file from the storage provider. Callers check ownership first: an R2
+   * key under the right workspace (`isR2KeyInWorkspace`), a Stream UID from a row the server wrote.
    */
   deleteAsset(providerUid: string): Promise<void>;
 
@@ -88,9 +122,25 @@ export interface IStorageProvider {
   ): Promise<string>;
 
   /**
-   * Validates incoming webhook signature (e.g. from Cloudflare)
+   * Validates an incoming webhook signature (e.g. from Cloudflare). False when it can't be
+   * checked (no secret configured).
    */
   verifyWebhookSignature?(rawBody: string, headers: Record<string, string>): boolean;
+
+  /**
+   * R2: size and content type of a stored object, or null when it doesn't exist.
+   */
+  headObject?(key: string): Promise<StoredObjectInfo | null>;
+
+  /**
+   * R2: the first `length` bytes of a stored object (ranged GET), for content checks.
+   */
+  readObjectStart?(key: string, length: number): Promise<Uint8Array>;
+
+  /**
+   * Cloudflare Stream: a video's owner, size, duration and state, or null when it doesn't exist.
+   */
+  getStreamVideo?(uid: string): Promise<StreamVideoInfo | null>;
 
   /**
    * Retrieves a readable stream of the object for transferring/archiving
@@ -114,6 +164,7 @@ export interface IStorageProvider {
   /**
    * Ingests a video from a publicly-accessible or presigned URL into the streaming pipeline.
    * Enables Cloudflare Stream to pull master video files stored in Cloudflare R2 and generate HLS/DASH streaming renditions.
+   * Absent when Cloudflare Stream isn't configured.
    */
   copyFromUrl?(
     sourceUrl: string,

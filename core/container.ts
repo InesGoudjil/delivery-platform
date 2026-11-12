@@ -36,6 +36,8 @@ import {
   SupabaseProcessedBillingEventRepository,
 } from "./repositories";
 import { ZeptoMailEmailProvider, IEmailProvider } from "./providers/email";
+import { createWhatsAppProvider } from "./providers/whatsapp";
+import { WhatsAppNotificationService } from "./services/whatsapp-notification.service";
 
 // Services
 import {
@@ -105,6 +107,8 @@ export interface CoreServices {
     email: IEmailProvider;
     settings: SupabaseWorkspaceSettingsRepository;
     session: SessionService;
+    /** WhatsApp alerts and review links. Service role inside: authorize before calling. */
+    whatsapp: WhatsAppNotificationService;
   };
 }
 
@@ -235,6 +239,15 @@ export function createCoreServices(
   );
   const waitlistService = new WaitlistService(waitlistRepo, emailProvider);
   const sessionService = new SessionService(userSessionRepo);
+  const whatsappService = new WhatsAppNotificationService({
+    provider: createWhatsAppProvider(),
+    settingsRepo: new SupabaseWorkspaceSettingsRepository(systemClient),
+    workspaceRepo: new SupabaseWorkspaceRepository(systemClient),
+    deliveryRepo: new SupabaseDeliveryRepository(systemClient),
+    notificationRepo: new SupabaseNotificationLogRepository(systemClient),
+    subscriptionService,
+    supabase: systemClient,
+  });
   const siloService = new SiloService(
     siloProvider,
     storageProvider,
@@ -295,6 +308,7 @@ export function createCoreServices(
       email: emailProvider,
       settings: workspaceSettingsRepo,
       session: sessionService,
+      whatsapp: whatsappService,
     },
   };
 }

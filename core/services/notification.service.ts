@@ -9,6 +9,7 @@ import {
   renderNewFeedbackEmail,
   renderMemberInvitationEmail,
   renderSiloRestoreCompletedEmail,
+  renderClientDownloadEmail,
 } from "@/core/providers/email";
 
 export interface DispatchWhatsAppParams {
@@ -213,6 +214,49 @@ export class NotificationService {
       logs.push(log);
     }
 
+    return { success: true, logs };
+  }
+
+  /**
+   * Tells the studio that a client downloaded files from a delivery room.
+   * `itemDescription` comes from the database (file titles), never from the browser.
+   */
+  async notifyClientDownload(params: {
+    deliveryId: string;
+    recipientEmails: string[];
+    itemDescription: string;
+    origin?: string;
+  }): Promise<{ success: boolean; logs: NotificationLog[] }> {
+    const delivery = await this.deliveryRepo.findById(params.deliveryId);
+    if (!delivery) throw new Error("Delivery not found");
+    if (params.recipientEmails.length === 0) return { success: true, logs: [] };
+
+    const workspace = await this.workspaceRepo.findById(delivery.workspaceId);
+    const baseUrl = params.origin || "https://cut.app";
+    const { subject, html } = renderClientDownloadEmail({
+      brandName: workspace?.brandName || "Studio",
+      accentColor: workspace?.accentColor,
+      deliveryTitle: delivery.title,
+      itemDescription: params.itemDescription,
+      dashboardUrl: `${baseUrl}/${workspace?.slug || "workspace"}/deliveries/${delivery.id}`,
+    });
+
+    const logs: NotificationLog[] = [];
+    for (const email of params.recipientEmails) {
+      const sendRes = await this.emailProvider.sendEmail({ to: email, subject, html });
+      const log = await this.notificationRepo.create({
+        workspaceId: delivery.workspaceId,
+        projectId: delivery.id,
+        clientId: delivery.clientId,
+        channel: "email",
+        recipientEmail: email,
+        subject,
+        status: sendRes.success ? "sent" : "failed",
+        providerMessageId: sendRes.messageId,
+        errorMessage: sendRes.error,
+      });
+      logs.push(log);
+    }
     return { success: true, logs };
   }
 

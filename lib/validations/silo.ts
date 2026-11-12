@@ -1,12 +1,7 @@
 import { z } from "zod";
 
-export const glacierTierSchema = z.enum(["Bulk", "Standard", "Expedited"]);
-
-export const archiveDeliveryToSiloSchema = z.object({
-  deliveryId: z.string().trim().min(1, "Delivery ID is required"),
-});
-
-export type ArchiveDeliveryToSiloInput = z.infer<typeof archiveDeliveryToSiloSchema>;
+// Glacier Deep Archive restores are Bulk (up to 48 h) or Standard (up to 12 h); it has no Expedited tier.
+export const glacierTierSchema = z.enum(["Bulk", "Standard"]);
 
 export const restoreDeliveryFromSiloSchema = z.object({
   deliveryId: z.string().trim().min(1, "Delivery ID is required"),

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerServices } from "@/core/server";
+import { hasMinRole } from "@/core/security/guards";
 import { MembersClient } from "./_components/members-client";
 
 export default async function MembersPage({
@@ -20,19 +21,19 @@ export default async function MembersPage({
     redirect("/");
   }
 
-  const isOwner = workspace.ownerId === user.id;
+  // getMember() also covers the owner in workspaces.owner_id.
   const member = await services.member.getMember(workspace.id, user.id);
-
-  if (!isOwner && !member) {
+  if (!member) {
     redirect("/");
   }
 
-  const canManage = isOwner || member?.role === "owner" || member?.role === "admin";
+  const canManage = hasMinRole(member.role, "admin");
 
   const [seatStats, members, pendingInvitations] = await Promise.all([
     services.member.getWorkspaceSeatStats(workspace.id),
     services.member.listMembers(workspace.id),
-    services.member.listPendingInvitations(workspace.id),
+    // Invitations carry their join tokens: owners and admins only, empty for everyone else.
+    services.member.listPendingInvitations(workspace.id, user.id),
   ]);
 
   return (
@@ -49,7 +50,7 @@ export default async function MembersPage({
         email: user.email,
       }}
       canManage={canManage}
-      isOwner={isOwner}
+      currentUserRole={member.role}
       seatStats={seatStats}
       members={members}
       pendingInvitations={pendingInvitations}

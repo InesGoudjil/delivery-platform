@@ -38,6 +38,11 @@ const envSchema = z.object({
   AWS_S3_SILO_BUCKET: z.string().optional().default(""),
   AWS_SILO_STORAGE_CLASS: z.enum(["DEEP_ARCHIVE", "GLACIER"]).default("DEEP_ARCHIVE"),
   SILO_WEBHOOK_SECRET: z.string().optional().default(""),
+  // Kill switch for The Silo. Off unless set to "true" (any case); any other value, or a typo, keeps it off.
+  SILO_ENABLED: z
+    .string()
+    .optional()
+    .transform((v) => v?.trim().toLowerCase() === "true"),
 
   // Stripe Billing Configuration
   STRIPE_SECRET_KEY: z.string().optional().default(""),
@@ -58,6 +63,15 @@ const envSchema = z.object({
   ZEPTOMAIL_FROM_NAME: z.string().optional().default("CineSpace"),
   ZEPTOMAIL_API_URL: z.string().optional().default("https://api.zeptomail.com/v1.1/email"),
   ZEPTOMAIL_BOUNCE_ADDRESS: z.string().optional().default(""),
+
+  // Zoho CPaaS (ZeptoMail's new name): WhatsApp through a Meta WhatsApp Business Account
+  // connected in the Zoho CPaaS console. Template keys are per message type and language;
+  // see docs/notifications.md for the templates to create.
+  ZOHO_CPAAS_API_URL: z.string().optional().default("https://cpaas.zoho.com"),
+  ZOHO_CPAAS_WHATSAPP_TOKEN: z.string().optional().default(""),
+  ZOHO_CPAAS_WHATSAPP_FROM: z.string().optional().default(""),
+  // Protects /api/cron/* (sent as "Authorization: Bearer <secret>", as Vercel Cron does).
+  CRON_SECRET: z.string().optional().default(""),
 
   // Upstash Redis Configuration (Rate Limiting & Serverless Caching)
   UPSTASH_REDIS_REST_URL: z.string().optional().default(""),
@@ -110,12 +124,16 @@ export type Env = z.infer<typeof envSchema> & {
   isCloudflareStreamConfigured: boolean;
   isCloudflareR2Configured: boolean;
   isAwsSiloConfigured: boolean;
+  /** The Silo may run: SILO_ENABLED is "true" and the AWS settings are real. Check this at every Silo entry point. */
+  isSiloEnabled: boolean;
   isMetaPixelEnabled: boolean;
   isMetaCapiEnabled: boolean;
   isPostHogClientEnabled: boolean;
   isPostHogServerEnabled: boolean;
   isPostHogSessionReplayEnabled: boolean;
   isZeptoMailConfigured: boolean;
+  /** Zoho CPaaS WhatsApp: token and a valid sender number are set. */
+  isWhatsAppConfigured: boolean;
   isUpstashConfigured: boolean;
 };
 
@@ -155,7 +173,12 @@ function parseEnv(): Env {
   const isAwsSiloConfigured =
     Boolean(parsed.AWS_S3_SILO_BUCKET) &&
     Boolean(parsed.AWS_ACCESS_KEY_ID) &&
-    Boolean(parsed.AWS_SECRET_ACCESS_KEY);
+    parsed.AWS_ACCESS_KEY_ID !== "your-aws-access-key-id" &&
+    Boolean(parsed.AWS_SECRET_ACCESS_KEY) &&
+    parsed.AWS_SECRET_ACCESS_KEY !== "your-aws-secret-access-key";
+
+  // The Silo deletes R2 originals once they are in Glacier, so it never runs half-configured.
+  const isSiloEnabled = parsed.SILO_ENABLED && isAwsSiloConfigured;
 
   const isMetaPixelEnabled = Boolean(parsed.NEXT_PUBLIC_META_PIXEL_ID);
   const isMetaCapiEnabled =
@@ -180,6 +203,11 @@ function parseEnv(): Env {
     parsed.ZEPTOMAIL_API_TOKEN.trim() !== "" &&
     parsed.ZEPTOMAIL_API_TOKEN !== "your-zeptomail-token";
 
+  const isWhatsAppConfigured =
+    Boolean(parsed.ZOHO_CPAAS_WHATSAPP_TOKEN.trim()) &&
+    parsed.ZOHO_CPAAS_WHATSAPP_TOKEN !== "your-zoho-cpaas-whatsapp-token" &&
+    /^\+?\d{8,15}$/.test(parsed.ZOHO_CPAAS_WHATSAPP_FROM.replace(/[\s-]/g, ""));
+
   const isUpstashConfigured =
     Boolean(parsed.UPSTASH_REDIS_REST_URL) &&
     Boolean(parsed.UPSTASH_REDIS_REST_TOKEN);
@@ -191,12 +219,14 @@ function parseEnv(): Env {
     isCloudflareStreamConfigured,
     isCloudflareR2Configured,
     isAwsSiloConfigured,
+    isSiloEnabled,
     isMetaPixelEnabled,
     isMetaCapiEnabled,
     isPostHogClientEnabled,
     isPostHogServerEnabled,
     isPostHogSessionReplayEnabled,
     isZeptoMailConfigured,
+    isWhatsAppConfigured,
     isUpstashConfigured,
   };
 }

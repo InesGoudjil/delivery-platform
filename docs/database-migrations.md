@@ -19,11 +19,41 @@ This builds a fresh database from `supabase/migrations` in memory (PGlite, no Do
 - a public table without row-level security fails CI;
 - a policy that leaks data across workspaces, or lets someone edit billing or limits, fails CI.
 
-Tests marked `it.fails` are known gaps (for example, viewers can still delete deliveries through the API because roles are only enforced in app code). They pass while the gap exists. When you close one, the test reports it, and you remove the `.fails`.
+Tests marked `it.fails` are known gaps: they pass while the gap exists, and when you close one the test reports it and you remove the `.fails`. There are none left; don't add new ones without a plan to close them.
+
+**New tables and functions.** The anon role gets nothing by default, and Postgres still grants EXECUTE on new functions to PUBLIC: add `REVOKE EXECUTE ON FUNCTION … FROM PUBLIC, anon, authenticated` and grant only what's needed. The RLS tests fail on a new table or function anon can reach, a function signed-in users can call that RLS doesn't need, or a SECURITY DEFINER function without a fixed `search_path`.
 
 `supabase/schema.sql` is a git-ignored local dump. Don't edit it and don't rely on it; the migrations are the source of truth.
 
-## One-time: align production with the baseline
+## Security migrations of 2026-11-11 (Phase 1)
+
+| Migration | What it does |
+|---|---|
+| `20261111120000_role_aware_rls.sql` | Workspace roles in the database: viewers read and comment, editors create and edit, admins delete and change client-room access (passcode, share link, downloads, comments, expiry). Files can only go into a delivery of the same workspace. Rows can't move to another workspace, file or thread. Owner protection. `owner_id` and `storage_used_bytes` aren't writable through the API. Invitations are admin-only. Users see their own sessions (revoked ones too) and only the server writes them. |
+| `20261111120100_revoke_unused_api_access.sql` | The anon key gets no table, view or function access at all. Signed-in users lose TRUNCATE/REFERENCES/TRIGGER and can only call the four helpers RLS uses. The membership helpers only answer for the caller. Every SECURITY DEFINER function has a fixed `search_path`. Public forms (waitlist, inquiries) go through the server. |
+| `20261111120200_storage_counter_follows_trash.sql` | The storage counter is maintained by triggers only, including moves to and from Trash and deletes, and existing counters are recomputed. |
+| `20261111120300_protect_file_locations.sql` | File locations (`raw_file_url`, `hls_manifest_url`, `thumbnail_url`, sizes, Silo keys) are written by the server only. |
+| `20261111120400_guest_comment_ownership.sql` | Client-room comments record which browser wrote them, so guests can only change their own. Members can't post as a guest. |
+| `20261111120500_explicit_portfolio_pieces.sql` | `assets.is_portfolio`: only explicitly marked files appear on the public portfolio (not every file outside a delivery). Backfills existing standalone pieces from their storage path. |
+
+**Rollout.** These migrations and the code that ships with them depend on each other:
+the new code writes the new columns, and the old code breaks under the new policies
+(direct file-location writes, the storage counter, anonymous reads). Ship them together:
+
+1. Test on a staging project first: `npm run test:db` locally, then the app against staging.
+2. Deploy the app code.
+3. Right away, `npx supabase db push`. Between steps 2 and 3, comments and the public
+   portfolio fail; between 3 and a rollback of the code, uploads fail. Keep the gap short.
+4. Probe with the real anon key: every table and RPC should answer "permission denied"
+   (`tests/rls/access-control.test.ts` → "anonymous visitors" lists what must hold).
+
+Existing client-room unlock cookies stop working (new format): clients enter the passcode once more.
+
+## One-time: align an existing project with the baseline
+
+Done on staging on 2026-11-12 (all 17 migrations in sync, anon probe clean). With Supabase CLI 3.x, add `--remote` (the linked project) to each command below, and `--yes` to confirm hosted changes. Staging had applied `20261111000000` by hand and lacked three baseline indexes, which `20261111120800` adds; check production the same way before marking the baseline applied (compare its schema with a fresh database built from the migrations up to `20261110000000`).
+
+### Production
 
 Production already has everything in the baseline, so mark it as applied rather than running it. You need the Supabase CLI linked to the production project (`npx supabase link --project-ref <ref>`).
 

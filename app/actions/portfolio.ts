@@ -296,8 +296,13 @@ export async function getProjectAssetsAction(projectId: string) {
   try {
     if (!projectId?.trim()) return { success: true, assets: [] };
 
-    const services = await getServerServices();
+    // The id is a showcase project's, or a delivery's. Either way, members of its workspace only.
+    const { services } = await requireUser();
     const project = await services.project.getProjectById(projectId.trim());
+    const delivery = project ? null : await services.delivery.getDeliveryById(projectId.trim());
+    const workspaceId = project?.workspaceId ?? delivery?.workspaceId;
+    if (!workspaceId) return { success: true, assets: [] };
+    await requireWorkspaceMember(workspaceId, "viewer");
     const deliveryId = project?.sourceDeliveryId || projectId.trim();
 
     let assets = await services.asset.listAssets(deliveryId);
@@ -421,21 +426,10 @@ export async function deletePortfolioItemAction(
     }
 
     if (itemType === "project") {
-      let project = await services.project.getProjectById(itemId);
+      // Only showcase projects are removed here. Deliveries are deleted from the delivery
+      // page (admins only); this path used to delete one at editor level.
+      const project = await services.project.getProjectById(itemId);
       if (!project) {
-        const delivery = await services.delivery.getDeliveryById(itemId).catch(() => null);
-        if (delivery) {
-          await requireWorkspaceMember(delivery.workspaceId, "editor");
-
-          await services.delivery.deleteDelivery(delivery.id);
-          if (workspaceSlug) {
-            revalidatePath(`/${workspaceSlug}/portfolio`);
-            revalidatePath(`/p/${workspaceSlug}`);
-          }
-          revalidatePath("/[workspaceSlug]/portfolio", "page");
-          revalidatePath("/p/[handle]", "page");
-          return { success: true };
-        }
         return { success: false, error: "Project not found." };
       }
 
@@ -500,16 +494,12 @@ export async function getWorkspacePortfolioDataAction(
       return { success: false, error: "Workspace slug is required." };
     }
 
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized: Please log in." };
-    }
-
+    const { services } = await requireUser();
     const workspace = await services.workspace.getWorkspaceBySlug(workspaceSlug);
     if (!workspace) {
       return { success: false, error: "Workspace not found." };
     }
+    await requireWorkspaceMember(workspace.id, "viewer");
 
     const portfolio = await services.portfolio.getOrCreatePortfolio(
       workspace.id,
@@ -519,7 +509,7 @@ export async function getWorkspacePortfolioDataAction(
 
     const [dbProjects, standaloneAssets] = await Promise.all([
       services.project.listPortfolioProjects(portfolio.id),
-      services.asset.listUnassignedAssets(workspace.id),
+      services.asset.listPortfolioAssets(workspace.id),
     ]);
 
     const featuredItemIds: string[] = Array.isArray(portfolio.appearance?.featuredItemIds)

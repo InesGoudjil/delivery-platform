@@ -20,7 +20,10 @@ import {
   VideoUploader,
   directUploadMediaFile,
   formatBytes,
+  resolveUploadAssetType,
+  uploadFileProblem,
 } from "./video-uploader";
+import { UPLOAD_ACCEPT } from "@/lib/validations/upload";
 
 export interface ExistingAssetOption {
   id: string;
@@ -96,8 +99,16 @@ export function AssetMultiUploader({
   const addFilesToQueue = (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
 
-    const newItems: QueuedUploadItem[] = Array.from(fileList).map((file, idx) => {
-      const isImage = file.type.startsWith("image/");
+    // Only files the server accepts (type allowlist, at most 5 GB each).
+    const picked = Array.from(fileList);
+    const rejected = picked
+      .map((file) => ({ file, problem: uploadFileProblem(file) }))
+      .filter((entry) => entry.problem !== null);
+    const accepted = picked.filter((file) => !rejected.some((entry) => entry.file === file));
+
+    const newItems: QueuedUploadItem[] = accepted.map((file, idx) => {
+      const assetType = resolveUploadAssetType(file);
+      const isImage = assetType === "photo_gallery";
       const previewUrl = isImage ? URL.createObjectURL(file) : null;
       const cleanTitle = file.name.replace(/\.[^/.]+$/, "");
 
@@ -105,7 +116,7 @@ export function AssetMultiUploader({
         id: `file_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
         file,
         previewUrl,
-        assetType: isImage ? "photo_gallery" : "video",
+        assetType,
         title: cleanTitle,
         targetAssetId: "", // Default to creating a new asset V1
         status: "queued",
@@ -116,7 +127,15 @@ export function AssetMultiUploader({
     });
 
     setQueue((prev) => [...prev, ...newItems]);
-    setGlobalError(null);
+    setGlobalError(
+      rejected.length === 0
+        ? null
+        : rejected.length === 1
+          ? `${rejected[0].file.name}: ${rejected[0].problem}`
+          : `${rejected.length} files can't be uploaded (${rejected
+              .map((entry) => entry.file.name)
+              .join(", ")}). ${rejected[0].problem}`
+    );
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -483,7 +502,7 @@ export function AssetMultiUploader({
             ref={fileInputRef}
             type="file"
             multiple
-            accept="video/*,image/*,.mov,.mp4,.mkv,.m4v,.png,.jpg,.jpeg,.webp,.avif"
+            accept={UPLOAD_ACCEPT}
             className="hidden"
             onChange={(e) => addFilesToQueue(e.target.files)}
           />
@@ -511,7 +530,7 @@ export function AssetMultiUploader({
                   Drop your videos &amp; photo stills here, or click to browse
                 </div>
                 <TypographyMuted className="text-xs text-muted-foreground leading-relaxed">
-                  Select as many files as you want at once. Supports ProRes 422/4444, MP4, MOV, PNG, JPG, WEBP up to 5GB each.
+                  Select as many files as you want at once. MP4, MOV, M4V, WebM, MKV, MXF, AVI, JPG, PNG, WebP, AVIF, HEIC, TIFF or GIF, up to 5 GB each.
                 </TypographyMuted>
               </div>
 

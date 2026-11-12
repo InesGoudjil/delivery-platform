@@ -1,9 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireDeliveryAccess, requireWorkspaceMember } from "@/core/security/guards";
+import { requireDeliveryAccess } from "@/core/security/guards";
 import { hashDeliveryPasscode } from "@/lib/security/passcode";
-import { getServerServices } from "@/core/server";
 import { createScopedLogger } from "@/lib/logger";
 import type { DeliveryAppearanceSettings } from "@/core/entities/delivery";
 import {
@@ -15,7 +14,8 @@ import {
   type UpdateDeliverySecurityInput,
 } from "@/lib/validations";
 import { normalizeActionError } from "../safe-action";
-import { deleteAssetAction } from "../assets/archive-asset";
+import { env } from "@/lib/env";
+import { SILO_UNAVAILABLE_MESSAGE } from "@/core/providers/storage/silo-glacier.provider";
 
 const log = createScopedLogger({ actionGroup: "deliveries" });
 
@@ -197,6 +197,11 @@ export async function updateDeliveryAppearanceAction(
 }
 
 export async function archiveDeliveryAction(deliveryId: string) {
+  // The Silo kill switch (SILO_ENABLED): refuse before any file is touched.
+  if (!env.isSiloEnabled) {
+    return { error: SILO_UNAVAILABLE_MESSAGE };
+  }
+
   try {
     const { services, delivery, user } = await requireDeliveryAccess(deliveryId, "admin");
 
@@ -329,57 +334,28 @@ export async function regenerateDeliveryShareTokenAction(deliveryId: string) {
 }
 
 /**
- * Permanently deletes a delivery room and all associated assets.
+ * Deletes a delivery room (admins only). Its files move to the workspace's Trash in the
+ * same update that detaches them, so they can be restored later (into "Recovered files",
+ * never onto the public portfolio).
  */
 export async function deleteDeliveryAction(
   deliveryId: string,
   workspaceSlug?: string
 ) {
   try {
-    const services = await getServerServices();
-    const user = await services.auth.getCurrentUser();
+    if (!deliveryId?.trim()) return { success: false, error: "Delivery not found." };
+    // Admin first: nothing is touched unless the delivery can actually be deleted.
+    const { services } = await requireDeliveryAccess(deliveryId.trim(), "admin");
 
-    if (!user) {
-      return { success: false, error: "Unauthorized. Please log in." };
-    }
-
-    const delivery = await services.delivery.getDeliveryById(deliveryId);
-    if (!delivery) {
-      return { success: false, error: "Delivery not found." };
-    }
-
-    // Verify workspace membership/role hierarchy (minimum: editor)
-    await requireWorkspaceMember(delivery.workspaceId, "editor");
-
-    // Delete associated assets and storage files (moves to workspace Trash)
-    try {
-      const assets = await services.asset.listDeliveryAssets(deliveryId);
-      for (const asset of assets) {
-        await deleteAssetAction(asset.id, {
-          deliveryId,
-          workspaceSlug,
-        });
-      }
-    } catch (e) {
-      log.warn({ err: e, deliveryId }, "Delivery asset cleanup notice");
-    }
-
-    // Detach all assets from this delivery so they remain preserved in workspace Trash
-    // and cannot violate foreign key constraints when deleting the delivery room
-    try {
-      await services.asset.detachAllFromDelivery(deliveryId);
-    } catch (detachErr) {
-      log.warn({ err: detachErr, deliveryId }, "Delivery asset detachment notice");
-    }
-
-    // Delete delivery entity
-    await services.delivery.deleteDelivery(deliveryId);
+    await services.asset.detachAllFromDelivery(deliveryId.trim());
+    await services.delivery.deleteDelivery(deliveryId.trim());
 
     if (workspaceSlug) {
       revalidatePath(`/${workspaceSlug}/deliveries`);
     }
     revalidatePath("/[workspaceSlug]/deliveries", "page");
     revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
+    revalidatePath("/[workspaceSlug]/storage", "page");
 
     return { success: true };
   } catch (error: any) {

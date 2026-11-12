@@ -52,8 +52,8 @@ import {
   getActiveSessionsAction,
   revokeSessionAction,
   revokeAllOtherSessionsAction,
+  type DeviceSession,
 } from "@/app/actions/sessions";
-import { UserSession } from "@/core/entities/user-session";
 
 interface TOTPEnrollData {
   id: string;
@@ -102,7 +102,7 @@ export default function SecurityPage() {
   const [isPending, startTransition] = useTransition();
 
   // Session state
-  const [sessions, setSessions] = useState<UserSession[]>([]);
+  const [sessions, setSessions] = useState<DeviceSession[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
   const [isSigningOutOthers, setIsSigningOutOthers] = useState(false);

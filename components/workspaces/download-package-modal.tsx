@@ -65,7 +65,7 @@ export interface DownloadPackageModalProps {
   deliveryId?: string;
   shareToken?: string;
   totalAssetsCount?: number;
-  onClientDownload?: (info: { assetTitle?: string; downloadedCount?: number }) => void;
+  onClientDownload?: (info: { assetId?: string; assetTitle?: string; downloadedCount?: number }) => void;
 }
 
 type FilterTab = "ALL" | "APPROVED" | "VIDEOS" | "PHOTOS";
@@ -237,7 +237,7 @@ export function DownloadPackageModal({
     toast.success(`Downloading ${item.title}`, {
       description: `Saving as ${filename}`,
     });
-    onClientDownload?.({ assetTitle: item.title, downloadedCount: 1 });
+    onClientDownload?.({ assetId: String(item.id), assetTitle: item.title, downloadedCount: 1 });
     setTimeout(() => {
       setDownloadedIds((prev) => ({ ...prev, [item.id]: false }));
     }, 4000);
@@ -268,7 +268,7 @@ export function DownloadPackageModal({
     toast.success(`Downloading Web Proxy for ${item.title}`, {
       description: `Saving lightweight preview as ${filename}`,
     });
-    onClientDownload?.({ assetTitle: `${item.title} (Proxy)`, downloadedCount: 1 });
+    onClientDownload?.({ assetId: String(item.id), assetTitle: `${item.title} (Proxy)`, downloadedCount: 1 });
   };
 
   const handleDownloadSelectedSequential = async () => {

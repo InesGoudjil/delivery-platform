@@ -1,18 +1,70 @@
 /**
  * Responsive, bulletproof email templates for CineSpace / Cut Delivery Platform.
  * Designed with a sleek dark aesthetic, mobile responsiveness, and high deliverability.
+ *
+ * Escaping rules (guest names, comments and form fields reach these templates):
+ * - Every `${...}` placed in HTML is escaped with `escapeHtml`, unless it is a fixed literal or
+ *   HTML built in this file. Studio-controlled values (brand names, titles) are escaped too.
+ * - URLs go through `escapeHref`: only http(s) and relative URLs survive, anything else is "#".
+ * - Subjects and preview text are plain text built with `oneLine` (no entities, no line breaks).
+ *   `wrapEmailTemplate` escapes them when it places them in HTML.
  */
+
+import { escapeHtml, oneLine, safeHref } from "@/lib/security/html";
+
+// Length caps for values placed in subjects and preview text.
+const NAME_MAX = 80;
+const TITLE_MAX = 100;
+const SHORT_MAX = 20;
+
+const DEFAULT_ACCENT = "#f5551d";
+const HEX_COLOR = /^#[0-9a-fA-F]{3,8}$/;
+
+/** Escaped URL for an `href` or for display. Anything but http(s) or a relative path becomes "#". */
+function escapeHref(url: unknown): string {
+  return escapeHtml(safeHref(url));
+}
+
+// One plain address: no spaces, and none of ? & # % that would add mailto fields (?cc=, &body=).
+const MAILTO_ADDRESS =
+  /^[A-Za-z0-9.!$'*+_~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$/;
+
+/** Escaped `mailto:` link for one plain address, or a bare `mailto:` when the value isn't one. */
+function mailtoHref(address: unknown): string {
+  const trimmed = typeof address === "string" ? address.trim() : "";
+  return escapeHtml(MAILTO_ADDRESS.test(trimmed) ? `mailto:${trimmed}` : "mailto:");
+}
+
+/** A hex color safe for a style attribute, or the default accent. */
+function safeHexColor(value: unknown): string {
+  const trimmed = typeof value === "string" ? value.trim() : "";
+  return HEX_COLOR.test(trimmed) ? trimmed : DEFAULT_ACCENT;
+}
+
+/** Dark text on light accents, white otherwise, so a button label stays readable. */
+function textColorOn(hexColor: string): string {
+  let digits = hexColor.slice(1);
+  if (digits.length === 3 || digits.length === 4) {
+    digits = Array.from(digits.slice(0, 3), (d) => d + d).join("");
+  } else if (digits.length !== 6 && digits.length !== 8) {
+    return "#ffffff";
+  }
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(digits.slice(i, i + 2), 16));
+  return (r * 299 + g * 587 + b * 114) / 1000 > 160 ? "#09090b" : "#ffffff";
+}
 
 interface BaseEmailWrapperOptions {
   title: string;
   previewText?: string;
   brandName?: string;
+  /** Trusted HTML built by the render functions in this file. Never put raw input here. */
   contentHtml: string;
   footerText?: string;
 }
 
 /**
  * Base email layout wrapper ensuring consistent typography, branding, and dark styling.
+ * `title`, `previewText`, `brandName` and `footerText` are plain text and are escaped here.
  */
 export function wrapEmailTemplate({
   title,
@@ -27,8 +79,8 @@ export function wrapEmailTemplate({
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
-  <title>${title}</title>
-  ${previewText ? `<div style="display: none; max-height: 0px; overflow: hidden;">${previewText}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</div>` : ""}
+  <title>${escapeHtml(title)}</title>
+  ${previewText ? `<div style="display: none; max-height: 0px; overflow: hidden;">${escapeHtml(previewText)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</div>` : ""}
   <style>
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
@@ -58,7 +110,7 @@ export function wrapEmailTemplate({
               <table border="0" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
                   <td align="left" style="font-size: 19px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">
-                    <span style="display: inline-block; width: 10px; height: 10px; background-color: #f5551d; border-radius: 2px; margin-right: 8px;"></span>${brandName}
+                    <span style="display: inline-block; width: 10px; height: 10px; background-color: #f5551d; border-radius: 2px; margin-right: 8px;"></span>${escapeHtml(brandName)}
                   </td>
                   <td align="right">
                     <span style="font-size: 11px; font-family: monospace; background-color: #27272a; color: #a1a1aa; padding: 4px 10px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Studio</span>
@@ -78,7 +130,7 @@ export function wrapEmailTemplate({
           <!-- Footer -->
           <tr>
             <td style="padding: 20px 32px; background-color: #0d0d0f; border-top: 1px solid #1f1f23; text-align: center;">
-              <p style="margin: 0 0 6px 0; font-size: 12px; color: #71717a;">${footerText}</p>
+              <p style="margin: 0 0 6px 0; font-size: 12px; color: #71717a;">${escapeHtml(footerText)}</p>
               <p style="margin: 0; font-size: 11px; color: #52525b;">If you received this by mistake, you can safely ignore this email.</p>
             </td>
           </tr>
@@ -111,7 +163,8 @@ export function renderWaitlistWelcomeEmail({
   referralLink,
   totalWaiting,
 }: WaitlistWelcomeEmailProps): { subject: string; html: string } {
-  const subject = `🎬 You're on the waitlist! (Position #${position})`;
+  const subject = `🎬 You're on the waitlist! (Position #${oneLine(position, SHORT_MAX)})`;
+  const referralHref = escapeHref(referralLink);
   const contentHtml = `
     <h1 style="margin: 0 0 12px 0; font-size: 24px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">
       You're in line! 🎉
@@ -123,8 +176,8 @@ export function renderWaitlistWelcomeEmail({
     <!-- Position Badge -->
     <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 10px; padding: 20px; text-align: center; margin-bottom: 28px;">
       <div style="font-size: 12px; text-transform: uppercase; color: #71717a; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 4px;">Your Current Position</div>
-      <div style="font-size: 36px; font-weight: 800; color: #f5551d; font-family: monospace;">#${position}</div>
-      ${totalWaiting ? `<div style="font-size: 12px; color: #71717a; margin-top: 4px;">out of ${totalWaiting.toLocaleString()} creative studios</div>` : ""}
+      <div style="font-size: 36px; font-weight: 800; color: #f5551d; font-family: monospace;">#${escapeHtml(position)}</div>
+      ${totalWaiting ? `<div style="font-size: 12px; color: #71717a; margin-top: 4px;">out of ${escapeHtml(totalWaiting.toLocaleString())} creative studios</div>` : ""}
     </div>
 
     <!-- Referral Bump Box -->
@@ -137,16 +190,16 @@ export function renderWaitlistWelcomeEmail({
       </p>
       
       <div style="background-color: #0c0a09; border: 1px dashed #78350f; border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; word-break: break-all;">
-        <span style="font-family: monospace; font-size: 14px; color: #fcd34d; font-weight: 600;">${referralLink}</span>
+        <span style="font-family: monospace; font-size: 14px; color: #fcd34d; font-weight: 600;">${referralHref}</span>
       </div>
 
       <div style="font-size: 12px; color: #a8a29e;">
-        Referral Code: <strong style="color: #ffffff; font-family: monospace;">${referralCode}</strong>
+        Referral Code: <strong style="color: #ffffff; font-family: monospace;">${escapeHtml(referralCode)}</strong>
       </div>
     </div>
 
     <div style="text-align: center;">
-      <a href="${referralLink}" class="btn" style="background-color: #f5551d; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 13px 28px; border-radius: 8px; display: inline-block;">
+      <a href="${referralHref}" class="btn" style="background-color: #f5551d; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 13px 28px; border-radius: 8px; display: inline-block;">
         Check Your Live Status &rarr;
       </a>
     </div>
@@ -156,7 +209,7 @@ export function renderWaitlistWelcomeEmail({
     subject,
     html: wrapEmailTemplate({
       title: subject,
-      previewText: `Your current waitlist position is #${position}. Share your link to jump ahead.`,
+      previewText: `Your current waitlist position is #${oneLine(position, SHORT_MAX)}. Share your link to jump ahead.`,
       contentHtml,
     }),
   };
@@ -175,6 +228,7 @@ export function renderWaitlistInviteEmail({
   expiresInDays = 7,
 }: WaitlistInviteEmailProps): { subject: string; html: string } {
   const subject = `🚀 You're invited! Claim early access to CineSpace`;
+  const inviteHref = escapeHref(inviteLink);
   const contentHtml = `
     <div style="display: inline-block; background-color: #064e3b; color: #34d399; font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 4px 10px; border-radius: 20px; margin-bottom: 16px;">
       Access Granted
@@ -197,16 +251,16 @@ export function renderWaitlistInviteEmail({
     </div>
 
     <div style="text-align: center; margin-bottom: 28px;">
-      <a href="${inviteLink}" class="btn" style="background-color: #f5551d; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 36px; border-radius: 8px; display: inline-block; box-shadow: 0 4px 14px rgba(245, 85, 29, 0.4);">
+      <a href="${inviteHref}" class="btn" style="background-color: #f5551d; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 36px; border-radius: 8px; display: inline-block; box-shadow: 0 4px 14px rgba(245, 85, 29, 0.4);">
         Claim Early Access &rarr;
       </a>
     </div>
 
     <p style="font-size: 13px; color: #71717a; text-align: center; margin: 0 0 12px 0;">
-      This invite link is valid for the next ${expiresInDays} days.
+      This invite link is valid for the next ${escapeHtml(expiresInDays)} days.
     </p>
     <div style="background-color: #121214; border: 1px solid #27272a; border-radius: 6px; padding: 10px; font-size: 12px; color: #71717a; word-break: break-all; text-align: center;">
-      ${inviteLink}
+      ${inviteHref}
     </div>
   `;
 
@@ -233,16 +287,17 @@ export function renderResetPasswordEmail({
   userEmail,
 }: ResetPasswordEmailProps): { subject: string; html: string } {
   const subject = `Reset your CineSpace account password`;
+  const resetHref = escapeHref(resetLink);
   const contentHtml = `
     <h1 style="margin: 0 0 12px 0; font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">
       Reset your password 🔒
     </h1>
     <p style="margin: 0 0 20px 0; font-size: 15px; color: #a1a1aa; line-height: 1.6;">
-      We received a request to reset the password for ${userEmail ? `<strong style="color: #ffffff;">${userEmail}</strong>` : "your account"}. Click the button below to choose a new password:
+      We received a request to reset the password for ${userEmail ? `<strong style="color: #ffffff;">${escapeHtml(userEmail)}</strong>` : "your account"}. Click the button below to choose a new password:
     </p>
 
     <div style="text-align: center; margin: 32px 0;">
-      <a href="${resetLink}" class="btn" style="background-color: #f5551d; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 34px; border-radius: 8px; display: inline-block;">
+      <a href="${resetHref}" class="btn" style="background-color: #f5551d; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 34px; border-radius: 8px; display: inline-block;">
         Reset Password &rarr;
       </a>
     </div>
@@ -257,7 +312,7 @@ export function renderResetPasswordEmail({
       Having trouble with the button? Copy and paste this URL into your browser:
     </p>
     <div style="background-color: #0c0a09; border: 1px solid #27272a; border-radius: 6px; padding: 10px; font-size: 12px; color: #a1a1aa; word-break: break-all;">
-      ${resetLink}
+      ${resetHref}
     </div>
   `;
 
@@ -287,14 +342,16 @@ export function renderMemberInvitationEmail({
   role,
   inviteLink,
 }: MemberInvitationEmailProps): { subject: string; html: string } {
-  const roleFormatted = role.charAt(0).toUpperCase() + role.slice(1);
-  const subject = `Join ${workspaceName} on CineSpace`;
+  const roleFormatted = escapeHtml(role.charAt(0).toUpperCase() + role.slice(1));
+  const inviter = escapeHtml(inviterName);
+  const workspace = escapeHtml(workspaceName);
+  const subject = `Join ${oneLine(workspaceName, NAME_MAX)} on CineSpace`;
   const contentHtml = `
     <h1 style="margin: 0 0 12px 0; font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">
       You've been invited to collaborate
     </h1>
     <p style="margin: 0 0 24px 0; font-size: 15px; color: #a1a1aa; line-height: 1.6;">
-      <strong style="color: #ffffff;">${inviterName}</strong> has invited you to join the creative team at <strong style="color: #ffffff;">${workspaceName}</strong> as a <strong style="color: #f5551d;">${roleFormatted}</strong>.
+      <strong style="color: #ffffff;">${inviter}</strong> has invited you to join the creative team at <strong style="color: #ffffff;">${workspace}</strong> as a <strong style="color: #f5551d;">${roleFormatted}</strong>.
     </p>
 
     <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 20px; margin-bottom: 28px;">
@@ -303,7 +360,7 @@ export function renderMemberInvitationEmail({
         <span style="font-size: 12px; text-transform: uppercase; color: #a1a1aa; font-weight: 600;">Role Assigned</span>
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span style="font-size: 16px; font-weight: 600; color: #ffffff;">${workspaceName}</span>
+        <span style="font-size: 16px; font-weight: 600; color: #ffffff;">${workspace}</span>
         <span style="font-size: 13px; font-weight: 700; background-color: #27272a; color: #f5551d; padding: 3px 10px; border-radius: 4px;">${roleFormatted}</span>
       </div>
       <div style="font-size: 13px; color: #a1a1aa; margin-top: 10px; border-top: 1px solid #27272a; padding-top: 10px;">
@@ -312,7 +369,7 @@ export function renderMemberInvitationEmail({
     </div>
 
     <div style="text-align: center; margin: 32px 0 24px 0;">
-      <a href="${inviteLink}" class="btn" style="background-color: #f5551d; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 34px; border-radius: 8px; display: inline-block;">
+      <a href="${escapeHref(inviteLink)}" class="btn" style="background-color: #f5551d; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 34px; border-radius: 8px; display: inline-block;">
         Accept Invitation &rarr;
       </a>
     </div>
@@ -326,7 +383,7 @@ export function renderMemberInvitationEmail({
     subject,
     html: wrapEmailTemplate({
       title: subject,
-      previewText: `${inviterName} invited you to collaborate in ${workspaceName}.`,
+      previewText: `${oneLine(inviterName, NAME_MAX)} invited you to collaborate in ${oneLine(workspaceName, NAME_MAX)}.`,
       brandName: workspaceName,
       contentHtml,
     }),
@@ -353,35 +410,37 @@ export function renderDeliveryReviewEmail({
   customMessage,
   isPasscodeProtected,
 }: DeliveryReviewEmailProps): { subject: string; html: string } {
-  const subject = `🎬 Review: ${projectTitle} (${brandName})`;
+  const subject = `🎬 Review: ${oneLine(projectTitle, TITLE_MAX)} (${oneLine(brandName, NAME_MAX)})`;
+  const brand = escapeHtml(brandName);
 
+  // Escape first, then turn line breaks into <br/>.
   const customMsgHtml = customMessage
-    ? `<div style="background-color: #18181b; border-left: 3px solid #f5551d; padding: 14px 18px; border-radius: 6px; margin: 20px 0; color: #e4e4e7; font-size: 14px; line-height: 1.5;">${customMessage.replace(/\n/g, "<br/>")}</div>`
+    ? `<div style="background-color: #18181b; border-left: 3px solid #f5551d; padding: 14px 18px; border-radius: 6px; margin: 20px 0; color: #e4e4e7; font-size: 14px; line-height: 1.5;">${escapeHtml(customMessage).replace(/\r\n?|\n/g, "<br/>")}</div>`
     : "";
 
   const passcodeNotice = isPasscodeProtected
     ? `<div style="margin: 16px 0; padding: 10px 14px; background-color: #27272a; border-radius: 6px; font-size: 13px; color: #a1a1aa;">
-         🔒 <strong>Passcode Protected:</strong> This delivery requires the passcode provided by ${brandName}.
+         🔒 <strong>Passcode Protected:</strong> This delivery requires the passcode provided by ${brand}.
        </div>`
     : "";
 
   const contentHtml = `
     <h1 style="margin: 0 0 12px 0; font-size: 22px; font-weight: 700; color: #ffffff;">Your video cut is ready for review</h1>
     <p style="margin: 0 0 20px 0; font-size: 15px; color: #a1a1aa; line-height: 1.5;">
-      <strong style="color: #f4f4f5;">${brandName}</strong> has prepared a new version for you to review and approve.
+      <strong style="color: #f4f4f5;">${brand}</strong> has prepared a new version for you to review and approve.
     </p>
 
     <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 18px 20px; margin-bottom: 24px;">
       <div style="font-size: 12px; text-transform: uppercase; color: #71717a; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 4px;">Project</div>
-      <div style="font-size: 17px; font-weight: 600; color: #ffffff;">${projectTitle}</div>
-      ${projectDescription ? `<div style="font-size: 13px; color: #a1a1aa; margin-top: 6px;">${projectDescription}</div>` : ""}
+      <div style="font-size: 17px; font-weight: 600; color: #ffffff;">${escapeHtml(projectTitle)}</div>
+      ${projectDescription ? `<div style="font-size: 13px; color: #a1a1aa; margin-top: 6px;">${escapeHtml(projectDescription)}</div>` : ""}
     </div>
 
     ${customMsgHtml}
     ${passcodeNotice}
 
     <div style="text-align: center; margin: 32px 0 24px 0;">
-      <a href="${reviewUrl}" class="btn" style="background-color: #f5551d; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; display: inline-block;">
+      <a href="${escapeHref(reviewUrl)}" class="btn" style="background-color: #f5551d; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; display: inline-block;">
         Watch &amp; Leave Feedback &rarr;
       </a>
     </div>
@@ -395,7 +454,7 @@ export function renderDeliveryReviewEmail({
     subject,
     html: wrapEmailTemplate({
       title: subject,
-      previewText: `${brandName} shared "${projectTitle}" for your review.`,
+      previewText: `${oneLine(brandName, NAME_MAX)} shared "${oneLine(projectTitle, TITLE_MAX)}" for your review.`,
       brandName,
       contentHtml,
     }),
@@ -418,13 +477,15 @@ export function renderCutApprovedEmail({
   approvedByName,
   dashboardUrl,
 }: CutApprovedEmailProps): { subject: string; html: string } {
-  const subject = `✅ Cut Approved: "${projectTitle}" by ${approvedByName}`;
+  const subject = `✅ Cut Approved: "${oneLine(projectTitle, TITLE_MAX)}" by ${oneLine(approvedByName, NAME_MAX)}`;
+  const title = escapeHtml(projectTitle);
+  const approver = escapeHtml(approvedByName);
   const contentHtml = `
     <div style="display: inline-block; background-color: #064e3b; color: #34d399; font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 4px 10px; border-radius: 20px; margin-bottom: 16px;">
       ✨ Client Signoff
     </div>
     <h1 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 700; color: #ffffff;">
-      ${approvedByName} approved "${projectTitle}"!
+      ${approver} approved "${title}"!
     </h1>
     <p style="margin: 0 0 24px 0; font-size: 15px; color: #a1a1aa; line-height: 1.5;">
       Congratulations! The client has officially reviewed and approved this cut.
@@ -432,12 +493,12 @@ export function renderCutApprovedEmail({
 
     <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 18px 20px; margin-bottom: 24px;">
       <div style="font-size: 12px; color: #71717a; text-transform: uppercase; font-weight: 600; margin-bottom: 4px;">Delivery Title</div>
-      <div style="font-size: 16px; font-weight: 600; color: #ffffff;">${projectTitle}</div>
-      <div style="font-size: 13px; color: #34d399; margin-top: 6px;">Approved by: <strong>${approvedByName}</strong></div>
+      <div style="font-size: 16px; font-weight: 600; color: #ffffff;">${title}</div>
+      <div style="font-size: 13px; color: #34d399; margin-top: 6px;">Approved by: <strong>${approver}</strong></div>
     </div>
 
     <div style="text-align: center; margin: 32px 0 20px 0;">
-      <a href="${dashboardUrl}" class="btn" style="background-color: #10b981; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; display: inline-block;">
+      <a href="${escapeHref(dashboardUrl)}" class="btn" style="background-color: #10b981; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; display: inline-block;">
         View Delivery in Dashboard &rarr;
       </a>
     </div>
@@ -447,7 +508,7 @@ export function renderCutApprovedEmail({
     subject,
     html: wrapEmailTemplate({
       title: subject,
-      previewText: `${approvedByName} has approved ${projectTitle}.`,
+      previewText: `${oneLine(approvedByName, NAME_MAX)} has approved ${oneLine(projectTitle, TITLE_MAX)}.`,
       brandName,
       contentHtml,
     }),
@@ -474,23 +535,23 @@ export function renderNewFeedbackEmail({
   timecode,
   reviewUrl,
 }: NewFeedbackEmailProps): { subject: string; html: string } {
-  const subject = `💬 Feedback from ${authorName} on "${projectTitle}" [${timecode}]`;
+  const subject = `💬 Feedback from ${oneLine(authorName, NAME_MAX)} on "${oneLine(projectTitle, TITLE_MAX)}" [${oneLine(timecode, SHORT_MAX)}]`;
   const contentHtml = `
     <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #ffffff;">
-      ${authorName} left a new comment
+      ${escapeHtml(authorName)} left a new comment
     </h2>
 
     <div style="background-color: #18181b; border: 1px solid #27272a; border-left: 3px solid #f5551d; border-radius: 8px; padding: 18px 20px; margin-bottom: 24px;">
       <div style="font-size: 13px; color: #a1a1aa; margin-bottom: 8px;">
-        Comment at <strong style="color: #f5551d; font-family: monospace;">[${timecode}]</strong>:
+        Comment at <strong style="color: #f5551d; font-family: monospace;">[${escapeHtml(timecode)}]</strong>:
       </div>
       <div style="font-size: 15px; color: #ffffff; font-style: italic; line-height: 1.5;">
-        &ldquo;${commentText}&rdquo;
+        &ldquo;${escapeHtml(commentText)}&rdquo;
       </div>
     </div>
 
     <div style="text-align: center; margin: 32px 0 20px 0;">
-      <a href="${reviewUrl}" class="btn" style="background-color: #f5551d; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; display: inline-block;">
+      <a href="${escapeHref(reviewUrl)}" class="btn" style="background-color: #f5551d; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; display: inline-block;">
         Open Cut &amp; Reply &rarr;
       </a>
     </div>
@@ -500,7 +561,7 @@ export function renderNewFeedbackEmail({
     subject,
     html: wrapEmailTemplate({
       title: subject,
-      previewText: `${authorName} commented at ${timecode}: "${commentText.slice(0, 50)}..."`,
+      previewText: `${oneLine(authorName, NAME_MAX)} commented at ${oneLine(timecode, SHORT_MAX)}: "${oneLine(commentText, 50)}..."`,
       brandName,
       contentHtml,
     }),
@@ -518,6 +579,7 @@ export function renderConfirmSignupEmail({
   confirmLink,
 }: ConfirmSignupEmailProps): { subject: string; html: string } {
   const subject = `Confirm your CineSpace account email`;
+  const confirmHref = escapeHref(confirmLink);
   const contentHtml = `
     <h1 style="margin: 0 0 12px 0; font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">
       Welcome to CineSpace! 🎬
@@ -527,7 +589,7 @@ export function renderConfirmSignupEmail({
     </p>
 
     <div style="text-align: center; margin: 32px 0;">
-      <a href="${confirmLink}" class="btn" style="background-color: #f5551d; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 34px; border-radius: 8px; display: inline-block;">
+      <a href="${confirmHref}" class="btn" style="background-color: #f5551d; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 34px; border-radius: 8px; display: inline-block;">
         Verify Email Address &rarr;
       </a>
     </div>
@@ -536,7 +598,7 @@ export function renderConfirmSignupEmail({
       Or copy and paste this link in your browser:
     </p>
     <div style="background-color: #0c0a09; border: 1px solid #27272a; border-radius: 6px; padding: 10px; font-size: 12px; color: #a1a1aa; word-break: break-all;">
-      ${confirmLink}
+      ${confirmHref}
     </div>
   `;
 
@@ -566,14 +628,15 @@ export function renderSiloRestoreCompletedEmail({
   brandName = "CineSpace",
   thawedDays = 7,
 }: SiloRestoreCompletedEmailProps): { subject: string; html: string } {
-  const subject = `🧊 S3 Glacier Thaw Complete: "${projectTitle}" is ready`;
+  const subject = `🧊 S3 Glacier Thaw Complete: "${oneLine(projectTitle, TITLE_MAX)}" is ready`;
+  const manageHref = escapeHref(manageUrl);
   const contentHtml = `
     <div style="display: inline-block; background-color: #0c4a6e; color: #38bdf8; font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 4px 10px; border-radius: 20px; margin-bottom: 16px;">
       The Silo — Restored from Cold Archive
     </div>
 
     <h1 style="margin: 0 0 12px 0; font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">
-      "${projectTitle}" is thawed and ready!
+      "${escapeHtml(projectTitle)}" is thawed and ready!
     </h1>
     <p style="margin: 0 0 20px 0; font-size: 15px; color: #a1a1aa; line-height: 1.6;">
       Your project has been successfully retrieved from <strong style="color: #ffffff;">AWS S3 Glacier Deep Archive</strong>.
@@ -585,12 +648,12 @@ export function renderSiloRestoreCompletedEmail({
         ⏱️ Active Window Notice
       </div>
       <div style="font-size: 13px; color: #a1a1aa; line-height: 1.5;">
-        This thawed project will remain in active storage for <strong style="color: #ffffff;">${thawedDays} days</strong>. You can re-archive it to The Silo at any time to preserve active space.
+        This thawed project will remain in active storage for <strong style="color: #ffffff;">${escapeHtml(thawedDays)} days</strong>. You can re-archive it to The Silo at any time to preserve active space.
       </div>
     </div>
 
     <div style="text-align: center; margin: 32px 0;">
-      <a href="${manageUrl}" class="btn" style="background-color: #0284c7; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 34px; border-radius: 8px; display: inline-block;">
+      <a href="${manageHref}" class="btn" style="background-color: #0284c7; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 34px; border-radius: 8px; display: inline-block;">
         Open Project in Workspace &rarr;
       </a>
     </div>
@@ -599,7 +662,7 @@ export function renderSiloRestoreCompletedEmail({
       Direct workspace link:
     </p>
     <div style="background-color: #0c0a09; border: 1px solid #27272a; border-radius: 6px; padding: 10px; font-size: 12px; color: #a1a1aa; word-break: break-all;">
-      ${manageUrl}
+      ${manageHref}
     </div>
   `;
 
@@ -607,7 +670,7 @@ export function renderSiloRestoreCompletedEmail({
     subject,
     html: wrapEmailTemplate({
       title: subject,
-      previewText: `AWS S3 Glacier Thaw Complete: "${projectTitle}" has been retrieved from cold storage and is ready.`,
+      previewText: `AWS S3 Glacier Thaw Complete: "${oneLine(projectTitle, TITLE_MAX)}" has been retrieved from cold storage and is ready.`,
       brandName,
       contentHtml,
     }),
@@ -633,8 +696,10 @@ export function renderPortfolioLeadEmail({
   portfolioUrl,
   brandName = "CineSpace",
 }: RenderPortfolioLeadEmailOptions): { subject: string; html: string } {
-  const subject = `🎬 New Project Inquiry from ${clientName} on CineSpace`;
-  const viewUrl = portfolioUrl || `https://cinespace.film/p/${portfolioHandle}`;
+  const subject = `🎬 New Project Inquiry from ${oneLine(clientName, NAME_MAX)} on CineSpace`;
+  const viewHref = escapeHref(
+    portfolioUrl || `https://cinespace.film/p/${encodeURIComponent(portfolioHandle)}`
+  );
 
   const contentHtml = `
     <div style="margin-bottom: 24px;">
@@ -648,7 +713,7 @@ export function renderPortfolioLeadEmail({
     </h2>
 
     <p style="font-size: 14px; color: #a1a1aa; line-height: 1.6; margin-bottom: 24px;">
-      Hi ${filmmakerName}, you just received a new direct booking inquiry from your public portfolio page (<a href="${viewUrl}" style="color: #f5551d;">@${portfolioHandle}</a>).
+      Hi ${escapeHtml(filmmakerName)}, you just received a new direct booking inquiry from your public portfolio page (<a href="${viewHref}" style="color: #f5551d;">@${escapeHtml(portfolioHandle)}</a>).
     </p>
 
     <!-- Client Inquiry Details Card -->
@@ -657,32 +722,32 @@ export function renderPortfolioLeadEmail({
         <tr>
           <td style="padding-bottom: 12px;">
             <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #71717a; letter-spacing: 0.5px;">Client / Company</div>
-            <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin-top: 3px;">${clientName}</div>
+            <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin-top: 3px;">${escapeHtml(clientName)}</div>
           </td>
         </tr>
         <tr>
           <td style="padding-bottom: 12px;">
             <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #71717a; letter-spacing: 0.5px;">Contact Info</div>
-            <div style="font-size: 14px; font-family: monospace; color: #f5551d; margin-top: 3px; word-break: break-all;">${clientContact}</div>
+            <div style="font-size: 14px; font-family: monospace; color: #f5551d; margin-top: 3px; word-break: break-all;">${escapeHtml(clientContact)}</div>
           </td>
         </tr>
         <tr>
           <td>
             <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #71717a; letter-spacing: 0.5px;">Project Requirements</div>
-            <div style="font-size: 14px; color: #e4e4e7; line-height: 1.6; margin-top: 6px; white-space: pre-wrap; background-color: #121214; padding: 12px 14px; border-radius: 8px; border: 1px solid #27272a;">${projectDetails}</div>
+            <div style="font-size: 14px; color: #e4e4e7; line-height: 1.6; margin-top: 6px; white-space: pre-wrap; background-color: #121214; padding: 12px 14px; border-radius: 8px; border: 1px solid #27272a;">${escapeHtml(projectDetails)}</div>
           </td>
         </tr>
       </table>
     </div>
 
     <div style="text-align: center; margin: 32px 0;">
-      <a href="mailto:${clientContact.includes('@') ? clientContact : ''}" class="btn" style="background-color: #f5551d; color: #ffffff; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-decoration: none; padding: 14px 32px; border-radius: 9999px; display: inline-block;">
+      <a href="${mailtoHref(clientContact)}" class="btn" style="background-color: #f5551d; color: #ffffff; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-decoration: none; padding: 14px 32px; border-radius: 9999px; display: inline-block;">
         Reply to Client Directly &rarr;
       </a>
     </div>
 
     <p style="font-size: 12px; color: #71717a; text-align: center; margin: 0;">
-      Inquiry received via your CineSpace portfolio at ${viewUrl}
+      Inquiry received via your CineSpace portfolio at ${viewHref}
     </p>
   `;
 
@@ -690,7 +755,7 @@ export function renderPortfolioLeadEmail({
     subject,
     html: wrapEmailTemplate({
       title: subject,
-      previewText: `New client inquiry from ${clientName}: "${projectDetails.slice(0, 80)}..."`,
+      previewText: `New client inquiry from ${oneLine(clientName, NAME_MAX)}: "${oneLine(projectDetails, 80)}..."`,
       brandName,
       contentHtml,
     }),
@@ -712,13 +777,17 @@ export function renderContactFormEmail({
   message,
   brandName = "CineSpace",
 }: RenderContactFormEmailOptions): { subject: string; html: string } {
-  const categoryLabel = reason ? `[${reason.toUpperCase()}] ` : "";
-  const subject = `📨 ${categoryLabel}Contact Message from ${fullName || email}`;
+  const reasonLabel = oneLine(reason, 60).toUpperCase();
+  const categoryLabel = reasonLabel ? `[${reasonLabel}] ` : "";
+  const sender = oneLine(fullName, NAME_MAX) || oneLine(email, TITLE_MAX);
+  const subject = `📨 ${categoryLabel}Contact Message from ${sender}`;
+  const replyHref = mailtoHref(email);
+  const emailText = escapeHtml(email);
 
   const contentHtml = `
     <div style="margin-bottom: 24px;">
       <span style="display: inline-block; padding: 4px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #38bdf8; background-color: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 9999px;">
-        ${reason ? reason.toUpperCase() : "CONTACT MESSAGE"}
+        ${escapeHtml(reason ? reason.toUpperCase() : "CONTACT MESSAGE")}
       </span>
     </div>
 
@@ -731,29 +800,29 @@ export function renderContactFormEmail({
         <tr>
           <td style="padding-bottom: 12px;">
             <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #71717a; letter-spacing: 0.5px;">Sender</div>
-            <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin-top: 3px;">${fullName || "Anonymous"}</div>
+            <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin-top: 3px;">${escapeHtml(fullName || "Anonymous")}</div>
           </td>
         </tr>
         <tr>
           <td style="padding-bottom: 12px;">
             <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #71717a; letter-spacing: 0.5px;">Email</div>
             <div style="font-size: 14px; font-family: monospace; color: #38bdf8; margin-top: 3px;">
-              <a href="mailto:${email}" style="color: #38bdf8;">${email}</a>
+              <a href="${replyHref}" style="color: #38bdf8;">${emailText}</a>
             </div>
           </td>
         </tr>
         <tr>
           <td>
             <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #71717a; letter-spacing: 0.5px;">Message</div>
-            <div style="font-size: 14px; color: #e4e4e7; line-height: 1.6; margin-top: 6px; white-space: pre-wrap; background-color: #121214; padding: 12px 14px; border-radius: 8px; border: 1px solid #27272a;">${message}</div>
+            <div style="font-size: 14px; color: #e4e4e7; line-height: 1.6; margin-top: 6px; white-space: pre-wrap; background-color: #121214; padding: 12px 14px; border-radius: 8px; border: 1px solid #27272a;">${escapeHtml(message)}</div>
           </td>
         </tr>
       </table>
     </div>
 
     <div style="text-align: center; margin: 32px 0;">
-      <a href="mailto:${email}" class="btn" style="background-color: #38bdf8; color: #09090b; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-decoration: none; padding: 14px 32px; border-radius: 9999px; display: inline-block;">
-        Reply to ${email} &rarr;
+      <a href="${replyHref}" class="btn" style="background-color: #38bdf8; color: #09090b; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-decoration: none; padding: 14px 32px; border-radius: 9999px; display: inline-block;">
+        Reply to ${emailText} &rarr;
       </a>
     </div>
   `;
@@ -762,7 +831,66 @@ export function renderContactFormEmail({
     subject,
     html: wrapEmailTemplate({
       title: subject,
-      previewText: `New contact message from ${fullName || email}: "${message.slice(0, 80)}..."`,
+      previewText: `New contact message from ${sender}: "${oneLine(message, 80)}..."`,
+      brandName,
+      contentHtml,
+    }),
+  };
+}
+
+// ------------------------------------------------------------------------------------------------
+// 10. CLIENT DOWNLOAD NOTIFICATION EMAIL (SENT TO STUDIO)
+// ------------------------------------------------------------------------------------------------
+export interface ClientDownloadEmailProps {
+  brandName: string;
+  accentColor?: string | null;
+  deliveryTitle: string;
+  /** e.g. `"Final Master.mov"` or `3 master deliverables`. Plain text. */
+  itemDescription: string;
+  dashboardUrl?: string | null;
+}
+
+export function renderClientDownloadEmail({
+  brandName,
+  accentColor,
+  deliveryTitle,
+  itemDescription,
+  dashboardUrl,
+}: ClientDownloadEmailProps): { subject: string; html: string } {
+  const accent = safeHexColor(accentColor);
+  const subject = `📥 Client downloaded ${oneLine(itemDescription, TITLE_MAX)} — ${oneLine(deliveryTitle, TITLE_MAX)}`;
+
+  const dashboardButton = dashboardUrl
+    ? `<div style="text-align: center; margin: 32px 0 20px 0;">
+      <a href="${escapeHref(dashboardUrl)}" class="btn" style="background-color: ${escapeHtml(accent)}; color: ${textColorOn(accent)}; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; display: inline-block;">
+        View Delivery in Dashboard &rarr;
+      </a>
+    </div>`
+    : "";
+
+  const contentHtml = `
+    <div style="display: inline-block; background-color: #18181b; border: 1px solid #27272a; color: ${escapeHtml(accent)}; font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 4px 10px; border-radius: 20px; margin-bottom: 16px;">
+      📥 Download Alert
+    </div>
+    <h1 style="margin: 0 0 10px 0; font-size: 22px; font-weight: 700; color: #ffffff;">
+      Deliverables downloaded
+    </h1>
+    <p style="margin: 0 0 24px 0; font-size: 15px; color: #a1a1aa; line-height: 1.5;">
+      Your client just downloaded <strong style="color: #ffffff;">${escapeHtml(itemDescription)}</strong> from the delivery room <strong style="color: #ffffff;">${escapeHtml(deliveryTitle)}</strong>.
+    </p>
+
+    ${dashboardButton}
+
+    <p style="font-size: 12px; color: #71717a; text-align: center; margin: 0;">
+      Sent automatically because &ldquo;Notify on Download&rdquo; is enabled for this delivery.
+    </p>
+  `;
+
+  return {
+    subject,
+    html: wrapEmailTemplate({
+      title: subject,
+      previewText: `Your client just downloaded ${oneLine(itemDescription, TITLE_MAX)} from ${oneLine(deliveryTitle, TITLE_MAX)}.`,
       brandName,
       contentHtml,
     }),

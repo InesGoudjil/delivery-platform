@@ -77,17 +77,29 @@ export async function emptyTrashAction(
 
     const trashed = await services.asset.listTrashAssets(workspaceId);
     let count = 0;
+    let failed = 0;
 
     for (const a of trashed) {
-      await permanentDeleteAssetAction(a.id, {
+      // Only this workspace's files (listTrashAssets returns only files in Trash).
+      if (a.workspaceId !== workspaceId) continue;
+      // Each delete re-checks the role on the file's workspace and only removes its own stored files.
+      const result = await permanentDeleteAssetAction(a.id, {
         workspaceSlug,
         deliveryId: a.deliveryId || undefined,
       });
-      count++;
+      if (result.success) count++;
+      else failed++;
     }
 
     revalidateAssetPaths({ workspaceSlug });
 
+    if (failed > 0) {
+      return {
+        success: false,
+        count,
+        error: `${failed} file${failed === 1 ? "" : "s"} couldn't be deleted.`,
+      };
+    }
     return { success: true, count };
   } catch (error: any) {
     log.error({ err: error, workspaceId }, "emptyTrashAction error");

@@ -303,8 +303,19 @@ describe("core/services/SubscriptionService", () => {
       expect(entitlements.limits.portfolioVideosMax).toBe(-1);
       expect(entitlements.can.watermark).toBe(true);
       expect(entitlements.can.passwordProtect).toBe(true);
-      expect(entitlements.can.useSiloArchive).toBe(true);
       expect(entitlements.isActive).toBe(true);
+
+      // The Silo also needs its kill switch (SILO_ENABLED) on, whatever the plan says.
+      const { env } = await import("@/lib/env");
+      const siloWasEnabled = env.isSiloEnabled;
+      try {
+        env.isSiloEnabled = true;
+        expect((await service.getEntitlements("ws_pro")).can.useSiloArchive).toBe(true);
+        env.isSiloEnabled = false;
+        expect((await service.getEntitlements("ws_pro")).can.useSiloArchive).toBe(false);
+      } finally {
+        env.isSiloEnabled = siloWasEnabled;
+      }
     });
   });
 
@@ -323,16 +334,27 @@ describe("core/services/SubscriptionService", () => {
 
   describe("Feature Entitlements", () => {
     it("correctly evaluates boolean feature flags for Starter vs Pro", async () => {
-      // Starter
-      expect(await service.isPasswordProtectionAllowed("ws_1")).toBe(false);
-      expect(await service.isWatermarkAllowed("ws_1")).toBe(false);
-      expect(await service.isSiloArchiveAllowed("ws_1")).toBe(false);
+      const { env } = await import("@/lib/env");
+      const siloWasEnabled = env.isSiloEnabled;
+      env.isSiloEnabled = true;
+      try {
+        // Starter
+        expect(await service.isPasswordProtectionAllowed("ws_1")).toBe(false);
+        expect(await service.isWatermarkAllowed("ws_1")).toBe(false);
+        expect(await service.isSiloArchiveAllowed("ws_1")).toBe(false);
 
-      // Pro
-      vi.mocked(featuresRepo.findByWorkspaceId!).mockResolvedValue({ workspaceId: "ws_1", features: proPlan.features } as any);
-      expect(await service.isPasswordProtectionAllowed("ws_1")).toBe(true);
-      expect(await service.isWatermarkAllowed("ws_1")).toBe(true);
-      expect(await service.isSiloArchiveAllowed("ws_1")).toBe(true);
+        // Pro
+        vi.mocked(featuresRepo.findByWorkspaceId!).mockResolvedValue({ workspaceId: "ws_1", features: proPlan.features } as any);
+        expect(await service.isPasswordProtectionAllowed("ws_1")).toBe(true);
+        expect(await service.isWatermarkAllowed("ws_1")).toBe(true);
+        expect(await service.isSiloArchiveAllowed("ws_1")).toBe(true);
+
+        // The Silo kill switch overrides the plan.
+        env.isSiloEnabled = false;
+        expect(await service.isSiloArchiveAllowed("ws_1")).toBe(false);
+      } finally {
+        env.isSiloEnabled = siloWasEnabled;
+      }
     });
   });
 
