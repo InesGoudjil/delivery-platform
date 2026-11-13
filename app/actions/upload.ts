@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { runAfterResponse } from "@/lib/after-response";
+import { resolveRequestOrigin } from "@/app/actions/deliveries/helpers";
 import { getServerAdminServices } from "@/core/server";
 import { requireUser, requireWorkspaceMember } from "@/core/security/guards";
 import {
@@ -72,7 +74,7 @@ export async function confirmUploadCompletedAction(input: ConfirmUploadInput) {
       return { success: false, error: validated.error };
     }
 
-    const { services } = await requireUser();
+    const { services, user } = await requireUser();
 
     // Find the version and its file with the caller's own access, then check the role.
     const version = await services.asset.getVersionById(validated.data.assetVersionId);
@@ -92,6 +94,20 @@ export async function confirmUploadCompletedAction(input: ConfirmUploadInput) {
     const updatedVersion = await admin.upload.confirmUploadCompleted({
       assetVersionId: version.id,
     });
+
+    // A new version of a file in a delivery: a client who already has the link is told (library 31).
+    if (version.transcodingStatus === "pending" && updatedVersion.versionNumber > 1 && asset.deliveryId) {
+      const deliveryId = asset.deliveryId;
+      const replyTo = user.email ?? null;
+      runAfterResponse("email:client-new-version", async () =>
+        admin.notification.notifyClientOfNewVersion({
+          deliveryId,
+          versionNumber: updatedVersion.versionNumber,
+          origin: await resolveRequestOrigin(),
+          replyTo,
+        })
+      );
+    }
 
     try {
       if (asset.deliveryId) {

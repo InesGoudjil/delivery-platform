@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { Delivery } from "@/core/entities/delivery";
 import { checkRateLimit, getClientIp, RATELIMIT_POLICIES } from "@/lib/upstash";
-import { resolveRequestOrigin, getApprovalNotificationEmails } from "./helpers";
+import { resolveRequestOrigin, getApprovalRecipients } from "./helpers";
 import { resolveDeliveryActor, type DeliveryActor, type DeliveryRefInput } from "./room-access";
 import { normalizeActionError } from "../safe-action";
 import { runAfterResponse } from "@/lib/after-response";
@@ -47,6 +47,22 @@ function alertStudioOnWhatsApp(actor: DeliveryActor, approvedByName: string, ori
   );
 }
 
+/** The client who approved gets a confirmation by email (library 33). Only a guest's approval is theirs to confirm. */
+function confirmApprovalToClient(actor: DeliveryActor, origin: string) {
+  if (actor.kind !== "guest") return;
+  runAfterResponse("email:client-approval", async () => {
+    const versionNumber = await actor.adminServices.delivery.getCurrentVersionNumber(
+      actor.delivery.id,
+      actor.delivery.workspaceId
+    );
+    return actor.adminServices.notification.notifyClientOfApproval({
+      deliveryId: actor.delivery.id,
+      versionNumber,
+      origin,
+    });
+  });
+}
+
 function revalidate(delivery: Delivery) {
   revalidatePath(`/deliver/${delivery.shareToken}`);
   revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");
@@ -60,13 +76,14 @@ export async function approveCutAction(ref: DeliveryRef, approvedByName?: string
     if (limited) return { error: limited };
 
     const origin = await resolveRequestOrigin();
-    const notifyEmails = await getApprovalNotificationEmails(actor.adminServices, actor.delivery.workspaceId);
+    const notifyRecipients = await getApprovalRecipients(actor.adminServices, actor.delivery.workspaceId);
     const name = cleanName(approvedByName, "Client");
     const updated = await actor.services.delivery.approveCut(actor.delivery, name, {
       origin,
-      notifyEmails,
+      notifyRecipients,
     });
     alertStudioOnWhatsApp(actor, name, origin);
+    confirmApprovalToClient(actor, origin);
 
     revalidate(updated);
     const state = approvalState(updated);
@@ -103,13 +120,14 @@ export async function approveAllAssetsAction(ref: DeliveryRef, approvedByName?: 
     if (limited) return { error: limited };
 
     const origin = await resolveRequestOrigin();
-    const notifyEmails = await getApprovalNotificationEmails(actor.adminServices, actor.delivery.workspaceId);
+    const notifyRecipients = await getApprovalRecipients(actor.adminServices, actor.delivery.workspaceId);
     const name = cleanName(approvedByName, "Client");
     await actor.services.delivery.approveAllAssets(actor.delivery, name, {
       origin,
-      notifyEmails,
+      notifyRecipients,
     });
     alertStudioOnWhatsApp(actor, name, origin);
+    confirmApprovalToClient(actor, origin);
     const updated = (await actor.services.delivery.getDeliveryById(actor.delivery.id)) ?? actor.delivery;
 
     revalidate(updated);

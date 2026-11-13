@@ -21,7 +21,7 @@ export async function sendDeliveryEmailAction(
       return { success: false, error: validated.error };
     }
 
-    const { services } = await requireDeliveryAccess(validated.data.deliveryId, "editor");
+    const { services, user } = await requireDeliveryAccess(validated.data.deliveryId, "editor");
     const origin = await resolveRequestOrigin();
 
     const res = await services.delivery.sendDeliveryEmail({
@@ -29,6 +29,8 @@ export async function sendDeliveryEmailAction(
       recipientEmail: validated.data.recipientEmail.toLowerCase(),
       customMessage: validated.data.customMessage,
       origin,
+      // The client's replies go to the person who sent the link.
+      replyTo: user.email ?? null,
     });
 
     revalidatePath("/[workspaceSlug]/deliveries/[projectId]", "page");

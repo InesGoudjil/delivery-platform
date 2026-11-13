@@ -4,7 +4,8 @@ import { IWorkspaceMemberRepository, IWorkspaceInvitationRepository } from '@/co
 import { IWorkspaceFeaturesRepository, IWorkspaceRepository } from '@/core/repositories/workspace.repository';
 import { IUserProfileRepository } from '@/core/repositories/user-profile.repository';
 import { ASSIGNABLE_WORKSPACE_ROLES, type AssignableWorkspaceRole } from '@/lib/validations/members';
-import { NotificationService } from './notification.service';
+import { NotificationService, type NotificationRecipient } from './notification.service';
+import type { IAuthEmailLookup } from '@/core/repositories/auth-user-email.repository';
 import type { SubscriptionService } from './subscription.service';
 import { createScopedLogger } from '@/lib/logger';
 
@@ -100,7 +101,8 @@ export class MemberService {
     private readonly userProfileRepo?: IUserProfileRepository,
     private readonly notificationService?: NotificationService,
     private readonly systemMemberRepo?: IWorkspaceMemberRepository,
-    private readonly subscriptionService?: SubscriptionService
+    private readonly subscriptionService?: SubscriptionService,
+    private readonly authEmails?: IAuthEmailLookup
   ) {}
 
   async listMembers(workspaceId: string): Promise<EnrichedWorkspaceMember[]> {
@@ -144,6 +146,36 @@ export class MemberService {
     );
 
     return enriched;
+  }
+
+  /**
+   * The people who get a studio alert (by default the owners and admins), each with the address to write to.
+   * Addresses come from Supabase Auth, because listMembers doesn't carry them. Nobody without an address is listed.
+   */
+  async listNotificationRecipients(
+    workspaceId: string,
+    roles: readonly string[] = ['owner', 'admin']
+  ): Promise<NotificationRecipient[]> {
+    const members = (await this.listMembers(workspaceId)).filter((m) => roles.includes(m.role));
+    if (members.length === 0 || !this.authEmails) return [];
+
+    const emails = await this.authEmails.emailsByUserId(members.map((m) => m.userId));
+    const recipients: NotificationRecipient[] = [];
+    for (const member of members) {
+      const email = emails.get(member.userId);
+      if (!email) continue;
+      recipients.push({ userId: member.userId, email, firstName: await this.firstNameOf(member.userId) });
+    }
+    return recipients;
+  }
+
+  private async firstNameOf(userId: string): Promise<string | null> {
+    try {
+      const profile = await this.userProfileRepo?.findById(userId);
+      return profile?.fullName?.trim().split(/\s+/)[0] || null;
+    } catch {
+      return null;
+    }
   }
 
   async isMember(workspaceId: string, userId: string): Promise<boolean> {

@@ -7,7 +7,8 @@ import { createScopedLogger } from "@/lib/logger";
 
 /**
  * Scheduled notification work, run every few minutes by a scheduler (docs/notifications.md):
- * announces on WhatsApp the client comments of review sessions that have gone quiet.
+ * - the studio emails for client comments whose ten-minute batch has closed (library 26);
+ * - the WhatsApp comment alerts whose review session has gone quiet.
  *
  * Called with "Authorization: Bearer <CRON_SECRET>" (what Vercel Cron sends). Refuses to run
  * while CRON_SECRET is unset or too short.
@@ -48,12 +49,25 @@ async function run(req: NextRequest) {
 
   try {
     const services = await getServerAdminServices();
-    if (!services.whatsapp.isConfigured()) {
-      return NextResponse.json({ ok: true, whatsapp: "not configured" });
+
+    // Each job runs on its own, so a failure in one doesn't hold back the other.
+    const commentEmails = await services.commentEmail.flushDue(origin).catch((err: unknown) => {
+      log.error({ err }, "Comment emails failed");
+      return null;
+    });
+
+    let whatsapp: { sent: number; failed: number } | "not configured" | null;
+    if (services.whatsapp.isConfigured()) {
+      whatsapp = await services.whatsapp.flushQuietCommentBatches(origin).catch((err: unknown) => {
+        log.error({ err }, "WhatsApp comment alerts failed");
+        return null;
+      });
+    } else {
+      whatsapp = "not configured";
     }
-    const comments = await services.whatsapp.flushQuietCommentBatches(origin);
-    if (comments.sent || comments.failed) log.info({ comments }, "Grouped comment alerts sent");
-    return NextResponse.json({ ok: true, comments });
+
+    const ok = commentEmails !== null && whatsapp !== null;
+    return NextResponse.json({ ok, commentEmails, whatsapp }, { status: ok ? 200 : 500 });
   } catch (err) {
     log.error({ err }, "Scheduled notifications failed");
     return NextResponse.json({ error: "Scheduled notifications failed." }, { status: 500 });

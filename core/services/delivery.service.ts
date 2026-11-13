@@ -9,7 +9,7 @@ import { IAssetRepository, IAssetVersionRepository } from "@/core/repositories/i
 import { IFeedbackRepository } from "@/core/repositories/feedback.repository";
 import { IProjectRepository } from "@/core/repositories/i-project-repository";
 import { SubscriptionService } from "./subscription.service";
-import { NotificationService } from "./notification.service";
+import { NotificationService, type NotificationRecipient } from "./notification.service";
 import { createScopedLogger } from "@/lib/logger";
 
 const log = createScopedLogger({ service: "DeliveryService" });
@@ -266,7 +266,7 @@ export class DeliveryService {
   async approveCut(
     target: Delivery,
     approvedByName?: string,
-    options?: { origin?: string; notifyEmails?: string[] }
+    options?: { origin?: string; notifyRecipients?: NotificationRecipient[] }
   ): Promise<Delivery> {
     const id = target.id;
     const scope = { deliveryId: target.id, workspaceId: target.workspaceId };
@@ -281,12 +281,14 @@ export class DeliveryService {
 
     const delivery = await this.deliveryRepo.updateStatus(id, "approved", approvedByName || "Client Guest");
 
-    if (this.notificationService && options?.notifyEmails && options.notifyEmails.length > 0) {
+    if (this.notificationService && options?.notifyRecipients && options.notifyRecipients.length > 0) {
+      const versionNumber = await this.getCurrentVersionNumber(id, target.workspaceId).catch(() => 1);
       await this.notificationService
         .notifyCutApproved({
           deliveryId: id,
           approvedByName: approvedByName || "Client",
-          recipientEmails: options.notifyEmails,
+          recipients: options.notifyRecipients,
+          versionNumber,
           origin: options.origin,
         })
         .catch((err) => {
@@ -303,6 +305,7 @@ export class DeliveryService {
     clientId?: string | null;
     customMessage?: string;
     origin?: string;
+    replyTo?: string | null;
   }) {
     if (!this.notificationService) {
       throw new Error("NotificationService is not configured in DeliveryService");
@@ -360,9 +363,22 @@ export class DeliveryService {
   async approveAllAssets(
     target: Delivery,
     approvedByName?: string,
-    options?: { origin?: string; notifyEmails?: string[] }
+    options?: { origin?: string; notifyRecipients?: NotificationRecipient[] }
   ): Promise<void> {
     await this.approveCut(target, approvedByName, options);
+  }
+
+  /** The delivery's current version: the highest active version among its files (1 when there are none). */
+  async getCurrentVersionNumber(deliveryId: string, workspaceId: string): Promise<number> {
+    const assets = await this.assetRepo.listByDeliveryId(deliveryId, { workspaceId });
+    let latest = 1;
+    for (const asset of assets) {
+      const versions = await this.assetVersionRepo.listByAssetId(asset.id);
+      for (const version of versions) {
+        if (version.isActiveVersion && version.versionNumber > latest) latest = version.versionNumber;
+      }
+    }
+    return latest;
   }
 
   async unapproveAllAssets(target: Delivery): Promise<Delivery> {

@@ -1,19 +1,13 @@
 import { Feedback, FeedbackReply } from '@/core/entities/feedback';
 import { IFeedbackRepository, CreateFeedbackDTO, CreateFeedbackReplyDTO } from '@/core/repositories/feedback.repository';
-import { NotificationService } from './notification.service';
-import { createScopedLogger } from '@/lib/logger';
 
-const log = createScopedLogger({ service: 'FeedbackService' });
 
 export interface FeedbackThread extends Feedback {
   replies: FeedbackReply[];
 }
 
 export class FeedbackService {
-  constructor(
-    private readonly feedbackRepo: IFeedbackRepository,
-    private readonly notificationService?: NotificationService
-  ) {}
+  constructor(private readonly feedbackRepo: IFeedbackRepository) {}
 
   async addFeedback(dto: CreateFeedbackDTO): Promise<Feedback> {
     return this.feedbackRepo.create(dto);
@@ -44,21 +38,6 @@ export class FeedbackService {
 
   async listReplies(feedbackId: string): Promise<FeedbackReply[]> {
     return this.feedbackRepo.listRepliesByFeedbackId(feedbackId);
-  }
-
-  async notifyFeedback(params: {
-    deliveryId: string;
-    recipientEmails: string | string[];
-    authorName: string;
-    commentText: string;
-    timestampSeconds?: number | null;
-    assetTitle?: string;
-    origin?: string;
-  }) {
-    if (!this.notificationService) return;
-    return this.notificationService.notifyNewFeedback(params).catch((err) => {
-      log.error({ err, deliveryId: params.deliveryId }, "Failed to notify new feedback");
-    });
   }
 
   async getThreadedFeedback(assetVersionId: string): Promise<Feedback[]> {

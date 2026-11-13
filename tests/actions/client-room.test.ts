@@ -107,6 +107,7 @@ function servicesFor(kind: "admin" | "user") {
       getDeliveryById: vi.fn(async (id: string) => (id === delivery.id ? delivery : null)),
       toggleAssetApproval: vi.fn(async (_d: any, assetId: string, isApproved: boolean) => ({ id: assetId, isApproved })),
       approveAllAssets: vi.fn(async () => undefined),
+      getCurrentVersionNumber: vi.fn(async () => 1),
       getDeliveryWithFullDetails: vi.fn(async () => ({ ...delivery, assets: [], totalAssetsCount: 0 })),
     },
     asset: {
@@ -127,9 +128,15 @@ function servicesFor(kind: "admin" | "user") {
     settings: { findByWorkspaceId: vi.fn(async () => ({ notifyComments: false, notifyDownloads: true })) },
     member: {
       listMembers: vi.fn(async () => [{ userId: MEMBER, role: "owner", email: "owner@studio.test" }]),
+      listNotificationRecipients: vi.fn(async () => [{ userId: MEMBER, email: "owner@studio.test", firstName: "Owner" }]),
       getMember: vi.fn(async () => null),
     },
-    notification: { notifyNewFeedback: vi.fn(async () => undefined), notifyClientDownload: vi.fn(async () => undefined) },
+    notification: {
+      notifyClientDownload: vi.fn(async () => undefined),
+      notifyClientOfApproval: vi.fn(async () => ({ sent: true })),
+      notifyClientOfReply: vi.fn(async () => ({ sent: true })),
+    },
+    commentEmail: { record: vi.fn(async () => undefined) },
     whatsapp: {
       notifyCutApproved: vi.fn(async () => null),
       recordClientComment: vi.fn(async () => null),
@@ -213,6 +220,23 @@ describe("comments in the client room", () => {
     );
     await addFeedbackReplyAction({ feedbackId: FB_MINE, commentText: "And the outro", shareToken: TOKEN_A });
     await vi.waitFor(() => expect(admin.whatsapp.recordClientComment).toHaveBeenCalledTimes(2));
+  });
+
+  it("counts a client's comment and reply into the studio's batched email", async () => {
+    await addFeedbackAction({ assetVersionId: VERSION_A, commentText: "Trim the intro", shareToken: TOKEN_A });
+    await vi.waitFor(() =>
+      expect(admin.commentEmail.record).toHaveBeenCalledWith(
+        expect.objectContaining({ deliveryId: DEL_A, authorName: "Client", commentText: "Trim the intro" })
+      )
+    );
+
+    admin.commentEmail.record.mockClear();
+    await addFeedbackReplyAction({ feedbackId: FB_MINE, commentText: "And the outro", shareToken: TOKEN_A });
+    await vi.waitFor(() =>
+      expect(admin.commentEmail.record).toHaveBeenCalledWith(
+        expect.objectContaining({ deliveryId: DEL_A, commentText: "And the outro" })
+      )
+    );
   });
 
   it("refuses comments on another studio's file, or on a file in Trash", async () => {

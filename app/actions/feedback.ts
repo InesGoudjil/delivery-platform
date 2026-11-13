@@ -19,7 +19,6 @@ import {
   type UpdateFeedbackInput,
   type UpdateFeedbackReplyInput,
 } from "@/lib/validations";
-import { createScopedLogger } from "@/lib/logger";
 import { checkRateLimit, getClientIp, RATELIMIT_POLICIES } from "@/lib/upstash";
 import { normalizeActionError } from "./safe-action";
 import { runAfterResponse } from "@/lib/after-response";
@@ -35,7 +34,6 @@ import { runAfterResponse } from "@/lib/after-response";
  * own browser (the guest author key cookie).
  */
 
-const log = createScopedLogger({ actionGroup: "feedback" });
 
 type FeedbackDto = ReturnType<typeof feedbackDto>;
 type ReplyDto = ReturnType<typeof replyDto>;
@@ -112,29 +110,24 @@ async function limitComments(actor: DeliveryActor): Promise<string | null> {
   return rateLimit.success ? null : rateLimit.error || "Too many comments. Please slow down.";
 }
 
-async function notifyStudioOfComment(actor: DeliveryActor, authorName: string, commentText: string, timestampSeconds?: number | null) {
-  try {
-    const services = actor.adminServices;
-    const settings = await services.settings.findByWorkspaceId(actor.delivery.workspaceId);
-    if (settings && !settings.notifyComments) return;
-    const members = await services.member.listMembers(actor.delivery.workspaceId);
-    const recipientEmails = members
-      .filter((m) => (m.role === "owner" || m.role === "admin") && Boolean(m.email))
-      .filter((m) => actor.kind !== "member" || m.userId !== actor.userId)
-      .map((m) => m.email as string);
-    if (recipientEmails.length === 0) return;
-
-    await services.notification.notifyNewFeedback({
+/**
+ * A client's comment or reply counts toward the studio's batched email (library 26), sent ten
+ * minutes after the first one. Only a client's words: a studio member's comment isn't news to the studio.
+ */
+function recordClientComment(
+  actor: DeliveryActor,
+  input: { assetVersionId: string; authorName: string; commentText: string }
+) {
+  if (actor.kind !== "guest") return;
+  runAfterResponse("email:client-comment", async () => {
+    const version = await actor.adminServices.asset.getVersionById(input.assetVersionId);
+    return actor.adminServices.commentEmail.record({
       deliveryId: actor.delivery.id,
-      recipientEmails,
-      authorName,
-      commentText,
-      timestampSeconds,
-      origin: await resolveRequestOrigin(),
+      authorName: input.authorName,
+      commentText: input.commentText,
+      versionNumber: version?.versionNumber ?? 1,
     });
-  } catch (err) {
-    log.warn({ err }, "Failed to send the new comment notification");
-  }
+  });
 }
 
 /** A client comment or reply counts toward the studio's grouped WhatsApp alert. */
@@ -145,6 +138,18 @@ function countForWhatsApp(actor: DeliveryActor, authorName: string, commentText:
       deliveryId: actor.delivery.id,
       authorName,
       commentText,
+      origin: await resolveRequestOrigin(),
+    })
+  );
+}
+
+/** Only a studio member's reply is emailed: a client's own reply isn't news to the client. */
+function emailClientAboutReply(actor: DeliveryActor, replyText: string) {
+  if (actor.kind !== "member") return;
+  runAfterResponse("email:client-reply", async () =>
+    actor.adminServices.notification.notifyClientOfReply({
+      deliveryId: actor.delivery.id,
+      replyPreview: replyText,
       origin: await resolveRequestOrigin(),
     })
   );
@@ -176,6 +181,9 @@ async function addReplyAs(
         });
 
   countForWhatsApp(actor, authorName, commentText);
+  // A studio reply to a client's comment: the client gets it by email (library 32).
+  if (!feedback.authorUserId) emailClientAboutReply(actor, commentText);
+  recordClientComment(actor, { assetVersionId: feedback.assetVersionId, authorName, commentText });
   revalidateRoom(actor);
   return { success: true, reply: replyDto(reply) };
 }
@@ -215,7 +223,7 @@ export async function addFeedbackAction(params: AddFeedbackInput): Promise<Feedb
             timestampSeconds,
           });
 
-    await notifyStudioOfComment(actor, name, commentText, timestampSeconds);
+    recordClientComment(actor, { assetVersionId, authorName: name, commentText });
     countForWhatsApp(actor, name, commentText);
     revalidateRoom(actor);
     return { success: true, feedback: feedbackDto(feedback) };
