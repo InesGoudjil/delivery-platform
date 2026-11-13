@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { getServerAdminServices } from "@/core/server";
 import { configuredAppOrigin } from "@/lib/app-origin";
+import type { NotificationRecipient } from "@/core/services/notification.service";
 
 // Client-room access lives in core/security/client-room.ts (the gate) and
 // ./room-access.ts (actions shared by the client room and the studio).
@@ -28,18 +29,15 @@ export async function resolveRequestOrigin(fallback = "https://cut.app"): Promis
 /**
  * Resolves owner and admin notification emails for approvals based on workspace settings.
  */
-export async function getApprovalNotificationEmails(
+export async function getApprovalRecipients(
   services: Awaited<ReturnType<typeof getServerAdminServices>>,
   workspaceId: string
-): Promise<string[]> {
+): Promise<NotificationRecipient[]> {
   try {
     const settings = await services.settings.findByWorkspaceId(workspaceId);
     const shouldNotify = settings ? settings.notifyApprovals : true;
     if (shouldNotify) {
-      const members = await services.member.listMembers(workspaceId);
-      return members
-        .filter((m) => (m.role === "owner" || m.role === "admin") && Boolean(m.email))
-        .map((m) => m.email as string);
+      return await services.member.listNotificationRecipients(workspaceId, ["owner", "admin"]);
     }
   } catch {
     // fallback

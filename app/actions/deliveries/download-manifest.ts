@@ -208,10 +208,9 @@ export async function recordClientDownloadAction(params: {
       // Proceed if the settings lookup fails.
     }
 
-    const members = await services.member.listMembers(delivery.workspaceId);
-    const recipientEmails = members
-      .filter((m) => (m.role === "owner" || m.role === "admin") && Boolean(m.email))
-      .map((m) => m.email as string);
+    const recipientEmails = (
+      await services.member.listNotificationRecipients(delivery.workspaceId, ["owner", "admin"])
+    ).map((recipient) => recipient.email);
     if (recipientEmails.length === 0) return { success: true, notified: false };
 
     const itemDescription =

@@ -140,6 +140,13 @@ export const RATELIMIT_POLICIES = {
       `Your studio reached today's WhatsApp sending limit. Please try again in ${retryAfter}.`,
   },
 
+  // The "second client link" email (library 14): at most one a day per workspace, however often it's tried.
+  planLimitNotice: {
+    attempts: 1,
+    window: "1 d",
+    keyPrefix: "rl:plan:limit-notice",
+  },
+
   // Direct media streaming / downloads
   mediaAccess: {
     attempts: 60,

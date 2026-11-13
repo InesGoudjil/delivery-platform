@@ -123,6 +123,8 @@ const SERVICE_ROLE_ACTIONS: Record<string, string> = {
   "app/actions/inquiries.ts#submitPartnershipAction": "public form; inserts an inquiry with no workspace id",
   "app/actions/silo.ts#checkDeliverySiloStatusAction":
     "requireDeliveryAccess(deliveryId, 'viewer') first; the finalize step acts on that delivery only",
+  "app/actions/deliveries/create-delivery.ts#createDeliveryAction":
+    "editor of the workspace (requireWorkspaceMember 'editor'); the service role only sends the plan-limit email to the caller's own address, rate limited to once a day per workspace, and logs it",
   "app/actions/upload.ts#requestAssetUploadAction":
     "editor of the workspace; the server creates the rows and keys itself, and the asset/delivery are checked against the workspace",
   "app/actions/upload.ts#requestVideoUploadAction": "delegates to requestAssetUploadAction",

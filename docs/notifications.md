@@ -7,7 +7,7 @@ Zoho CPaaS in September 2026; email keeps working on the ZeptoMail API.)
 | What happens | Email | WhatsApp |
 | --- | --- | --- |
 | A client approves a cut, or every file | Owners and admins | The studio's verified number |
-| A client comments or replies | Owners and admins, one email per comment | The studio's number, grouped (below) |
+| A client comments or replies | Owners and admins, one email per ten-minute batch (below) | The studio's number, grouped (below) |
 | A client downloads files (delivery has download alerts on, Pro plan) | Owners and admins | The studio's number |
 | A studio member sends the review link | The client's email | The client's number, with their consent |
 | Workspace invitations, waitlist, Silo restores | As before | – |
@@ -80,7 +80,7 @@ keep the `code` variable. The Arabic wording is in the same file.
 
 ### 3. Schedule the comment alerts
 
-Comments are grouped so a client leaving 20 notes doesn't send 20 messages:
+WhatsApp comment alerts are grouped so a client leaving 20 notes doesn't send 20 messages:
 
 - the first comment on a delivery alerts the studio right away;
 - later comments are counted; the studio gets one message with the count and the latest
@@ -101,8 +101,22 @@ refuses to run without it. Any scheduler works:
   curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://YOUR-APP/api/cron/notifications
   ```
 
-Without a scheduler, the counted comments are still announced, but only when the client
-comments again after the 15-minute gap.
+Without a scheduler, the WhatsApp quiet-period alerts wait for the client's next comment (the
+15-minute gap), and the comment emails below never go out.
+
+### Email: client comments (library 26)
+
+The studio's email about client comments is batched. The first comment or reply on a delivery
+opens a ten-minute window; the comments made in it are counted, and one email goes to each owner
+and admin when the window closes. It shows the count, the version and the latest comment. The
+scheduled route in step 3 sends these too, so the same scheduler is needed.
+
+The studio's comment switch on the Notifications page (email column) turns these off, and
+nothing is sent while it's off. Batches are kept in `comment_email_batches` (service role
+only). Each batch is handed over once, so a second run never sends it twice.
+
+The WhatsApp rule (first alert at once, then the quiet period) is separate and keeps its own
+15-minute gap. The library asks for one ten-minute rule for both channels; that's still open.
 
 ### How the studio number is verified
 

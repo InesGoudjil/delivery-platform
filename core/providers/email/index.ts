@@ -30,6 +30,8 @@ export interface SendEmailParams {
   html: string;
   text?: string;
   from?: string;
+  /** Display name for the sender, such as "Pedro from CineSpace". Wins over a name inside `from`. */
+  fromName?: string;
   replyTo?: string;
   bounceAddress?: string;
 }
@@ -136,7 +138,7 @@ export class ZeptoMailEmailProvider implements IEmailProvider {
     // Parse 'from' address & display name
     const parsedFrom = params.from ? parseEmailAddress(params.from) : null;
     const fromAddress = parsedFrom?.address || this.fromEmail;
-    const fromName = parsedFrom?.name || this.fromName;
+    const fromName = params.fromName || parsedFrom?.name || this.fromName;
 
     // 1. Primary: If ZeptoMail API token is configured, send via ZeptoMail v1.1 REST API
     if (

@@ -20,6 +20,8 @@ export interface INotificationLogRepository {
   listByWorkspaceId(workspaceId: string): Promise<NotificationLog[]>;
   listByProjectId(projectId: string): Promise<NotificationLog[]>;
   create(dto: CreateNotificationLogDTO): Promise<NotificationLog>;
+  /** Whether an email about this delivery was sent to this address, so the client already has the link. */
+  hasSentEmailForDelivery(deliveryId: string, recipientEmail: string): Promise<boolean>;
   updateStatus(
     id: string,
     status: NotificationStatus,
@@ -79,6 +81,20 @@ export class SupabaseNotificationLogRepository implements INotificationLogReposi
 
     if (error) throw new Error(`Error listing notification logs: ${error.message}`);
     return data ? data.map((r: any) => this.mapRowToEntity(r)) : [];
+  }
+
+  async hasSentEmailForDelivery(deliveryId: string, recipientEmail: string): Promise<boolean> {
+    const { data, error } = await (this.supabase as any)
+      .from('notification_logs')
+      .select('id')
+      .eq('delivery_id', deliveryId)
+      .eq('channel', 'email')
+      .eq('recipient_email', recipientEmail.trim().toLowerCase())
+      .eq('status', 'sent')
+      .limit(1);
+
+    if (error) throw new Error(`Failed to check notification logs: ${error.message}`);
+    return (data?.length ?? 0) > 0;
   }
 
   async create(dto: CreateNotificationLogDTO): Promise<NotificationLog> {

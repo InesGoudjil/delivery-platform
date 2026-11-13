@@ -4,6 +4,35 @@ import { revalidatePath } from "next/cache";
 import { requireWorkspaceMember } from "@/core/security/guards";
 import { createDeliverySchema, safeValidate } from "@/lib/validations";
 import { normalizeActionError } from "../safe-action";
+import { getServerAdminServices } from "@/core/server";
+import { runAfterResponse } from "@/lib/after-response";
+import { checkRateLimit, RATELIMIT_POLICIES } from "@/lib/upstash";
+import { resolveRequestOrigin } from "./helpers";
+
+/**
+ * The filmmaker who hit the plan's client-link limit hears how to get another (library 14).
+ * At most once a day per workspace, however often they try.
+ */
+async function emailFilmmakerAboutLimit(
+  workspaceId: string,
+  user: { email?: string; user_metadata?: Record<string, unknown> }
+) {
+  if (!user.email) return;
+  const limit = await checkRateLimit({ policy: RATELIMIT_POLICIES.planLimitNotice, identifier: [workspaceId] });
+  if (!limit.success) return;
+
+  const recipientEmail = user.email;
+  const firstName = String(user.user_metadata?.full_name ?? "").trim().split(/\s+/)[0] || null;
+  runAfterResponse("email:second-client-link", async () => {
+    const admin = await getServerAdminServices();
+    return admin.notification.notifyFilmmakerOfDeliveryLimit({
+      workspaceId,
+      recipientEmail,
+      firstName,
+      origin: await resolveRequestOrigin(),
+    });
+  });
+}
 
 export async function createDeliveryAction(
   workspaceId: string,
@@ -38,6 +67,8 @@ export async function createDeliveryAction(
     // Enforce active client delivery link quota based on subscription plan
     const eligibility = await services.subscription.canCreateProject(cleanWorkspaceId);
     if (!eligibility.allowed) {
+      // The limit message is what matters here: a failed email must not hide it.
+      await emailFilmmakerAboutLimit(cleanWorkspaceId, user).catch(() => undefined);
       return {
         error:
           eligibility.reason ||

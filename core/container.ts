@@ -11,6 +11,8 @@ import {
   SiloProviderFactory,
 } from "./providers/storage";
 
+import { SupabaseAuthEmailLookup } from "@/core/repositories/auth-user-email.repository";
+
 // Repositories
 import {
   SupabaseWorkspaceRepository,
@@ -38,6 +40,7 @@ import {
 import { ZeptoMailEmailProvider, IEmailProvider } from "./providers/email";
 import { createWhatsAppProvider } from "./providers/whatsapp";
 import { WhatsAppNotificationService } from "./services/whatsapp-notification.service";
+import { CommentEmailService } from "./services/comment-email.service";
 
 // Services
 import {
@@ -109,6 +112,8 @@ export interface CoreServices {
     session: SessionService;
     /** WhatsApp alerts and review links. Service role inside: authorize before calling. */
     whatsapp: WhatsAppNotificationService;
+    /** Client comments batched into one studio email per 10 minutes. Service role inside: authorize before calling. */
+    commentEmail: CommentEmailService;
   };
 }
 
@@ -159,13 +164,8 @@ export function createCoreServices(
   // Email Provider (Zoho ZeptoMail)
   const emailProvider = new ZeptoMailEmailProvider();
 
-  // Notification Service (Hub for multi-channel notifications)
-  const notificationService = new NotificationService(
-    notificationRepo,
-    deliveryRepo,
-    workspaceRepo,
-    emailProvider
-  );
+  // Addresses of the people we email (studio alerts, client emails) come from Supabase Auth.
+  const authEmailLookup = new SupabaseAuthEmailLookup(systemClient);
 
   // 2. Services (Injected with Repository Interfaces & Storage Provider)
   const authService = new AuthService(supabase, workspaceRepo, userProfileRepo);
@@ -184,6 +184,14 @@ export function createCoreServices(
     deliveryRepo as any,
     invoiceRepo
   );
+  // Notification Service (Hub for multi-channel notifications). Built after subscriptions: plan footers and prices need them.
+  const notificationService = new NotificationService(
+    notificationRepo,
+    deliveryRepo,
+    workspaceRepo,
+    emailProvider,
+    { clients: clientRepo, subscriptions: subscriptionService, authEmails: authEmailLookup }
+  );
   const memberService = new MemberService(
     workspaceMemberRepo,
     workspaceInvitationRepo,
@@ -192,7 +200,8 @@ export function createCoreServices(
     userProfileRepo,
     notificationService,
     systemWorkspaceMemberRepo,
-    subscriptionService
+    subscriptionService,
+    authEmailLookup
   );
   const clientService = new ClientService(clientRepo);
   const portfolioService = new PortfolioService(
@@ -229,7 +238,7 @@ export function createCoreServices(
     workspaceFeaturesRepo,
     subscriptionService
   );
-  const feedbackService = new FeedbackService(feedbackRepo, notificationService);
+  const feedbackService = new FeedbackService(feedbackRepo);
   const stripeService = new StripeService(
     subscriptionRepo,
     planRepo,
@@ -239,6 +248,15 @@ export function createCoreServices(
   );
   const waitlistService = new WaitlistService(waitlistRepo, emailProvider);
   const sessionService = new SessionService(userSessionRepo);
+  const commentEmailService = new CommentEmailService({
+    supabase: systemClient,
+    notificationService,
+    memberService,
+    settingsRepo: workspaceSettingsRepo,
+    deliveryRepo,
+    workspaceRepo,
+  });
+
   const whatsappService = new WhatsAppNotificationService({
     provider: createWhatsAppProvider(),
     settingsRepo: new SupabaseWorkspaceSettingsRepository(systemClient),
@@ -309,6 +327,7 @@ export function createCoreServices(
       settings: workspaceSettingsRepo,
       session: sessionService,
       whatsapp: whatsappService,
+      commentEmail: commentEmailService,
     },
   };
 }

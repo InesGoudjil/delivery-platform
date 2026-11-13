@@ -1,11 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { FeedbackService } from "@/core/services/feedback.service";
 import type { IFeedbackRepository } from "@/core/repositories/feedback.repository";
-import type { NotificationService } from "@/core/services/notification.service";
 
 describe("core/services/FeedbackService", () => {
   let feedbackRepo: Partial<IFeedbackRepository>;
-  let notificationService: Partial<NotificationService>;
   let service: FeedbackService;
 
   beforeEach(() => {
@@ -31,14 +29,7 @@ describe("core/services/FeedbackService", () => {
       listByAssetVersionId: vi.fn().mockResolvedValue([]),
     };
 
-    notificationService = {
-      notifyNewFeedback: vi.fn().mockResolvedValue(undefined),
-    };
-
-    service = new FeedbackService(
-      feedbackRepo as IFeedbackRepository,
-      notificationService as NotificationService
-    );
+    service = new FeedbackService(feedbackRepo as IFeedbackRepository);
   });
 
   it("creates a new feedback comment", async () => {
@@ -89,20 +80,4 @@ describe("core/services/FeedbackService", () => {
     expect(feedbackRepo.updateReply).toHaveBeenCalledWith("reply_1", "Updated reply text");
   });
 
-  it("sends notification when notificationService is present", async () => {
-    await service.notifyFeedback({
-      deliveryId: "del_1",
-      recipientEmails: "editor@studio.com",
-      authorName: "Director",
-      commentText: "Approved with notes",
-      timestampSeconds: 12.0,
-    });
-
-    expect(notificationService.notifyNewFeedback).toHaveBeenCalledWith(
-      expect.objectContaining({
-        deliveryId: "del_1",
-        authorName: "Director",
-      })
-    );
-  });
 });
