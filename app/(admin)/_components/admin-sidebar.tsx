@@ -3,169 +3,98 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  Users,
+  ArrowLeft,
+  Bell,
   Building2,
   CreditCard,
-  ArrowLeft,
-  Shield,
-  HardDrive,
-  Activity,
+  LayoutDashboard,
+  ScrollText,
   Sparkles,
-  Settings,
+  Users,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
+import type { AdminIconName, AdminNavGroup, AdminNavItem } from "../_modules/registry";
+import { AdminCommandMenu } from "./admin-command-menu";
 
-export function AdminSidebar() {
+const ICONS: Record<AdminIconName, LucideIcon> = {
+  overview: LayoutDashboard,
+  workspaces: Building2,
+  users: Users,
+  billing: CreditCard,
+  waitlist: Sparkles,
+  notifications: Bell,
+  audit: ScrollText,
+};
+
+const GROUP_ORDER: AdminNavGroup[] = ["Overview", "Customers", "Billing", "Growth", "Operations", "System"];
+
+export function AdminSidebar({ items, adminEmail }: { items: AdminNavItem[]; adminEmail: string | null }) {
   const pathname = usePathname();
-
-  const navItems = [
-    {
-      href: "/admin",
-      label: "Platform Overview",
-      icon: LayoutDashboard,
-      badge: "Live",
-    },
-    {
-      href: "/admin/workspaces",
-      label: "Studios & Workspaces",
-      icon: Building2,
-      badge: null,
-    },
-    {
-      href: "/admin/users",
-      label: "Creator Directory",
-      icon: Users,
-      badge: null,
-    },
-    {
-      href: "/admin/subscriptions",
-      label: "Revenue & Plans",
-      icon: CreditCard,
-      badge: "Stripe",
-    },
-    {
-      href: "/admin/waitlist",
-      label: "Waitlist & Beta",
-      icon: Sparkles,
-      badge: "Viral",
-    },
-  ];
+  const groups = GROUP_ORDER.map((group) => ({ group, items: items.filter((item) => item.group === group) })).filter(
+    (entry) => entry.items.length > 0
+  );
 
   return (
-    <aside className="w-full md:w-64 bg-card border-b md:border-b-0 md:border-r border-border p-6 flex flex-col justify-between shrink-0 shadow-sm">
-      <div className="space-y-6">
-        {/* Brand Header */}
-        <div>
-          <Link
-            href="/admin"
-            className="flex flex-col gap-1.5 group"
-          >
-            <div className="flex items-center gap-2">
-              <img
-                src="/images/logo.svg"
-                alt="CineSpace"
-                className="h-5 w-auto block object-contain select-none"
-              />
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/40 text-primary bg-primary/10 ">
-                ADMIN
-              </Badge>
-            </div>
-            <p className="text-[10px] text-muted-foreground ">
-              Platform Control Center
-            </p>
-          </Link>
-        </div>
+    <aside className="w-full shrink-0 border-b border-border bg-card md:sticky md:top-0 md:flex md:h-screen md:w-60 md:flex-col md:justify-between md:border-r md:border-b-0">
+      <div className="flex flex-col gap-4 p-4 md:p-5">
+        <Link href="/admin" className="flex items-center gap-2">
+          <img src="/images/logo.svg" alt="CineSpace" className="block h-5 w-auto select-none object-contain" />
+          <Badge variant="outline" className="border-primary/40 bg-primary/10 px-1.5 py-0 text-[10px] text-primary">
+            ADMIN
+          </Badge>
+        </Link>
 
-        <Separator className="bg-border/60" />
+        <AdminCommandMenu items={items} />
 
-        {/* Navigation Items */}
-        <nav className="space-y-1.5">
-          <div className="text-[10px]  text-muted-foreground uppercase tracking-wider px-3 mb-2">
-            MANAGEMENT
-          </div>
-          {navItems.map((item) => {
-            const isActive =
-              item.href === "/admin"
-                ? pathname === "/admin"
-                : pathname.startsWith(item.href);
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer",
-                  isActive
-                    ? "bg-primary text-black font-bold shadow-sm shadow-primary/20"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                )}
-              >
-                <div className="flex items-center gap-2.5">
-                  <item.icon className={cn("size-4", isActive ? "text-black" : "text-muted-foreground")} />
-                  <span>{item.label}</span>
-                </div>
-                {item.badge && (
-                  <span
+        <nav aria-label="Admin sections" className="-mx-1 flex gap-1 overflow-x-auto md:mx-0 md:flex-col md:gap-4 md:overflow-visible">
+          {groups.map(({ group, items: groupItems }) => (
+            <div key={group} className="flex gap-1 md:flex-col md:gap-0.5">
+              <p className="hidden px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground md:block">
+                {group}
+              </p>
+              {groupItems.map((item) => {
+                const Icon = ICONS[item.icon];
+                const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
                     className={cn(
-                      "text-[9px]  px-1.5 py-0.5 rounded-full font-bold",
-                      isActive
-                        ? "bg-black/20 text-black"
-                        : "bg-muted text-muted-foreground border border-border"
+                      "flex shrink-0 items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-sm transition-colors",
+                      active
+                        ? "bg-primary/15 font-semibold text-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                   >
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+                    <span className="flex items-center gap-2">
+                      <Icon className={cn("size-4", active ? "text-primary" : "text-muted-foreground")} />
+                      {item.label}
+                    </span>
+                    {item.badge !== null && (
+                      <span
+                        className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary tabular-nums"
+                        aria-label={`${item.badge} need a look`}
+                      >
+                        {item.badge > 99 ? "99+" : item.badge}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
-
-        {/* System Health Pulse Widget */}
-        {/* <div className="p-3.5 rounded-2xl bg-muted/40 border border-border space-y-2">
-          <div className="flex items-center justify-between text-[11px] ">
-            <span className="text-muted-foreground flex items-center gap-1.5">
-              <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Global Edge Network
-            </span>
-            <span className="text-emerald-400 font-bold">99.98%</span>
-          </div>
-          <div className="flex items-center justify-between text-[11px] ">
-            <span className="text-muted-foreground flex items-center gap-1.5">
-              <span className="size-1.5 rounded-full bg-primary" />
-              Stream Queue
-            </span>
-            <span className="text-foreground font-semibold">Ready</span>
-          </div>
-        </div> */}
       </div>
 
-      {/* Admin User Footer & Back Button */}
-      {/* <div className="space-y-4 pt-6 border-t border-border mt-6">
-        <div className="flex items-center gap-3 px-1">
-          <Avatar className="size-8 border border-border">
-            <AvatarImage src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" />
-            <AvatarFallback className="bg-primary/20 text-primary font-bold text-xs">
-              AD
-            </AvatarFallback>
-          </Avatar>
-          <div className="overflow-hidden">
-            <p className="text-xs font-bold text-foreground truncate">Platform Admin</p>
-            <p className="text-[10px] text-muted-foreground  truncate">super_admin@cinespace.film</p>
-          </div>
-        </div>
-
-        <Link
-          href="/"
-          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition px-2 py-1.5 rounded-lg hover:bg-muted/50 font-medium"
-        >
-          <ArrowLeft className="size-3.5" /> Back to Creator Workspace
+      <div className="hidden border-t border-border p-5 md:block">
+        {adminEmail && <p className="mb-2 truncate text-xs text-muted-foreground">{adminEmail}</p>}
+        <Link href="/" className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground">
+          <ArrowLeft className="size-3.5" /> Back to the app
         </Link>
-      </div> */}
+      </div>
     </aside>
   );
 }

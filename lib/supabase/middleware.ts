@@ -9,6 +9,7 @@ import {
   type SessionIdentity,
 } from '@/core/services/session.service';
 import { LEGACY_SESSION_COOKIE_NAME, trackUserSession } from '@/lib/session-manager';
+import { isAdminMfaRequired } from '@/lib/security/admin-mfa';
 
 export const SESSION_REVOKED_MESSAGE = 'This device was signed out of your account. Please sign in again.';
 export const SESSION_UNVERIFIED_MESSAGE = 'Your session could not be verified. Please sign in again.';
@@ -206,6 +207,13 @@ export async function updateSession(request: NextRequest) {
 
     if (profile?.platform_role !== 'admin') {
       return redirectTo('/', '');
+    }
+
+    // Admins need a two-factor session. The pages and actions check this again on the server;
+    // redirecting here keeps the page they asked for.
+    if (isAdminMfaRequired() && (claims as { aal?: string } | null)?.aal !== 'aal2') {
+      const returnTo = pathname + request.nextUrl.search;
+      return redirectTo('/mfa', `redirect=${encodeURIComponent(returnTo)}`);
     }
   }
 

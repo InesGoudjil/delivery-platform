@@ -36,6 +36,8 @@ export interface ClientRoom {
   /** Server-side only: holds the passcode hash and share token. Never send it to the browser. */
   delivery: Delivery;
   state: ClientRoomState;
+  /** The studio's workspace is suspended: closed to guests, and read-only for its members. */
+  suspended: boolean;
   /** Set when the visitor is a signed-in member of the delivery's workspace. */
   member: ClientRoomMember | null;
   /** Service-role services, for reading and writing this room's rows after the gate. */
@@ -83,13 +85,20 @@ export async function getClientRoom(shareToken: string): Promise<ClientRoom | nu
   const delivery = await services.delivery.getDeliveryByShareToken(token, { allowExpired: true });
   if (!delivery || delivery.shareToken !== token) return null;
 
-  const [member, cookieStore] = await Promise.all([findWorkspaceMember(delivery.workspaceId), cookies()]);
-  const state = roomState(delivery, hasRoomAccess(cookieStore, delivery));
+  const [member, cookieStore, workspace] = await Promise.all([
+    findWorkspaceMember(delivery.workspaceId),
+    cookies(),
+    services.workspace.getWorkspaceById(delivery.workspaceId),
+  ]);
+  // A suspended studio's links show as unavailable; its members can still look at their own room.
+  const suspended = Boolean(workspace?.suspendedAt);
+  const state = suspended ? "unavailable" : roomState(delivery, hasRoomAccess(cookieStore, delivery));
 
   const canView = state === "open" || (member !== null && state !== "locked");
   return {
     delivery,
     state,
+    suspended,
     member,
     services,
     canView,
@@ -132,6 +141,9 @@ export function roomRefusal(room: ClientRoom | null): string {
 export async function requireClientRoom(shareToken: string, need: ClientRoomNeed = "view"): Promise<ClientRoom> {
   const room = await getClientRoom(shareToken);
   if (!room || !room.canView) throw new Error(roomRefusal(room));
+  if (room.suspended && (need === "comment" || need === "approve")) {
+    throw new Error("This delivery can't be changed while the studio's workspace is suspended.");
+  }
   if (need === "comment" && !room.canComment) throw new Error("Comments are turned off for this delivery.");
   if (need === "download" && !room.canDownload) throw new Error("Downloads are turned off for this delivery.");
   if (need === "approve" && room.member && !hasMinRole(room.member.role, "editor")) {

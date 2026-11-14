@@ -7,6 +7,9 @@ import { getInvitationAcceptBlocker, isInvitationExpired } from "@/core/services
 import { InviteClient, type InviteViewerState } from "./invite-client";
 import { WaitlistInviteClaim } from "@/components/waitlist/WaitlistInviteClaim";
 
+// The link carries the invite token: keep it out of search results.
+export const metadata = { robots: { index: false, follow: false } };
+
 export default async function InvitePage({
   params,
 }: {

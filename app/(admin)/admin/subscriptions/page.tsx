@@ -1,82 +1,83 @@
-import { getServerServices } from "@/core/server";
-import { Plan } from "@/core/entities/plan";
-import { Subscription } from "@/core/entities/subscription";
-import { Workspace } from "@/core/entities/workspace";
-import { SubscriptionsClient, AdminPlanItem, AdminSubscriptionListItem } from "./subscriptions-client";
-import { createScopedLogger } from "@/lib/logger";
+import { requirePlatformAdminPage } from "@/core/admin/context";
+import { AdminLoadError, AdminPageHeader } from "../../_components/page-header";
+import { attempt } from "../../_lib/data";
+import { formatPlanPrice } from "../../_lib/format";
+import { SubscriptionsClient, type AdminPlanItem, type AdminSubscriptionListItem } from "./subscriptions-client";
 
-const log = createScopedLogger({ page: "AdminSubscriptionsPage" });
+export const metadata = { title: "Plans & subscriptions" };
 
 export default async function AdminSubscriptionsPage() {
-  const services = await getServerServices();
+  const admin = await requirePlatformAdminPage("/admin/subscriptions");
 
-  let mappedPlans: AdminPlanItem[] = [];
-  let mappedSubscriptions: AdminSubscriptionListItem[] = [];
+  // Three queries on the service role, so every workspace's name is known.
+  const loaded = await attempt(() =>
+    Promise.all([
+      admin.services.subscription.listAllPlans(),
+      admin.services.subscription.listAllSubscriptions(),
+      admin.services.workspace.listAllWorkspaces(),
+    ])
+  );
+  if (!loaded.ok) {
+    return (
+      <div className="mx-auto max-w-7xl">
+        <AdminPageHeader title="Plans & subscriptions" />
+        <AdminLoadError what="plans and subscriptions" error={loaded.error} />
+      </div>
+    );
+  }
+  const [plans, subscriptions, workspaces] = loaded.value;
 
-  try {
-    const plans: Plan[] = await services.subscription.listAllPlans().catch(() => []);
-    const subscriptions: Subscription[] = await services.subscription.listAllSubscriptions().catch(() => []);
-    const workspaces: Workspace[] = await services.workspace.listAllWorkspaces().catch(() => []);
+  const planById = new Map(plans.map((plan) => [plan.id, plan]));
+  const workspaceById = new Map(workspaces.map((workspace) => [workspace.id, workspace]));
 
-    const planMap = new Map<string, Plan>(plans.map((p) => [p.id, p]));
-    const wsMap = new Map<string, Workspace>(workspaces.map((w) => [w.id, w]));
-
-    // Count subscribers per plan
-    const subscriberCounts = new Map<string, number>();
-    subscriptions.forEach((s) => {
-      subscriberCounts.set(s.planId, (subscriberCounts.get(s.planId) || 0) + 1);
-    });
-
-    mappedPlans = plans.map((p) => {
-      const features = p.features || {};
-      const storageGB = features.storage_gb ?? 500;
-      const linksText = features.client_links === -1 ? "Unlimited Links" : `${features.client_links || 1} Active Links`;
-      const summary = `${storageGB} GB Storage · ${linksText}${features.whatsapp_delivery ? " · WhatsApp Delivery" : ""}`;
-
-      return {
-        id: p.id,
-        name: p.name,
-        slug: p.slug,
-        priceCents: p.priceCents,
-        currency: p.currency,
-        billingInterval: p.billingInterval,
-        sortOrder: p.sortOrder,
-        isActive: p.isActive,
-        activeSubscribersCount: subscriberCounts.get(p.id) || 0,
-        featuresSummary: summary,
-        storageGB,
-        stripePriceId: p.stripePriceId,
-      };
-    });
-
-    mappedSubscriptions = subscriptions.map((s) => {
-      const ws = wsMap.get(s.workspaceId);
-      const plan = planMap.get(s.planId);
-      const priceVal = plan ? plan.priceCents / 100 : 0;
-
-      return {
-        id: s.id,
-        workspaceId: s.workspaceId,
-        workspaceName: ws?.brandName || "Unknown Studio",
-        workspaceSlug: ws?.slug || "studio",
-        planName: plan?.name || "Starter",
-        status: s.status as any,
-        currency: s.currency,
-        priceFormatted: priceVal > 0 ? `$${priceVal.toFixed(0)}/mo` : "$0 (Free)",
-        createdAt: s.createdAt,
-      };
-    });
-  } catch (err) {
-    log.warn({ err }, "Error fetching admin subscriptions page");
+  // Subscribers: active and trialing subscriptions on the plan.
+  const subscriberCounts = new Map<string, number>();
+  for (const subscription of subscriptions) {
+    if (subscription.status === "active" || subscription.status === "trialing") {
+      subscriberCounts.set(subscription.planId, (subscriberCounts.get(subscription.planId) ?? 0) + 1);
+    }
   }
 
+  const planItems: AdminPlanItem[] = plans.map((plan) => {
+    const features = plan.features || {};
+    const storageGB = typeof features.storage_gb === "number" ? features.storage_gb : 0;
+    const links =
+      features.client_links === -1
+        ? "Unlimited links"
+        : typeof features.client_links === "number"
+          ? `${features.client_links} active links`
+          : "Links not set";
+    return {
+      id: plan.id,
+      name: plan.name,
+      slug: plan.slug,
+      priceCents: plan.priceCents,
+      currency: plan.currency,
+      billingInterval: plan.billingInterval,
+      sortOrder: plan.sortOrder,
+      isActive: plan.isActive,
+      activeSubscribersCount: subscriberCounts.get(plan.id) ?? 0,
+      featuresSummary: `${storageGB ? `${storageGB} GB storage` : "Storage not set"} · ${links}${features.whatsapp_delivery ? " · WhatsApp delivery" : ""}`,
+      storageGB,
+      stripePriceId: plan.stripePriceId,
+    };
+  });
 
+  const subscriptionItems: AdminSubscriptionListItem[] = subscriptions.map((subscription) => {
+    const workspace = workspaceById.get(subscription.workspaceId);
+    const plan = planById.get(subscription.planId);
+    return {
+      id: subscription.id,
+      workspaceId: subscription.workspaceId,
+      workspaceName: workspace?.brandName ?? "Deleted workspace",
+      workspaceSlug: workspace?.slug ?? "",
+      planName: plan?.name ?? "Unknown plan",
+      status: subscription.status,
+      currency: subscription.currency,
+      priceFormatted: plan ? formatPlanPrice(plan.priceCents, plan.currency, plan.billingInterval) : "—",
+      createdAt: subscription.createdAt,
+    };
+  });
 
-  const plans = mappedPlans.length > 0 ? mappedPlans : [] ;
-  const subscriptions =
-    mappedSubscriptions.length > 0
-      ? mappedSubscriptions
-      : [];
-
-  return <SubscriptionsClient plans={plans} subscriptions={subscriptions} />;
+  return <SubscriptionsClient plans={planItems} subscriptions={subscriptionItems} />;
 }

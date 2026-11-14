@@ -50,6 +50,7 @@ describe("lib/middleware/waitlist", () => {
       expect(isAllowedWaitlistPath("/favicon.ico")).toBe(true);
       expect(isAllowedWaitlistPath("/sw.js")).toBe(true);
       expect(isAllowedWaitlistPath("/manifest.webmanifest")).toBe(true);
+      expect(isAllowedWaitlistPath("/robots.txt")).toBe(true);
     });
 
     it("blocks standard user and creator paths", () => {
