@@ -147,6 +147,16 @@ export const RATELIMIT_POLICIES = {
     keyPrefix: "rl:plan:limit-notice",
   },
 
+  // Platform-admin changes, per admin: generous for real work, but it caps a hijacked session or a
+  // runaway script.
+  adminWrite: {
+    attempts: 60,
+    window: "10 m",
+    keyPrefix: "rl:admin:write",
+    message: ({ retryAfter }: RatelimitMessageContext) =>
+      `Too many admin changes in a short time. Please try again in ${retryAfter}.`,
+  },
+
   // Direct media streaming / downloads
   mediaAccess: {
     attempts: 60,

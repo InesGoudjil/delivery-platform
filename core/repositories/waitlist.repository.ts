@@ -18,6 +18,8 @@ export interface IWaitlistRepository {
   incrementReferralCount(referrerId: string, pointsToAdd: number): Promise<void>;
   getPosition(entryId: string): Promise<WaitlistPositionResult>;
   listTopPending(limit: number): Promise<WaitlistEntry[]>;
+  /** One page of the pending queue in invite order, with the size of the whole queue. */
+  listPendingPage(offset: number, limit: number): Promise<{ entries: WaitlistEntry[]; total: number }>;
   markInvited(entryId: string, inviteToken: string): Promise<WaitlistEntry>;
   markRegistered(entryId: string): Promise<WaitlistEntry>;
   getMetrics(): Promise<{ total: number; pending: number; invited: number; registered: number }>;
@@ -206,6 +208,22 @@ export class SupabaseWaitlistRepository implements IWaitlistRepository {
     }
 
     return (data || []).map((r: any) => this.mapRowToEntity(r));
+  }
+
+  async listPendingPage(offset: number, limit: number): Promise<{ entries: WaitlistEntry[]; total: number }> {
+    const { data, error, count } = await (this.supabase as any)
+      .from("waitlist_entries")
+      .select("*", { count: "exact" })
+      .eq("status", "pending")
+      .order("priority_score", { ascending: false })
+      .order("created_at", { ascending: true })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      throw new Error(`Failed to list pending entries: ${error.message}`);
+    }
+
+    return { entries: (data || []).map((r: any) => this.mapRowToEntity(r)), total: count ?? 0 };
   }
 
   async markInvited(entryId: string, inviteToken: string): Promise<WaitlistEntry> {

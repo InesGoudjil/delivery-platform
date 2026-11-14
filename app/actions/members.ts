@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerServices } from "@/core/server";
-import { hasMinRole } from "@/core/security/guards";
+import { hasMinRole, WORKSPACE_SUSPENDED_MESSAGE } from "@/core/security/guards";
 import {
   WorkspaceMember,
   WorkspaceInvitation,
@@ -75,6 +75,9 @@ export async function inviteWorkspaceMemberAction(
     if (!hasMinRole(member?.role, "admin")) {
       return { success: false, error: "Permission denied: Only workspace owners and admins can invite team members." };
     }
+    if (workspace.suspendedAt) {
+      return { success: false, error: WORKSPACE_SUSPENDED_MESSAGE };
+    }
 
     const invitation = await services.member.inviteMember(
       workspace.id,
@@ -126,6 +129,9 @@ export async function updateWorkspaceMemberRoleAction(
     const callerMember = await services.member.getMember(workspace.id, currentUser.id);
     if (!hasMinRole(callerMember?.role, "admin")) {
       return { success: false, error: "Permission denied: Only workspace owners and admins can manage roles." };
+    }
+    if (workspace.suspendedAt) {
+      return { success: false, error: WORKSPACE_SUSPENDED_MESSAGE };
     }
 
     const updated = await services.member.updateMemberRole(

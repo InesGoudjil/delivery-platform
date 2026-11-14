@@ -2,6 +2,7 @@
 
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { TypographySpan } from "@/components/ui/typography";
+import { ReportLink } from "@/components/report-link";
 
 interface DeliveryRoomFooterProps {
   whiteLabel?: boolean;
@@ -18,9 +19,12 @@ export function DeliveryRoomFooter({
         <TypographySpan className="font-medium text-white/60">
           {brandName || "Private Review Room"}
         </TypographySpan>
-        <TypographySpan className="text-white/40">
-          © {new Date().getFullYear()} All rights reserved
-        </TypographySpan>
+        <span className="flex items-center gap-4">
+          <ReportLink className="text-white/40 transition-colors hover:text-white/70" />
+          <TypographySpan className="text-white/40">
+            © {new Date().getFullYear()} All rights reserved
+          </TypographySpan>
+        </span>
       </footer>
     );
   }
@@ -35,9 +39,12 @@ export function DeliveryRoomFooter({
           className="cursor-pointer"
         />
       </div>
-      <TypographySpan className="text-white/40 hover:text-white/70 transition-colors">
-        cinespace.pro
-      </TypographySpan>
+      <span className="flex items-center gap-4">
+        <ReportLink className="text-white/40 transition-colors hover:text-white/70" />
+        <TypographySpan className="text-white/40 hover:text-white/70 transition-colors">
+          cinespace.pro
+        </TypographySpan>
+      </span>
     </footer>
   );
 }

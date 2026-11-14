@@ -44,6 +44,28 @@ export const createClient = cache(async () => {
 });
 
 /**
+ * Service-role client that refuses to start without a real service key, instead of falling back
+ * to the anon key like createAdminClient(). The admin panel uses it, so a missing key shows up
+ * as an error rather than as pages that quietly show less data.
+ */
+export function createServiceRoleClient() {
+  const url = env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!url || url === 'https://placeholder.supabase.co') {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL is not set.');
+  }
+  if (!key || key === 'your-supabase-service-role-key') {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set, so platform data can\'t be read.');
+  }
+  return createSupabaseClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}
+
+/**
  * Admin Supabase client using SUPABASE_SERVICE_ROLE_KEY to bypass RLS in backend operations like Webhooks.
  */
 export function createAdminClient() {

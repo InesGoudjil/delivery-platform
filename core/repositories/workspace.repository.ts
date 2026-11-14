@@ -46,6 +46,7 @@ export class SupabaseWorkspaceRepository implements IWorkspaceRepository {
       defaultLanguage: row.default_language,
       accountType: row.account_type || 'individual',
       storageUsedBytes: Number(row.storage_used_bytes || 0),
+      suspendedAt: row.suspended_at ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

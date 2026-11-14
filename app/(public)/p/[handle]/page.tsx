@@ -69,7 +69,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       }
     }
 
-    if (!portfolio || !portfolio.isPublished) {
+    if (!portfolio || !portfolio.isPublished || workspace?.suspendedAt) {
       return { title: "Portfolio | CineSpace", robots: { index: false, follow: false } };
     }
 
@@ -120,7 +120,8 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
       portfolio = workspace ? await services.portfolio.getPortfolioByWorkspace(workspace.id).catch(() => null) : null;
     }
   }
-  if (!workspace || !portfolio || !portfolio.isPublished) notFound();
+  // A suspended studio's portfolio is gone for visitors, like an unpublished one.
+  if (!workspace || !portfolio || !portfolio.isPublished || workspace.suspendedAt) notFound();
   const workspaceId = workspace.id;
   const storage = services.storage;
 

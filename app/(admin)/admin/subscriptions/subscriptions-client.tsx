@@ -3,12 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
-  CreditCard,
-  TrendingUp,
-  Sliders,
   Check,
-  Building2,
-  Users,
   Search,
   ExternalLink,
   Edit2,
@@ -16,7 +11,6 @@ import {
   Plus,
   Trash2,
   AlertTriangle,
-  Sparkles,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +26,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { updatePlanAction, createPlanAction, deletePlanAction } from "@/app/actions/admin";
+import { Textarea } from "@/components/ui/textarea";
 
 export interface AdminPlanItem {
   id: string;
@@ -70,6 +65,9 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
   const [plansList, setPlansList] = useState(initialPlans);
   const [searchQuery, setSearchQuery] = useState("");
   const [serverError, setServerError] = useState<string | null>(null);
+  // Every admin change needs a reason; it goes into the audit log.
+  const [reason, setReason] = useState("");
+  const reasonValid = reason.trim().length >= 5;
 
   // Edit Plan Dialog
   const [selectedPlan, setSelectedPlan] = useState<AdminPlanItem | null>(null);
@@ -105,6 +103,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
     setEditPriceUsd(Math.round(plan.priceCents / 100));
     setEditSuccess(false);
     setServerError(null);
+    setReason("");
     setEditModalOpen(true);
   };
 
@@ -112,6 +111,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
     setSelectedPlan(plan);
     setDeleteSuccessMsg(null);
     setServerError(null);
+    setReason("");
     setDeleteModalOpen(true);
   };
 
@@ -120,9 +120,12 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
     if (!selectedPlan) return;
 
     startTransition(async () => {
-      const res = await updatePlanAction(selectedPlan.id, {
+      const priceChanged = editPriceUsd * 100 !== selectedPlan.priceCents;
+      const res = await updatePlanAction({
+        planId: selectedPlan.id,
         name: editName,
-        priceCents: editPriceUsd * 100,
+        ...(priceChanged ? { priceCents: editPriceUsd * 100 } : {}),
+        reason,
       });
 
       if (res.success) {
@@ -148,17 +151,17 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
     e.preventDefault();
     if (!createName.trim() || !createSlug.trim()) return;
 
-    const formData = new FormData();
-    formData.set("name", createName.trim());
-    formData.set("slug", createSlug.trim());
-    formData.set("priceUsd", createPriceUsd.toString());
-    formData.set("storageGb", createStorageGb.toString());
-    formData.set("clientLinks", createClientLinks.toString());
-    formData.set("whatsappDelivery", createWhatsApp ? "true" : "false");
-
     startTransition(async () => {
-      const res = await createPlanAction(formData);
-      if (res.success && res.plan) {
+      const res = await createPlanAction({
+        name: createName.trim(),
+        slug: createSlug.trim(),
+        priceUsd: createPriceUsd,
+        storageGb: createStorageGb,
+        clientLinks: createClientLinks,
+        whatsappDelivery: createWhatsApp,
+        reason,
+      });
+      if (res.success) {
         const newPlanItem: AdminPlanItem = {
           id: res.plan.id,
           name: res.plan.name,
@@ -193,7 +196,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
     if (!selectedPlan) return;
 
     startTransition(async () => {
-      const res = await deletePlanAction(selectedPlan.id);
+      const res = await deletePlanAction({ planId: selectedPlan.id, reason });
       if (res.success) {
         setDeleteSuccessMsg(res.message || "Plan deleted successfully.");
         if (res.action === "deleted") {
@@ -233,6 +236,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
         <Button
           onClick={() => {
             setServerError(null);
+            setReason("");
             setCreateModalOpen(true);
           }}
           className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 shadow-lg shadow-primary/20 cursor-pointer"
@@ -502,10 +506,25 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
               <Switch checked={createWhatsApp} onCheckedChange={setCreateWhatsApp} />
             </div>
 
+            <div>
+              <label htmlFor="create-plan-reason" className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
+                Reason
+              </label>
+              <Textarea
+                id="create-plan-reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Why are you making this change? It's saved in the audit log."
+                rows={2}
+                maxLength={500}
+                className="text-xs"
+              />
+            </div>
+
             <DialogFooter>
               <Button
                 type="submit"
-                disabled={isPending || createSuccess}
+                disabled={isPending || createSuccess || !reasonValid}
                 className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90"
               >
                 {createSuccess ? (
@@ -566,14 +585,35 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
                 required
                 value={editPriceUsd}
                 onChange={(e) => setEditPriceUsd(Number(e.target.value))}
+                disabled={Boolean(selectedPlan?.stripePriceId)}
                 className="bg-muted border-border text-xs "
+              />
+              {selectedPlan?.stripePriceId && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Stripe charges this price, so it can&apos;t change here. Create a plan with the new price, then archive this one.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="edit-plan-reason" className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
+                Reason
+              </label>
+              <Textarea
+                id="edit-plan-reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Why are you making this change? It's saved in the audit log."
+                rows={2}
+                maxLength={500}
+                className="text-xs"
               />
             </div>
 
             <DialogFooter>
               <Button
                 type="submit"
-                disabled={isPending || editSuccess}
+                disabled={isPending || editSuccess || !reasonValid}
                 className="rounded-full bg-primary text-black font-bold text-xs hover:bg-primary/90"
               >
                 {editSuccess ? (
@@ -639,6 +679,23 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
               </div>
             )}
 
+            {selectedPlan?.slug !== "starter" && !deleteSuccessMsg && (
+              <div>
+                <label htmlFor="delete-plan-reason" className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
+                  Reason
+                </label>
+                <Textarea
+                  id="delete-plan-reason"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Why are you making this change? It's saved in the audit log."
+                  rows={2}
+                  maxLength={500}
+                  className="text-xs"
+                />
+              </div>
+            )}
+
             <DialogFooter>
               <Button
                 type="button"
@@ -653,7 +710,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
                 <Button
                   type="button"
                   onClick={handleDeletePlanSubmit}
-                  disabled={isPending}
+                  disabled={isPending || !reasonValid}
                   className="rounded-full bg-red-500 text-white font-bold text-xs hover:bg-red-600"
                 >
                   {isPending ? "Processing..." : (selectedPlan?.activeSubscribersCount || 0) > 0 ? "Archive Plan" : "Permanently Delete Plan"}
