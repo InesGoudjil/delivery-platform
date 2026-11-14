@@ -11,7 +11,7 @@
  *          requirePlatformAdmin, the createAuthWorkspace/DeliveryAction wrappers, the
  *          client-room gate (requireClientRoom in core/security/client-room.ts) or the
  *          passcode check (verifyDeliveryPasscode), or an inline isMember()/getMember() call or
- *          `.platformRole` comparison (the older admin.ts actions count as guarded);
+ *          `.platformRole` comparison;
  *   rateLimit  checkRateLimit() / assertRateLimit().
  * Helpers and delegations (same file, helper modules, other actions) are followed.
  *
@@ -112,11 +112,23 @@ const KNOWN_AUTHZ_GAPS: Record<string, string> = {};
  * resource the caller is authorized for. A new entry needs the same review.
  */
 const SERVICE_ROLE_ACTIONS: Record<string, string> = {
-  "app/actions/admin.ts#createPlanAction": "platform admins only (platformRole check); plans aren't tenant data",
-  "app/actions/admin.ts#updatePlanAction": "platform admins only (platformRole check); plans aren't tenant data",
-  "app/actions/admin.ts#deletePlanAction": "platform admins only (platformRole check); plans aren't tenant data",
-  "app/actions/admin.ts#updateWorkspacePlanAction":
-    "platform admins only (platformRole check); staff choose the workspace on purpose",
+  // Platform admins (createPlatformAdminAction: role from the database, two-factor session, a
+  // reason, audited) act on any workspace or user on purpose; that's what the admin panel is for.
+  "app/actions/admin.ts#createPlanAction": "platform admin, audited; plans aren't tenant data",
+  "app/actions/admin.ts#updatePlanAction": "platform admin, audited; plans aren't tenant data",
+  "app/actions/admin.ts#deletePlanAction": "platform admin, audited; plans aren't tenant data",
+  "app/actions/admin.ts#updateWorkspacePlanAction": "platform admin, audited; staff choose the workspace on purpose",
+  "app/actions/admin.ts#updateWorkspaceFeaturesAction": "platform admin, audited; staff choose the workspace on purpose",
+  "app/actions/admin.ts#updateUserRoleAction":
+    "platform admin, audited; the role itself is written through the admin's own session (prevent_role_escalation)",
+  "app/actions/waitlist.ts#inviteWaitlistCohortAction": "platform admin, audited; the waitlist isn't tenant data",
+  "app/actions/admin.ts#signOutUserEverywhereAction": "platform admin, audited; not on themselves; staff choose the user on purpose",
+  "app/actions/admin.ts#banUserAction": "platform admin, audited; not on themselves or other platform admins",
+  "app/actions/admin.ts#unbanUserAction": "platform admin, audited; staff choose the user on purpose",
+  "app/actions/admin.ts#resetUserTwoFactorAction": "platform admin, audited; not on themselves; staff choose the user on purpose",
+  "app/actions/admin.ts#searchAdminAction": "platform admin with a two-factor session (getPlatformAdminServices); read-only search",
+  "app/actions/admin.ts#suspendWorkspaceAction": "platform admin, audited; the admin types the workspace's slug to confirm it",
+  "app/actions/admin.ts#unsuspendWorkspaceAction": "platform admin, audited; staff choose the workspace on purpose",
   "app/actions/inquiries.ts#submitPortfolioInquiryAction":
     "public form; the studio is resolved server-side from a published portfolio's slug, and it only inserts an inquiry",
   "app/actions/inquiries.ts#submitContactFormAction": "public form; inserts an inquiry with no workspace id",

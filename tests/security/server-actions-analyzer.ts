@@ -62,6 +62,10 @@ export const PRIMITIVES: readonly Primitive[] = [
   { module: "app/actions/safe-action.ts", name: "createAuthUserAction", capability: "authn" },
   { module: "app/actions/safe-action.ts", name: "createAuthWorkspaceAction", capability: "authz" },
   { module: "app/actions/safe-action.ts", name: "createAuthDeliveryAction", capability: "authz" },
+  // Platform admin (with a two-factor session), then service-role services: the admin panel's only
+  // way to the service role. The wrapper adds a required reason, a rate limit and the audit event.
+  { module: "core/admin/context.ts", name: "getPlatformAdminServices", capability: ["authz", "serviceRole"] },
+  { module: "app/actions/safe-action.ts", name: "createPlatformAdminAction", capability: ["authz", "serviceRole", "rateLimit"] },
   // Client room: the gate lets in a guest holding the share link (plus the unlock cookie
   // when the delivery has a passcode), or a member of the studio. It also hands back the
   // authorized delivery, which room actions act on.
@@ -75,6 +79,7 @@ export const PRIMITIVES: readonly Primitive[] = [
   { module: "core/server.ts", name: "getServerAdminServices", capability: "serviceRole" },
   { module: "core/server.ts", name: "getServerCore", capability: "serviceRole" },
   { module: "lib/supabase/server.ts", name: "createAdminClient", capability: "serviceRole" },
+  { module: "lib/supabase/server.ts", name: "createServiceRoleClient", capability: "serviceRole" },
   { module: "lib/security/passcode.ts", name: "verifyDeliveryPasscode", capability: "authz" },
   { module: "lib/upstash/assert-rate-limit.ts", name: "checkRateLimit", capability: "rateLimit" },
   { module: "lib/upstash/assert-rate-limit.ts", name: "assertRateLimit", capability: "rateLimit" },

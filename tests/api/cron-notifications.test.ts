@@ -15,6 +15,7 @@ describe("/api/cron/notifications", () => {
   const saved = env.CRON_SECRET;
   let whatsapp: { isConfigured: ReturnType<typeof vi.fn>; flushQuietCommentBatches: ReturnType<typeof vi.fn> };
   let commentEmail: { flushDue: ReturnType<typeof vi.fn> };
+  let heartbeat: { started: ReturnType<typeof vi.fn>; finished: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -24,7 +25,8 @@ describe("/api/cron/notifications", () => {
       flushQuietCommentBatches: vi.fn(async () => ({ sent: 2, failed: 0 })),
     };
     commentEmail = { flushDue: vi.fn(async () => ({ sent: 1, skipped: 0, failed: 0 })) };
-    vi.spyOn(serverModule, "getServerAdminServices").mockResolvedValue({ whatsapp, commentEmail } as never);
+    heartbeat = { started: vi.fn(async () => undefined), finished: vi.fn(async () => undefined) };
+    vi.spyOn(serverModule, "getServerAdminServices").mockResolvedValue({ whatsapp, commentEmail, heartbeat } as never);
   });
 
   afterEach(() => {
@@ -88,5 +90,28 @@ describe("/api/cron/notifications", () => {
     expect(body).toMatchObject({ ok: false, commentEmails: null, whatsapp: { sent: 2, failed: 0 } });
     expect(JSON.stringify(body)).not.toContain("internal detail");
     expect(whatsapp.flushQuietCommentBatches).toHaveBeenCalled();
+  });
+
+  it("records each run, so the admin panel can show when the scheduler last ran", async () => {
+    await GET(request({ authorization: `Bearer ${SECRET}` }));
+    expect(heartbeat.started).toHaveBeenCalledWith("notifications");
+    expect(heartbeat.finished).toHaveBeenCalledWith(
+      "notifications",
+      "ok",
+      { commentEmails: { sent: 1, skipped: 0, failed: 0 }, whatsapp: { sent: 2, failed: 0 } },
+      null
+    );
+
+    commentEmail.flushDue.mockRejectedValueOnce(new Error("boom"));
+    await GET(request({ authorization: `Bearer ${SECRET}` }));
+    expect(heartbeat.finished).toHaveBeenLastCalledWith("notifications", "failed", expect.anything(), expect.any(String));
+  });
+
+  it("still runs the jobs when the heartbeat can't be written", async () => {
+    heartbeat.started.mockRejectedValue(new Error("table missing"));
+    heartbeat.finished.mockRejectedValue(new Error("table missing"));
+    const res = await GET(request({ authorization: `Bearer ${SECRET}` }));
+    expect(res.status).toBe(200);
+    expect(commentEmail.flushDue).toHaveBeenCalled();
   });
 });

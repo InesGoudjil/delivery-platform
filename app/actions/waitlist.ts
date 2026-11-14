@@ -3,7 +3,9 @@
 import { headers } from "next/headers";
 import { randomUUID } from "crypto";
 import { getServerServices } from "@/core/server";
-import { requirePlatformAdmin } from "@/core/security/guards";
+import { revalidatePath } from "next/cache";
+import { createPlatformAdminAction } from "./safe-action";
+import { configuredAppOrigin } from "@/lib/app-origin";
 import { sendServerEvent } from "@/lib/meta";
 import { captureWaitlistLead } from "@/lib/posthog";
 import {
@@ -178,31 +180,29 @@ export async function checkWaitlistStatusAction(
   }
 }
 
-export async function inviteWaitlistCohortAction(limit: number = 20) {
-  const parsed = inviteCohortSchema.safeParse({ limit });
-  if (!parsed.success) {
-    return { success: false, error: "Invalid invite cohort limit." };
+/**
+ * Invites the next cohort from the waitlist (sends the invite emails). Platform admins only,
+ * with a reason; audited like every admin change.
+ */
+export const inviteWaitlistCohortAction = createPlatformAdminAction(
+  {
+    action: "waitlist.invite_cohort",
+    schema: inviteCohortSchema,
+    target: (input) => ({ type: "waitlist", label: `Next ${input.limit} on the waitlist` }),
+  },
+  async (input, ctx) => {
+    const baseUrl = configuredAppOrigin() ?? (await requestOrigin());
+    const result = await ctx.services.waitlist.inviteCohort(input.limit, baseUrl);
+    ctx.recordChanges({ after: { invitedCount: result.invitedCount } });
+    revalidatePath("/admin/waitlist");
+    return result;
   }
+);
 
-  try {
-    // Admin-only: this sends invite emails and returns the invited addresses.
-    const { services } = await requirePlatformAdmin();
-
-    const headerList = await headers();
-    const host = headerList.get("host") || "localhost:3000";
-    const protocol = host.includes("localhost") ? "http" : "https";
-    const baseUrl = `${protocol}://${host}`;
-
-    const result = await services.waitlist.inviteCohort(parsed.data.limit, baseUrl);
-
-    return {
-      success: true,
-      ...result,
-    };
-  } catch (err: any) {
-    return {
-      success: false,
-      error: err?.message || "Failed to invite cohort.",
-    };
-  }
+/** Where invite links point when NEXT_PUBLIC_APP_URL isn't set (local development). */
+async function requestOrigin(): Promise<string> {
+  const headerList = await headers();
+  const host = headerList.get("host") || "localhost:3000";
+  const protocol = host.includes("localhost") ? "http" : "https";
+  return `${protocol}://${host}`;
 }

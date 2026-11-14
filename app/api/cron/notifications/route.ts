@@ -4,6 +4,7 @@ import { getServerAdminServices } from "@/core/server";
 import { configuredAppOrigin } from "@/lib/app-origin";
 import { env } from "@/lib/env";
 import { createScopedLogger } from "@/lib/logger";
+import { HEARTBEAT_JOBS } from "@/core/repositories/system-heartbeat.repository";
 
 /**
  * Scheduled notification work, run every few minutes by a scheduler (docs/notifications.md):
@@ -18,6 +19,9 @@ const log = createScopedLogger({ route: "api/cron/notifications" });
 
 const MIN_SECRET_LENGTH = 32;
 
+/** This job's runs are recorded in system_heartbeats under this name (shown in the admin panel). */
+const NOTIFICATIONS_JOB = HEARTBEAT_JOBS.notifications;
+
 export const dynamic = "force-dynamic";
 
 function configuredSecret(): string | null {
@@ -30,6 +34,15 @@ function secretsMatch(presented: string, expected: string): boolean {
   const a = createHash("sha256").update(presented, "utf8").digest();
   const b = createHash("sha256").update(expected, "utf8").digest();
   return timingSafeEqual(a, b);
+}
+
+/** Recording a heartbeat must never stop the job itself. */
+async function beat(record: () => Promise<void>) {
+  try {
+    await record();
+  } catch (err) {
+    log.warn({ err }, "Couldn't record the scheduler heartbeat");
+  }
 }
 
 async function run(req: NextRequest) {
@@ -49,6 +62,7 @@ async function run(req: NextRequest) {
 
   try {
     const services = await getServerAdminServices();
+    await beat(() => services.heartbeat.started(NOTIFICATIONS_JOB));
 
     // Each job runs on its own, so a failure in one doesn't hold back the other.
     const commentEmails = await services.commentEmail.flushDue(origin).catch((err: unknown) => {
@@ -67,6 +81,14 @@ async function run(req: NextRequest) {
     }
 
     const ok = commentEmails !== null && whatsapp !== null;
+    await beat(() =>
+      services.heartbeat.finished(
+        NOTIFICATIONS_JOB,
+        ok ? "ok" : "failed",
+        { commentEmails, whatsapp },
+        ok ? null : "A job failed; see the server logs."
+      )
+    );
     return NextResponse.json({ ok, commentEmails, whatsapp }, { status: ok ? 200 : 500 });
   } catch (err) {
     log.error({ err }, "Scheduled notifications failed");

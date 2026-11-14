@@ -1,9 +1,16 @@
+import { cache } from "react";
 import { getServerServices } from "@/core/server";
 import { User } from "@supabase/supabase-js";
 import { Workspace } from "@/core/entities/workspace";
 import { Delivery } from "@/core/entities/delivery";
+import type { UserProfile } from "@/core/entities/user-profile";
+import { isAdminMfaRequired } from "@/lib/security/admin-mfa";
 
 export type WorkspaceRoleLevel = "viewer" | "editor" | "admin" | "owner";
+
+/** What members see when they try to change a suspended workspace. */
+export const WORKSPACE_SUSPENDED_MESSAGE =
+  "This workspace is suspended, so it can't be changed right now. Contact CineSpace support.";
 
 const ROLE_HIERARCHY: Record<string, number> = {
   viewer: 1,
@@ -44,17 +51,55 @@ export async function requireUser(): Promise<AuthContext> {
   return { user, services };
 }
 
+export interface PlatformAdminAuthContext extends AuthContext {
+  profile: UserProfile;
+}
+
+export type PlatformAdminStatus =
+  | { kind: "ok"; context: PlatformAdminAuthContext }
+  | { kind: "signed-out" }
+  | { kind: "forbidden" }
+  /** A platform admin whose session hasn't passed a two-factor check; `enrolled` says whether they have a verified factor. */
+  | { kind: "mfa-required"; enrolled: boolean };
+
 /**
- * Ensures the caller is a platform admin, reading the role from the database
- * (never from client-editable user metadata).
+ * Whether the caller may use the admin panel: signed in, platform role "admin" read from the
+ * database (never from client-editable user metadata), and a two-factor (aal2) session where
+ * that's required (lib/security/admin-mfa.ts). Cached per request, so the admin layout, the
+ * page and the actions it runs share one lookup.
  */
-export async function requirePlatformAdmin(): Promise<AuthContext> {
-  const ctx = await requireUser();
-  const profile = await ctx.services.profile.getProfile(ctx.user.id);
-  if (profile?.platformRole !== "admin") {
-    throw new Error("Forbidden: Platform admin privileges required.");
+export const getPlatformAdminStatus = cache(async (): Promise<PlatformAdminStatus> => {
+  const services = await getServerServices();
+  const user = await services.auth.getCurrentUser();
+  if (!user) return { kind: "signed-out" };
+
+  const profile = await services.profile.getProfile(user.id);
+  if (!profile || profile.platformRole !== "admin") return { kind: "forbidden" };
+
+  if (isAdminMfaRequired() && (await services.auth.getAssuranceLevel()) !== "aal2") {
+    const enrolled = (user.factors ?? []).some((factor) => factor.status === "verified");
+    return { kind: "mfa-required", enrolled };
   }
-  return ctx;
+
+  return { kind: "ok", context: { user, services, profile } };
+});
+
+/**
+ * Ensures the caller is a platform admin (see getPlatformAdminStatus). Throws otherwise; admin
+ * pages use requirePlatformAdminPage() in core/admin/context.ts, which redirects instead.
+ */
+export async function requirePlatformAdmin(): Promise<PlatformAdminAuthContext> {
+  const status = await getPlatformAdminStatus();
+  switch (status.kind) {
+    case "ok":
+      return status.context;
+    case "signed-out":
+      throw new Error("Unauthorized: Active user session required.");
+    case "forbidden":
+      throw new Error("Forbidden: Platform admin privileges required.");
+    case "mfa-required":
+      throw new Error("Forbidden: Two-factor verification is required for platform admins.");
+  }
 }
 
 /**
@@ -83,6 +128,11 @@ export async function requireWorkspaceMember(
   const effectiveRole = member.role as WorkspaceRoleLevel;
   if (!hasMinRole(effectiveRole, minRole)) {
     throw new Error(`Forbidden: Requires at least "${minRole}" role permissions.`);
+  }
+
+  // A suspended workspace is read-only for its members: viewer-level reads still work.
+  if (workspace.suspendedAt && minRole !== "viewer") {
+    throw new Error(WORKSPACE_SUSPENDED_MESSAGE);
   }
 
   return { user, services, workspace, role: effectiveRole };

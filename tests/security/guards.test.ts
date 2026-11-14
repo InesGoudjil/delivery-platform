@@ -20,6 +20,7 @@ describe("core/security/guards", () => {
     mockServices = {
       auth: {
         getCurrentUser: vi.fn().mockResolvedValue(mockUser),
+        getAssuranceLevel: vi.fn().mockResolvedValue("aal2"),
       },
       workspace: {
         getWorkspaceById: vi.fn().mockResolvedValue(mockWorkspace),
@@ -52,11 +53,37 @@ describe("core/security/guards", () => {
       expect(mockServices.profile.getProfile).not.toHaveBeenCalled();
     });
 
-    it("returns the context for platform admins", async () => {
+    it("returns the context for platform admins with a two-factor session", async () => {
       mockServices.profile = { getProfile: vi.fn().mockResolvedValue({ platformRole: "admin" }) };
       const ctx = await requirePlatformAdmin();
       expect(ctx.user.id).toBe("user_123");
+      expect(ctx.profile.platformRole).toBe("admin");
       expect(mockServices.profile.getProfile).toHaveBeenCalledWith("user_123");
+    });
+
+    it("rejects platform admins whose session hasn't passed a two-factor check", async () => {
+      mockServices.profile = { getProfile: vi.fn().mockResolvedValue({ platformRole: "admin" }) };
+      mockServices.auth.getAssuranceLevel.mockResolvedValue("aal1");
+      await expect(requirePlatformAdmin()).rejects.toThrow("Two-factor verification is required");
+    });
+
+    it("lets ADMIN_MFA_OPTIONAL switch the two-factor check off outside production only", async () => {
+      mockServices.profile = { getProfile: vi.fn().mockResolvedValue({ platformRole: "admin" }) };
+      mockServices.auth.getAssuranceLevel.mockResolvedValue("aal1");
+      vi.stubEnv("ADMIN_MFA_OPTIONAL", "true");
+      try {
+        await expect(requirePlatformAdmin()).resolves.toMatchObject({ user: { id: "user_123" } });
+        vi.stubEnv("NODE_ENV", "production");
+        await expect(requirePlatformAdmin()).rejects.toThrow("Two-factor verification is required");
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    });
+
+    it("never asks non-admins for a two-factor check", async () => {
+      mockServices.profile = { getProfile: vi.fn().mockResolvedValue({ platformRole: "user" }) };
+      await expect(requirePlatformAdmin()).rejects.toThrow("Platform admin privileges required");
+      expect(mockServices.auth.getAssuranceLevel).not.toHaveBeenCalled();
     });
   });
 
@@ -77,6 +104,12 @@ describe("core/security/guards", () => {
   });
 
   describe("requireWorkspaceMember", () => {
+    it("makes a suspended workspace read-only: viewer-level reads pass, changes are refused", async () => {
+      mockServices.workspace.getWorkspaceById.mockResolvedValue({ ...mockWorkspace, suspendedAt: "2026-11-13T10:00:00Z" });
+      await expect(requireWorkspaceMember("ws_456", "viewer")).resolves.toMatchObject({ role: "editor" });
+      await expect(requireWorkspaceMember("ws_456", "editor")).rejects.toThrow("suspended");
+    });
+
     it("allows access when member has required role (editor for editor)", async () => {
       const ctx = await requireWorkspaceMember("ws_456", "editor");
       expect(ctx.workspace.id).toBe("ws_456");

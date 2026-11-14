@@ -1,4 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseSystemHeartbeatRepository, type ISystemHeartbeatRepository } from "./repositories/system-heartbeat.repository";
 import { Database } from "@/types/database.types";
 import { logger, Logger } from "@/lib/logger";
 
@@ -114,6 +115,8 @@ export interface CoreServices {
     whatsapp: WhatsAppNotificationService;
     /** Client comments batched into one studio email per 10 minutes. Service role inside: authorize before calling. */
     commentEmail: CommentEmailService;
+    /** When scheduled jobs last ran (system_heartbeats). Service role inside. */
+    heartbeat: ISystemHeartbeatRepository;
   };
 }
 
@@ -328,6 +331,7 @@ export function createCoreServices(
       session: sessionService,
       whatsapp: whatsappService,
       commentEmail: commentEmailService,
+      heartbeat: new SupabaseSystemHeartbeatRepository(systemClient),
     },
   };
 }

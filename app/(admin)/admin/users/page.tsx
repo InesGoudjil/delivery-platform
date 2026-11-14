@@ -1,48 +1,54 @@
-import { getServerServices } from "@/core/server";
-import { UsersClient, AdminUserListItem } from "./users-client";
-import { createScopedLogger } from "@/lib/logger";
+import type { SearchParams } from "nuqs/server";
+import { requirePlatformAdminPage } from "@/core/admin/context";
+import { AdminLoadError, AdminPageHeader } from "../../_components/page-header";
+import { attempt } from "../../_lib/data";
+import { formatNumber } from "../../_lib/format";
+import { loadUserListParams, pageFrom } from "../../_lib/search-params";
+import { UsersTable } from "./users-table";
 
-const log = createScopedLogger({ page: "AdminUsersPage" });
+export const metadata = { title: "Users" };
 
-export default async function AdminUsersPage() {
-  const services = await getServerServices();
+export default async function AdminUsersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const admin = await requirePlatformAdminPage("/admin/users");
+  const params = await loadUserListParams(searchParams);
+  const page = pageFrom(params.page);
+  const pageSize = Number(params.size);
 
-  let mappedUsers: AdminUserListItem[] = [];
-
-  try {
-    const profiles = await services.profile.listProfiles(100).catch(() => []);
-    if (profiles && profiles.length > 0) {
-      mappedUsers = await Promise.all(
-        profiles.map(async (p) => {
-          const workspace = await services.workspace.getWorkspaceByOwnerId(p.id).catch(() => null);
-          return {
-            id: p.id,
-            fullName: p.fullName || "Unnamed Creator",
-            email: `creator_${p.id.slice(0, 5)}@cinespace.film`,
-            avatarUrl: p.avatarUrl,
-            platformRole: (p.platformRole as any) || "user",
-            workspaceName: workspace?.brandName,
-            workspaceSlug: workspace?.slug,
-            planName: "Pro",
-            storageUsedGB: workspace?.storageUsedBytes ? Math.round(workspace.storageUsedBytes / (1024 * 1024 * 1024)) : 0,
-            projectsCount: 4,
-            lastLoginAt: p.lastLoginAt,
-            lastLoginIp: p.lastLoginIp,
-            createdAt: p.createdAt,
-          };
-        })
-      );
-    }
-  } catch (err) {
-    log.warn({ err }, "Error fetching profiles in admin users");
+  const loaded = await attempt(() =>
+    admin.readModel.listUsers({
+      search: params.q,
+      role: params.role,
+      flag: params.flag,
+      sort: params.sort,
+      desc: params.dir === "desc",
+      page,
+      pageSize,
+    })
+  );
+  if (!loaded.ok) {
+    return (
+      <div className="mx-auto max-w-7xl">
+        <AdminPageHeader title="Users" />
+        <AdminLoadError what="users" error={loaded.error} />
+      </div>
+    );
   }
-  // Showcase fallback data if database is fresh
+  const result = loaded.value;
 
-
-  const users =
-    mappedUsers.length > 0
-      ? mappedUsers
-      : [];
-
-  return <UsersClient users={users} />;
+  return (
+    <div className="mx-auto max-w-7xl">
+      <AdminPageHeader
+        title="Users"
+        description={`${formatNumber(result.total)} ${result.total === 1 ? "account matches" : "accounts match"}. Emails, sign-ins and two-factor status come from Supabase Auth.`}
+      />
+      <UsersTable
+        rows={result.rows}
+        total={result.total}
+        page={page}
+        pageSize={pageSize}
+        sort={{ key: params.sort, desc: params.dir === "desc" }}
+        currentUserId={admin.user.id}
+      />
+    </div>
+  );
 }

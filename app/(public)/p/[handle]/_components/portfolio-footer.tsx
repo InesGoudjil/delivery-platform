@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { FilmmakerProfile } from "@/lib/portfolio-data";
 import { TypographySpan } from "@/components/ui/typography";
+import { ReportLink } from "@/components/report-link";
 
 interface PortfolioFooterProps {
   profile: FilmmakerProfile;
@@ -12,7 +13,10 @@ export function PortfolioFooter({ profile, whiteLabel = false }: PortfolioFooter
   return (
     <footer className="border-t border-white/5 py-8">
       <div className="w-full px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-sans text-zinc-500">
-        <p>© {profile.name} — Films</p>
+        <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span>© {profile.name} — Films</span>
+          <ReportLink className="text-zinc-500 transition-colors hover:text-zinc-300" />
+        </p>
         {!whiteLabel && (
           <Link
             href="/"

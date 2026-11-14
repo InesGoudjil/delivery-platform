@@ -87,6 +87,16 @@ export default async function WorkspaceLayout({
                 />
               </div>
 
+              {workspace.suspendedAt && (
+                <div
+                  role="alert"
+                  className="relative z-10 border-b border-destructive/40 bg-destructive/10 px-4 py-2.5 text-sm text-destructive sm:px-6 lg:px-8"
+                >
+                  This workspace is suspended. Client links and the portfolio are closed, and changes are paused. Contact
+                  CineSpace support.
+                </div>
+              )}
+
               {/* Main Content View */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-28 md:pb-16 relative z-10">
                 {children}

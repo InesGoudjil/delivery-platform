@@ -67,6 +67,11 @@ export interface Workspace {
   defaultLanguage: Language;
   accountType: AccountType;
   storageUsedBytes: number;
+  /**
+   * Set while a platform admin has suspended the workspace: links closed, changes blocked. The
+   * reason is internal and stays in the admin read model, so it never reaches members' browsers.
+   */
+  suspendedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

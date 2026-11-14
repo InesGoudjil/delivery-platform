@@ -192,4 +192,9 @@ export class WaitlistService {
   async listPending(limit: number = 50) {
     return await this.waitlistRepo.listTopPending(limit);
   }
+
+  /** A page of the pending queue, in the order cohorts are invited. */
+  async listPendingPage(page: number, pageSize: number) {
+    return await this.waitlistRepo.listPendingPage((page - 1) * pageSize, pageSize);
+  }
 }

@@ -93,6 +93,8 @@ const replies: Record<string, any> = {
 };
 
 let delivery: ReturnType<typeof makeDelivery>;
+/** The studio's workspace suspension, as the client room reads it. */
+let workspaceSuspendedAt: string | null = null;
 let admin: any;
 let user: any;
 
@@ -102,6 +104,9 @@ function feedbackRow(dto: any) {
 
 function servicesFor(kind: "admin" | "user") {
   return {
+    workspace: {
+      getWorkspaceById: vi.fn(async (id: string) => ({ id, suspendedAt: workspaceSuspendedAt })),
+    },
     delivery: {
       getDeliveryByShareToken: vi.fn(async (token: string) => (token === delivery.shareToken ? delivery : null)),
       getDeliveryById: vi.fn(async (id: string) => (id === delivery.id ? delivery : null)),
@@ -185,6 +190,22 @@ describe("the client-room gate", () => {
 
     delivery = makeDelivery({ passcodeHash: "scrypt$v2" }); // the studio changed the passcode
     expect((await getClientRoom(TOKEN_A))?.state).toBe("locked");
+  });
+
+  it("closes a suspended studio's rooms to guests; its members can look but not comment or approve", async () => {
+    workspaceSuspendedAt = new Date().toISOString();
+    try {
+      expect((await getClientRoom(TOKEN_A))?.state).toBe("unavailable");
+      await expect(requireClientRoom(TOKEN_A)).rejects.toThrow("no longer available");
+
+      user.auth.getCurrentUser.mockResolvedValue({ id: MEMBER, email: "owner@studio.test" });
+      user.member.getMember.mockResolvedValue({ role: "owner" });
+      expect((await requireClientRoom(TOKEN_A)).canView).toBe(true);
+      await expect(requireClientRoom(TOKEN_A, "comment")).rejects.toThrow("suspended");
+      await expect(requireClientRoom(TOKEN_A, "approve")).rejects.toThrow("suspended");
+    } finally {
+      workspaceSuspendedAt = null;
+    }
   });
 
   it("closes expired and archived rooms to guests, but lets the studio preview them", async () => {

@@ -44,6 +44,9 @@ describe("app/actions/deliveries", () => {
       member: {
         isMember: vi.fn().mockResolvedValue(false),
       },
+      workspace: {
+        getWorkspaceById: vi.fn().mockResolvedValue({ id: "ws_test", slug: "ws-test", suspendedAt: null }),
+      },
     };
 
     mockUserServices = {

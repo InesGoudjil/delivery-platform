@@ -29,7 +29,22 @@ const SUPABASE_BOOTSTRAP = `
     id uuid primary key,
     email text,
     raw_user_meta_data jsonb default '{}'::jsonb,
+    email_confirmed_at timestamptz,
+    last_sign_in_at timestamptz,
+    banned_until timestamptz,
+    deleted_at timestamptz,
     created_at timestamptz default now()
+  );
+
+  -- Supabase types factor_type and status as enums; text compares the same way.
+  create table auth.mfa_factors (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users (id) on delete cascade,
+    friendly_name text,
+    factor_type text not null default 'totp',
+    status text not null default 'unverified',
+    created_at timestamptz default now(),
+    updated_at timestamptz default now()
   );
 
   create or replace function auth.uid() returns uuid language sql stable as $$

@@ -33,6 +33,20 @@ export class AuthService {
     }
   }
 
+  /**
+   * The session's assurance level, read from its verified token: 'aal2' once the user has
+   * passed a two-factor check in this session, otherwise 'aal1'. Null without a valid session.
+   */
+  async getAssuranceLevel(): Promise<'aal1' | 'aal2' | null> {
+    try {
+      const { data, error } = await this.supabase.auth.getClaims();
+      if (error || !data?.claims) return null;
+      return (data.claims as { aal?: string }).aal === 'aal2' ? 'aal2' : 'aal1';
+    } catch {
+      return null;
+    }
+  }
+
   async getCurrentUserProfile(): Promise<UserProfile | null> {
     try {
       const user = await this.getCurrentUser();

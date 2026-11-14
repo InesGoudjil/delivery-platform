@@ -35,7 +35,8 @@ export function isAllowedWaitlistPath(pathname: string): boolean {
     pathname.startsWith("/api") ||
     pathname === "/favicon.ico" ||
     pathname === "/sw.js" ||
-    pathname === "/manifest.webmanifest"
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/robots.txt"
   ) {
     return true;
   }
