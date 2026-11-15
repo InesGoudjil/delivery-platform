@@ -1,0 +1,80 @@
+/*
+ * Masonry layout for MediaGrid (media-grid.tsx).
+ *
+ * Each grid row is 1/50 of a column wide. A card spans round(50 / its ratio) + 3 rows,
+ * computed on the server (masonrySpan), so CSS grid's auto-placement puts every card in the
+ * shortest column, in curated order, without JavaScript. Appending cards never moves the ones
+ * already placed. The 3 extra rows are the gutter (6% of a column), the same as the column gap.
+ *
+ * Sizes come from the container (cqi), not the viewport, so a span doesn't depend on the
+ * screen and the editor lays out like the public page at the same width. With one column the
+ * list is a plain stack sized by each card's ratio.
+ */
+@layer components {
+  .media-masonry {
+    container: media-masonry / inline-size;
+  }
+
+  .media-masonry__list {
+    --masonry-rows: 50;
+    --masonry-gutter: 3;
+    --masonry-cols: 1;
+    --masonry-col: calc(
+      100cqi / (var(--masonry-cols) + (var(--masonry-cols) - 1) * var(--masonry-gutter) / var(--masonry-rows))
+    );
+    --masonry-gap: calc(var(--masonry-col) * var(--masonry-gutter) / var(--masonry-rows));
+    display: grid;
+    /* auto-fit + center: with fewer cards than columns the empty columns collapse and the rest
+       are centered. The 0.05px keeps rounding from dropping a column. */
+    grid-template-columns: repeat(auto-fit, calc(var(--masonry-col) - 0.05px));
+    grid-auto-rows: calc(var(--masonry-col) / var(--masonry-rows));
+    column-gap: var(--masonry-gap);
+    justify-content: center;
+  }
+
+  .media-masonry__item {
+    grid-row-end: span var(--masonry-span);
+    padding-bottom: var(--masonry-gap);
+    min-width: 0;
+  }
+
+  @container media-masonry (min-width: 600px) {
+    .media-masonry__list {
+      --masonry-cols: 2;
+    }
+  }
+
+  @container media-masonry (min-width: 720px) {
+    .media-masonry__list[data-size="S"],
+    .media-masonry__list[data-size="M"] {
+      --masonry-cols: 3;
+    }
+  }
+
+  @container media-masonry (min-width: 1200px) {
+    .media-masonry__list[data-size="S"] {
+      --masonry-cols: 4;
+    }
+  }
+
+  @container media-masonry (max-width: 599.98px) {
+    .media-masonry__list {
+      grid-template-columns: minmax(0, 1fr);
+      grid-auto-rows: auto;
+      row-gap: 1.25rem;
+      justify-content: normal;
+    }
+
+    .media-masonry__list + .media-masonry__list {
+      margin-top: 1.25rem;
+    }
+
+    .media-masonry__item {
+      grid-row-end: auto;
+      padding-bottom: 0;
+      aspect-ratio: var(--masonry-ratio);
+      justify-self: stretch;
+      align-self: start;
+    }
+  }
+}

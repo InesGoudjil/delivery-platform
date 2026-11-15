@@ -10,9 +10,11 @@ import {
   AssetCountBadge,
   PlayButtonOverlay,
   ZoomButtonOverlay,
+  MediaGridItem,
+  masonryRatio,
 } from "@/components/workspaces/media-card";
 import { PortfolioProject, PortfolioAsset } from "@/lib/portfolio-data";
-import { PortfolioAppearance } from "@/core/entities/portfolio";
+import { PortfolioAppearance, PROJECT_COVER_RATIO } from "@/core/entities/portfolio";
 import { usePortfolioModal } from "./portfolio-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,10 +84,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
     rootMargin: "300px",
   });
 
-  const isMasonry =
-    appearance?.aspectRatio === "grid" ||
-    appearance?.aspectRatio === "masonry" ||
-    appearance?.aspectRatio === "4:3";
+  const isMasonry = appearance?.aspectRatio === "masonry";
 
   const cardSize = appearance?.cardSize || "M";
 
@@ -147,7 +146,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
           </div>
         ) : (
           <div className="space-y-8">
-            <MediaGrid isMasonry={isMasonry} cardSize={cardSize} className="animate-in fade-in duration-300">
+            <MediaGrid isMasonry={false} cardSize={cardSize} className="animate-in fade-in duration-300">
               {visibleProjects.map((proj) => (
                 <MediaCard
                   key={proj.id}
@@ -158,8 +157,8 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
                   showSubtitle={showClient}
                   src={proj.coverImage}
                   type="project"
-                  isMasonry={isMasonry}
-                  numericRatio={isMasonry ? 16 / 11 : numericRatio}
+                  isMasonry={false}
+                  numericRatio={isMasonry ? PROJECT_COVER_RATIO : numericRatio}
                   thumbnailScale={thumbScale}
                   onClick={() => setSelectedProject(proj)}
                   tiltIntensity={4}
@@ -225,27 +224,28 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
               {visibleFilms.map((film) => {
                 const filmRatio = isMasonry ? (film.ar || undefined) : numericRatio;
                 return (
-                  <MediaCard
-                    key={film.id}
-                    title={film.title}
-                    subtitle={film.desc}
-                    showInfo={showClient}
-                    showTitle={showClient}
-                    showSubtitle={showClient}
-                    src={film.image}
-                    type="film"
-                    isMasonry={isMasonry}
-                    numericRatio={filmRatio}
-                    thumbnailScale={thumbScale}
-                    onClick={() => setActiveFilm(film)}
-                    tiltIntensity={4}
-                    glareIntensity={0.12}
-                    topLeft={<MediaBadge type="film" />}
-                    topRight={null}
-                    centerAction={<PlayButtonOverlay />}
-                    textAlign="center"
-                    footerMode="overlay"
-                  />
+                  <MediaGridItem key={film.id} ratio={masonryRatio({ numericRatio: film.ar, type: "film" })}>
+                    <MediaCard
+                      title={film.title}
+                      subtitle={film.desc}
+                      showInfo={showClient}
+                      showTitle={showClient}
+                      showSubtitle={showClient}
+                      src={film.image}
+                      type="film"
+                      isMasonry={isMasonry}
+                      numericRatio={filmRatio}
+                      thumbnailScale={thumbScale}
+                      onClick={() => setActiveFilm(film)}
+                      tiltIntensity={4}
+                      glareIntensity={0.12}
+                      topLeft={<MediaBadge type="film" />}
+                      topRight={null}
+                      centerAction={<PlayButtonOverlay />}
+                      textAlign="center"
+                      footerMode="overlay"
+                    />
+                  </MediaGridItem>
                 );
               })}
             </MediaGrid>
@@ -304,26 +304,27 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
           <div className="space-y-8">
             <MediaGrid isMasonry={isMasonry} cardSize={cardSize} className="animate-in fade-in duration-300">
               {visibleStills.map((still) => (
-                <MediaCard
-                  key={still.id}
-                  title={still.title}
-                  subtitle={still.cat}
-                  showInfo={showClient}
-                  showTitle={showClient}
-                  showSubtitle={showClient}
-                  src={still.image}
-                  type="still"
-                  isMasonry={isMasonry}
-                  numericRatio={isMasonry ? undefined : numericRatio}
-                  thumbnailScale={thumbScale}
-                  onClick={() => setActiveStill(still)}
-                  tiltIntensity={4}
-                  glareIntensity={0.12}
-                  topLeft={<MediaBadge type="still" />}
-                  centerAction={null}
-                  textAlign="center"
-                  footerMode="overlay"
-                />
+                <MediaGridItem key={still.id} ratio={masonryRatio({ numericRatio: still.ar, type: "still" })}>
+                  <MediaCard
+                    title={still.title}
+                    subtitle={still.cat}
+                    showInfo={showClient}
+                    showTitle={showClient}
+                    showSubtitle={showClient}
+                    src={still.image}
+                    type="still"
+                    isMasonry={isMasonry}
+                    numericRatio={isMasonry ? still.ar : numericRatio}
+                    thumbnailScale={thumbScale}
+                    onClick={() => setActiveStill(still)}
+                    tiltIntensity={4}
+                    glareIntensity={0.12}
+                    topLeft={<MediaBadge type="still" />}
+                    centerAction={null}
+                    textAlign="center"
+                    footerMode="overlay"
+                  />
+                </MediaGridItem>
               ))}
             </MediaGrid>
 

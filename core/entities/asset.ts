@@ -29,6 +29,9 @@ export interface AssetVersion {
   thumbnailUrl?: string | null;
   fileSizeBytes: number;
   durationSeconds?: number | null;
+  /** Pixel size as displayed (both set or both null): what the uploader or Stream read from the file. */
+  width?: number | null;
+  height?: number | null;
   transcodingStatus: TranscodingStatus;
   isActiveVersion: boolean;
   siloArchiveKey?: string | null;

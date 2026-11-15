@@ -10,6 +10,7 @@ import { IPlanRepository } from "@/core/repositories/plan.repository";
 import { IWorkspaceFeaturesRepository } from "@/core/repositories/workspace.repository";
 import { Asset, AssetVersion, AssetType, TranscodingStatus } from "@/core/entities/asset";
 import { isPlaceholderUrl } from "@/lib/media";
+import { aspectRatioValueFromDimensions, isSameAspectRatio } from "@/lib/media-ratios";
 import { env } from "@/lib/env";
 import { createScopedLogger } from "@/lib/logger";
 import { isR2KeyInWorkspace, isStreamUid, isUuid, parseStoredMedia, streamUidOf } from "@/lib/storage/keys";
@@ -59,6 +60,9 @@ export interface RequestAssetUploadDTO {
   contentType?: string | null;
   assetType?: AssetType;
   aspectRatio?: string;
+  /** Pixel size the uploader read from the file; stored on the version when both are given. */
+  width?: number;
+  height?: number;
   maxDurationSeconds?: number;
   /**
    * For uploads outside a delivery: which flow it comes from. Decides the key prefix, and only
@@ -304,6 +308,8 @@ export class AssetUploadService {
         thumbnailUrl: location.thumbnailUrl,
         // Declared size. Confirm checks the stored object against it and records the real size.
         fileSizeBytes: dto.fileSizeBytes,
+        width: dto.width && dto.height ? dto.width : null,
+        height: dto.width && dto.height ? dto.height : null,
         transcodingStatus: "pending",
         // Becomes the active version only when the upload is confirmed.
         isActiveVersion: false,
@@ -387,6 +393,14 @@ export class AssetUploadService {
     // Exactly one active version per file: this one.
     await this.assetVersionRepo.setActiveVersion(asset.id, version.id);
 
+    // A new version of an existing file: the file's shape follows the version now shown.
+    if (version.versionNumber > 1 && version.width && version.height) {
+      const shape = aspectRatioValueFromDimensions(version.width, version.height);
+      if (!isSameAspectRatio(asset.aspectRatio, shape)) {
+        await this.assetRepo.update(asset.id, { aspectRatio: shape });
+      }
+    }
+
     return { ...updatedVersion, isActiveVersion: true };
   }
 
@@ -432,12 +446,24 @@ export class AssetUploadService {
       const keepThumbnail =
         Boolean(currentThumb) && !isPlaceholderUrl(currentThumb) && streamUidOf(currentThumb) === null;
 
+      // Stream's source size fills in a shape the uploader couldn't read; it never replaces one
+      // (the browser reports the displayed size, after any rotation).
+      const fillsSize = version.width == null && video.width != null && video.height != null;
+
       await this.assetVersionRepo.update(version.id, {
         hlsManifestUrl: streamManifestUrl(uid),
         ...(keepThumbnail ? {} : { thumbnailUrl: streamThumbnailUrl(uid) }),
         durationSeconds: video.durationSeconds ?? version.durationSeconds ?? null,
         transcodingStatus: mapStreamStatus(video.status),
+        ...(fillsSize ? { width: video.width, height: video.height } : {}),
       });
+      if (fillsSize && version.isActiveVersion) {
+        // Only an empty ratio is set: a ratio someone chose at upload stays.
+        await this.assetRepo.setAspectRatioIfUnset(
+          asset.id,
+          aspectRatioValueFromDimensions(video.width as number, video.height as number)
+        );
+      }
       updated++;
     }
     return { updated };

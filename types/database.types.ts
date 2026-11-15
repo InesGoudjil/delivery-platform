@@ -552,6 +552,8 @@ export interface Database {
           silo_archive_key: string | null;
           silo_storage_class: string | null;
           created_at: string;
+          width: number | null;
+          height: number | null;
         };
         Insert: {
           id?: string;
@@ -568,6 +570,8 @@ export interface Database {
           silo_archive_key?: string | null;
           silo_storage_class?: string | null;
           created_at?: string;
+          width?: number | null;
+          height?: number | null;
         };
         Update: {
           id?: string;
@@ -584,6 +588,8 @@ export interface Database {
           silo_archive_key?: string | null;
           silo_storage_class?: string | null;
           created_at?: string;
+          width?: number | null;
+          height?: number | null;
         };
       };
       feedback: {

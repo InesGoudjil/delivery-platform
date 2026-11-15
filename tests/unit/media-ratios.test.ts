@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   parseAspectRatio,
+  numericAspectRatio,
   detectAspectRatioFromDimensions,
   getMediaBoundingStyles,
   getOrientationFromRatio,
@@ -120,6 +121,38 @@ describe("Filmmaker Aspect Ratio Engine (lib/media-ratios)", () => {
       expect(parseAspectRatio({ id: "4:5" }).id).toBe("4:5");
       expect(parseAspectRatio({ numeric: 1.0 }).id).toBe("1:1");
       expect(parseAspectRatio({ cssRatio: "16 / 9" }).id).toBe("16:9");
+    });
+  });
+
+  describe("numericAspectRatio", () => {
+    it("reads every format the upload flow stores", () => {
+      expect(numericAspectRatio("16:9")).toBeCloseTo(16 / 9, 6);
+      expect(numericAspectRatio("9:16")).toBeCloseTo(9 / 16, 6);
+      expect(numericAspectRatio("2.39:1")).toBeCloseTo(2.39, 6);
+      expect(numericAspectRatio("4:5")).toBeCloseTo(0.8, 6);
+      expect(numericAspectRatio("1.234 / 1")).toBeCloseTo(1.234, 6);
+      expect(numericAspectRatio("16 x 9")).toBeCloseTo(16 / 9, 6);
+      expect(numericAspectRatio("1.777")).toBe(1.777);
+      expect(numericAspectRatio(1.5)).toBe(1.5);
+    });
+
+    it("reads parsed-ratio objects", () => {
+      const scope = parseAspectRatio("2.39:1");
+      expect(numericAspectRatio(scope)).toBe(scope.numeric);
+      expect(numericAspectRatio({ id: "custom", cssRatio: "1.25 / 1" })).toBeCloseTo(1.25, 6);
+    });
+
+    it("returns null instead of guessing 16:9", () => {
+      expect(numericAspectRatio(null)).toBeNull();
+      expect(numericAspectRatio(undefined)).toBeNull();
+      expect(numericAspectRatio("")).toBeNull();
+      expect(numericAspectRatio("custom")).toBeNull();
+      expect(numericAspectRatio("invalid")).toBeNull();
+      expect(numericAspectRatio("16:0")).toBeNull();
+      expect(numericAspectRatio(0)).toBeNull();
+      expect(numericAspectRatio(-2)).toBeNull();
+      expect(numericAspectRatio(Number.NaN)).toBeNull();
+      expect(numericAspectRatio({ id: "custom" })).toBeNull();
     });
   });
 

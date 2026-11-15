@@ -179,11 +179,26 @@ describe("Cloudflare Stream: API paths are built from validated UIDs only", () =
       workspaceId: WS,
       sizeBytes: 4096,
       durationSeconds: 12.5,
+      width: null,
+      height: null,
       status: "processing",
     });
 
     fetchMock.mockResolvedValueOnce(new Response("not found", { status: 404 }));
     expect(await stream.getStreamVideo(UID)).toBeNull();
+  });
+
+  it("reports the source video's pixel size once Stream has read it", async () => {
+    const stream = new CloudflareStreamStorageProvider({ accountId: "acc", apiToken: "tok" });
+    const video = (input: unknown) =>
+      Response.json({ result: { uid: UID, creator: WS, status: { state: "ready" }, input } });
+
+    fetchMock.mockResolvedValueOnce(video({ width: 1080, height: 1920 }));
+    expect(await stream.getStreamVideo(UID)).toMatchObject({ width: 1080, height: 1920 });
+
+    // Stream says -1 until it has read the source.
+    fetchMock.mockResolvedValueOnce(video({ width: -1, height: -1 }));
+    expect(await stream.getStreamVideo(UID)).toMatchObject({ width: null, height: null });
   });
 
   it("puts only server-decided values into a direct upload's metadata", async () => {

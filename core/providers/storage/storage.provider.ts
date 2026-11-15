@@ -78,6 +78,9 @@ export interface StreamVideoInfo {
   workspaceId: string | null;
   sizeBytes: number | null;
   durationSeconds: number | null;
+  /** The source video's pixel size, once Stream has read it. */
+  width: number | null;
+  height: number | null;
   status: "ready" | "processing" | "pending" | "error";
 }
 

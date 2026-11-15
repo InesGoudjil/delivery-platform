@@ -10,6 +10,43 @@ import {
   PaginatedAssetsResult,
   WorkspaceStorageBreakdown,
 } from "./i-asset-repository";
+import { createScopedLogger } from "@/lib/logger";
+
+const log = createScopedLogger({ module: "AssetRepository" });
+
+type WriteResult = { data: any; error: { code?: string; message?: string } | null };
+
+/**
+ * Runs a write to asset_versions. If the database has no width/height columns yet (migration
+ * 20261115140000 not applied), it retries once without them, so uploads keep working.
+ */
+async function writeVersionRow(
+  payload: Record<string, unknown>,
+  write: (payload: Record<string, unknown>) => PromiseLike<WriteResult>
+): Promise<WriteResult> {
+  const result = await write(payload);
+  const missingColumn =
+    result.error?.code === "PGRST204" && /'(width|height)' column/.test(result.error.message ?? "");
+  if (!missingColumn || !("width" in payload || "height" in payload)) return result;
+
+  log.warn("asset_versions has no width/height columns; apply migration 20261115140000. Saved without them.");
+  const { width: _width, height: _height, ...rest } = payload;
+  return write(rest);
+}
+
+/**
+ * Display order for files. sort_order repeats (a new file gets the sibling count, which
+ * collides after deletions or parallel uploads), so ties are broken by age and then id;
+ * without that, offset pages could repeat or skip files and ties came back in any order.
+ */
+function inDisplayOrder<T extends { order(column: string, options: { ascending: boolean }): T }>(
+  query: T
+): T {
+  return query
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
+}
 
 export class SupabaseAssetRepository implements IAssetRepository {
   constructor(private readonly supabase: SupabaseClient<Database>) {}
@@ -54,7 +91,7 @@ export class SupabaseAssetRepository implements IAssetRepository {
       query = query.eq("is_archived", false);
     }
 
-    const { data, error } = await query.order("sort_order", { ascending: true });
+    const { data, error } = await inDisplayOrder(query);
 
     if (error) throw new Error(`Error listing assets for workspace: ${error.message}`);
     return (data || []).map(this.mapRowToEntity);
@@ -139,27 +176,27 @@ export class SupabaseAssetRepository implements IAssetRepository {
   }
 
   async listPortfolioAssets(workspaceId: string): Promise<Asset[]> {
-    const { data, error } = await (this.supabase as any)
+    const query = (this.supabase as any)
       .from("assets")
       .select("*")
       .eq("workspace_id", workspaceId)
       .eq("is_portfolio", true)
       .is("delivery_id", null)
-      .eq("is_archived", false)
-      .order("sort_order", { ascending: true });
+      .eq("is_archived", false);
+    const { data, error } = await inDisplayOrder(query);
 
     if (error) throw new Error(`Error listing portfolio assets: ${error.message}`);
     return (data || []).map(this.mapRowToEntity);
   }
 
   async listUnassignedByWorkspaceId(workspaceId: string): Promise<Asset[]> {
-    const { data, error } = await (this.supabase as any)
+    const query = (this.supabase as any)
       .from("assets")
       .select("*")
       .eq("workspace_id", workspaceId)
       .is("delivery_id", null)
-      .eq("is_archived", false)
-      .order("sort_order", { ascending: true });
+      .eq("is_archived", false);
+    const { data, error } = await inDisplayOrder(query);
 
     if (error) throw new Error(`Error listing unassigned assets: ${error.message}`);
     return (data || []).map(this.mapRowToEntity);
@@ -184,7 +221,7 @@ export class SupabaseAssetRepository implements IAssetRepository {
       query = query.eq("is_approved", options.isApproved);
     }
 
-    query = query.order("sort_order", { ascending: true });
+    query = inDisplayOrder(query);
 
     if (options?.limit !== undefined && options?.offset !== undefined) {
       query = query.range(options.offset, options.offset + options.limit - 1);
@@ -218,7 +255,7 @@ export class SupabaseAssetRepository implements IAssetRepository {
       query = query.eq("is_approved", options.isApproved);
     }
 
-    query = query.order("sort_order", { ascending: true });
+    query = inDisplayOrder(query);
 
     if (options?.limit !== undefined && options?.offset !== undefined) {
       query = query.range(options.offset, options.offset + options.limit - 1);
@@ -303,7 +340,7 @@ export class SupabaseAssetRepository implements IAssetRepository {
         sort_order: dto.sortOrder ?? 0,
         is_archived: dto.isArchived ?? false,
         is_approved: dto.isApproved ?? false,
-        aspect_ratio: dto.aspectRatio ?? "16:9",
+        aspect_ratio: dto.aspectRatio ?? null,
         category: dto.category ?? "film",
         is_portfolio: dto.deliveryId ? false : Boolean(dto.isPortfolio),
       })
@@ -393,6 +430,18 @@ export class SupabaseAssetRepository implements IAssetRepository {
     return this.mapRowToEntity(updated);
   }
 
+  async setAspectRatioIfUnset(assetId: string, aspectRatio: string): Promise<boolean> {
+    const { data, error } = await (this.supabase as any)
+      .from("assets")
+      .update({ aspect_ratio: aspectRatio, updated_at: new Date().toISOString() })
+      .eq("id", assetId)
+      .is("aspect_ratio", null)
+      .select("id");
+
+    if (error) throw new Error(`Error setting asset aspect ratio: ${error.message}`);
+    return (data ?? []).length > 0;
+  }
+
   async delete(id: string): Promise<void> {
     try {
       await (this.supabase as any)
@@ -428,6 +477,8 @@ export class SupabaseAssetVersionRepository implements IAssetVersionRepository {
       thumbnailUrl: row.thumbnail_url,
       fileSizeBytes: Number(row.file_size_bytes ?? 0),
       durationSeconds: row.duration_seconds ? Number(row.duration_seconds) : null,
+      width: row.width ?? null,
+      height: row.height ?? null,
       transcodingStatus: row.transcoding_status as TranscodingStatus,
       isActiveVersion: Boolean(row.is_active_version),
       siloArchiveKey: row.silo_archive_key || null,
@@ -471,23 +522,27 @@ export class SupabaseAssetVersionRepository implements IAssetVersionRepository {
   }
 
   async create(dto: CreateAssetVersionDTO): Promise<AssetVersion> {
-    const { data, error } = await (this.supabase as any)
-      .from("asset_versions")
-      .insert({
-        asset_id: dto.assetId,
-        version_number: dto.versionNumber,
-        label: dto.label ?? `V${dto.versionNumber}`,
-        raw_file_url: dto.rawFileUrl,
-        hls_manifest_url: dto.hlsManifestUrl ?? null,
-        thumbnail_url: dto.thumbnailUrl ?? null,
-        file_size_bytes: dto.fileSizeBytes ?? 0,
-        duration_seconds: dto.durationSeconds ?? null,
-        transcoding_status: dto.transcodingStatus ?? "pending",
-        // A new version is pending until its upload is confirmed; it doesn't replace the active one.
-        is_active_version: dto.isActiveVersion ?? false,
-      })
-      .select()
-      .single();
+    const row: Record<string, unknown> = {
+      asset_id: dto.assetId,
+      version_number: dto.versionNumber,
+      label: dto.label ?? `V${dto.versionNumber}`,
+      raw_file_url: dto.rawFileUrl,
+      hls_manifest_url: dto.hlsManifestUrl ?? null,
+      thumbnail_url: dto.thumbnailUrl ?? null,
+      file_size_bytes: dto.fileSizeBytes ?? 0,
+      duration_seconds: dto.durationSeconds ?? null,
+      transcoding_status: dto.transcodingStatus ?? "pending",
+      // A new version is pending until its upload is confirmed; it doesn't replace the active one.
+      is_active_version: dto.isActiveVersion ?? false,
+    };
+    if (dto.width && dto.height) {
+      row.width = dto.width;
+      row.height = dto.height;
+    }
+
+    const { data, error } = await writeVersionRow(row, (payload) =>
+      (this.supabase as any).from("asset_versions").insert(payload).select().single()
+    );
 
     if (error) throw new Error(`Error creating asset version: ${error.message}`);
     return this.mapRowToEntity(data);
@@ -505,13 +560,12 @@ export class SupabaseAssetVersionRepository implements IAssetVersionRepository {
     if (data.label !== undefined) payload.label = data.label;
     if (data.siloArchiveKey !== undefined) payload.silo_archive_key = data.siloArchiveKey;
     if (data.siloStorageClass !== undefined) payload.silo_storage_class = data.siloStorageClass;
+    if (data.width !== undefined) payload.width = data.width;
+    if (data.height !== undefined) payload.height = data.height;
 
-    const { data: updated, error } = await (this.supabase as any)
-      .from("asset_versions")
-      .update(payload)
-      .eq("id", id)
-      .select()
-      .single();
+    const { data: updated, error } = await writeVersionRow(payload, (row) =>
+      (this.supabase as any).from("asset_versions").update(row).eq("id", id).select().single()
+    );
 
     if (error) throw new Error(`Error updating asset version: ${error.message}`);
     return this.mapRowToEntity(updated);

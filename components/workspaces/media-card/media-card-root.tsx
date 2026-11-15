@@ -7,8 +7,9 @@ import { Card, CardContent, CardFooter, CardTitle } from "@/components/ui/card";
 import { TiltCard } from "@/components/ui/motion";
 import { TypographyH4, TypographySpan } from "@/components/ui/typography";
 import { WatermarkOverlay } from "@/components/ui/watermark-overlay";
+import { numericAspectRatio } from "@/lib/media-ratios";
 import type { MediaCardProps } from "./types";
-import { parseItemAspectRatio } from "./media-grid";
+import { clampMasonryRatio, useMasonryCell, useMediaGridImageSizes } from "./media-grid";
 import {
   MediaBadge,
   AssetCountBadge,
@@ -56,7 +57,7 @@ export function MediaCard({
   const fallbackIcon =
     type === "still" || type === "photo" ? "image" : "film";
 
-  const parsedRatio = parseItemAspectRatio(aspectRatio);
+  const parsedRatio = numericAspectRatio(aspectRatio);
   const defaultRatio =
     type === "film" || type === "video" ? 16 / 9 : type === "still" ? 3 / 4 : 4 / 3;
 
@@ -64,15 +65,25 @@ export function MediaCard({
   const effectiveRatio = numericRatio || parsedRatio || naturalRatio || defaultRatio;
   const isInfoVisible = showInfo && (showTitle || showSubtitle);
 
+  // In a masonry grid the cell already has the card's shape, so the card fills it. A masonry
+  // card used on its own sizes itself from its ratio instead.
+  const inMasonryCell = useMasonryCell();
+  const imageSizes = useMediaGridImageSizes();
+  const fillsCell = isMasonry && inMasonryCell;
+  const sizesItself = isMasonry && !inMasonryCell;
+
+  // The box is exactly the media's shape (no minimum height, which used to crop wide films).
+  // It is a size container so the overlays can switch to a compact layout on short cards.
   const mediaContent = (
     <div
-      className={`relative w-full overflow-hidden bg-black/40 min-h-[220px] sm:min-h-[200px] ${isMasonry ? "" : "size-full"}`}
-      style={isMasonry ? { aspectRatio: `${effectiveRatio}` } : undefined}
+      className={`relative w-full overflow-hidden bg-black/40 [container-type:size] ${sizesItself ? "" : "size-full"}`}
+      style={sizesItself ? { aspectRatio: `${clampMasonryRatio(effectiveRatio)}` } : undefined}
     >
       <AppImage
         src={src}
         alt={alt || title || "media item"}
         fill
+        sizes={imageSizes}
         objectFit={isFit ? "contain" : "cover"}
         fallbackIcon={fallbackIcon}
         containerClassName="absolute inset-0 size-full"
@@ -118,7 +129,7 @@ export function MediaCard({
 
       {/* Center Action (Play, Zoom) */}
       {centerAction && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none [@container(max-height:150px)]:scale-85 [@container(max-height:110px)]:hidden">
           {centerAction}
         </div>
       )}
@@ -148,7 +159,7 @@ export function MediaCard({
     <TiltCard
       tiltIntensity={tiltIntensity}
       glareIntensity={glareIntensity}
-      className={`rounded-2xl w-full ${isMasonry ? "break-inside-avoid mb-4 h-auto" : "h-full"} ${containerClassName}`}
+      className={`rounded-2xl w-full ${sizesItself ? "h-auto" : "h-full"} ${containerClassName}`}
     >
       <Card
         onClick={onClick}
@@ -156,13 +167,13 @@ export function MediaCard({
           isHero
             ? "border-primary/80 ring-1 ring-primary/40 shadow-lg shadow-primary/10"
             : "border-white/10 hover:border-white/30 dark:border-white/10 dark:hover:border-white/30"
-        } ${isMasonry ? "h-auto" : "h-full"} ${className}`}
+        } ${sizesItself ? "h-auto" : "h-full"} ${className}`}
       >
-        <CardContent className="p-0 relative overflow-hidden">
+        <CardContent className={`p-0 relative overflow-hidden ${fillsCell ? "h-full" : ""}`}>
           {isMasonry ? (
             mediaContent
           ) : (
-            <AspectRatio ratio={effectiveRatio} className="w-full relative overflow-hidden bg-black/40 min-h-[220px] sm:min-h-[200px]">
+            <AspectRatio ratio={effectiveRatio} className="w-full relative overflow-hidden bg-black/40">
               {mediaContent}
             </AspectRatio>
           )}

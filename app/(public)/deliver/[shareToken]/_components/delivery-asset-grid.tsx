@@ -2,7 +2,7 @@
 
 import { FileVideo } from "lucide-react";
 import { parseAspectRatio } from "@/lib/media";
-import { MediaGrid } from "@/components/workspaces/media-card";
+import { MediaGrid, MediaGridItem, masonryRatio } from "@/components/workspaces/media-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -11,7 +11,7 @@ import {
   TypographyKicker,
   TypographyLead,
 } from "@/components/ui/typography";
-import { DeliveryAssetCard } from "./delivery-asset-card";
+import { DeliveryAssetCard, isPhotoAsset } from "./delivery-asset-card";
 import type { DeliveryAssetItem, DeliveryAppearance, AssetFilterTab } from "./types";
 
 interface DeliveryAssetGridProps {
@@ -134,24 +134,28 @@ export function DeliveryAssetGrid({
           </CardContent>
         </Card>
       ) : (
-        <MediaGrid isMasonry={isMasonry} cardSize={cardSize} className="gap-5 pt-1">
+        <MediaGrid isMasonry={isMasonry} cardSize={cardSize} className="pt-1">
           {filteredAssets.map((asset) => (
-            <DeliveryAssetCard
+            <MediaGridItem
               key={asset.id}
-              asset={asset}
-              workspaceBrandName={workspaceBrandName}
-              appearance={appearance}
-              isDeliveryWatermarked={isDeliveryWatermarked}
-              isGlobalDownloadUnlocked={isGlobalDownloadUnlocked}
-              isApproving={approvingAssetId === asset.id}
-              numericRatio={numericRatio}
-              isMasonry={isMasonry}
-              thumbnailScale={thumbnailScale}
-              showCardInfo={showCardInfo}
-              onSelect={onSelectAsset}
-              onToggleApproval={onToggleApproval}
-              onDownload={onDownloadAsset}
-            />
+              ratio={masonryRatio({ aspectRatio: asset.aspectRatio, type: isPhotoAsset(asset) ? "photo" : "video" })}
+            >
+              <DeliveryAssetCard
+                asset={asset}
+                workspaceBrandName={workspaceBrandName}
+                appearance={appearance}
+                isDeliveryWatermarked={isDeliveryWatermarked}
+                isGlobalDownloadUnlocked={isGlobalDownloadUnlocked}
+                isApproving={approvingAssetId === asset.id}
+                numericRatio={numericRatio}
+                isMasonry={isMasonry}
+                thumbnailScale={thumbnailScale}
+                showCardInfo={showCardInfo}
+                onSelect={onSelectAsset}
+                onToggleApproval={onToggleApproval}
+                onDownload={onDownloadAsset}
+              />
+            </MediaGridItem>
           ))}
         </MediaGrid>
       )}

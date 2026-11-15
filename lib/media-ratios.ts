@@ -226,6 +226,39 @@ export function getOrientationFromRatio(numeric: number): AspectRatioOrientation
 }
 
 /**
+ * Width ÷ height of a stored aspect ratio, or null when it is missing or unreadable.
+ * Accepts "16:9", "2.39:1", "16/9", "16 x 9", "1.234 / 1" (how custom ratios are saved),
+ * plain numbers and parsed-ratio objects. Unlike parseAspectRatio it never substitutes 16:9,
+ * so callers can tell an unknown ratio from a real one.
+ */
+export function numericAspectRatio(input: unknown): number | null {
+  if (input === null || input === undefined) return null;
+  if (typeof input === "number") return Number.isFinite(input) && input > 0 ? input : null;
+  if (typeof input === "object") {
+    const parsed = input as { numeric?: unknown; cssRatio?: unknown; id?: unknown };
+    return numericAspectRatio(parsed.numeric ?? parsed.cssRatio ?? parsed.id ?? null);
+  }
+  if (typeof input !== "string") return null;
+
+  const text = input.trim();
+  const pair = text.match(/^(\d+(?:\.\d+)?)\s*[:/xX]\s*(\d+(?:\.\d+)?)$/);
+  if (pair) {
+    const width = parseFloat(pair[1]);
+    const height = parseFloat(pair[2]);
+    return width > 0 && height > 0 ? width / height : null;
+  }
+  const value = /^\d+(?:\.\d+)?$/.test(text) ? parseFloat(text) : NaN;
+  return value > 0 ? value : null;
+}
+
+/** True when two stored ratios describe the same shape, within the detection tolerance (3.5%). */
+export function isSameAspectRatio(a: unknown, b: unknown, tolerance = 0.035): boolean {
+  const first = numericAspectRatio(a);
+  const second = numericAspectRatio(b);
+  return first !== null && second !== null && Math.abs(first / second - 1) <= tolerance;
+}
+
+/**
  * Parses any ratio string, number, or preset into a strongly-typed normalized result.
  * 
  * Supports:
@@ -418,6 +451,15 @@ export function detectAspectRatioFromDimensions(
     isSquare: orientation === "square",
     isUltrawide: orientation === "ultrawide",
   };
+}
+
+/**
+ * How a shape read from pixel sizes is stored on a file: the nearest preset id ("16:9",
+ * "2.39:1") or, when no preset is close, its decimal form ("1.234 / 1").
+ */
+export function aspectRatioValueFromDimensions(width: number, height: number): string {
+  const detected = detectAspectRatioFromDimensions(width, height);
+  return detected.id === "custom" ? detected.cssRatio : detected.id;
 }
 
 /**

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Image, { ImageProps } from "next/image";
+import { useState, useEffect, useRef } from "react";
+import Image, { ImageLoader, ImageProps } from "next/image";
 import { Camera, Film, Image as ImageIcon, RefreshCw } from "lucide-react";
 import { resolveThumbnailUrl, isPlaceholderUrl, resolveMediaUrl } from "@/lib/media";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,42 @@ function isVideoUrl(url: string | null | undefined): boolean {
   );
 }
 
+/** The URL shown for `src`, or "" when there is nothing to show (missing or a placeholder). */
+export function resolveDisplayUrl(src: string | null | undefined, isImageOrStill: boolean): string {
+  if (!src || typeof src !== "string") return "";
+  const trimmed = src.trim();
+  if (!trimmed || isPlaceholderUrl(trimmed)) return "";
+  const resolved = resolveThumbnailUrl(trimmed, undefined, isImageOrStill) || resolveMediaUrl(trimmed);
+  return resolved && !isPlaceholderUrl(resolved) ? resolved : "";
+}
+
+/**
+ * Whether `resolved` is the same on the server and in the browser, so it can be rendered on the
+ * server: absolute https URLs left as they were (signed links, stored Stream thumbnails) and
+ * local images. Rewritten URLs can depend on server-only settings (the Stream and R2 domains),
+ * so those are worked out in the browser only, as before.
+ */
+export function isServerRenderable(src: string, resolved: string): boolean {
+  return resolved === src.trim() && (/^https:\/\//.test(resolved) || /^\/(?!\/|api\/)/.test(resolved));
+}
+
+/** Cloudflare Stream resizes thumbnails on request, so they get a srcset sized to the card. */
+export function isStreamThumbnailUrl(url: string): boolean {
+  try {
+    const { hostname, pathname } = new URL(url);
+    return /(^|\.)(cloudflarestream\.com|videodelivery\.net)$/.test(hostname) && pathname.endsWith("/thumbnails/thumbnail.jpg");
+  } catch {
+    return false;
+  }
+}
+
+export const streamThumbnailLoader: ImageLoader = ({ src, width }) => {
+  const url = new URL(src);
+  url.searchParams.delete("height");
+  url.searchParams.set("width", String(width));
+  return url.toString();
+};
+
 export function AppImage({
   src,
   alt = "Media asset",
@@ -42,46 +78,47 @@ export function AppImage({
   unoptimized,
   ...props
 }: AppImageProps) {
-  const [hasError, setHasError] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentSrc, setCurrentSrc] = useState<string>("");
-  const [retryAttempt, setRetryAttempt] = useState(0);
-
   const isImageOrStill = fallbackIcon === "image" || fallbackIcon === "camera";
+
+  // What the server can render already (see isServerRenderable); the rest waits for the browser.
+  const initialResolved = resolveDisplayUrl(src, isImageOrStill);
+  const initialSrc = initialResolved && src && isServerRenderable(src, initialResolved) ? initialResolved : "";
+
+  const [hasError, setHasError] = useState(!initialResolved);
+  // A server-rendered image paints as it arrives; the loading overlay is for URLs the browser
+  // works out (otherwise it would sit dimmed until hydration, even once loaded).
+  const [isLoading, setIsLoading] = useState(!initialSrc);
+  const [currentSrc, setCurrentSrc] = useState<string>(initialSrc);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  // The URL on screen, so hydration doesn't reload an image the server already rendered.
+  const shownSrc = useRef(initialSrc);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
   const isVideo = isVideoUrl(currentSrc);
 
   useEffect(() => {
+    const resolved = resolveDisplayUrl(src, isImageOrStill);
+    if (!resolved) {
+      shownSrc.current = "";
+      setHasError(true);
+      setIsLoading(false);
+      setCurrentSrc("");
+      return;
+    }
+    if (resolved === shownSrc.current && retryAttempt === 0) return;
+
+    shownSrc.current = resolved;
     setHasError(false);
     setIsLoading(true);
-
-    if (!src || typeof src !== "string" || src.trim().length === 0) {
-      setHasError(true);
-      setIsLoading(false);
-      setCurrentSrc("");
-      return;
-    }
-
-    const trimmed = src.trim();
-    if (isPlaceholderUrl(trimmed)) {
-      setHasError(true);
-      setIsLoading(false);
-      setCurrentSrc("");
-      return;
-    }
-
-    const resolved =
-      resolveThumbnailUrl(trimmed, undefined, isImageOrStill) ||
-      resolveMediaUrl(trimmed);
-
-    if (!resolved || isPlaceholderUrl(resolved)) {
-      setHasError(true);
-      setIsLoading(false);
-      setCurrentSrc("");
-      return;
-    }
-
     setCurrentSrc(resolved);
   }, [src, isImageOrStill, retryAttempt]);
+
+  // A server-rendered video can finish loading before React attaches its handlers.
+  useEffect(() => {
+    if (isVideo && videoRef.current && videoRef.current.readyState >= 1) {
+      setIsLoading(false);
+    }
+  }, [isVideo, currentSrc]);
 
   const handleImageError = () => {
     // If the media failed on direct R2 public CDN or S3 endpoint, gracefully fall back to the authenticated /api/media proxy
@@ -97,6 +134,7 @@ export function AppImage({
       const proxyUrl = `/api/media/${cleanKey}`;
       if (currentSrc !== proxyUrl) {
         console.warn(`[AppImage] Media failed to load at ${currentSrc}. Falling back to proxy ${proxyUrl}`);
+        shownSrc.current = proxyUrl;
         setCurrentSrc(proxyUrl);
         return;
       }
@@ -106,12 +144,7 @@ export function AppImage({
     setIsLoading(false);
   };
 
-  const isExternalCdn = Boolean(
-    currentSrc &&
-    (currentSrc.includes("cloudflarestream.com") ||
-      currentSrc.includes("r2.dev") ||
-      currentSrc.includes("videodelivery.net"))
-  );
+  const resizesOnRequest = isStreamThumbnailUrl(currentSrc);
 
   const renderFallbackIcon = () => {
     switch (fallbackIcon) {
@@ -153,6 +186,7 @@ export function AppImage({
           )}
           {isVideo ? (
             <video
+              ref={videoRef}
               src={`${currentSrc}#t=0.001`}
               preload="metadata"
               muted
@@ -181,7 +215,8 @@ export function AppImage({
               alt={alt}
               fill={fill}
               sizes={sizes || (fill ? "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" : undefined)}
-              unoptimized={unoptimized ?? true}
+              loader={resizesOnRequest ? streamThumbnailLoader : undefined}
+              unoptimized={resizesOnRequest ? false : (unoptimized ?? true)}
               onError={handleImageError}
               className={`transition-opacity duration-300 ${
                 isLoading ? "opacity-40" : "opacity-100"
@@ -194,6 +229,9 @@ export function AppImage({
             />
           )}
         </>
+      ) : !hasError && src ? (
+        // Worked out in the browser (see isServerRenderable): a neutral placeholder until then.
+        <div className="absolute inset-0 bg-white/5 animate-pulse pointer-events-none" />
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center p-3 text-center bg-[#141416] border border-white/5 text-[#8e8e93] space-y-1.5 select-none">
           {renderFallbackIcon()}

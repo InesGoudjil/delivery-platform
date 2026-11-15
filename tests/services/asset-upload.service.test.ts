@@ -137,6 +137,8 @@ function setup(options: Setup = {}) {
     delete: vi.fn().mockResolvedValue(undefined),
     listByDeliveryId: vi.fn(async () => []),
     listUnassignedByWorkspaceId: vi.fn(async () => []),
+    update: vi.fn(async (id: string, data: Partial<Asset>) => ({ ...(assets.get(id) ?? makeAsset({ id })), ...data })),
+    setAspectRatioIfUnset: vi.fn().mockResolvedValue(true),
   };
   const versionRepo = {
     findById: vi.fn(async (id: string) => versions.get(id) ?? null),
@@ -428,14 +430,14 @@ describe("AssetUploadService.confirmUploadCompleted", () => {
     const streamVersion = makeVersion({ rawFileUrl: STREAM_MANIFEST, hlsManifestUrl: STREAM_MANIFEST });
     const foreign = setup({
       versions: [streamVersion],
-      streamVideo: { uid: UID, creator: OTHER_WS, workspaceId: OTHER_WS, sizeBytes: 10, durationSeconds: 5, status: "ready" },
+      streamVideo: { uid: UID, creator: OTHER_WS, workspaceId: OTHER_WS, sizeBytes: 10, durationSeconds: 5, width: null, height: null, status: "ready" },
     });
     await expect(foreign.service.confirmUploadCompleted({ assetVersionId: VERSION })).rejects.toBeInstanceOf(UploadRejectedError);
     expect(foreign.storage.deleteAsset).not.toHaveBeenCalled();
 
     const own = setup({
       versions: [streamVersion],
-      streamVideo: { uid: UID, creator: WS, workspaceId: WS, sizeBytes: 1000, durationSeconds: 42, status: "ready" },
+      streamVideo: { uid: UID, creator: WS, workspaceId: WS, sizeBytes: 1000, durationSeconds: 42, width: null, height: null, status: "ready" },
     });
     await own.service.confirmUploadCompleted({ assetVersionId: VERSION });
     expect(own.storage.getStreamVideo).toHaveBeenCalledWith(UID);
@@ -461,8 +463,8 @@ describe("AssetUploadService.deleteStoredFiles", () => {
     const { service, storage } = setup();
     storage.getStreamVideo.mockImplementation(async (uid: string) =>
       uid === UID
-        ? { uid, creator: WS, workspaceId: WS, sizeBytes: 1, durationSeconds: 1, status: "ready" as const }
-        : { uid, creator: OTHER_WS, workspaceId: OTHER_WS, sizeBytes: 1, durationSeconds: 1, status: "ready" as const }
+        ? { uid, creator: WS, workspaceId: WS, sizeBytes: 1, durationSeconds: 1, width: null, height: null, status: "ready" as const }
+        : { uid, creator: OTHER_WS, workspaceId: OTHER_WS, sizeBytes: 1, durationSeconds: 1, width: null, height: null, status: "ready" as const }
     );
 
     const result = await service.deleteStoredFiles(makeAsset(), versions);
@@ -542,7 +544,7 @@ describe("AssetUploadService.setVersionThumbnail", () => {
 });
 
 describe("AssetUploadService.handleTranscodeWebhook", () => {
-  const ready: StreamVideoInfo = { uid: UID, creator: WS, workspaceId: WS, sizeBytes: 10, durationSeconds: 61, status: "ready" };
+  const ready: StreamVideoInfo = { uid: UID, creator: WS, workspaceId: WS, sizeBytes: 10, durationSeconds: 61, width: null, height: null, status: "ready" };
 
   it("finds the version by the Stream UID stored on it, not by the payload's metadata", async () => {
     const confirmed = makeVersion({ transcodingStatus: "processing", isActiveVersion: true, hlsManifestUrl: STREAM_MANIFEST });
@@ -589,5 +591,72 @@ describe("AssetUploadService.handleTranscodeWebhook", () => {
       expect(await service.handleTranscodeWebhook(payload)).toEqual({ updated: 0 });
     }
     expect(versionRepo.listByStreamUid).not.toHaveBeenCalled();
+  });
+});
+
+describe("AssetUploadService file sizes", () => {
+  const readyWithSize: StreamVideoInfo = {
+    uid: UID,
+    creator: WS,
+    workspaceId: WS,
+    sizeBytes: 10,
+    durationSeconds: 61,
+    width: 1080,
+    height: 1920,
+    status: "ready",
+  };
+
+  it("stores the pixel size the uploader read on the new version, only when both sides are known", async () => {
+    const both = setup();
+    await both.service.requestAssetUpload({ ...deliveryUpload, width: 3840, height: 1608 });
+    expect(both.versionRepo.create).toHaveBeenCalledWith(expect.objectContaining({ width: 3840, height: 1608 }));
+
+    const oneSide = setup();
+    await oneSide.service.requestAssetUpload({ ...deliveryUpload, width: 3840 });
+    expect(oneSide.versionRepo.create).toHaveBeenCalledWith(expect.objectContaining({ width: null, height: null }));
+  });
+
+  it("makes the file's ratio follow a confirmed new version with a different shape", async () => {
+    const { service, assetRepo } = setup({ versions: [makeVersion({ versionNumber: 2, width: 1080, height: 1920 })] });
+    await service.confirmUploadCompleted({ assetVersionId: VERSION });
+    expect(assetRepo.update).toHaveBeenCalledWith(ASSET, { aspectRatio: "9:16" });
+  });
+
+  it("keeps the ratio for a first version (chosen or detected at upload) and for the same shape", async () => {
+    const first = setup({ versions: [makeVersion({ width: 1080, height: 1920 })] });
+    await first.service.confirmUploadCompleted({ assetVersionId: VERSION });
+    expect(first.assetRepo.update).not.toHaveBeenCalled();
+
+    const same = setup({ versions: [makeVersion({ versionNumber: 2, width: 1920, height: 1080 })] });
+    await same.service.confirmUploadCompleted({ assetVersionId: VERSION });
+    expect(same.assetRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("fills a missing size from Stream and sets the file's ratio only if none is stored", async () => {
+    const confirmed = makeVersion({ transcodingStatus: "processing", isActiveVersion: true, hlsManifestUrl: STREAM_MANIFEST });
+    const { service, versionRepo, assetRepo } = setup({ versions: [confirmed], streamVideo: readyWithSize });
+    await service.handleTranscodeWebhook({ uid: UID });
+    expect(versionRepo.update).toHaveBeenCalledWith(VERSION, expect.objectContaining({ width: 1080, height: 1920 }));
+    expect(assetRepo.setAspectRatioIfUnset).toHaveBeenCalledWith(ASSET, "9:16");
+  });
+
+  it("never replaces a size the uploader read, and leaves an older version's file ratio alone", async () => {
+    const known = makeVersion({
+      transcodingStatus: "processing",
+      isActiveVersion: true,
+      hlsManifestUrl: STREAM_MANIFEST,
+      width: 1920,
+      height: 1080,
+    });
+    const knownSetup = setup({ versions: [known], streamVideo: readyWithSize });
+    await knownSetup.service.handleTranscodeWebhook({ uid: UID });
+    expect(knownSetup.versionRepo.update.mock.calls[0][1]).not.toHaveProperty("width");
+    expect(knownSetup.assetRepo.setAspectRatioIfUnset).not.toHaveBeenCalled();
+
+    const older = makeVersion({ transcodingStatus: "processing", isActiveVersion: false, hlsManifestUrl: STREAM_MANIFEST });
+    const olderSetup = setup({ versions: [older], streamVideo: readyWithSize });
+    await olderSetup.service.handleTranscodeWebhook({ uid: UID });
+    expect(olderSetup.versionRepo.update).toHaveBeenCalledWith(VERSION, expect.objectContaining({ width: 1080, height: 1920 }));
+    expect(olderSetup.assetRepo.setAspectRatioIfUnset).not.toHaveBeenCalled();
   });
 });

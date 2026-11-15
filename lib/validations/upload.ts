@@ -294,6 +294,9 @@ export const requestUploadSchema = z.object({
   contentType: z.string().trim().max(255).optional().nullable(),
   assetType: assetTypeSchema.default("video"),
   aspectRatio: z.string().trim().max(32).optional(),
+  /** Pixel size the browser read from the file, when it could (used only when both are given). */
+  width: z.number().int().min(1).max(100000).optional(),
+  height: z.number().int().min(1).max(100000).optional(),
   maxDurationSeconds: z.number().int().positive().max(21600).optional(),
   /** For uploads outside a delivery: which flow it comes from (see uploadPlacementSchema). */
   placement: uploadPlacementSchema.optional(),
