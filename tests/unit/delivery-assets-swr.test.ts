@@ -52,7 +52,8 @@ describe("Delivery Assets SWR & State Helpers", () => {
       });
 
       expect(next.items).toHaveLength(2);
-      expect(next.items[0].id).toBe("asset_new");
+      // Last, matching where the server files it (sort_order = sibling count).
+      expect(next.items.map((item) => item.id)).toEqual(["asset_1", "asset_new"]);
       expect(next.totalCount).toBe(2);
     });
 

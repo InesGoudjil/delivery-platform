@@ -425,12 +425,18 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
 
     const size = Number(result.size);
     const duration = Number(result.duration);
+    // Stream reports -1 until it has read the source.
+    const width = Number(result.input?.width);
+    const height = Number(result.input?.height);
+    const hasSize = Number.isInteger(width) && Number.isInteger(height) && width > 0 && height > 0;
     return {
       uid: cleanUid,
       creator: typeof result.creator === "string" && result.creator ? result.creator : null,
       workspaceId: typeof result.meta?.workspaceId === "string" && result.meta.workspaceId ? result.meta.workspaceId : null,
       sizeBytes: Number.isFinite(size) && size > 0 ? size : null,
       durationSeconds: Number.isFinite(duration) && duration > 0 ? duration : null,
+      width: hasSize ? width : null,
+      height: hasSize ? height : null,
       status,
     };
   }

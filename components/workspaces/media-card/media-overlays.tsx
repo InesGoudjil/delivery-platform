@@ -91,7 +91,7 @@ export function CardBottomOverlay({
 
   return (
     <div
-      className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/45 to-transparent pt-12 pb-3.5 px-3.5 sm:px-4 pointer-events-none flex flex-col justify-end ${
+      className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/45 to-transparent pt-12 pb-3.5 px-3.5 sm:px-4 [@container(max-height:150px)]:pt-6 [@container(max-height:150px)]:pb-2.5 pointer-events-none flex flex-col justify-end ${
         isCenter ? "items-center text-center" : "items-start text-left"
       } space-y-0.5 ${className}`}
     >
@@ -101,7 +101,7 @@ export function CardBottomOverlay({
         </TypographyH4>
       )}
       {showSubtitle && subtitle && (
-        <TypographyMuted className="text-[10px] sm:text-[11px] text-zinc-300/80 truncate max-w-full font-sans leading-tight">
+        <TypographyMuted className="text-[10px] sm:text-[11px] text-zinc-300/80 truncate max-w-full font-sans leading-tight [@container(max-height:150px)]:hidden">
           {subtitle}
         </TypographyMuted>
       )}

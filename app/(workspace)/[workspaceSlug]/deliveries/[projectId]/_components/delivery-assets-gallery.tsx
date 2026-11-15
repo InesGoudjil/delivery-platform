@@ -11,6 +11,8 @@ import {
   VersionBadge,
   PlayButtonOverlay,
   ZoomButtonOverlay,
+  MediaGridItem,
+  masonryRatio,
 } from "@/components/workspaces/media-card";
 import { getDownloadFilename, triggerDirectDownload } from "@/lib/download";
 import {
@@ -153,7 +155,7 @@ export function DeliveryAssetsGallery({
       </div>
 
       {/* Masonry / Responsive Asset Grid */}
-      <MediaGrid isMasonry={isMasonry} cardSize={cardSize} className="gap-4">
+      <MediaGrid isMasonry={isMasonry} cardSize={cardSize}>
         {filteredItems.map((item) => {
           const numericRatio =
             isMasonry
@@ -175,119 +177,81 @@ export function DeliveryAssetsGallery({
               : item.aspectRatio || "16:9";
 
           return (
-            <MediaCard
-              key={item.id}
-              title={item.title}
-              // subtitle={`Aspect: ${aspectLabel}`}
-              className={item.type === "video" ? "max-sm:rounded-none" : ""}
-              containerClassName={item.type === "video" ? "max-sm:rounded-none" : ""}
-              showInfo={showCardInfo}
-              showTitle={showCardInfo}
-              showSubtitle={showCardInfo}
-              src={item.src}
-              type={item.type}
-              aspectRatio={item.aspectRatio}
-              numericRatio={numericRatio}
-              isMasonry={isMasonry}
-              thumbnailScale={"Fill"}
-              onClick={() => onSelectItem(item)}
-              textAlign="center"
-              footerMode="overlay"
-              watermarkMedia={
-                isWatermarkActive
-                  ? { enabled: true, text: "WATERMARK ACTIVE", opacity: 0.16 }
-                  : undefined
-              }
-              tiltIntensity={3}
-              glareIntensity={0.1}
-              topLeft={
-                <>
-                  <MediaBadge type={item.type} />
-                  <VersionBadge
-                    versionNumber={item.versionNumber || 1}
-                    totalVersions={item.totalVersions}
-                  />
-                  {item.status === "approved" && (
-                    <Badge
-                      variant="sage"
-                      className="bg-emerald-500/80 border-emerald-400/50 text-black hover:text-black opacity-100"
-                      // className="text-[9px] bg-green-950 px-1.5 py-0.5 font-bold uppercase rounded-md shadow-md border-none"
-                    >
-                            <Check className="size-3.5 stroke-[2.5]" color="white"/>
-                    </Badge>
-                  )}
-                </>
-              }
-              topRight={
-                <>
-                  {onToggleApproval && (
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon-xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onToggleApproval(item.id, item.status);
-                            }}
-                            className={`size-7 rounded-lg backdrop-blur-md transition-all cursor-pointer shadow-md ${
-                              item.status === "approved"
-                                ? "bg-emerald-500/80 border-emerald-400/50 text-black hover:bg-amber-500/80 hover:border-amber-400/50 hover:text-black opacity-100"
-                                : "bg-black/60 border-white/20 text-zinc-300 hover:text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 opacity-0 group-hover:opacity-100 max-sm:opacity-100"
-                            }`}
-                          >
-                            <Check className="size-3.5 stroke-[2.5]" />
-                          </Button>
-                        }
-                      />
-                      <TooltipContent>
-                        {item.status === "approved"
-                          ? "Approved — click to unapprove"
-                          : "Approve asset"}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon-xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const dlUrl =
-                              item.downloadUrl ||
-                              item.rawUrl ||
-                              (item.type === "photo" ? item.src : "");
-                            if (!dlUrl) {
-                              toast.error("No master file available for download.");
-                              return;
-                            }
-                            const filename = getDownloadFilename(
-                              item.title,
-                              item.versionNumber,
-                              dlUrl,
-                              item.type
-                            );
-                            triggerDirectDownload(dlUrl, filename);
-                            toast.success(`Downloading ${item.title}`, {
-                              description: `Saving as ${filename}`,
-                            });
-                          }}
-                          className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-white hover:bg-white/20 hover:border-white/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
-                        >
-                          <Download className="size-3.5" />
-                        </Button>
-                      }
+            <MediaGridItem key={item.id} ratio={masonryRatio({ aspectRatio: item.aspectRatio, type: item.type })}>
+              <MediaCard
+                title={item.title}
+                // subtitle={`Aspect: ${aspectLabel}`}
+                className={item.type === "video" ? "max-sm:rounded-none" : ""}
+                containerClassName={item.type === "video" ? "max-sm:rounded-none" : ""}
+                showInfo={showCardInfo}
+                showTitle={showCardInfo}
+                showSubtitle={showCardInfo}
+                src={item.src}
+                type={item.type}
+                aspectRatio={item.aspectRatio}
+                numericRatio={numericRatio}
+                isMasonry={isMasonry}
+                thumbnailScale={thumbnailScale}
+                onClick={() => onSelectItem(item)}
+                textAlign="center"
+                footerMode="overlay"
+                watermarkMedia={
+                  isWatermarkActive
+                    ? { enabled: true, text: "WATERMARK ACTIVE", opacity: 0.16 }
+                    : undefined
+                }
+                tiltIntensity={3}
+                glareIntensity={0.1}
+                topLeft={
+                  <>
+                    <MediaBadge type={item.type} />
+                    <VersionBadge
+                      versionNumber={item.versionNumber || 1}
+                      totalVersions={item.totalVersions}
                     />
-                    <TooltipContent>Download master file</TooltipContent>
-                  </Tooltip>
+                    {item.status === "approved" && (
+                      <Badge
+                        variant="sage"
+                        className="bg-emerald-500/80 border-emerald-400/50 text-black hover:text-black opacity-100"
+                        // className="text-[9px] bg-green-950 px-1.5 py-0.5 font-bold uppercase rounded-md shadow-md border-none"
+                      >
+                              <Check className="size-3.5 stroke-[2.5]" color="white"/>
+                      </Badge>
+                    )}
+                  </>
+                }
+                topRight={
+                  <>
+                    {onToggleApproval && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleApproval(item.id, item.status);
+                              }}
+                              className={`size-7 rounded-lg backdrop-blur-md transition-all cursor-pointer shadow-md ${
+                                item.status === "approved"
+                                  ? "bg-emerald-500/80 border-emerald-400/50 text-black hover:bg-amber-500/80 hover:border-amber-400/50 hover:text-black opacity-100"
+                                  : "bg-black/60 border-white/20 text-zinc-300 hover:text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40 opacity-0 group-hover:opacity-100 max-sm:opacity-100"
+                              }`}
+                            >
+                              <Check className="size-3.5 stroke-[2.5]" />
+                            </Button>
+                          }
+                        />
+                        <TooltipContent>
+                          {item.status === "approved"
+                            ? "Approved — click to unapprove"
+                            : "Approve asset"}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
 
-                  {onEditAsset && (
                     <Tooltip>
                       <TooltipTrigger
                         render={
@@ -297,52 +261,91 @@ export function DeliveryAssetsGallery({
                             size="icon-xs"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onEditAsset(item);
+                              const dlUrl =
+                                item.downloadUrl ||
+                                item.rawUrl ||
+                                (item.type === "photo" ? item.src : "");
+                              if (!dlUrl) {
+                                toast.error("No master file available for download.");
+                                return;
+                              }
+                              const filename = getDownloadFilename(
+                                item.title,
+                                item.versionNumber,
+                                dlUrl,
+                                item.type
+                              );
+                              triggerDirectDownload(dlUrl, filename);
+                              toast.success(`Downloading ${item.title}`, {
+                                description: `Saving as ${filename}`,
+                              });
                             }}
                             className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-white hover:bg-white/20 hover:border-white/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
                           >
-                            <Pencil className="size-3.5" />
+                            <Download className="size-3.5" />
                           </Button>
                         }
                       />
-                      <TooltipContent>Edit asset details</TooltipContent>
+                      <TooltipContent>Download master file</TooltipContent>
                     </Tooltip>
-                  )}
-                  {onDeleteAsset && (
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon-xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setItemToDelete(item);
-                            }}
-                            className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        }
-                      />
-                      <TooltipContent>Move asset to trash</TooltipContent>
-                    </Tooltip>
-                  )}
-                </>
-              }
-              // centerAction={item.type === "video" ? <PlayButtonOverlay /> : <ZoomButtonOverlay />}
-              bottomRight={
-                item.duration ? (
-                  <Badge
-                    variant="outline"
-                    className="text-[10px] bg-black/80 px-2 py-0.5 rounded text-white border-white/10"
-                  >
-                    {item.duration}
-                  </Badge>
-                ) : undefined
-              }
-            />
+
+                    {onEditAsset && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditAsset(item);
+                              }}
+                              className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-white hover:bg-white/20 hover:border-white/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
+                            >
+                              <Pencil className="size-3.5" />
+                            </Button>
+                          }
+                        />
+                        <TooltipContent>Edit asset details</TooltipContent>
+                      </Tooltip>
+                    )}
+                    {onDeleteAsset && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setItemToDelete(item);
+                              }}
+                              className="size-7 rounded-lg bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/40 transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          }
+                        />
+                        <TooltipContent>Move asset to trash</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </>
+                }
+                // centerAction={item.type === "video" ? <PlayButtonOverlay /> : <ZoomButtonOverlay />}
+                bottomRight={
+                  item.duration ? (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] bg-black/80 px-2 py-0.5 rounded text-white border-white/10"
+                    >
+                      {item.duration}
+                    </Badge>
+                  ) : undefined
+                }
+              />
+            </MediaGridItem>
           );
         })}
       </MediaGrid>

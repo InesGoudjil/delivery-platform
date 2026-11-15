@@ -26,13 +26,45 @@ export interface PortfolioHeroCover {
   showHeroText?: boolean;
 }
 
+/** How the work grid is laid out: tiles at one ratio, or masonry (each file at its own shape). */
+export type PortfolioLayout = "16:9" | "9:16" | "1:1" | "masonry";
+
+/**
+ * Project covers have no stored ratio, so in masonry mode the Projects tab shows them as a
+ * regular grid of tiles at this shape (in the editor and on the public page alike).
+ */
+export const PROJECT_COVER_RATIO = 16 / 11;
+
 export interface PortfolioAppearance {
   cardSize: "S" | "M" | "L";
-  aspectRatio: "16:9" | "9:16" | "1:1" | "4:3" | "grid" | "masonry";
+  aspectRatio: PortfolioLayout;
   thumbnailScale: "fit" | "fill";
   showClientInfo: boolean;
   featuredItemIds?: string[];
   heroCover?: PortfolioHeroCover;
+}
+
+/**
+ * The layout a stored value means. Older saves hold "grid" (what the Masonry button used to
+ * save) or "4:3"; both have always been shown as masonry.
+ */
+export function normalizePortfolioLayout(value: unknown): PortfolioLayout {
+  if (value === "masonry" || value === "grid" || value === "4:3") return "masonry";
+  if (value === "16:9" || value === "9:16" || value === "1:1") return value;
+  return "16:9";
+}
+
+/** A stored appearance with defaults filled in and the layout normalized. */
+export function normalizePortfolioAppearance(raw: unknown): PortfolioAppearance {
+  const stored = raw && typeof raw === "object" ? (raw as Partial<PortfolioAppearance>) : {};
+  return {
+    cardSize: "M",
+    thumbnailScale: "fill",
+    showClientInfo: true,
+    ...stored,
+    featuredItemIds: stored.featuredItemIds ?? [],
+    aspectRatio: normalizePortfolioLayout(stored.aspectRatio),
+  };
 }
 
 export interface PortfolioExperience {

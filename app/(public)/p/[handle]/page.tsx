@@ -21,6 +21,7 @@ import { AccentThemeProvider } from "@/components/theme/accent-theme-provider";
 import { notFound } from "next/navigation";
 import { createScopedLogger } from "@/lib/logger";
 import { presignPrivateMediaUrl } from "@/lib/media-server";
+import { numericAspectRatio } from "@/lib/media-ratios";
 import { isR2KeyInWorkspace, parseStoredMedia } from "@/lib/storage/keys";
 import type { IStorageProvider } from "@/core/providers/storage";
 
@@ -30,6 +31,8 @@ const log = createScopedLogger({ page: "PublicPortfolio" });
 // the rendered page must never be served from cache for longer than that.
 export const revalidate = 1800;
 const SIGNED_URL_SECONDS = 6 * 60 * 60;
+/** Shape used when a file's stored aspect ratio can't be read (the column defaults to 16:9). */
+const DEFAULT_ASSET_RATIO = 16 / 9;
 
 /**
  * A stored media value as a URL a visitor can load: private files of this workspace are
@@ -165,10 +168,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
       const thumb = await publicMediaUrl(activeVersion?.thumbnailUrl, storage, workspaceId);
       const rawThumb = resolveThumbnailUrl(thumb, rawMedia, isStill);
 
-      let ar = 1.6;
-      if (a.aspectRatio === "9:16") ar = 0.5625;
-      else if (a.aspectRatio === "1:1") ar = 1.0;
-      else if (a.aspectRatio === "4:3") ar = 1.33;
+      const ar = numericAspectRatio(a.aspectRatio) ?? DEFAULT_ASSET_RATIO;
 
       let tc = "—";
       if (activeVersion?.durationSeconds) {
@@ -223,10 +223,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     const thumb = await publicMediaUrl(activeVersion?.thumbnailUrl, storage, workspaceId);
     const rawThumb = resolveThumbnailUrl(thumb, rawMedia, isStill);
 
-    let ar = 1.6;
-    if (a.aspectRatio === "9:16") ar = 0.5625;
-    else if (a.aspectRatio === "1:1") ar = 1.0;
-    else if (a.aspectRatio === "4:3") ar = 1.33;
+    const ar = numericAspectRatio(a.aspectRatio) ?? DEFAULT_ASSET_RATIO;
 
     let tc = "—";
     if (activeVersion?.durationSeconds) {

@@ -95,7 +95,9 @@ export function applyUploadComplete(
       feedback: [],
     };
 
-    updatedItems = [newItem, ...current.items];
+    // The server files a new upload after its siblings (sort_order = sibling count), so it goes
+    // last here too; "load more" skips ids it already has, so it won't appear twice.
+    updatedItems = [...current.items, newItem];
     totalCount += 1;
   }
 

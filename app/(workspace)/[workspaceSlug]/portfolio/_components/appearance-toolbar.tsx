@@ -214,13 +214,13 @@ export function AppearanceToolbar({
                   <Button
                     type="button"
                     size="icon-xs"
-                    variant={aspectRatio === "grid" || aspectRatio === "4:3" || aspectRatio === "masonry" ? "default" : "ghost"}
+                    variant={aspectRatio === "masonry" ? "default" : "ghost"}
                     onClick={() => {
-                      setAspectRatio("grid");
-                      persistAppearance({ aspectRatio: "grid" });
+                      setAspectRatio("masonry");
+                      persistAppearance({ aspectRatio: "masonry" });
                     }}
                     className={`p-1.5 px-2 h-auto rounded-md transition-all cursor-pointer flex items-center justify-center ${
-                      aspectRatio === "grid" || aspectRatio === "4:3" || aspectRatio === "masonry"
+                      aspectRatio === "masonry"
                         ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                         : "text-zinc-400 hover:text-white hover:bg-transparent"
                     }`}
@@ -235,39 +235,41 @@ export function AppearanceToolbar({
           </div>
         </div>
 
-        {/* Row 3: Thumbnail scale */}
-        <div className="flex items-center justify-between py-3">
-          <TypographySpan className="text-zinc-300 font-medium">Thumbnail scale</TypographySpan>
-          <div className="inline-flex rounded-lg bg-[#0c0c0e]/90 border border-white/10 p-0.5 gap-0.5">
-            {(["fit", "fill"] as const).map((sc) => (
-              <Tooltip key={sc}>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      type="button"
-                      size="xs"
-                      variant={thumbnailScale === sc ? "default" : "ghost"}
-                      onClick={() => {
-                        setThumbnailScale(sc);
-                        persistAppearance({ thumbnailScale: sc });
-                      }}
-                      className={`px-3 py-1 h-auto rounded-md text-xs font-semibold capitalize transition-all cursor-pointer ${
-                        thumbnailScale === sc
-                          ? "bg-primary text-primary-foreground font-bold hover:bg-primary/90 shadow-sm"
-                          : "text-zinc-400 hover:text-white hover:bg-transparent"
-                      }`}
-                    >
-                      {sc}
-                    </Button>
-                  }
-                />
-                <TooltipContent>
-                  {sc === "fit" ? "Fit full asset within card (contain)" : "Fill entire card frame (crop & cover)"}
-                </TooltipContent>
-              </Tooltip>
-            ))}
+        {/* Row 3: Thumbnail scale. Hidden in masonry, which shows every file at its own shape, so Fit and Fill look the same. */}
+        {aspectRatio !== "masonry" && (
+          <div className="flex items-center justify-between py-3">
+            <TypographySpan className="text-zinc-300 font-medium">Thumbnail scale</TypographySpan>
+            <div className="inline-flex rounded-lg bg-[#0c0c0e]/90 border border-white/10 p-0.5 gap-0.5">
+              {(["fit", "fill"] as const).map((sc) => (
+                <Tooltip key={sc}>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant={thumbnailScale === sc ? "default" : "ghost"}
+                        onClick={() => {
+                          setThumbnailScale(sc);
+                          persistAppearance({ thumbnailScale: sc });
+                        }}
+                        className={`px-3 py-1 h-auto rounded-md text-xs font-semibold capitalize transition-all cursor-pointer ${
+                          thumbnailScale === sc
+                            ? "bg-primary text-primary-foreground font-bold hover:bg-primary/90 shadow-sm"
+                            : "text-zinc-400 hover:text-white hover:bg-transparent"
+                        }`}
+                      >
+                        {sc}
+                      </Button>
+                    }
+                  />
+                  <TooltipContent>
+                    {sc === "fit" ? "Fit full asset within card (contain)" : "Fill entire card frame (crop & cover)"}
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Row 4: Show card info */}
         <div className="flex items-center justify-between py-3">

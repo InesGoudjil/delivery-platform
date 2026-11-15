@@ -1,4 +1,6 @@
+import React from "react";
 import { describe, it, expect } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
 import {
   MediaCard,
   MediaGrid,
@@ -10,9 +12,15 @@ import {
   PlayButtonOverlay,
   ZoomButtonOverlay,
   CardBottomOverlay,
-  parseItemAspectRatio,
   getMediaGridClasses,
 } from "@/components/workspaces/media-card";
+import type { MediaCardProps } from "@/components/workspaces/media-card";
+
+function renderCard(props: Partial<MediaCardProps>): string {
+  return renderToStaticMarkup(
+    React.createElement(MediaCard, { src: "/images/sample.jpg", title: "Sample", ...props })
+  );
+}
 
 describe("components/workspaces/media-card", () => {
   it("exports all unified media components, subcomponents, and helpers", () => {
@@ -26,7 +34,6 @@ describe("components/workspaces/media-card", () => {
     expect(typeof PlayButtonOverlay).toBe("function");
     expect(typeof ZoomButtonOverlay).toBe("function");
     expect(typeof CardBottomOverlay).toBe("function");
-    expect(typeof parseItemAspectRatio).toBe("function");
     expect(typeof getMediaGridClasses).toBe("function");
   });
 
@@ -41,55 +48,38 @@ describe("components/workspaces/media-card", () => {
     expect(MediaCard.BottomOverlay).toBe(CardBottomOverlay);
   });
 
-  describe("parseItemAspectRatio", () => {
-    it("parses colon-separated strings accurately", () => {
-      expect(parseItemAspectRatio("16:9")).toBeCloseTo(16 / 9, 4);
-      expect(parseItemAspectRatio("4:3")).toBeCloseTo(4 / 3, 4);
-      expect(parseItemAspectRatio("9:16")).toBeCloseTo(9 / 16, 4);
-      expect(parseItemAspectRatio("1:1")).toBe(1);
+  describe("MediaCard sizing", () => {
+    it("gives a masonry card exactly the file's shape, with no minimum height", () => {
+      const html = renderCard({ isMasonry: true, aspectRatio: "2.39:1" });
+      expect(html).toContain("aspect-ratio:2.39");
+      expect(html).not.toContain("min-h-[");
     });
 
-    it("parses numeric strings and numbers", () => {
-      expect(parseItemAspectRatio("1.777")).toBe(1.777);
-      expect(parseItemAspectRatio(1.5)).toBe(1.5);
+    it("prefers an explicit numeric ratio over the stored one", () => {
+      const html = renderCard({ isMasonry: true, aspectRatio: "16:9", numericRatio: 0.8 });
+      expect(html).toContain("aspect-ratio:0.8");
     });
 
-    it("safely handles null, undefined, and invalid inputs", () => {
-      expect(parseItemAspectRatio(null)).toBeNull();
-      expect(parseItemAspectRatio(undefined)).toBeNull();
-      expect(parseItemAspectRatio("invalid")).toBeNull();
-      expect(parseItemAspectRatio(0)).toBeNull();
-      expect(parseItemAspectRatio(-2)).toBeNull();
-    });
-  });
-
-  describe("getMediaGridClasses", () => {
-    it("returns standard responsive grid classes for fixed ratios", () => {
-      const sGrid = getMediaGridClasses(false, "S");
-      expect(sGrid).toContain("grid");
-      expect(sGrid).toContain("grid-cols-2");
-
-      const mGrid = getMediaGridClasses(false, "M");
-      expect(mGrid).toContain("grid");
-      expect(mGrid).toContain("grid-cols-1 sm:grid-cols-2 md:grid-cols-3");
-
-      const lGrid = getMediaGridClasses(false, "L");
-      expect(lGrid).toContain("grid");
-      expect(lGrid).toContain("grid-cols-1 sm:grid-cols-2 lg:grid-cols-2");
+    it("clamps impossible ratios so a masonry card never gets absurdly thin or tall", () => {
+      expect(renderCard({ isMasonry: true, aspectRatio: "4:1" })).toContain("aspect-ratio:2.5");
+      expect(renderCard({ isMasonry: true, aspectRatio: "1:4" })).toContain("aspect-ratio:0.5");
     });
 
-    it("returns standard responsive column classes for masonry mode without space-y", () => {
-      const sMasonry = getMediaGridClasses(true, "S");
-      expect(sMasonry).toContain("columns-2");
-      expect(sMasonry).not.toContain("space-y");
+    it("keeps fixed-ratio tiles at the chosen ratio, with no minimum height", () => {
+      const html = renderCard({ isMasonry: false, aspectRatio: "9:16", numericRatio: 16 / 9 });
+      expect(html).toContain(`aspect-ratio:${16 / 9}`);
+      expect(html).not.toContain("min-h-[");
+    });
 
-      const mMasonry = getMediaGridClasses(true, "M");
-      expect(mMasonry).toContain("columns-1 sm:columns-2");
-      expect(mMasonry).not.toContain("space-y");
+    it("sizes itself from its ratio when used outside a masonry grid", () => {
+      const html = renderCard({ isMasonry: true, aspectRatio: "4:5" });
+      expect(html).toContain("aspect-ratio:0.8");
+      expect(html).toContain("rounded-2xl w-full h-auto");
+    });
 
-      const lMasonry = getMediaGridClasses(true, "L");
-      expect(lMasonry).toContain("columns-1 sm:columns-2 lg:columns-2");
-      expect(lMasonry).not.toContain("space-y");
+    it("makes the media box a size container for the compact overlay", () => {
+      expect(renderCard({ isMasonry: true })).toContain("[container-type:size]");
+      expect(renderCard({ isMasonry: false })).toContain("[container-type:size]");
     });
   });
 });

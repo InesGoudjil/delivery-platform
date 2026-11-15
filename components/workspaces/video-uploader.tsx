@@ -18,6 +18,7 @@ import {
 } from "@/app/actions/upload";
 import { createUploadProgressToast } from "@/lib/upload-toast";
 import { inspectMediaFile } from "@/lib/media-inspector";
+import { aspectRatioValueFromDimensions } from "@/lib/media-ratios";
 import {
   UPLOAD_ACCEPT,
   assetTypeForFile,
@@ -107,20 +108,19 @@ export async function directUploadMediaFile({
     throw new Error(problem);
   }
 
-  // Auto-detect filmmaker aspect ratio from media file if not explicitly supplied
+  // Read the file's pixel size. An explicitly chosen ratio still wins for display; when the
+  // browser can't read the file (ProRes, HEIC...) nothing is claimed and the server fills in
+  // the shape when it can (Cloudflare Stream, for videos).
   let resolvedAspectRatio = aspectRatio;
-  if (!resolvedAspectRatio) {
-    try {
-      const inspected = await inspectMediaFile(file);
-      if (inspected?.aspectRatio?.id) {
-        resolvedAspectRatio =
-          inspected.aspectRatio.id === "custom"
-            ? inspected.aspectRatio.cssRatio
-            : inspected.aspectRatio.id;
-      }
-    } catch {
-      resolvedAspectRatio = "16:9";
+  let dimensions: { width: number; height: number } | undefined;
+  try {
+    const inspected = await inspectMediaFile(file);
+    if (inspected.success) {
+      dimensions = { width: inspected.width, height: inspected.height };
+      resolvedAspectRatio ||= aspectRatioValueFromDimensions(inspected.width, inspected.height);
     }
+  } catch {
+    // Unknown shape: leave it empty.
   }
 
   onStatusChange?.("Requesting direct upload token...");
@@ -136,6 +136,8 @@ export async function directUploadMediaFile({
     contentType: file.type || undefined,
     assetType: resolvedType,
     aspectRatio: resolvedAspectRatio,
+    width: dimensions?.width,
+    height: dimensions?.height,
     placement,
   });
 

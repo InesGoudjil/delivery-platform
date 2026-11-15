@@ -1,6 +1,11 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database.types";
-import { Portfolio, SocialLinks, PortfolioAppearance, PortfolioExperience, PortfolioStats } from "@/core/entities/portfolio";
+import {
+  Portfolio,
+  SocialLinks,
+  PortfolioStats,
+  normalizePortfolioAppearance,
+} from "@/core/entities/portfolio";
 
 export interface CreatePortfolioDTO {
   workspaceId: string;
@@ -28,14 +33,6 @@ export class SupabasePortfolioRepository implements IPortfolioRepository {
   constructor(private readonly supabase: SupabaseClient<Database>) {}
 
   private mapRowToEntity(row: any): Portfolio {
-    const defaultAppearance: PortfolioAppearance = {
-      cardSize: "M",
-      aspectRatio: "16:9",
-      thumbnailScale: "fill",
-      showClientInfo: true,
-      featuredItemIds: [],
-    };
-
     return {
       id: row.id,
       workspaceId: row.workspace_id,
@@ -45,7 +42,7 @@ export class SupabasePortfolioRepository implements IPortfolioRepository {
       coverAssetUrl: row.cover_asset_url,
       socialLinks: (row.social_links as SocialLinks) || {},
       isPublished: row.is_published ?? true,
-      appearance: row.appearance ? { ...defaultAppearance, ...row.appearance } : defaultAppearance,
+      appearance: normalizePortfolioAppearance(row.appearance),
       experience: Array.isArray(row.experience) ? row.experience : [],
       whatsappNumber: row.whatsapp_number || null,
       stats: row.stats || { projects: "0", years: "—", location: "—" },

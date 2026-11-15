@@ -51,9 +51,15 @@ export interface MediaCardProps {
   children?: React.ReactNode;
 }
 
-export interface MediaGridProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
+export interface MediaGridProps extends React.HTMLAttributes<HTMLElement> {
+  children?: React.ReactNode;
   isMasonry?: boolean;
   cardSize?: "S" | "M" | "L";
   className?: string;
+}
+
+export interface MediaGridItemProps extends React.LiHTMLAttributes<HTMLLIElement> {
+  /** Width ÷ height of the card, used in masonry only (see masonryRatio). */
+  ratio?: number;
+  children?: React.ReactNode;
 }

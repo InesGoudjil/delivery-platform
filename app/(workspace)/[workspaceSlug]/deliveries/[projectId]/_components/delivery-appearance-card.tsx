@@ -169,30 +169,32 @@ export function DeliveryAppearanceCard({
           </div>
         </div>
 
-        {/* Thumbnail scale row */}
-        <div className="flex items-center justify-between py-2 border-b border-border/40 gap-2 flex-wrap sm:flex-nowrap">
-          <TypographySpan variant="muted">
-            Thumbnail scale
-          </TypographySpan>
-          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40">
-            {(["Fit", "Fill"] as const).map((scale) => (
-              <Button
-                key={scale}
-                type="button"
-                variant={thumbnailScale === scale ? "default" : "ghost"}
-                size="sm"
-                onClick={() => update({ thumbnailScale: scale })}
-                className={`h-8 sm:h-7 px-3.5 text-xs font-bold rounded-lg cursor-pointer transition-all active:scale-95 ${
-                  thumbnailScale === scale
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                {scale}
-              </Button>
-            ))}
+        {/* Thumbnail scale row. Hidden in masonry, which shows every file at its own shape, so Fit and Fill look the same. */}
+        {aspectRatioSetting !== "masonry" && (
+          <div className="flex items-center justify-between py-2 border-b border-border/40 gap-2 flex-wrap sm:flex-nowrap">
+            <TypographySpan variant="muted">
+              Thumbnail scale
+            </TypographySpan>
+            <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border border-border/40">
+              {(["Fit", "Fill"] as const).map((scale) => (
+                <Button
+                  key={scale}
+                  type="button"
+                  variant={thumbnailScale === scale ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => update({ thumbnailScale: scale })}
+                  className={`h-8 sm:h-7 px-3.5 text-xs font-bold rounded-lg cursor-pointer transition-all active:scale-95 ${
+                    thumbnailScale === scale
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  {scale}
+                </Button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Show card info row */}
         <div className="flex items-center justify-between py-2 border-b border-border/40">

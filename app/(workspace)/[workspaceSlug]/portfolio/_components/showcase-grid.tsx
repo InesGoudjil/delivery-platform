@@ -10,6 +10,8 @@ import {
   HeroBadge,
   PlayButtonOverlay,
   ZoomButtonOverlay,
+  MediaGridItem,
+  masonryRatio,
 } from "@/components/workspaces/media-card";
 import {
   Card,
@@ -25,7 +27,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { TypographyH4, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import { DeleteConfirmDialog } from "@/components/workspaces/delete-confirm-dialog";
 import { toggleFeaturedItemAction } from "@/app/actions/portfolio";
-import { PortfolioAppearance } from "@/core/entities/portfolio";
+import { PortfolioAppearance, PROJECT_COVER_RATIO } from "@/core/entities/portfolio";
 import { PortfolioItem } from "../portfolio-client";
 
 interface ShowcaseGridProps {
@@ -142,23 +144,23 @@ export function ShowcaseGrid({
     rootMargin: "300px",
   });
 
-  const isMasonry =
-    appearance.aspectRatio === "grid" ||
-    appearance.aspectRatio === "masonry" ||
-    appearance.aspectRatio === "4:3";
+  const isMasonry = appearance.aspectRatio === "masonry";
+  // Same as the public page: the Projects tab stays a regular grid in masonry mode.
+  const isProjectsTab = activeTab === "projects";
+  const gridIsMasonry = isMasonry && !isProjectsTab;
 
   const cardSize = appearance.cardSize || "M";
 
-  // Dynamic Aspect Ratio classes & numeric ratio
   const aspectRatio = appearance.aspectRatio || "16:9";
-  const numericRatio =
-    isMasonry
-      ? undefined
-      : aspectRatio === "9:16"
-      ? 9 / 16
-      : aspectRatio === "1:1"
-      ? 1
-      : 16 / 9;
+  const numericRatio = isMasonry
+    ? isProjectsTab
+      ? PROJECT_COVER_RATIO
+      : undefined
+    : aspectRatio === "9:16"
+    ? 9 / 16
+    : aspectRatio === "1:1"
+    ? 1
+    : 16 / 9;
 
   return (
     <Card
@@ -222,40 +224,67 @@ export function ShowcaseGrid({
 
       <CardContent className="pt-2">
         {/* Showcase Grid / Masonry */}
-        <MediaGrid isMasonry={isMasonry} cardSize={cardSize}>
+        <MediaGrid isMasonry={gridIsMasonry} cardSize={cardSize}>
         {visibleProjects.map((item) => {
           const isFeatured = featuredIds.includes(item.id);
           const isHero = heroAssetId ? heroAssetId === item.id : false;
           const isVideo = item.type === "film" || item.type === "project";
 
           return (
-            <MediaCard
-              key={item.id}
-              title={item.title}
-              subtitle={item.category}
-              showInfo={appearance.showClientInfo}
-              showSubtitle={appearance.showClientInfo}
-              src={item.thumbnailUrl}
-              type={item.type}
-              aspectRatio={item.aspectRatio}
-              numericRatio={numericRatio}
-              isMasonry={isMasonry}
-              thumbnailScale={appearance.thumbnailScale}
-              onClick={() => onSelectItem(item)}
-              isHero={isHero}
-              isFeatured={isFeatured}
-              tiltIntensity={4}
-              glareIntensity={0.12}
-              topLeft={
-                <>
-                  <MediaBadge type={item.type} />
-                  {isHero && <HeroBadge />}
-                </>
-              }
-              topRight={
-                <>
-                  {onSetAsHero && (
-                    <Tooltip>
+            <MediaGridItem key={item.id} ratio={masonryRatio({ aspectRatio: item.aspectRatio, type: item.type })}>
+              <MediaCard
+                title={item.title}
+                subtitle={item.category}
+                showInfo={appearance.showClientInfo}
+                showSubtitle={appearance.showClientInfo}
+                src={item.thumbnailUrl}
+                type={item.type}
+                aspectRatio={item.aspectRatio}
+                numericRatio={numericRatio}
+                isMasonry={gridIsMasonry}
+                thumbnailScale={appearance.thumbnailScale}
+                onClick={() => onSelectItem(item)}
+                isHero={isHero}
+                isFeatured={isFeatured}
+                tiltIntensity={4}
+                glareIntensity={0.12}
+                topLeft={
+                  <>
+                    <MediaBadge type={item.type} />
+                    {isHero && <HeroBadge />}
+                  </>
+                }
+                topRight={
+                  <>
+                    {onSetAsHero && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSetAsHero(item);
+                              }}
+                              className={`size-8 rounded-full p-0 flex items-center justify-center transition-all cursor-pointer shadow-md ${
+                                isHero
+                                  ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/30 opacity-100 ring-2 ring-primary/40"
+                                  : "bg-black/50 backdrop-blur-md text-zinc-400 hover:text-primary hover:bg-white/20 border border-white/10 opacity-0 group-hover:opacity-100 max-sm:opacity-100"
+                              }`}
+                            >
+                              <Sparkles className={`size-3.5 ${isHero ? "fill-current" : ""}`} />
+                            </Button>
+                          }
+                        />
+                        <TooltipContent>
+                          {isHero ? "Currently Active Storefront Hero" : "Set as Cover Banner"}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+
+                    {/* <Tooltip>
                       <TooltipTrigger
                         render={
                           <Button
@@ -264,98 +293,72 @@ export function ShowcaseGrid({
                             size="icon-sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onSetAsHero(item);
+                              handleToggleFeature(item);
                             }}
-                            className={`size-8 rounded-full p-0 flex items-center justify-center transition-all cursor-pointer shadow-md ${
-                              isHero
-                                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/30 opacity-100 ring-2 ring-primary/40"
-                                : "bg-black/50 backdrop-blur-md text-zinc-400 hover:text-primary hover:bg-white/20 border border-white/10 opacity-0 group-hover:opacity-100 max-sm:opacity-100"
+                            className={`size-8 rounded-full p-0 flex items-center justify-center transition-all cursor-pointer ${
+                              isFeatured
+                                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/30 opacity-100"
+                                : "bg-black/50 backdrop-blur-md text-zinc-400 hover:text-white border border-white/10 opacity-0 group-hover:opacity-100"
                             }`}
                           >
-                            <Sparkles className={`size-3.5 ${isHero ? "fill-current" : ""}`} />
+                            <Star className={`size-4 ${isFeatured ? "fill-current" : ""}`} />
                           </Button>
                         }
                       />
                       <TooltipContent>
-                        {isHero ? "Currently Active Storefront Hero" : "Set as Cover Banner"}
+                        {isFeatured ? "Unpin from featured reel" : "Pin to featured reel"}
                       </TooltipContent>
-                    </Tooltip>
-                  )}
+                    </Tooltip> */}
 
-                  {/* <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleFeature(item);
-                          }}
-                          className={`size-8 rounded-full p-0 flex items-center justify-center transition-all cursor-pointer ${
-                            isFeatured
-                              ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/30 opacity-100"
-                              : "bg-black/50 backdrop-blur-md text-zinc-400 hover:text-white border border-white/10 opacity-0 group-hover:opacity-100"
-                          }`}
-                        >
-                          <Star className={`size-4 ${isFeatured ? "fill-current" : ""}`} />
-                        </Button>
-                      }
-                    />
-                    <TooltipContent>
-                      {isFeatured ? "Unpin from featured reel" : "Pin to featured reel"}
-                    </TooltipContent>
-                  </Tooltip> */}
+                    {onEditItem && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditItem(item);
+                              }}
+                              className="size-8 rounded-full p-0 bg-black/50 backdrop-blur-md text-zinc-400 hover:text-white hover:bg-white/20 border border-white/10 hover:border-white/30 flex items-center justify-center transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
+                            >
+                              <Pencil className="size-3.5" />
+                            </Button>
+                          }
+                        />
+                        <TooltipContent>Edit {item.type === "project" ? "project" : "asset"}</TooltipContent>
+                      </Tooltip>
+                    )}
 
-                  {onEditItem && (
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEditItem(item);
-                            }}
-                            className="size-8 rounded-full p-0 bg-black/50 backdrop-blur-md text-zinc-400 hover:text-white hover:bg-white/20 border border-white/10 hover:border-white/30 flex items-center justify-center transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
-                          >
-                            <Pencil className="size-3.5" />
-                          </Button>
-                        }
-                      />
-                      <TooltipContent>Edit {item.type === "project" ? "project" : "asset"}</TooltipContent>
-                    </Tooltip>
-                  )}
-
-                  {onDeleteItem && (
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setItemToDelete(item);
-                            }}
-                            className="size-8 rounded-full p-0 bg-black/50 backdrop-blur-md text-zinc-400 hover:text-red-400 hover:bg-red-500/20 border border-white/10 hover:border-red-500/30 flex items-center justify-center transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        }
-                      />
-                      <TooltipContent>Delete {item.type === "project" ? "project" : "asset"}</TooltipContent>
-                    </Tooltip>
-                  )}
-                </>
-              }
-              // centerAction={isVideo ? <PlayButtonOverlay /> : <ZoomButtonOverlay />}
-              footerMode="overlay"
-            />
+                    {onDeleteItem && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setItemToDelete(item);
+                              }}
+                              className="size-8 rounded-full p-0 bg-black/50 backdrop-blur-md text-zinc-400 hover:text-red-400 hover:bg-red-500/20 border border-white/10 hover:border-red-500/30 flex items-center justify-center transition-all cursor-pointer opacity-0 group-hover:opacity-100 max-sm:opacity-100 shadow-md"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          }
+                        />
+                        <TooltipContent>Delete {item.type === "project" ? "project" : "asset"}</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </>
+                }
+                // centerAction={isVideo ? <PlayButtonOverlay /> : <ZoomButtonOverlay />}
+                footerMode="overlay"
+              />
+            </MediaGridItem>
           );
         })}
         </MediaGrid>

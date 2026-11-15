@@ -28,6 +28,9 @@ export interface CreateAssetVersionDTO {
   thumbnailUrl?: string | null;
   fileSizeBytes?: number;
   durationSeconds?: number | null;
+  /** Pixel size as displayed, when the uploader could read it (both or neither). */
+  width?: number | null;
+  height?: number | null;
   transcodingStatus?: TranscodingStatus;
   /** Default false: a new version becomes active when its upload is confirmed (setActiveVersion). */
   isActiveVersion?: boolean;
@@ -77,6 +80,8 @@ export interface IAssetRepository {
   archive(id: string): Promise<Asset>;
   restore(id: string): Promise<Asset>;
   update(id: string, data: Partial<Asset>): Promise<Asset>;
+  /** Sets the aspect ratio only when none is stored (the uploader couldn't read the shape). True if it did. */
+  setAspectRatioIfUnset(assetId: string, aspectRatio: string): Promise<boolean>;
   delete(id: string): Promise<void>;
 }
 

@@ -18,6 +18,16 @@ import {
 } from "@/components/ui/tooltip";
 import type { DeliveryAssetItem, DeliveryAppearance } from "./types";
 
+/** Asset types shown as photos; everything else is a video. */
+export function isPhotoAsset(asset: Pick<DeliveryAssetItem, "type">): boolean {
+  return (
+    asset.type === "photo_gallery" ||
+    asset.type === "image" ||
+    asset.type === "photo" ||
+    asset.type === "still"
+  );
+}
+
 interface DeliveryAssetCardProps {
   asset: DeliveryAssetItem;
   workspaceBrandName: string;
@@ -50,11 +60,7 @@ export function DeliveryAssetCard({
   onDownload,
 }: DeliveryAssetCardProps) {
   const ver = asset.activeVersion || asset.versions[0] || null;
-  const isPhoto =
-    asset.type === "photo_gallery" ||
-    asset.type === "image" ||
-    asset.type === "photo" ||
-    asset.type === "still";
+  const isPhoto = isPhotoAsset(asset);
 
   const poster =
     resolveThumbnailUrl(ver?.thumbnailUrl, ver?.rawFileUrl, isPhoto) ||

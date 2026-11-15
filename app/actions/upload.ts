@@ -41,6 +41,8 @@ export async function requestAssetUploadAction(input: RequestUploadInput) {
       contentType: validated.data.contentType,
       assetType: validated.data.assetType,
       aspectRatio: validated.data.aspectRatio,
+      width: validated.data.width,
+      height: validated.data.height,
       maxDurationSeconds: validated.data.maxDurationSeconds,
       placement: validated.data.placement,
     });
