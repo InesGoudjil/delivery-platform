@@ -115,6 +115,7 @@ const SERVICE_ROLE_ACTIONS: Record<string, string> = {
   // Platform admins (createPlatformAdminAction: role from the database, two-factor session, a
   // reason, audited) act on any workspace or user on purpose; that's what the admin panel is for.
   "app/actions/admin.ts#createPlanAction": "platform admin, audited; plans aren't tenant data",
+  "app/actions/admin.ts#createYearlyPlanAction": "platform admin, audited; plans aren't tenant data",
   "app/actions/admin.ts#updatePlanAction": "platform admin, audited; plans aren't tenant data",
   "app/actions/admin.ts#deletePlanAction": "platform admin, audited; plans aren't tenant data",
   "app/actions/admin.ts#updateWorkspacePlanAction": "platform admin, audited; staff choose the workspace on purpose",
@@ -129,6 +130,8 @@ const SERVICE_ROLE_ACTIONS: Record<string, string> = {
   "app/actions/admin.ts#searchAdminAction": "platform admin with a two-factor session (getPlatformAdminServices); read-only search",
   "app/actions/admin.ts#suspendWorkspaceAction": "platform admin, audited; the admin types the workspace's slug to confirm it",
   "app/actions/admin.ts#unsuspendWorkspaceAction": "platform admin, audited; staff choose the workspace on purpose",
+  "app/actions/admin.ts#updateDemoRoomAction":
+    "platform admin, audited; writes only the site-wide demo_room setting, and picks the delivery by its review link on purpose",
   "app/actions/inquiries.ts#submitPortfolioInquiryAction":
     "public form; the studio is resolved server-side from a published portfolio's slug, and it only inserts an inquiry",
   "app/actions/inquiries.ts#submitContactFormAction": "public form; inserts an inquiry with no workspace id",

@@ -95,6 +95,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "workspace.change_plan": "Changed plan",
   "workspace.override_features": "Changed feature overrides",
   "plan.create": "Created plan",
+  "plan.add_yearly": "Added yearly price",
   "plan.update": "Edited plan",
   "plan.delete": "Deleted or archived plan",
   "waitlist.invite_cohort": "Invited waitlist cohort",
@@ -104,4 +105,5 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "user.reset_two_factor": "Reset two-factor sign-in",
   "workspace.suspend": "Suspended workspace",
   "workspace.unsuspend": "Lifted suspension",
+  "site.update_demo_room": "Changed the demo room",
 };

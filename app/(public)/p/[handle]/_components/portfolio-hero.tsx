@@ -9,6 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TypographyH2, TypographySpan } from "@/components/ui/typography";
 
+/**
+ * The hero fills the rest of the first screen: the small viewport height (svh, so mobile browser
+ * toolbars never cover it) minus the sticky header (its row plus a 1px bottom border) and the gap
+ * above and below the hero. The page sets --portfolio-header-h and --portfolio-gap. Very short
+ * screens (landscape phones) keep at least 12rem. The media covers the frame whatever its shape.
+ */
+const HERO_FRAME_HEIGHT =
+  "h-[calc(100svh_-_var(--portfolio-header-h)_-_1px_-_2*var(--portfolio-gap))] min-h-48";
+
 interface PortfolioHeroProps {
   profile: FilmmakerProfile;
   primaryFeatured?: PublicFeaturedItem | null;
@@ -39,15 +48,6 @@ export function PortfolioHero({
     featuredProject?.coverImage ||
     "/images/hero.jpg";
 
-  // Aspect ratio classes
-  const aspectRatio = heroCover?.aspectRatio || "21:9";
-  const aspectClass =
-    aspectRatio === "16:9"
-      ? "aspect-[4/5] sm:aspect-[16/9]"
-      : aspectRatio === "3:1"
-      ? "aspect-[4/5] sm:aspect-[24/8]"
-      : "aspect-[4/5] sm:aspect-[21/9]";
-
   const overlayOpacity = heroCover?.overlayOpacity ?? 50;
 
   const showHeroText = heroCover?.showHeroText ?? true;
@@ -62,7 +62,7 @@ export function PortfolioHero({
   return (
     <section className="relative">
       <HeroPreviewTrigger
-        className={`group relative w-full ${aspectClass} min-h-[380px] sm:min-h-0 rounded-[1.75rem] sm:rounded-[2rem] overflow-hidden border border-white/10 bg-zinc-950 shadow-2xl cursor-pointer block select-none`}
+        className={`group relative w-full ${HERO_FRAME_HEIGHT} rounded-[1.75rem] sm:rounded-[2rem] overflow-hidden border border-white/10 bg-zinc-950 shadow-2xl cursor-pointer block select-none`}
       >
         {/* Visual Media Layer: Ambient Video or Image */}
         {isAmbientVideo ? (

@@ -7,23 +7,30 @@ import { HeaderSection } from "@/components/landing/HeaderSection";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { FeaturesSection } from "@/components/landing/FeaturesSection";
 import { WorkflowSection } from "@/components/landing/WorkflowSection";
-import { PricingSection, type PricingPlanItem } from "@/components/landing/PricingSection";
+import {
+  PricingSection,
+  resolvePricingPlans,
+  type PricingPlanItem,
+} from "@/components/landing/PricingSection";
 import { SiloSection } from "@/components/landing/SiloSection";
 import { PartnershipSection } from "@/components/landing/PartnershipSection";
 import { FaqSection } from "@/components/landing/FaqSection";
 import { CtaSection } from "@/components/landing/CtaSection";
 import { FooterSection } from "@/components/landing/FooterSection";
-import { DemoModal } from "@/components/landing/DemoModal";
 import { WaitlistModal } from "@/components/waitlist/WaitlistModal";
 import type { UserNavMenuProps } from "@/components/landing/UserNavMenu";
 import { AmbientBackground } from "@/components/ui/ambient-background";
 import { toast as sonnerToast } from "sonner";
+import { groupPlanTiers } from "@/core/entities/plan";
+import { forgetPlanIntent, rememberPlanIntent } from "@/lib/billing/plan-intent";
 
 interface LandingPageProps {
   user?: UserNavMenuProps["user"] | null;
   workspace?: UserNavMenuProps["workspace"] | null;
   referralCode?: string;
   plans?: PricingPlanItem[];
+  /** "/demo" while the demo room is on (Admin -> Site settings). Without it, no demo links show. */
+  demoHref?: string;
 }
 
 export default function LandingPage({
@@ -31,9 +38,9 @@ export default function LandingPage({
   workspace,
   referralCode,
   plans,
+  demoHref,
 }: LandingPageProps) {
   const router = useRouter();
-  const [showDemoModal, setShowDemoModal] = useState(false);
   const [showWaitlistModal, setShowWaitlistModal] = useState(Boolean(referralCode));
   const [loadingPlanSlug, setLoadingPlanSlug] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -43,25 +50,39 @@ export default function LandingPage({
     setTimeout(() => setToast(null), 2500);
   };
 
-  // Dedicated handler for plan selection CTA
-  const handleSelectPlan = async (
-    plan: PricingPlanItem,
-    billingInterval: "yearly" | "monthly"
-  ) => {
-    // 1. Unauthenticated Visitor -> Direct to Signup with plan & interval query params
+  const pricingPlans = resolvePricingPlans(plans);
+  const siloPlanNames = groupPlanTiers(pricingPlans)
+    .filter((tier) => tier.monthly.features?.silo_archive)
+    .map((tier) => tier.monthly.name);
+
+  // Signed-in visitors go to their workspace: /signup would only send them back here.
+  const startHref = user
+    ? workspace
+      ? `/${workspace.slug}/deliveries`
+      : "/new-workspace"
+    : "/signup";
+
+  // Dedicated handler for plan selection CTA. `plan` is the monthly or yearly plan picked.
+  const handleSelectPlan = async (plan: PricingPlanItem) => {
+    const isFree = plan.priceCents === 0;
+
+    // 1. Visitor without an account -> signup. PlanIntentRedirect (workspace layout) then
+    //    opens the paid plan they picked, wherever signup lands them.
     if (!user) {
-      if (plan.slug === "starter") {
-        router.push("/signup?plan=starter");
+      if (isFree) {
+        forgetPlanIntent();
+        router.push("/signup");
       } else {
-        router.push(`/signup?plan=${plan.slug}&interval=${billingInterval}`);
+        rememberPlanIntent(plan.slug);
+        router.push(`/signup?plan=${encodeURIComponent(plan.slug)}`);
       }
       return;
     }
 
     // 2. Authenticated user with an active workspace
     if (workspace) {
-      // Starter plan -> navigate to dashboard
-      if (plan.slug === "starter") {
+      // Free plan -> navigate to dashboard
+      if (isFree) {
         router.push(`/${workspace.slug}/deliveries`);
         return;
       }
@@ -97,21 +118,14 @@ export default function LandingPage({
         }
       }
 
-      // Fallback: navigate to workspace subscription page
-      router.push(`/${workspace.slug}/subscription`);
+      // Fallback: the chosen plan on the workspace subscription page
+      router.push(`/${workspace.slug}/subscription?plan=${encodeURIComponent(plan.slug)}`);
       return;
     }
 
-    // 3. Authenticated user without a workspace yet -> onboarding
-    router.push(`/new-workspace?plan=${plan.slug}`);
-  };
-
-  const handleStartTrial = () => {
-    if (user) {
-      router.push(workspace ? `/${workspace.slug}/deliveries` : "/new-workspace");
-    } else {
-      router.push("/signup");
-    }
+    // 3. Authenticated user without a workspace yet -> onboarding, then the plan they picked
+    if (!isFree) rememberPlanIntent(plan.slug);
+    router.push("/new-workspace");
   };
 
   return (
@@ -125,34 +139,35 @@ export default function LandingPage({
         <HeaderSection
           user={user}
           workspace={workspace}
-          onOpenDemo={() => setShowDemoModal(true)}
-          onStartTrial={handleStartTrial}
+          demoHref={demoHref}
         />
       </div>
 
-      {/* Main Landing Page Content Container - Clean balanced section flow */}
-      <main className="w-full px-4 sm:px-6 lg:px-8 relative z-10">
+      {/* Main Landing Page Content Container. --section-gap is the one space between any two
+          blocks: between sections, between the blocks inside Features, Pricing and Partnership,
+          and above the footer. Sections add no vertical padding of their own. */}
+      <main className="w-full px-4 sm:px-6 lg:px-8 relative z-10 [--section-gap:5rem] sm:[--section-gap:6rem] lg:[--section-gap:7rem] space-y-(--section-gap) pb-(--section-gap)">
         {/* 2. Hero Section */}
         <HeroSection
-          onOpenDemo={() => setShowDemoModal(true)}
-          onStartTrial={handleStartTrial}
+          demoHref={demoHref}
+          startHref={startHref}
         />
 
         {/* 3. Features Section (6-Card Grid & Feature Spotlights 01, 02, 03, Client Experience) */}
-        <FeaturesSection onOpenDemo={() => setShowDemoModal(true)} />
+        <FeaturesSection demoHref={demoHref} />
 
         {/* 4. How It Works Section */}
         {/* <WorkflowSection /> */}
 
         {/* 5. Pricing Section (Testimonial Quote + Dynamic Plan Grid + Compare Packages Matrix) */}
         <PricingSection
-          plans={plans}
+          plans={pricingPlans}
           onSelectPlan={handleSelectPlan}
           loadingPlanSlug={loadingPlanSlug}
         />
 
         {/* 6. The Silo Secure Archive Section */}
-        <SiloSection />
+        <SiloSection planNames={siloPlanNames} />
 
         {/* 7. Partnership Section & Application Form */}
         <PartnershipSection onShowToast={showToast} />
@@ -161,18 +176,11 @@ export default function LandingPage({
         <FaqSection />
 
         {/* 9. Call To Action Banner */}
-        <CtaSection onStartTrial={handleStartTrial} />
+        <CtaSection startHref={startHref} />
       </main>
 
       {/* 10. Multi-Column Footer */}
       <FooterSection />
-
-      {/* Interactive Client Room Demo Modal */}
-      <DemoModal
-        isOpen={showDemoModal}
-        onClose={() => setShowDemoModal(false)}
-        onShowToast={showToast}
-      />
 
       {/* Waitlist Modal (Auto opens on referral link visit or manual trigger) */}
       <WaitlistModal

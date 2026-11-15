@@ -1,7 +1,9 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import {
+  ArrowRight,
   Image as ImageIcon,
   MessageSquare,
   Send,
@@ -45,56 +47,12 @@ import {
   TiltCard,
 } from "@/components/ui/motion";
 
-export interface ProjectDemo {
-  id: string;
-  title: string;
-  client: string;
-  type: "film" | "photo";
-  status: "draft" | "review" | "delivered";
-  tc: string;
-  g: string;
-  desc: string;
-}
-
 const IMG_CONCERT = "/images/img-concert.webp";
 const IMG_FASHION = "/images/img-fashion.webp";
 const IMG_CITY = "/images/img-city.webp";
 const IMG_CAR = "/images/img-car.webp";
 const IMG_HERO = "/images/posts/IG-Posts-16.webp";
 const IMG_MEETING = "/images/img-meeting.webp";
-
-export const SAMPLE_PROJECTS: ProjectDemo[] = [
-  {
-    id: "1",
-    title: "Omakase Teaser",
-    client: "Lost in Tokyo",
-    type: "film",
-    status: "review",
-    tc: "00:47",
-    g: "linear-gradient(135deg,#3a1a10,#7a2f18)",
-    desc: "A moody 47-second teaser for the launch of a new omakase counter.",
-  },
-  {
-    id: "2",
-    title: "Aisha & Omar",
-    client: "Wedding Film",
-    type: "film",
-    status: "delivered",
-    tc: "03:12",
-    g: "linear-gradient(135deg,#1c2230,#38404e)",
-    desc: "A three-minute cinematic wedding film shot across two days in Dubai.",
-  },
-  {
-    id: "3",
-    title: "GT3 Build Film",
-    client: "Prestige Rentals",
-    type: "film",
-    status: "review",
-    tc: "01:20",
-    g: "linear-gradient(135deg,#101a1c,#20403f)",
-    desc: "Documenting a Porsche GT3 converted to full track spec.",
-  },
-];
 
 const GRID_FEATURES = [
   {
@@ -134,13 +92,14 @@ const GRID_FEATURES = [
 ];
 
 interface FeaturesSectionProps {
-  onOpenDemo?: () => void;
+  /** The demo room (/demo) while it's on: the client experience block links to it. */
+  demoHref?: string;
 }
 
-export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
+export function FeaturesSection({ demoHref }: FeaturesSectionProps) {
   return (
     <TooltipProvider delay={150}>
-      <section id="features" className="scroll-mt-24 py-16 sm:py-20 lg:py-24 space-y-16 sm:space-y-24">
+      <section id="features" className="space-y-(--section-gap)">
         {/* 1. 6-Card Feature Grid Section with TiltCard */}
         <ScrollReveal className="text-center">
           {/* Section Header */}
@@ -403,6 +362,14 @@ export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
                 comments in one place, and a single tap to approve. No clutter, no
                 confusion.
               </TypographyLead>
+              {demoHref && (
+                <Link
+                  href={demoHref}
+                  className="inline-flex items-center gap-2 pt-2 text-sm font-bold uppercase tracking-wider text-primary transition-colors hover:text-white"
+                >
+                  Open the demo room <ArrowRight className="size-4" />
+                </Link>
+              )}
             </div>
 
             <div className="lg:col-span-6">

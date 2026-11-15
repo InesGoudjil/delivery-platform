@@ -1,5 +1,5 @@
 import { Subscription, SubscriptionStatus } from '@/core/entities/subscription';
-import { Plan, PlanSlug, SEED_PLANS } from '@/core/entities/plan';
+import { Plan, PlanSlug, SEED_PLANS, planTier } from '@/core/entities/plan';
 import { Invoice, InvoiceStatus } from '@/core/entities/invoice';
 import { WorkspaceFeatureConfig, WorkspaceFeatures, WorkspaceEntitlements } from '@/core/entities/workspace';
 import { ISubscriptionRepository } from '@/core/repositories/subscription.repository';
@@ -173,32 +173,34 @@ export class SubscriptionService {
     const plan = await this.getCurrentPlan(workspaceId);
     const sub = await this.subscriptionRepo.findByWorkspaceId(workspaceId);
     const features = await this.getFeatures(workspaceId);
+    // The fallbacks below are per tier: `pro-yearly` gets what `pro` gets.
+    const tier = plan ? planTier(plan.slug) : undefined;
 
     const storageGb = Number(
       features.storage_gb ??
-        (plan?.slug === 'studio' ? 2048 : plan?.slug === 'pro' ? 500 : plan?.slug === 'basic' ? 100 : 2)
+        (tier === 'studio' ? 2048 : tier === 'pro' ? 500 : tier === 'basic' ? 100 : 2)
     );
     const storageBytesMax = storageGb * 1024 * 1024 * 1024;
     const clientLinksMax =
       features.client_links !== undefined
         ? Number(features.client_links)
-        : plan?.slug === 'starter'
+        : tier === 'starter'
         ? 1
-        : plan?.slug === 'basic'
+        : tier === 'basic'
         ? 20
         : -1;
     const teamSeatsMax =
       features.team_seats !== undefined
         ? Number(features.team_seats)
-        : plan?.slug === 'studio'
+        : tier === 'studio'
         ? 5
-        : plan?.slug === 'enterprise'
+        : tier === 'enterprise'
         ? 25
         : 1;
     const portfolioVideosMax =
       features.portfolio_videos !== undefined
         ? Number(features.portfolio_videos)
-        : plan?.slug === 'starter'
+        : tier === 'starter'
         ? 4
         : -1;
 

@@ -21,7 +21,6 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DemoModal } from "@/components/landing/DemoModal";
 import { joinWaitlistAction, WaitlistActionState } from "@/app/actions/waitlist";
 import { getWaitlistImageUrl, CLOUDFLARE_PUBLIC_DOMAIN } from "@/lib/assets";
 import { trackLead } from "@/lib/meta/pixel";
@@ -55,16 +54,9 @@ export function WaitlistScreen({
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<WaitlistActionState | null>(null);
   const [copied, setCopied] = useState(false);
-  const [showDemoModal, setShowDemoModal] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
 
   const displayCount = BASE_COUNT + initialCount;
-
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 2500);
-  };
 
   const handleJoin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -361,7 +353,7 @@ export function WaitlistScreen({
           <FadeIn delay={0.3} className="wl-demo-wrap">
             <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
               <Link
-                href="/delivery-view"
+                href="/demo"
                 className="wl-demo-big inline-flex items-center justify-center gap-2"
               >
                 <Play size={17} /> See a live client demo — no signup needed
@@ -555,7 +547,7 @@ export function WaitlistScreen({
                 the finished files.
               </p>
               <Link
-                href="/delivery-view"
+                href="/demo"
                 className="wl-surface-demo inline-flex items-center gap-1.5"
               >
                 <Play size={13} /> Try the live demo
@@ -706,13 +698,6 @@ export function WaitlistScreen({
           © CineSpace — Films, delivered.
         </footer>
       </div>
-
-      {/* Interactive Client Demo Modal */}
-      <DemoModal
-        isOpen={showDemoModal}
-        onClose={() => setShowDemoModal(false)}
-        onShowToast={showToast}
-      />
     </div>
   );
 }

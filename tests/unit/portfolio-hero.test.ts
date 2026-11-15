@@ -2,6 +2,7 @@ import React from "react";
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { PortfolioHero } from "@/app/(public)/p/[handle]/_components/portfolio-hero";
+import { PortfolioHeader } from "@/app/(public)/p/[handle]/_components/portfolio-header";
 import { PortfolioProvider } from "@/app/(public)/p/[handle]/_components/portfolio-context";
 import { FilmmakerProfile } from "@/lib/portfolio-data";
 
@@ -93,5 +94,44 @@ describe("PortfolioHero Component", () => {
 
     expect(html).not.toContain("Should Be Hidden Headline");
     expect(html).not.toContain("Hidden Badge");
+  });
+});
+
+describe("PortfolioHero sizing", () => {
+  // Screen height minus the sticky header (row + 1px border) and the gap above and below the hero.
+  const FRAME_HEIGHT = "h-[calc(100svh_-_var(--portfolio-header-h)_-_1px_-_2*var(--portfolio-gap))]";
+
+  it("fills the first screen whatever the hero format setting, with a minimum height", () => {
+    for (const aspectRatio of [undefined, "21:9", "16:9", "3:1"]) {
+      const html = renderHeroWithProvider({
+        ...baseProfile,
+        heroCover: { ...baseProfile.heroCover, aspectRatio },
+      });
+
+      expect(html).toContain(FRAME_HEIGHT);
+      expect(html).toContain("min-h-48");
+      expect(html).not.toContain("aspect-[");
+    }
+  });
+
+  it("subtracts the same header height that the header row uses", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(PortfolioProvider, {
+        profile: baseProfile,
+        projects: [],
+        assets: [],
+        children: React.createElement(PortfolioHeader, { profile: baseProfile }),
+      })
+    );
+
+    expect(html).toContain("h-(--portfolio-header-h)");
+    expect(html).toContain("border-b");
+  });
+
+  it("covers the whole frame with the hero video", () => {
+    const html = renderHeroWithProvider(baseProfile);
+
+    expect(html).toMatch(/<video[^>]*class="size-full object-cover"/);
+    expect(html).toContain("Unmute");
   });
 });

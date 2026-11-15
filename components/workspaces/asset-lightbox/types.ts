@@ -95,6 +95,8 @@ export interface AssetLightboxModalProps {
   onDeleteReply?: (feedbackId: string, replyId: string) => Promise<void> | void;
   onEditFeedback?: (feedbackId: string, newText: string) => Promise<void> | void;
   onEditReply?: (feedbackId: string, replyId: string, newText: string) => Promise<void> | void;
+  /** New notes and replies are only shown, never saved (a visitor in the demo room). */
+  keepFeedbackLocal?: boolean;
 
   // Management Actions
   onDeleteAsset?: (item: any) => Promise<void> | void;

@@ -20,7 +20,7 @@ export function ArchiveManagerButton({
 }: ArchiveManagerButtonProps) {
   const handleArchive = (e: React.MouseEvent) => {
     if (!canSiloArchive) {
-      toast.error("The Silo Cold Storage Archive requires a Studio or Enterprise subscription.");
+      toast.error("The Silo Cold Storage Archive requires a Pro, Studio or Enterprise subscription.");
       return;
     }
     e.preventDefault();

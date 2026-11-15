@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as adminContext from "@/core/admin/context";
 import {
   banUserAction,
+  createYearlyPlanAction,
   deletePlanAction,
   searchAdminAction,
   suspendWorkspaceAction,
@@ -9,6 +10,7 @@ import {
   resetUserTwoFactorAction,
   signOutUserEverywhereAction,
   unbanUserAction,
+  updateDemoRoomAction,
   updatePlanAction,
   updateUserRoleAction,
   updateWorkspaceFeaturesAction,
@@ -25,6 +27,8 @@ const OTHER_USER = "00000000-0000-4000-8000-0000000000f2";
 const WS = "10000000-0000-4000-8000-00000000000a";
 const PLAN = "20000000-0000-4000-8000-000000000002";
 const STARTER = "20000000-0000-4000-8000-000000000001";
+const DEMO_DELIVERY = "30000000-0000-4000-8000-0000000000d1";
+const DEMO_TOKEN = "share_token_demo_room_01";
 
 let record: ReturnType<typeof vi.fn>;
 let services: any;
@@ -46,9 +50,23 @@ beforeEach(() => {
       adminChangeWorkspacePlan: vi.fn().mockResolvedValue({ id: "sub_1", planId: PLAN, status: "active" }),
       updatePlan: vi.fn(async (id: string, changes: object) => ({ id, name: "Pro", priceCents: 3900, ...changes })),
       deletePlan: vi.fn().mockResolvedValue({ action: "deleted", message: "Deleted." }),
+      getPlanBySlug: vi.fn().mockResolvedValue(null),
+      createPlan: vi.fn(async (data: object) => ({ id: "plan_yearly", isActive: true, ...data })),
     },
-    stripe: { archiveStripeProductAndPrice: vi.fn().mockResolvedValue(undefined) },
+    stripe: {
+      archiveStripeProductAndPrice: vi.fn().mockResolvedValue(undefined),
+      createStripeProductAndPrice: vi.fn().mockResolvedValue({ stripePriceId: "price_yearly", stripeProductId: "prod_yearly" }),
+    },
     profile: { updatePlatformRole: vi.fn() },
+    delivery: {
+      getDeliveryByShareToken: vi.fn(async (token: string) =>
+        token === DEMO_TOKEN ? { id: DEMO_DELIVERY, title: "Aisha & Omar", shareToken: DEMO_TOKEN } : null
+      ),
+    },
+    siteSettings: {
+      get: vi.fn().mockResolvedValue({ deliveryId: null, showOnLanding: false }),
+      set: vi.fn(async (_key: string, value: object) => ({ value, updatedAt: "2026-11-15T12:00:00Z", updatedBy: ADMIN })),
+    },
   };
   sessionServices = {
     profile: { updatePlatformRole: vi.fn(async (id: string, role: string) => ({ id, platformRole: role })) },
@@ -197,12 +215,94 @@ describe("plan actions", () => {
     expect(services.subscription.updatePlan).toHaveBeenCalledWith(PLAN, { name: "Pro (2026)" });
   });
 
+  it("edit a tier's monthly and yearly plans together", async () => {
+    services.subscription.getPlanById.mockResolvedValue({ id: PLAN, name: "Pro", slug: "pro", billingInterval: "month", priceCents: 2900, stripePriceId: "price_1" });
+    services.subscription.getPlanBySlug.mockResolvedValue({ id: "plan_yearly", slug: "pro-yearly", billingInterval: "year" });
+
+    const result = await updatePlanAction({ planId: PLAN, name: "Pro+", reason: "Clearer name" });
+    expect(result.success).toBe(true);
+    expect(services.subscription.getPlanBySlug).toHaveBeenCalledWith("pro-yearly");
+    expect(services.subscription.updatePlan).toHaveBeenCalledWith("plan_yearly", { name: "Pro+" });
+    expect(lastAudit().changes.after).toMatchObject({ name: "Pro+", alsoUpdated: "pro-yearly" });
+  });
+
+  it("leave the other plan of the pair alone for changes they don't share, like archiving", async () => {
+    services.subscription.getPlanById.mockResolvedValue({ id: PLAN, name: "Pro", slug: "pro", billingInterval: "month", priceCents: 2900, stripePriceId: "price_1" });
+    const result = await updatePlanAction({ planId: PLAN, isActive: false, reason: "Retiring the tier" });
+    expect(result.success).toBe(true);
+    expect(services.subscription.getPlanBySlug).not.toHaveBeenCalled();
+    expect(services.subscription.updatePlan).toHaveBeenCalledTimes(1);
+  });
+
   it("refuse to delete the starter plan, before touching Stripe", async () => {
     services.subscription.getPlanById.mockResolvedValue({ id: STARTER, name: "Starter", slug: "starter", stripePriceId: "price_free" });
     const result = await deletePlanAction({ planId: STARTER, reason: "Cleaning up" });
     expect(result.success).toBe(false);
     expect(services.stripe.archiveStripeProductAndPrice).not.toHaveBeenCalled();
     expect(services.subscription.deletePlan).not.toHaveBeenCalled();
+  });
+});
+
+describe("createYearlyPlanAction", () => {
+  const PRO = {
+    id: PLAN,
+    name: "Pro",
+    slug: "pro",
+    priceCents: 2900,
+    currency: "USD",
+    billingInterval: "month",
+    sortOrder: 3,
+    isActive: true,
+    stripePriceId: "price_pro",
+    features: { storage_gb: 500, silo_archive: true },
+  };
+
+  it("creates a yearly Stripe price and the plan's yearly twin, with the same features", async () => {
+    services.subscription.getPlanById.mockResolvedValue(PRO);
+
+    const result = await createYearlyPlanAction({ planId: PLAN, yearlyPriceUsd: 261, reason: "Launch yearly billing" });
+    expect(result.success).toBe(true);
+    expect(services.stripe.createStripeProductAndPrice).toHaveBeenCalledWith({
+      name: "Pro (yearly)",
+      priceCents: 26100,
+      currency: "USD",
+      billingInterval: "year",
+    });
+    expect(services.subscription.createPlan).toHaveBeenCalledWith({
+      name: "Pro",
+      slug: "pro-yearly",
+      priceCents: 26100,
+      currency: "USD",
+      billingInterval: "year",
+      sortOrder: 3,
+      stripePriceId: "price_yearly",
+      features: PRO.features,
+    });
+    expect(lastAudit()).toMatchObject({ action: "plan.add_yearly", targetLabel: "Pro", outcome: "succeeded" });
+  });
+
+  it("refuses a yearly price that saves nothing, before touching Stripe", async () => {
+    services.subscription.getPlanById.mockResolvedValue(PRO);
+    const result = await createYearlyPlanAction({ planId: PLAN, yearlyPriceUsd: 348, reason: "Launch yearly billing" });
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/twelve monthly payments/);
+    expect(services.stripe.createStripeProductAndPrice).not.toHaveBeenCalled();
+  });
+
+  it("refuses a second yearly price, a free plan and a plan that's yearly already", async () => {
+    const reason = "Launch yearly billing";
+    services.subscription.getPlanById.mockResolvedValue(PRO);
+    services.subscription.getPlanBySlug.mockResolvedValue({ id: "plan_yearly", slug: "pro-yearly", billingInterval: "year" });
+    expect((await createYearlyPlanAction({ planId: PLAN, yearlyPriceUsd: 261, reason })).error).toMatch(/yearly price already/);
+
+    services.subscription.getPlanById.mockResolvedValue({ ...PRO, slug: "starter", priceCents: 0 });
+    expect((await createYearlyPlanAction({ planId: PLAN, yearlyPriceUsd: 10, reason })).error).toMatch(/Free plans/);
+
+    services.subscription.getPlanById.mockResolvedValue({ ...PRO, slug: "pro-yearly", billingInterval: "year" });
+    expect((await createYearlyPlanAction({ planId: PLAN, yearlyPriceUsd: 200, reason })).error).toMatch(/billed yearly already/);
+
+    expect(services.stripe.createStripeProductAndPrice).not.toHaveBeenCalled();
+    expect(services.subscription.createPlan).not.toHaveBeenCalled();
   });
 });
 
@@ -307,5 +407,62 @@ describe("suspension", () => {
     expect(lifted.success).toBe(true);
     expect(workspaceControls.unsuspend).toHaveBeenCalledWith(WS);
     expect(lastAudit()).toMatchObject({ action: "workspace.unsuspend", changes: { before: { suspendedReason: "Stolen films reported" } } });
+  });
+});
+
+describe("the demo room setting", () => {
+  it("takes the delivery from its review link, and audits what changed", async () => {
+    const result = await updateDemoRoomAction({
+      reviewLink: `https://cinespace.app/deliver/${DEMO_TOKEN}?ref=share`,
+      reason: "Landing page demo",
+    });
+    expect(result).toMatchObject({ success: true, demoRoom: { deliveryId: DEMO_DELIVERY, showOnLanding: false } });
+    expect(services.delivery.getDeliveryByShareToken).toHaveBeenCalledWith(DEMO_TOKEN, { allowExpired: true });
+    expect(services.siteSettings.set).toHaveBeenCalledWith("demo_room", { deliveryId: DEMO_DELIVERY, showOnLanding: false }, ADMIN);
+    expect(lastAudit()).toMatchObject({
+      action: "site.update_demo_room",
+      targetType: "site_setting",
+      targetId: "demo_room",
+      targetLabel: "Demo room: Aisha & Omar",
+      outcome: "succeeded",
+      changes: {
+        before: { deliveryId: null, showOnLanding: false },
+        after: { deliveryId: DEMO_DELIVERY, showOnLanding: false },
+      },
+    });
+  });
+
+  it("refuses a link that isn't a review link, or that no delivery has, and saves nothing", async () => {
+    const notALink = await updateDemoRoomAction({ reviewLink: "https://cinespace.app/p/studio", reason: "Landing page demo" });
+    expect(notALink.error).toContain("review link");
+
+    const unknown = await updateDemoRoomAction({ reviewLink: "/deliver/someone_elses_old_link", reason: "Landing page demo" });
+    expect(unknown.error).toContain("No delivery has this review link");
+    expect(lastAudit()).toMatchObject({ action: "site.update_demo_room", outcome: "failed" });
+    expect(services.siteSettings.set).not.toHaveBeenCalled();
+  });
+
+  it("puts it on the landing page only once a delivery is chosen", async () => {
+    const tooSoon = await updateDemoRoomAction({ showOnLanding: true, reason: "Launch the demo" });
+    expect(tooSoon.error).toBe("Choose the demo delivery first.");
+    expect(services.siteSettings.set).not.toHaveBeenCalled();
+
+    services.siteSettings.get.mockResolvedValue({ deliveryId: DEMO_DELIVERY, showOnLanding: false });
+    const shown = await updateDemoRoomAction({ showOnLanding: true, reason: "Launch the demo" });
+    expect(shown.success).toBe(true);
+    expect(services.siteSettings.set).toHaveBeenCalledWith("demo_room", { deliveryId: DEMO_DELIVERY, showOnLanding: true }, ADMIN);
+  });
+
+  it("removing the demo room also takes it off the landing page", async () => {
+    services.siteSettings.get.mockResolvedValue({ deliveryId: DEMO_DELIVERY, showOnLanding: true });
+    const result = await updateDemoRoomAction({ reviewLink: "", reason: "Recording a new demo" });
+    expect(result.success).toBe(true);
+    expect(services.siteSettings.set).toHaveBeenCalledWith("demo_room", { deliveryId: null, showOnLanding: false }, ADMIN);
+  });
+
+  it("needs something to change", async () => {
+    const result = await updateDemoRoomAction({ reason: "Nothing really" });
+    expect(result.error).toBe("Change at least one thing.");
+    expect(services.siteSettings.set).not.toHaveBeenCalled();
   });
 });

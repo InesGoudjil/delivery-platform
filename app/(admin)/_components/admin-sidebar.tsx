@@ -7,6 +7,7 @@ import {
   Bell,
   Building2,
   CreditCard,
+  Globe,
   LayoutDashboard,
   ScrollText,
   Sparkles,
@@ -25,6 +26,7 @@ const ICONS: Record<AdminIconName, LucideIcon> = {
   billing: CreditCard,
   waitlist: Sparkles,
   notifications: Bell,
+  site: Globe,
   audit: ScrollText,
 };
 

@@ -1,18 +1,20 @@
 "use client";
 
-import { Star, ArrowRight } from "lucide-react";
+import { Star, ArrowRight, Play } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { motion, FadeIn } from "@/components/ui/motion";
 
 interface HeroSectionProps {
-  onOpenDemo: () => void;
-  onStartTrial: () => void;
+  /** The demo room (/demo) while it's on. Without it, the hero has no demo button. */
+  demoHref?: string;
+  /** Signup for visitors, their workspace for signed-in users. */
+  startHref: string;
 }
 
-export function HeroSection({ onOpenDemo, onStartTrial }: HeroSectionProps) {
+export function HeroSection({ demoHref, startHref }: HeroSectionProps) {
   return (
-    <section className="relative pt-6 sm:pt-10 pb-16 sm:pb-20 lg:pb-24 overflow-hidden">
+    <section className="relative pt-6 sm:pt-10 overflow-hidden">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           {/* Left Column: Headline & Action */}
           <div className="lg:col-span-6 space-y-6 text-left">
@@ -51,11 +53,24 @@ export function HeroSection({ onOpenDemo, onStartTrial }: HeroSectionProps) {
                     asChild
                     className="inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-7 py-3.5 h-auto text-sm font-bold uppercase tracking-wider shadow-xl shadow-primary/30 transition-all hover:bg-primary/90 hover:shadow-primary/50"
                   >
-                    <Link href="/signup">
+                    <Link href={startHref}>
                       START FOR FREE <ArrowRight className="size-4" />
                     </Link>
                   </Button>
                 </motion.div>
+                {demoHref && (
+                  <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} transition={{ duration: 0.15 }}>
+                    <Button
+                      asChild
+                      variant="ghost"
+                      className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 backdrop-blur-md px-7 py-3.5 h-auto text-sm font-bold uppercase tracking-wider text-white transition-all hover:bg-white/10 hover:border-white/40 hover:text-white"
+                    >
+                      <Link href={demoHref}>
+                        <Play className="size-4 fill-current" /> SEE A DEMO DELIVERY
+                      </Link>
+                    </Button>
+                  </motion.div>
+                )}
               </div>
             </FadeIn>
           </div>

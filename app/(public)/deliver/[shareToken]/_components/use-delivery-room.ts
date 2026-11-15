@@ -41,8 +41,12 @@ export function useDeliveryRoom({
   isPasscodeProtected,
   isInitiallyUnlocked,
   currentUser,
+  demoMode,
 }: DeliveryRoomProps) {
   const router = useRouter();
+  // A visitor in the demo room: what they do stays in this browser. The server would refuse it
+  // anyway (core/security/client-room.ts), so it's never sent.
+  const keepLocal = demoMode === "visitor";
 
   // Passcode gate state
   const [isLocked, setIsLocked] = useState(isPasscodeProtected && !isInitiallyUnlocked);
@@ -82,6 +86,7 @@ export function useDeliveryRoom({
 
   // Comments state
   const [commentAuthor] = useState(() => {
+    if (keepLocal) return "You";
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("cinespace_reviewer_name");
       if (stored?.trim()) return stored.trim();
@@ -223,6 +228,15 @@ export function useDeliveryRoom({
     );
     setDeliveryStatus(nextAllApproved ? "approved" : "in_review");
 
+    if (keepLocal) {
+      if (nextApproved) {
+        toast.success(`"${asset.title}" approved!`);
+      } else {
+        toast.info(`Approval removed for "${asset.title}"`);
+      }
+      return;
+    }
+
     setApprovingAssetId(assetId);
     try {
       const res = await toggleAssetApprovalAction({ shareToken: delivery.shareToken }, assetId, nextApproved);
@@ -256,6 +270,11 @@ export function useDeliveryRoom({
     setAssets((prev) => prev.map((a) => ({ ...a, isApproved: true })));
     setDeliveryStatus("approved");
 
+    if (keepLocal) {
+      toast.success("All delivery cuts approved & locked!");
+      return;
+    }
+
     setIsApprovingAll(true);
     try {
       const res = await approveAllAssetsAction({ shareToken: delivery.shareToken }, commentAuthor);
@@ -277,6 +296,11 @@ export function useDeliveryRoom({
     const prevStatus = deliveryStatus;
     setAssets((prev) => prev.map((a) => ({ ...a, isApproved: false })));
     setDeliveryStatus("in_review");
+
+    if (keepLocal) {
+      toast.info("Project approval undone — cuts returned to review");
+      return;
+    }
 
     setIsApprovingAll(true);
     try {
@@ -377,6 +401,8 @@ export function useDeliveryRoom({
       }))
     );
 
+    if (keepLocal) return;
+
     const res = await toggleFeedbackResolvedAction(feedbackId, nextResolved, delivery.shareToken);
 
     if (res?.error) {
@@ -401,6 +427,11 @@ export function useDeliveryRoom({
       }))
     );
 
+    if (keepLocal) {
+      toast.success("Comment deleted");
+      return;
+    }
+
     const res = await deleteFeedbackAction(feedbackId, delivery.shareToken);
     if (res?.error) {
       toast.error(res.error || "Failed to delete feedback");
@@ -424,6 +455,11 @@ export function useDeliveryRoom({
       }))
     );
 
+    if (keepLocal) {
+      toast.success("Reply deleted");
+      return;
+    }
+
     const res = await deleteFeedbackReplyAction(replyId, delivery.shareToken);
     if (res?.error) {
       toast.error(res.error || "Failed to delete reply");
@@ -442,6 +478,11 @@ export function useDeliveryRoom({
         ),
       }))
     );
+
+    if (keepLocal) {
+      toast.success("Comment updated");
+      return;
+    }
 
     const res = await updateFeedbackAction({
       feedbackId,
@@ -472,6 +513,11 @@ export function useDeliveryRoom({
         ),
       }))
     );
+
+    if (keepLocal) {
+      toast.success("Reply updated");
+      return;
+    }
 
     const res = await updateFeedbackReplyAction({
       replyId,
@@ -505,12 +551,22 @@ export function useDeliveryRoom({
   const hasNotifiedDownloadRef = useRef(false);
   const isGlobalDownloadUnlocked = Boolean(delivery.isDownloadAllowed);
 
+  const refuseDownload = () => {
+    if (keepLocal) {
+      toast.info("Downloads are off in the demo room", {
+        description: "In your own rooms, you choose whether clients can download.",
+      });
+      return;
+    }
+    toast.error("Downloads are restricted for this review link.");
+  };
+
   const notifyCreatorOfDownload = (info: {
     assetId?: string;
     assetTitle?: string;
     downloadedCount?: number;
   }) => {
-    if (hasNotifiedDownloadRef.current) return;
+    if (keepLocal || hasNotifiedDownloadRef.current) return;
     hasNotifiedDownloadRef.current = true;
     void recordClientDownloadAction({
       shareToken: delivery.shareToken,
@@ -524,7 +580,7 @@ export function useDeliveryRoom({
     versionOverride?: AssetVersionItem | null
   ) => {
     if (!isGlobalDownloadUnlocked) {
-      toast.error("Downloads are restricted for this review link.");
+      refuseDownload();
       return;
     }
 
@@ -560,7 +616,7 @@ export function useDeliveryRoom({
 
   const handleDownloadAll = () => {
     if (!isGlobalDownloadUnlocked) {
-      toast.error("Downloads are restricted for this review link.");
+      refuseDownload();
       return;
     }
     setShowDownloadModal(true);

@@ -18,6 +18,74 @@ export interface Plan {
   updatedAt: string;
 }
 
+/**
+ * Yearly billing. A tier sold both ways has two plans: the monthly one (`pro`) and its yearly
+ * twin (`pro-yearly`, billingInterval 'year'), with the same name, order and features.
+ * Checkout, the Stripe webhooks and entitlements all work per plan, so they need nothing else.
+ */
+export const YEARLY_SLUG_SUFFIX = '-yearly';
+
+/** The tier a plan belongs to, however it's billed: `pro` for both `pro` and `pro-yearly`. */
+export function planTier(slug: string): string {
+  return slug.endsWith(YEARLY_SLUG_SUFFIX) ? slug.slice(0, -YEARLY_SLUG_SUFFIX.length) : slug;
+}
+
+/** The slug of a tier's yearly plan. */
+export function yearlyPlanSlug(slug: string): string {
+  return `${planTier(slug)}${YEARLY_SLUG_SUFFIX}`;
+}
+
+/** What the pricing helpers read, so client components can pass their own plan items. */
+export interface PricedPlan {
+  slug: string;
+  priceCents: number;
+  billingInterval?: string;
+}
+
+/** A tier's monthly plan and, when it's sold yearly too, its yearly plan. */
+export interface PlanTierGroup<P extends PricedPlan> {
+  tier: string;
+  monthly: P;
+  yearly: P | null;
+}
+
+/**
+ * Pairs each monthly plan with its yearly twin, in the monthly plans' order. A yearly plan
+ * without a monthly one (archived, say) is left out.
+ */
+export function groupPlanTiers<P extends PricedPlan>(plans: P[]): PlanTierGroup<P>[] {
+  const yearlyByTier = new Map<string, P>();
+  for (const plan of plans) {
+    if (plan.billingInterval === 'year') yearlyByTier.set(planTier(plan.slug), plan);
+  }
+  return plans
+    .filter((plan) => plan.billingInterval !== 'year')
+    .map((monthly) => ({ tier: monthly.slug, monthly, yearly: yearlyByTier.get(monthly.slug) ?? null }));
+}
+
+/** The plan sold for a tier on this billing interval: the yearly one when there is one. */
+export function planForInterval<P extends PricedPlan>(group: PlanTierGroup<P>, interval: BillingInterval): P {
+  return interval === 'year' && group.yearly ? group.yearly : group.monthly;
+}
+
+/** Whole percent saved by paying yearly instead of twelve monthly payments (rounded down); 0 when nothing is. */
+export function yearlySavingsPercent(monthlyCents: number, yearlyCents: number): number {
+  if (monthlyCents <= 0 || yearlyCents <= 0) return 0;
+  const saved = 1 - yearlyCents / (monthlyCents * 12);
+  // The epsilon keeps an exact 25% from flooring to 24 through float error.
+  return saved > 0 ? Math.floor(saved * 100 + 1e-9) : 0;
+}
+
+/** "Save 25%", or "Save up to 25%" when tiers save different amounts; null when paying yearly saves nothing. */
+export function yearlySavingsLabel<P extends PricedPlan>(groups: PlanTierGroup<P>[]): string | null {
+  const savings = groups
+    .filter((group) => group.yearly)
+    .map((group) => yearlySavingsPercent(group.monthly.priceCents, group.yearly!.priceCents));
+  const best = Math.max(0, ...savings);
+  if (best === 0) return null;
+  return savings.every((saving) => saving === best) ? `Save ${best}%` : `Save up to ${best}%`;
+}
+
 export const SEED_PLANS: Record<string, Partial<Plan>> = {
   starter: {
     name: 'Starter',
@@ -87,7 +155,7 @@ export const SEED_PLANS: Record<string, Partial<Plan>> = {
       branding: true,
       download_notifications: true,
       priority_support: true,
-      silo_archive: false,
+      silo_archive: true,
       white_label: false,
     },
   },

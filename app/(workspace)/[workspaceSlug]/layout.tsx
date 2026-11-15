@@ -9,6 +9,7 @@ import { WorkspaceHeader } from "@/components/workspaces/workspace-header";
 import { WorkspaceMobileBottomNav } from "@/components/workspaces/workspace-mobile-bottom-nav";
 import { AmbientBackground } from "@/components/ui/ambient-background";
 import { MetaComplregEcho } from "@/components/meta/MetaComplregEcho";
+import { PlanIntentRedirect } from "@/components/billing/plan-intent-redirect";
 import { AccentThemeProvider } from "@/components/theme/accent-theme-provider";
 import { EntitlementsProvider } from "@/components/providers/entitlements-provider";
 import { ModalProvider } from "@/components/modals";
@@ -67,6 +68,7 @@ export default async function WorkspaceLayout({
           <SidebarProvider defaultOpen={true}>
             <AmbientBackground variant="subtle" showNoise={false} />
             <MetaComplregEcho />
+            <PlanIntentRedirect workspaceSlug={workspace.slug} />
             <WorkspaceSidebar
               workspace={workspace}
               workspaces={userWorkspaces}

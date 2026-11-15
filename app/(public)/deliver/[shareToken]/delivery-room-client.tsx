@@ -12,6 +12,7 @@ import { DeliveryHeroBanner } from "./_components/delivery-hero-banner";
 import { DeliveryActionBar } from "./_components/delivery-action-bar";
 import { DeliveryAssetGrid } from "./_components/delivery-asset-grid";
 import { DeliveryRoomFooter } from "./_components/delivery-room-footer";
+import { DemoRoomBanner } from "./_components/demo-room-banner";
 import { useDeliveryRoom } from "./_components/use-delivery-room";
 
 import type {
@@ -44,7 +45,7 @@ export function DeliveryRoomClient(props: DeliveryRoomProps) {
 }
 
 function DeliveryRoomView(props: DeliveryRoomProps) {
-  const { delivery, workspace, clientName, isWorkspaceMember, whiteLabel } = props;
+  const { delivery, workspace, clientName, isWorkspaceMember, whiteLabel, demoMode } = props;
   const room = useDeliveryRoom(props);
 
   return (
@@ -79,68 +80,78 @@ function DeliveryRoomView(props: DeliveryRoomProps) {
                 : ""
             }`}
           >
-            <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
-              {/* Header & Expiration Notice */}
-              <DeliveryRoomHeader
-                brandName={workspace.brandName}
-                logoUrl={workspace.logoUrl}
-                slug={workspace.slug}
-                deliveryId={delivery.id}
-                isExpired={room.isExpired}
-                expiresAt={delivery.expiresAt}
-                expiryLabel={room.expiryLabel}
-                isWorkspaceMember={Boolean(isWorkspaceMember)}
-              />
+            <div className="w-full px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6">
+              {/* First screen: the header, then the banner filling the rest of the screen (svh, so
+                  mobile browser toolbars never cover it). The gap above and below the banner is the
+                  same as the side padding. A banner taller than that grows the column instead. */}
+              <div className="flex flex-col min-h-svh pt-4 sm:pt-6 gap-4 sm:gap-6 lg:gap-8 pb-4 sm:pb-6 lg:pb-8">
+                {/* The site's demo room says so, above everything else */}
+                {demoMode && <DemoRoomBanner mode={demoMode} />}
 
-              {/* Hero Project Cover Banner */}
-              <DeliveryHeroBanner
-                title={delivery.title}
-                clientName={clientName}
-                heroCoverUrl={room.heroCoverUrl}
-                formattedDate={room.formattedDate}
-                displayLocation={room.displayLocation}
-                formattedTotalSize={room.formattedTotalSize}
-                displayAssetCount={room.displayAssetCount}
-                approvedCount={room.approvedCount}
-                isGlobalDownloadUnlocked={room.isGlobalDownloadUnlocked}
-                onDownloadAll={room.handleDownloadAll}
-              />
+                {/* Header & Expiration Notice */}
+                <DeliveryRoomHeader
+                  brandName={workspace.brandName}
+                  logoUrl={workspace.logoUrl}
+                  slug={workspace.slug}
+                  deliveryId={delivery.id}
+                  isExpired={room.isExpired}
+                  expiresAt={delivery.expiresAt}
+                  expiryLabel={room.expiryLabel}
+                  isWorkspaceMember={Boolean(isWorkspaceMember)}
+                />
 
-              {/* Approval Progress & Action Bar */}
-              <DeliveryActionBar
-                brandName={workspace.brandName}
-                totalAssets={room.assets.length}
-                approvedCount={room.approvedCount}
-                allApproved={room.allApproved}
-                isApprovingAll={room.isApprovingAll}
-                onMessageCreator={room.handleMessageCreator}
-                onApproveAll={room.handleApproveAll}
-                onUnapproveAll={room.handleUnapproveAll}
-              />
+                {/* Hero Project Cover Banner */}
+                <DeliveryHeroBanner
+                  title={delivery.title}
+                  clientName={clientName}
+                  heroCoverUrl={room.heroCoverUrl}
+                  formattedDate={room.formattedDate}
+                  displayLocation={room.displayLocation}
+                  formattedTotalSize={room.formattedTotalSize}
+                  displayAssetCount={room.displayAssetCount}
+                  approvedCount={room.approvedCount}
+                  isGlobalDownloadUnlocked={room.isGlobalDownloadUnlocked}
+                  onDownloadAll={room.handleDownloadAll}
+                />
+              </div>
 
-              {/* Asset Library / Project Files */}
-              <DeliveryAssetGrid
-                filteredAssets={room.filteredAssets}
-                activeTab={room.assetTab}
-                onTabChange={room.setAssetTab}
-                workspaceBrandName={workspace.brandName}
-                appearance={delivery.appearance}
-                isDeliveryWatermarked={delivery.isWatermarked}
-                isGlobalDownloadUnlocked={room.isGlobalDownloadUnlocked}
-                approvingAssetId={room.approvingAssetId}
-                onSelectAsset={room.openAssetModal}
-                onToggleApproval={room.handleToggleAssetApproval}
-                onDownloadAsset={room.handleSingleAssetDownload}
-              />
+              <div className="space-y-4 sm:space-y-6">
+                {/* Approval Progress & Action Bar */}
+                <DeliveryActionBar
+                  brandName={workspace.brandName}
+                  totalAssets={room.assets.length}
+                  approvedCount={room.approvedCount}
+                  allApproved={room.allApproved}
+                  isApprovingAll={room.isApprovingAll}
+                  onMessageCreator={room.handleMessageCreator}
+                  onApproveAll={room.handleApproveAll}
+                  onUnapproveAll={room.handleUnapproveAll}
+                />
 
-              {/* Studio Branding Footer */}
-              <DeliveryRoomFooter
-                whiteLabel={whiteLabel}
-                brandName={workspace?.brandName}
-              />
+                {/* Asset Library / Project Files */}
+                <DeliveryAssetGrid
+                  filteredAssets={room.filteredAssets}
+                  activeTab={room.assetTab}
+                  onTabChange={room.setAssetTab}
+                  workspaceBrandName={workspace.brandName}
+                  appearance={delivery.appearance}
+                  isDeliveryWatermarked={delivery.isWatermarked}
+                  isGlobalDownloadUnlocked={room.isGlobalDownloadUnlocked}
+                  approvingAssetId={room.approvingAssetId}
+                  onSelectAsset={room.openAssetModal}
+                  onToggleApproval={room.handleToggleAssetApproval}
+                  onDownloadAsset={room.handleSingleAssetDownload}
+                />
 
-              {/* Studio Branding Footer */}
-              {/* <DeliveryRoomFooter /> */}
+                {/* Studio Branding Footer */}
+                <DeliveryRoomFooter
+                  whiteLabel={whiteLabel}
+                  brandName={workspace?.brandName}
+                />
+
+                {/* Studio Branding Footer */}
+                {/* <DeliveryRoomFooter /> */}
+              </div>
             </div>
 
             {/* 📹 Interactive Video Review Lightbox Modal */}
@@ -159,6 +170,7 @@ function DeliveryRoomView(props: DeliveryRoomProps) {
               onDeleteReply={room.handleDeleteReply}
               onEditFeedback={room.handleEditFeedback}
               onEditReply={room.handleEditReply}
+              keepFeedbackLocal={demoMode === "visitor"}
               onToggleApproval={room.handleToggleAssetApproval}
               authorName={room.commentAuthor}
               showFeedback={delivery.isCommentAllowed ?? true}

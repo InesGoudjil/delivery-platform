@@ -7,6 +7,7 @@ import type { AdminSearchResults } from "@/core/admin/types";
 import {
   banUserSchema,
   createPlanSchema,
+  createYearlyPlanSchema,
   deletePlanSchema,
   updatePlanSchema,
   updateUserRoleSchema,
@@ -14,10 +15,13 @@ import {
   updateWorkspacePlanSchema,
   userTargetSchema,
   suspendWorkspaceSchema,
+  updateDemoRoomSchema,
   workspaceTargetSchema,
 } from "@/lib/validations/admin";
+import { shareTokenFromReviewLink } from "@/lib/client-room/demo-room";
 import type { AdminActionContext } from "./safe-action";
 import { createScopedLogger } from "@/lib/logger";
+import { planTier, yearlyPlanSlug } from "@/core/entities/plan";
 
 /*
  * Platform-admin actions. Each goes through createPlatformAdminAction(): platform admin with a
@@ -183,6 +187,73 @@ export const createPlanAction = createPlatformAdminAction(
   }
 );
 
+/**
+ * Sells a paid monthly plan yearly too: a yearly Stripe price plus the plan's yearly twin
+ * (`<slug>-yearly`, same name, order and features). Checkout and the webhooks then handle it
+ * like any other plan, and the pricing pages show a monthly/yearly toggle.
+ */
+export const createYearlyPlanAction = createPlatformAdminAction(
+  {
+    action: "plan.add_yearly",
+    schema: createYearlyPlanSchema,
+    target: (input) => ({ type: "plan", id: input.planId }),
+  },
+  async (input, ctx) => {
+    const monthly = await ctx.services.subscription.getPlanById(input.planId);
+    if (!monthly) throw new Error("Plan not found.");
+    ctx.setTargetLabel(monthly.name);
+    if (monthly.billingInterval === "year") throw new Error("This plan is billed yearly already.");
+    if (monthly.priceCents <= 0) throw new Error("Free plans have no yearly price.");
+
+    const slug = yearlyPlanSlug(monthly.slug);
+    if (await ctx.services.subscription.getPlanBySlug(slug)) {
+      throw new Error(`${monthly.name} has a yearly price already.`);
+    }
+
+    const priceCents = Math.round(input.yearlyPriceUsd * 100);
+    if (priceCents >= monthly.priceCents * 12) {
+      throw new Error("The yearly price must be less than twelve monthly payments, or paying yearly saves nothing.");
+    }
+
+    // 1. Its Stripe product and yearly price, so checkout can sell it.
+    const { stripePriceId } = await ctx.services.stripe.createStripeProductAndPrice({
+      name: `${monthly.name} (yearly)`,
+      priceCents,
+      currency: monthly.currency,
+      billingInterval: "year",
+    });
+
+    // 2. The yearly plan, with the monthly plan's features so both grant the same.
+    const plan = await ctx.services.subscription.createPlan({
+      name: monthly.name,
+      slug,
+      priceCents,
+      currency: monthly.currency,
+      billingInterval: "year",
+      sortOrder: monthly.sortOrder,
+      stripePriceId,
+      features: monthly.features,
+    });
+
+    ctx.recordChanges({
+      after: {
+        id: plan.id,
+        name: plan.name,
+        slug: plan.slug,
+        priceCents: plan.priceCents,
+        currency: plan.currency,
+        billingInterval: plan.billingInterval,
+        stripePriceId: plan.stripePriceId,
+      },
+    });
+    refreshAdminPages();
+    return { plan };
+  }
+);
+
+/** What a tier's monthly and yearly plans share, so editing one edits both. */
+const SHARED_PLAN_FIELDS = ["name", "sortOrder", "features"];
+
 export const updatePlanAction = createPlatformAdminAction(
   {
     action: "plan.update",
@@ -206,7 +277,23 @@ export const updatePlanAction = createPlatformAdminAction(
     if (keys.length === 0) throw new Error("Nothing to change.");
 
     const updated = await ctx.services.subscription.updatePlan(plan.id, changes);
-    ctx.recordChanges({ before: pick(plan, keys), after: pick(updated, keys) });
+
+    // Keep the other half of a monthly/yearly pair in step: same name, order and features.
+    let syncedPlan: string | null = null;
+    const sharedKeys = keys.filter((key) => SHARED_PLAN_FIELDS.includes(key));
+    if (sharedKeys.length > 0) {
+      const twinSlug = plan.billingInterval === "year" ? planTier(plan.slug) : yearlyPlanSlug(plan.slug);
+      const twin = await ctx.services.subscription.getPlanBySlug(twinSlug);
+      if (twin && twin.id !== plan.id && twin.billingInterval !== plan.billingInterval) {
+        await ctx.services.subscription.updatePlan(twin.id, pick(changes, sharedKeys));
+        syncedPlan = twin.slug;
+      }
+    }
+
+    ctx.recordChanges({
+      before: pick(plan, keys),
+      after: { ...pick(updated, keys), ...(syncedPlan ? { alsoUpdated: syncedPlan } : {}) },
+    });
     refreshAdminPages();
     return { plan: updated };
   }
@@ -401,5 +488,49 @@ export const unsuspendWorkspaceAction = createPlatformAdminAction(
     });
     refreshAdminPages();
     return { unsuspended: true };
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Site settings
+// ---------------------------------------------------------------------------
+
+/**
+ * The demo room: which delivery /demo shows (found from its review link), and whether the landing
+ * page links to it. Removing the delivery also takes the link off the landing page.
+ */
+export const updateDemoRoomAction = createPlatformAdminAction(
+  {
+    action: "site.update_demo_room",
+    schema: updateDemoRoomSchema,
+    target: () => ({ type: "site_setting", id: "demo_room", label: "Demo room" }),
+  },
+  async (input, ctx) => {
+    if (input.reviewLink === undefined && input.showOnLanding === undefined) {
+      throw new Error("Change at least one thing.");
+    }
+    const before = await ctx.services.siteSettings.get("demo_room");
+
+    let deliveryId = before.deliveryId;
+    if (input.reviewLink === "") {
+      deliveryId = null;
+    } else if (input.reviewLink !== undefined) {
+      const shareToken = shareTokenFromReviewLink(input.reviewLink);
+      if (!shareToken) throw new Error("Paste the delivery's review link, the one with /deliver/ in it.");
+      const delivery = await ctx.services.delivery.getDeliveryByShareToken(shareToken, { allowExpired: true });
+      if (!delivery) throw new Error("No delivery has this review link. Copy it again from the delivery's share dialog.");
+      deliveryId = delivery.id;
+      ctx.setTargetLabel(`Demo room: ${delivery.title}`);
+    }
+
+    if (input.showOnLanding && !deliveryId) throw new Error("Choose the demo delivery first.");
+    const showOnLanding = deliveryId ? (input.showOnLanding ?? before.showOnLanding) : false;
+
+    const saved = await ctx.services.siteSettings.set("demo_room", { deliveryId, showOnLanding }, ctx.user.id);
+    ctx.recordChanges({ before, after: saved.value });
+    refreshAdminPages();
+    revalidatePath("/");
+    revalidatePath("/demo");
+    return { demoRoom: saved.value };
   }
 );

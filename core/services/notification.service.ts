@@ -2,6 +2,7 @@ import { NotificationLog, NotificationStatus } from "@/core/entities/notificatio
 import type { Client } from "@/core/entities/client";
 import type { Delivery } from "@/core/entities/delivery";
 import type { Workspace } from "@/core/entities/workspace";
+import { planTier } from "@/core/entities/plan";
 import { INotificationLogRepository } from "@/core/repositories/notification.repository";
 import { IDeliveryRepository } from "@/core/repositories/i-delivery-repository";
 import { IWorkspaceRepository } from "@/core/repositories/workspace.repository";
@@ -127,7 +128,7 @@ function clientSender(studio: string): string {
 
 /** Pro, Studio and Enterprise show the filmmaker's logo and colours; Starter and Basic get the footer. */
 function clientLayout(workspace: Workspace, planSlug: string | null | undefined): EmailLayout {
-  const premium = PREMIUM_PLANS.has(planSlug ?? "");
+  const premium = PREMIUM_PLANS.has(planTier(planSlug ?? ""));
   return {
     kind: "client",
     brandName: studioName(workspace),

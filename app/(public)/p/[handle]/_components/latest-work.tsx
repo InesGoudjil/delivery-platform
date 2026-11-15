@@ -32,7 +32,8 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
 
   // State for active category tab: "projects" | "films" | "stills"
   const [activeTab, setActiveTab] = useState<"projects" | "films" | "stills">(
-    projects.length > 0 ? "projects" : films.length > 0 ? "films" : stills.length > 0 ? "stills" : "projects"
+    "films"
+    // projects.length > 0 ? "projects" : films.length > 0 ? "films" : stills.length > 0 ? "stills" : "films"
   );
 
   const PAGE_SIZE = 12;
@@ -114,7 +115,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
       {/* Filter Segmented Control Tabs */}
       <div className="flex justify-center">
         <div className="inline-flex p-1 rounded-full bg-[#18181b] border border-white/10 shadow-inner gap-1">
-          {(["projects", "films", "stills"] as const).map((tab) => {
+          {(["films","projects", "stills"] as const).map((tab) => {
             const isActive = activeTab === tab;
             return (
               <Button

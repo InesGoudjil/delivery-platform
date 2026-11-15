@@ -28,8 +28,9 @@ export default async function NewWorkspacePage() {
     services.subscription.getCurrentPlan(primaryWorkspace.id),
   ]);
 
+  // One entry per tier: yearly plans repeat their monthly plan's seats and features.
   const displayPlans = availablePlans
-    .filter((p) => p.isActive && p.slug !== "test" && p.slug !== "test3")
+    .filter((p) => p.isActive && p.billingInterval !== "year" && p.slug !== "test" && p.slug !== "test3")
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((p) => ({
       id: p.id,

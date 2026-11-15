@@ -28,6 +28,8 @@ interface SubscriptionClientProps {
   canManageBilling?: boolean;
   hasBillingHistory?: boolean;
   initialBillingStatus?: "success" | "cancel" | null;
+  /** The plan picked on the landing page before signing up. */
+  chosenPlanSlug?: string | null;
 }
 
 export function SubscriptionClient({
@@ -44,6 +46,7 @@ export function SubscriptionClient({
   canManageBilling = true,
   hasBillingHistory = false,
   initialBillingStatus = null,
+  chosenPlanSlug = null,
 }: SubscriptionClientProps) {
   const [toast, setToast] = useState<{ message: string; type?: "success" | "error" | "info" } | null>(null);
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
@@ -226,6 +229,8 @@ export function SubscriptionClient({
           onCheckout={handleCheckout}
           loadingPlanId={loadingPlanId}
           canManageBilling={canManageBilling}
+          chosenPlanSlug={chosenPlanSlug}
+          hasBillingHistory={hasBillingHistory}
         />
 
         {/* 3. Invoices History Card */}

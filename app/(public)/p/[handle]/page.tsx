@@ -463,14 +463,16 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
         appearance={portfolio?.appearance}
         primaryFeatured={primaryFeatured}
       >
-        <div className="min-h-screen bg-[#0a0a0b] text-[#f6f3ec] font-sans antialiased selection:bg-primary selection:text-primary-foreground relative">
+        {/* The first screen is header + gap + hero + gap. The header's row height and the gap
+            (the same as the page's side padding) are set here; the hero sizes itself from them. */}
+        <div className="min-h-screen bg-[#0a0a0b] text-[#f6f3ec] font-sans antialiased selection:bg-primary selection:text-primary-foreground relative [--portfolio-header-h:4rem] sm:[--portfolio-header-h:5rem] [--portfolio-gap:1rem] sm:[--portfolio-gap:1.5rem] lg:[--portfolio-gap:2rem]">
           <AmbientBackground variant="subtle" showNoise={false} accentColor={workspace?.accentColor || undefined} />
           <div className="relative z-10">
             {/* 🎬 1. TOP NAVIGATION HEADER (Server Component) */}
             <PortfolioHeader profile={profile} />
 
             {/* MAIN BODY */}
-            <main className="w-full px-4 sm:px-6 lg:px-8 pt-6 pb-20 space-y-16 sm:space-y-24">
+            <main className="w-full px-4 sm:px-6 lg:px-8 pt-(--portfolio-gap) pb-20">
               {/* 🌟 2. HERO / FEATURED HIGHLIGHT (Server Component) */}
               <PortfolioHero
                 profile={profile}
@@ -479,18 +481,21 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
                 featuredAsset={featuredAsset}
               />
 
-              {/* 📁 3. LATEST WORK & FILTER SEGMENTS (Client Component) */}
-              <LatestWork
-                projects={projectsToDisplay}
-                assets={assetsToDisplay}
-                appearance={portfolio?.appearance}
-              />
+              {/* The gap under the hero is the same as the gap above it. */}
+              <div className="mt-(--portfolio-gap) space-y-16 sm:space-y-24">
+                {/* 📁 3. LATEST WORK & FILTER SEGMENTS (Client Component) */}
+                <LatestWork
+                  projects={projectsToDisplay}
+                  assets={assetsToDisplay}
+                  appearance={portfolio?.appearance}
+                />
 
-              {/* 👤 4. ABOUT SECTION (Server Component) */}
-              <PortfolioAbout profile={profile} />
+                {/* 👤 4. ABOUT SECTION (Server Component) */}
+                <PortfolioAbout profile={profile} />
 
-              {/* 🎬 5. END CTA BANNER (Server Component) */}
-              <PortfolioCta profile={profile} />
+                {/* 🎬 5. END CTA BANNER (Server Component) */}
+                <PortfolioCta profile={profile} />
+              </div>
             </main>
 
             {/* 📜 6. FOOTER (Server Component) */}

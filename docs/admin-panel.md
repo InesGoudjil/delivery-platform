@@ -63,6 +63,7 @@ commit;
 | Plans & subscriptions | Plans (create, edit, archive) and every subscription |
 | Waitlist | The pending queue in invite order; inviting the next cohort |
 | Notifications | Every email and WhatsApp message with its status and error; recipients shortened (`cl•••@example.com`). Comments waiting to be sent, and when the scheduler last ran |
+| Site settings | What visitors of the public site see. For now, the demo room: which delivery `/demo` shows, and whether the landing page links to it |
 | Audit log | Every admin change: who, what, why, before and after |
 
 **Search (⌘K or Ctrl+K, or the box in the sidebar)** finds:
@@ -101,6 +102,7 @@ changes per 10 minutes.
 | Ban | 24 hours, 7 days, 30 days or until lifted. They're signed out everywhere. Not on yourself or another platform admin: remove the role first. |
 | Reset two-factor | Removes all their authenticators and signs them out. Their next sign-in is password only, and they can set up a new one. Check it's really them first. Not on yourself. |
 | Suspend a workspace | Type its slug to confirm. Lift it from the same menu. |
+| The demo room | Choose the delivery by pasting its review link. The landing page links to it only while it's switched on and the room opens for anyone. See [The demo room](#the-demo-room). |
 
 Admins can't send a password-reset or confirmation email for a user yet. Sign-in links are only
 accepted in the browser that asked for them, so a link an admin requested wouldn't work for the
@@ -125,6 +127,40 @@ Every client room and portfolio has a **Report a problem** link in its footer. I
 with the page's address to `NEXT_PUBLIC_ABUSE_EMAIL`, or, when that isn't set, to the address the
 legal pages already publish. Set it to a monitored abuse@ inbox.
 
+## The demo room
+
+`/demo` is a real client room that anyone can open: the delivery chosen in **Site settings**.
+Visitors can play the cuts, switch versions, leave timecoded notes and approve. None of it is
+saved or sent: the room keeps it in their browser, and the server refuses guests' comments,
+approvals and downloads on that delivery, whichever link they use. Nobody gets an email or a
+WhatsApp message.
+
+To set one up:
+
+1. In a workspace you're a member of, make a delivery with a few short clips and a cover. Leave
+   out the passcode and the expiry date. Keep the clips short, because Cloudflare Stream bills
+   each minute watched.
+2. Add the comments visitors should find. Write the client's comments from a private window
+   *before* you choose the delivery: after that, guests' comments aren't saved. Comments from
+   members of the workspace are always saved, and every visitor sees them.
+3. Copy the delivery's review link from its share dialog. In **Site settings → Demo room**,
+   choose **Choose the demo delivery…** and paste it.
+4. Open `/demo` to check it, then choose **Show on the landing page**. The hero gets a "See a
+   demo delivery" button, the menu a Demo link, and the client experience section a link too.
+
+Good to know:
+
+- **Watermark and white label** show only when the demo workspace's plan has them. Give that
+  workspace Studio features with a feature override on its admin page.
+- **Downloads** are always off for visitors in the demo room, whatever the delivery's setting.
+- **Members** of the demo's workspace use the room as usual, under a note that what they do
+  there is public.
+- **When the room can't open** (passcode, expired link, archived, workspace suspended), the
+  landing page hides its links and `/demo` shows the sample screen (`/delivery-view`). The card
+  in Site settings says why.
+- **Changing what's in it:** edit the delivery in the studio. To add client comments later,
+  remove the demo room, add them from a private window, then choose the delivery again.
+
 ## Database
 
 | Migration | Adds | Tests |
@@ -132,6 +168,7 @@ legal pages already publish. Set it to a monitored abuse@ inbox.
 | `20261113120000_admin_read_model_and_audit.sql` | `admin_audit_events` (append-only); `admin_workspace_overview()`, `admin_list_workspaces()`, `admin_list_users()`, `admin_platform_kpis()` | `tests/rls/admin-read-model.test.ts` |
 | `20261113130000_admin_operations.sql` | `admin_end_all_auth_sessions()`; `system_heartbeats`, written by `/api/cron/notifications` on every run; `admin_daily_series()`; `admin_mrr_by_plan()` | `tests/rls/admin-operations.test.ts` |
 | `20261113140000_workspace_suspension.sql` | `workspaces.suspended_at`, `suspended_reason` and `suspended_by` (tenants can't set them); the read-model functions again, with suspension | `tests/rls/workspace-suspension.test.ts` |
+| `20261115120000_site_settings.sql` | `site_settings`: one row per site-wide setting, each defined in `lib/site-settings.ts` (the first is `demo_room`) | `tests/unit/site-settings.test.ts` |
 
 Only the service role can use the admin functions and tables, because they read `auth.users`.
 
@@ -169,4 +206,5 @@ The admin panel needs `SUPABASE_SERVICE_ROLE_KEY`. It never falls back to the an
 | You're sent to `/mfa` | This session hasn't passed the two-factor check yet | Enter the code from your authenticator app |
 | "Two-factor check unavailable" on `/mfa` | TOTP is off for the Supabase project, or the user has too many factors | Turn on TOTP in the project's MFA settings; delete old factors |
 | "This workspace is billed through Stripe…" | Expected | Change the subscription in Stripe |
+| `/demo` shows the sample screen | No demo room is chosen, or visitors can't open it | The Demo room card in Site settings says which; fix the delivery in the studio |
 | "The scheduler has never run" on the overview | Nothing calls `/api/cron/notifications` yet | Set up the schedule ([notifications.md](notifications.md), step 3) |
