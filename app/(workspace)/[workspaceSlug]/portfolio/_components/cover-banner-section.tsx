@@ -85,7 +85,7 @@ export function CoverBannerSection({
           <div className="flex items-center gap-2">
             <Monitor className="size-4 text-primary" />
             <TypographyH3 className="text-sm font-bold text-white font-heading tracking-wide">
-              Storefront Hero Banner
+              Show Reel
             </TypographyH3>
             <Badge
               variant="outline"
@@ -299,7 +299,7 @@ export function CoverBannerSection({
           <div className="flex items-center gap-2 pb-1 border-b border-white/[0.08]">
             <Sliders className="size-4 text-primary" />
             <TypographyH4 className="text-xs font-bold text-white uppercase tracking-wider">
-              Reel Display Controls
+              Show Reel Controls
             </TypographyH4>
           </div>
 
