@@ -11,7 +11,8 @@ interface PortfolioHeaderProps {
 export function PortfolioHeader({ profile }: PortfolioHeaderProps) {
   return (
     <header className="sticky top-0 z-40 bg-[#0a0a0b]/80 backdrop-blur-md border-b border-white/5 transition-all">
-      <div className="w-full px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2.5 sm:gap-4">
+      {/* --portfolio-header-h (4rem, 5rem from sm) is set by the page: the hero subtracts it too. */}
+      <div className="w-full px-4 sm:px-6 lg:px-8 h-(--portfolio-header-h) flex items-center justify-between gap-2.5 sm:gap-4">
         <Link
           href={`/p/${profile.handle}`}
           className="group flex items-center min-w-0 focus:outline-none"

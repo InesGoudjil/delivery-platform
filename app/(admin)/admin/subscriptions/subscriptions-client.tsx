@@ -25,8 +25,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { updatePlanAction, createPlanAction, deletePlanAction } from "@/app/actions/admin";
+import { updatePlanAction, createPlanAction, createYearlyPlanAction, deletePlanAction } from "@/app/actions/admin";
 import { Textarea } from "@/components/ui/textarea";
+import { planTier, yearlyPlanSlug, yearlySavingsPercent } from "@/core/entities/plan";
+import { formatUsd } from "@/lib/billing/price";
+
+/** The yearly price suggested when adding one: 25% off twelve monthly payments. */
+const SUGGESTED_YEARLY_DISCOUNT = 0.25;
 
 export interface AdminPlanItem {
   id: string;
@@ -90,6 +95,18 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteSuccessMsg, setDeleteSuccessMsg] = useState<string | null>(null);
 
+  // Add Yearly Price Dialog
+  const [yearlyModalOpen, setYearlyModalOpen] = useState(false);
+  const [yearlyPriceUsd, setYearlyPriceUsd] = useState(0);
+  const [yearlySuccess, setYearlySuccess] = useState(false);
+
+  // A paid, active monthly plan that isn't sold yearly yet.
+  const canAddYearly = (plan: AdminPlanItem) =>
+    plan.billingInterval !== "year" &&
+    plan.isActive &&
+    plan.priceCents > 0 &&
+    !plansList.some((p) => p.slug === yearlyPlanSlug(plan.slug));
+
   const filteredSubscriptions = subscriptions.filter(
     (s) =>
       s.workspaceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -115,6 +132,49 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
     setDeleteModalOpen(true);
   };
 
+  const handleOpenAddYearly = (plan: AdminPlanItem) => {
+    setSelectedPlan(plan);
+    setYearlyPriceUsd(Math.round(plan.priceCents * 12 * (1 - SUGGESTED_YEARLY_DISCOUNT)) / 100);
+    setYearlySuccess(false);
+    setServerError(null);
+    setReason("");
+    setYearlyModalOpen(true);
+  };
+
+  const handleAddYearlySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPlan) return;
+    const monthlyPlan = selectedPlan;
+
+    startTransition(async () => {
+      const res = await createYearlyPlanAction({ planId: monthlyPlan.id, yearlyPriceUsd, reason });
+      if (res.success) {
+        const yearlyPlanItem: AdminPlanItem = {
+          id: res.plan.id,
+          name: res.plan.name,
+          slug: res.plan.slug,
+          priceCents: res.plan.priceCents,
+          currency: res.plan.currency,
+          billingInterval: res.plan.billingInterval,
+          sortOrder: res.plan.sortOrder,
+          isActive: res.plan.isActive,
+          activeSubscribersCount: 0,
+          featuresSummary: monthlyPlan.featuresSummary,
+          storageGB: monthlyPlan.storageGB,
+          stripePriceId: res.plan.stripePriceId,
+        };
+        setPlansList((prev) => [...prev, yearlyPlanItem]);
+        setYearlySuccess(true);
+        setTimeout(() => {
+          setYearlyModalOpen(false);
+          setYearlySuccess(false);
+        }, 1000);
+      } else {
+        setServerError(res.error || "Failed to add the yearly price.");
+      }
+    });
+  };
+
   const handleSavePlanEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPlan) return;
@@ -133,6 +193,9 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
           prev.map((p) =>
             p.id === selectedPlan.id
               ? { ...p, name: editName, priceCents: editPriceUsd * 100 }
+              : // The other half of a monthly/yearly pair is renamed with it (updatePlanAction).
+              planTier(p.slug) === planTier(selectedPlan.slug) && p.billingInterval !== selectedPlan.billingInterval
+              ? { ...p, name: editName }
               : p
           )
         );
@@ -251,7 +314,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
           <Card
             key={tier.id}
             className={`bg-card border-border shadow-sm flex flex-col justify-between hover:border-primary/40 transition-colors ${
-              !tier.isActive ? "opacity-60 border-dashed" : tier.slug === "studio" ? "border-purple-500/30" : tier.slug === "pro" ? "border-primary/40" : ""
+              !tier.isActive ? "opacity-60 border-dashed" : planTier(tier.slug) === "studio" ? "border-purple-500/30" : planTier(tier.slug) === "pro" ? "border-primary/40" : ""
             }`}
           >
             <CardHeader className="pb-2">
@@ -272,7 +335,9 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
               <div className="flex items-baseline justify-between mt-1">
                 <p className="text-2xl font-black font-heading text-primary">
                   ${(tier.priceCents / 100).toFixed(0)}
-                  <span className="text-xs font-normal text-muted-foreground "> / mo</span>
+                  <span className="text-xs font-normal text-muted-foreground ">
+                    {tier.billingInterval === "year" ? " / yr" : " / mo"}
+                  </span>
                 </p>
 
                 <div className="flex items-center gap-1">
@@ -309,6 +374,16 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
                 <p className="text-[9px]  text-muted-foreground mt-2 truncate">
                   Stripe ID: {tier.stripePriceId}
                 </p>
+              )}
+              {canAddYearly(tier) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleOpenAddYearly(tier)}
+                  className="mt-3 h-7 rounded-full text-[11px] cursor-pointer"
+                >
+                  <Plus className="size-3 mr-1" /> Add yearly price
+                </Button>
               )}
             </CardContent>
           </Card>
@@ -577,7 +652,7 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
 
             <div>
               <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
-                Monthly Price (USD)
+                {selectedPlan?.billingInterval === "year" ? "Yearly" : "Monthly"} Price (USD)
               </label>
               <Input
                 type="number"
@@ -624,6 +699,87 @@ export function SubscriptionsClient({ plans: initialPlans, subscriptions }: Subs
                   "Updating..."
                 ) : (
                   "Save Plan Details"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ADD YEARLY PRICE DIALOG */}
+      <Dialog open={yearlyModalOpen} onOpenChange={setYearlyModalOpen}>
+        <DialogContent className="sm:max-w-md bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <DollarSign className="size-5 text-primary" />
+              Add a yearly price
+            </DialogTitle>
+            <DialogDescription>
+              Sell <strong className="text-foreground">{selectedPlan?.name}</strong> yearly too. This creates a
+              yearly Stripe price and a yearly plan with the same features, and the pricing pages then offer
+              monthly or yearly.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleAddYearlySubmit} className="space-y-4 py-2">
+            {serverError && (
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs ">
+                {serverError}
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="yearly-price" className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
+                Yearly Price (USD)
+              </label>
+              <Input
+                id="yearly-price"
+                type="number"
+                min={1}
+                step="0.01"
+                required
+                value={yearlyPriceUsd}
+                onChange={(e) => setYearlyPriceUsd(Number(e.target.value))}
+                className="bg-muted border-border text-xs "
+              />
+              {selectedPlan && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Twelve monthly payments come to {formatUsd(selectedPlan.priceCents * 12)}, so this saves{" "}
+                  {yearlySavingsPercent(selectedPlan.priceCents, Math.round(yearlyPriceUsd * 100))}%. Stripe prices
+                  can&apos;t be changed afterwards.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="yearly-plan-reason" className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
+                Reason
+              </label>
+              <Textarea
+                id="yearly-plan-reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Why are you making this change? It's saved in the audit log."
+                rows={2}
+                maxLength={500}
+                className="text-xs"
+              />
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="submit"
+                disabled={isPending || yearlySuccess || !reasonValid}
+                className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90"
+              >
+                {yearlySuccess ? (
+                  <>
+                    <Check className="size-3.5 mr-1" /> Yearly price added
+                  </>
+                ) : isPending ? (
+                  "Creating the Stripe price..."
+                ) : (
+                  "Create yearly price"
                 )}
               </Button>
             </DialogFooter>

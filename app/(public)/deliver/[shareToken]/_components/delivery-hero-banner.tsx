@@ -37,8 +37,10 @@ export function DeliveryHeroBanner({
   const canDownload = Boolean(isGlobalDownloadUnlocked);
 
   return (
-    <Card className="relative w-full aspect-[4/5] sm:aspect-[21/9] min-h-[380px] sm:min-h-0 rounded-[1.75rem] sm:rounded-[2rem] overflow-hidden border border-white/10 flex flex-col justify-end shadow-2xl group bg-transparent py-0 hover:translate-y-0">
-      {/* Project Cover Background */}
+    // flex-auto: the room puts the header and this banner in a column at least one screen tall,
+    // and the banner takes the rest of it. It is never shorter than its own text and buttons.
+    <Card className="relative w-full flex-auto rounded-[1.75rem] sm:rounded-[2rem] overflow-hidden border border-white/10 flex flex-col justify-end shadow-2xl group bg-transparent py-0 hover:translate-y-0">
+      {/* Project Cover Background: background-size cover fills the frame whatever the image's shape */}
       <div
         className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-[1.02]"
         style={{ backgroundImage: `url(${heroCoverUrl})` }}
@@ -52,7 +54,8 @@ export function DeliveryHeroBanner({
           Delivery for {clientName || "Prestige Rentals"}
         </TypographyKicker>
 
-        <TypographyH1 className="font-heading font-black text-2xl sm:text-4xl lg:text-5xl xl:text-6xl text-[#f6f3ec] uppercase tracking-tight leading-[1.05] mt-1.5 sm:mt-2">
+        {/* md:text-4xl overrides the h1 variant's md:text-7xl, which made tablet titles bigger than desktop ones */}
+        <TypographyH1 className="font-heading font-black text-2xl sm:text-4xl md:text-4xl lg:text-5xl xl:text-6xl text-[#f6f3ec] uppercase tracking-tight leading-[1.05] mt-1.5 sm:mt-2">
           {title}
         </TypographyH1>
 

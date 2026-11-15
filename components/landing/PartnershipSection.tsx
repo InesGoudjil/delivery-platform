@@ -59,7 +59,7 @@ export function PartnershipSection({ onShowToast }: PartnershipSectionProps) {
   };
 
   return (
-    <section id="partnership" className="scroll-mt-24 py-16 sm:py-20 lg:py-24 space-y-16 sm:space-y-24 text-center">
+    <section id="partnership" className="space-y-(--section-gap) text-center">
       <div>
         {/* Section Header */}
         <div className="space-y-3 max-w-3xl mx-auto">
@@ -88,7 +88,7 @@ export function PartnershipSection({ onShowToast }: PartnershipSectionProps) {
             title: "CREATOR ACCESS",
             description: (
               <>
-                Get the <strong>Pro plan (500 GB)</strong> free for 12 months. Build your own client galleries, add your own branding, and use it across your workflow and tutorials.
+                Get the <strong>Studio plan</strong> free for 12 months. Build your own client galleries, add your own branding, and use it across your workflow and tutorials.
               </>
             ),
           },
@@ -106,7 +106,7 @@ export function PartnershipSection({ onShowToast }: PartnershipSectionProps) {
             title: "GROW TOGETHER",
             description: (
               <>
-                Keep inspiring your community and driving sign-ups, and your Studio plan <strong>auto-renews free</strong>, indefinitely.
+                Keep inspiring your community and driving sign-ups. If the review near the end of your 12 months goes well, your Studio plan <strong>renews free</strong>.
               </>
             ),
           },

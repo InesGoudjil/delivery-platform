@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { YEARLY_SLUG_SUFFIX } from "@/core/entities/plan";
 
 /*
  * Inputs of the platform-admin actions (app/actions/admin.ts). createPlatformAdminAction() adds
@@ -64,7 +65,11 @@ export const createPlanSchema = z.object({
     .toLowerCase()
     .min(2, "Plan slug must be at least 2 characters")
     .max(100)
-    .regex(/^[a-z0-9-]+$/, "Slug must only contain lowercase letters, digits and hyphens"),
+    .regex(/^[a-z0-9-]+$/, "Slug must only contain lowercase letters, digits and hyphens")
+    .refine(
+      (slug) => !slug.endsWith(YEARLY_SLUG_SUFFIX),
+      `Slugs ending in "${YEARLY_SLUG_SUFFIX}" are for yearly prices. Use "Add yearly price" on the monthly plan instead.`
+    ),
   priceUsd: z.coerce.number().nonnegative().max(100_000).default(0),
   storageGb: z.coerce.number().int().min(1).max(100_000).default(500),
   clientLinks: z.coerce.number().int().min(-1).max(100_000).default(-1),
@@ -72,6 +77,14 @@ export const createPlanSchema = z.object({
 });
 
 export type CreatePlanInput = z.infer<typeof createPlanSchema>;
+
+/** Adds the yearly twin of a paid monthly plan (see YEARLY_SLUG_SUFFIX in core/entities/plan). */
+export const createYearlyPlanSchema = z.object({
+  planId: recordId("Plan"),
+  yearlyPriceUsd: z.coerce.number().positive("Enter the yearly price.").max(1_000_000),
+});
+
+export type CreateYearlyPlanInput = z.infer<typeof createYearlyPlanSchema>;
 
 export const updatePlanSchema = z.object({
   planId: recordId("Plan"),

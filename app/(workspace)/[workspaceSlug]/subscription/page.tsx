@@ -4,6 +4,7 @@ import { PageContainer } from "@/components/ui/page-container";
 import { SubscriptionHeader } from "./_components/subscription-header";
 import { SubscriptionClient } from "./_components/subscription-client";
 import { createScopedLogger } from "@/lib/logger";
+import { isPlanSlug } from "@/lib/billing/plan-intent";
 
 const log = createScopedLogger({ page: "SubscriptionPage" });
 
@@ -12,10 +13,10 @@ export default async function SubscriptionPage({
   searchParams,
 }: {
   params: Promise<{ workspaceSlug: string }>;
-  searchParams: Promise<{ billing?: string; session_id?: string }>;
+  searchParams: Promise<{ billing?: string; session_id?: string; plan?: string }>;
 }) {
   const { workspaceSlug } = await params;
-  const { billing, session_id } = await searchParams;
+  const { billing, session_id, plan: chosenPlanParam } = await searchParams;
 
   const services = await getServerServices();
   const user = await services.auth.getCurrentUser();
@@ -79,6 +80,10 @@ export default async function SubscriptionPage({
       features: p.features,
     }));
 
+  // ?plan= is the plan picked on the landing page before signing up (see PlanIntentRedirect).
+  const chosenPlanSlug =
+    isPlanSlug(chosenPlanParam) && displayPlans.some((p) => p.slug === chosenPlanParam) ? chosenPlanParam : null;
+
   return (
     <PageContainer maxWidth="7xl" className="animate-in fade-in duration-200">
       <SubscriptionHeader workspaceName={workspace.brandName} />
@@ -97,6 +102,7 @@ export default async function SubscriptionPage({
         canManageBilling={canManageBilling}
         hasBillingHistory={hasBillingHistory}
         initialBillingStatus={billing === "success" ? "success" : billing === "cancel" ? "cancel" : null}
+        chosenPlanSlug={chosenPlanSlug}
       />
     </PageContainer>
   );

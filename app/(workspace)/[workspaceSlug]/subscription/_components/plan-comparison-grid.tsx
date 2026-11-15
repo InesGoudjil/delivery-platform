@@ -1,11 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { Check, Loader2, Sparkles, ArrowRight, Minus } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Typography, TypographyH3, TypographyMuted, TypographySpan } from "@/components/ui/typography";
+import { TypographyH3, TypographyMuted, TypographySpan } from "@/components/ui/typography";
+import {
+  groupPlanTiers,
+  planForInterval,
+  planTier,
+  yearlySavingsLabel,
+  yearlySavingsPercent,
+  type BillingInterval,
+} from "@/core/entities/plan";
+import { formatUsd, monthlyPriceCents } from "@/lib/billing/price";
 
 export interface PlanItem {
   id: string;
@@ -20,10 +30,15 @@ export interface PlanItem {
 
 interface PlanComparisonGridProps {
   currentPlanSlug: string;
+  /** Monthly plans and their yearly twins; the grid pairs them per tier. */
   plans: PlanItem[];
   onCheckout: (plan: PlanItem) => Promise<void>;
   loadingPlanId: string | null;
   canManageBilling?: boolean;
+  /** The plan picked on the landing page before signing up: opened, scrolled to and marked. */
+  chosenPlanSlug?: string | null;
+  /** The workspace has a real Stripe customer, so its paid plan is a live Stripe subscription. */
+  hasBillingHistory?: boolean;
 }
 
 export function PlanComparisonGrid({
@@ -32,12 +47,37 @@ export function PlanComparisonGrid({
   onCheckout,
   loadingPlanId,
   canManageBilling = true,
+  chosenPlanSlug = null,
+  hasBillingHistory = false,
 }: PlanComparisonGridProps) {
-  const [billingInterval, setBillingInterval] = useState<"month" | "year">("month");
+  const tiers = groupPlanTiers(plans);
+  const sellsYearly = tiers.some((tier) => tier.yearly);
+  const savingsLabel = yearlySavingsLabel(tiers);
+
+  const intervalOf = (slug: string | null): BillingInterval | null => {
+    const plan = slug ? plans.find((p) => p.slug === slug) : undefined;
+    if (!plan) return null;
+    return plan.billingInterval === "year" ? "year" : "month";
+  };
+  // Opens on the interval of the plan picked before signup, else of the plan being paid.
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>(
+    () => intervalOf(chosenPlanSlug) ?? intervalOf(currentPlanSlug) ?? "month"
+  );
+  const interval: BillingInterval = sellsYearly ? billingInterval : "month";
+
+  // Checkout always starts a new Stripe subscription and nothing ends the old one, so moving a
+  // paid subscription between monthly and yearly here would bill twice. Support does it in Stripe.
+  const currentPlan = plans.find((p) => p.slug === currentPlanSlug);
+  const paysThroughStripe = hasBillingHistory && (currentPlan?.priceCents ?? 0) > 0;
+
+  useEffect(() => {
+    if (!chosenPlanSlug) return;
+    document.getElementById(`plan-${chosenPlanSlug}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [chosenPlanSlug]);
 
   return (
     <div id="available-plans" className="flex flex-col gap-6 scroll-mt-6">
-      {/* Header & Monthly/Annual Billing Toggle */}
+      {/* Header & Monthly/Yearly Billing Toggle */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
@@ -53,66 +93,66 @@ export function PlanComparisonGrid({
           </TypographyMuted>
         </div>
 
-        {/* Billing interval switch */}
-        <div className="flex items-center gap-1.5 p-1 bg-muted/80 rounded-full border border-border self-start sm:self-auto">
-          <Button
-            type="button"
-            variant={billingInterval === "month" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setBillingInterval("month")}
-            className={`rounded-full px-4 text-xs font-semibold transition-all cursor-pointer h-7 ${
-              billingInterval === "month"
-                ? "bg-background text-foreground shadow-sm font-bold hover:bg-background"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Monthly
-          </Button>
+        {/* Billing interval switch, only when some plans are sold yearly */}
+        {sellsYearly && (
+          <div className="flex items-center gap-1.5 p-1 bg-muted/80 rounded-full border border-border self-start sm:self-auto">
+            <Button
+              type="button"
+              variant={interval === "month" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setBillingInterval("month")}
+              aria-pressed={interval === "month"}
+              className={`rounded-full px-4 text-xs font-semibold transition-all cursor-pointer h-7 ${
+                interval === "month"
+                  ? "bg-background text-foreground shadow-sm font-bold hover:bg-background"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Monthly
+            </Button>
 
-          <Button
-            type="button"
-            variant={billingInterval === "year" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setBillingInterval("year")}
-            className={`rounded-full px-4 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 h-7 ${
-              billingInterval === "year"
-                ? "bg-primary text-primary-foreground font-bold shadow-sm hover:bg-primary/90"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <TypographySpan>Annual</TypographySpan>
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-bold">
-              Save 20%
-            </Badge>
-          </Button>
-        </div>
+            <Button
+              type="button"
+              variant={interval === "year" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setBillingInterval("year")}
+              aria-pressed={interval === "year"}
+              className={`rounded-full px-4 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 h-7 ${
+                interval === "year"
+                  ? "bg-primary text-primary-foreground font-bold shadow-sm hover:bg-primary/90"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <TypographySpan>Yearly</TypographySpan>
+              {savingsLabel && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-bold">
+                  {savingsLabel}
+                </Badge>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
 
-      {billingInterval === "year" && (
-        <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 text-xs text-foreground flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="size-4 text-primary shrink-0" />
-            <TypographySpan>
-              <strong>Annual Discount Active:</strong> Save 20% across all paid tiers when billed annually.
-            </TypographySpan>
-          </div>
-          <TypographySpan className="text-[11px]  text-muted-foreground">2 months free</TypographySpan>
+      {interval === "year" && savingsLabel && (
+        <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 text-xs text-foreground flex items-center gap-2">
+          <Sparkles className="size-4 text-primary shrink-0" />
+          <TypographySpan>
+            <strong>Yearly billing:</strong> {savingsLabel} on paid plans compared with paying monthly.
+          </TypographySpan>
         </div>
       )}
 
       {/* Grid of Plan Cards - Aligned Matrix */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-        {plans.map((plan) => {
+        {tiers.map((tier) => {
+          const plan = planForInterval(tier, interval);
           const isCurrent = plan.slug === currentPlanSlug;
-          // const isPopular = plan.slug === "pro";
-          const isPopular = false
-          const basePrice = plan.priceCents / 100;
-          const displayPrice =
-            billingInterval === "year"
-              ? basePrice > 0
-                ? Math.round(basePrice * 0.8)
-                : 0
-              : basePrice;
+          const isChosen = !isCurrent && plan.slug === chosenPlanSlug;
+          const isYearly = plan.billingInterval === "year";
+          // Same tier as the current plan, billed the other way.
+          const isIntervalSwitch = !isCurrent && planTier(plan.slug) === planTier(currentPlanSlug);
+          const saving = isYearly ? yearlySavingsPercent(tier.monthly.priceCents, plan.priceCents) : 0;
           const isCheckoutLoading = loadingPlanId === plan.id;
 
           const f = plan.features || {};
@@ -175,23 +215,25 @@ export function PlanComparisonGrid({
 
           return (
             <Card
-              key={plan.id}
-              className={`flex flex-col justify-between transition-all duration-200 relative ${
+              key={tier.tier}
+              id={`plan-${plan.slug}`}
+              className={`flex flex-col justify-between transition-all duration-200 relative scroll-mt-24 ${
                 isCurrent
                   ? "border-2 border-primary/70 shadow-lg ring-1 ring-primary/20 bg-card"
-                  : isPopular
-                  ? "border-2 border-primary shadow-xl ring-2 ring-primary/25 bg-card"
+                  : isChosen
+                  ? // overflow-visible: the "Your pick" badge sits over the card's top edge.
+                    "border-2 border-primary shadow-xl ring-2 ring-primary/25 bg-card overflow-visible"
                   : "border-border hover:border-primary/40 bg-card/85"
               }`}
             >
-              {isPopular && (
+              {isChosen && (
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10">
                   <Badge
                     variant="default"
                     className="text-[10px] font-bold tracking-wider uppercase px-3 py-1 shadow-md bg-primary text-primary-foreground flex items-center gap-1"
                   >
                     <Sparkles className="size-3" />
-                    <TypographySpan>Most Popular</TypographySpan>
+                    <TypographySpan>Your pick</TypographySpan>
                   </Badge>
                 </div>
               )}
@@ -213,15 +255,15 @@ export function PlanComparisonGrid({
                 <div className="flex flex-col pt-3">
                   <div className="flex items-baseline gap-1">
                     <TypographySpan variant="h2" className="text-3xl font-extrabold  text-foreground tracking-tight">
-                      ${displayPrice}
+                      {formatUsd(monthlyPriceCents(plan))}
                     </TypographySpan>
                     <TypographySpan variant="muted" className="text-xs font-medium text-muted-foreground">/month</TypographySpan>
                   </div>
                   <TypographySpan variant="muted" className="text-[11px] text-muted-foreground  mt-0.5">
-                    {basePrice === 0
+                    {plan.priceCents === 0
                       ? "Free forever"
-                      : billingInterval === "year"
-                      ? "Billed annually"
+                      : isYearly
+                      ? `${formatUsd(plan.priceCents)} billed yearly${saving > 0 ? ` · save ${saving}%` : ""}`
                       : "Billed monthly"}
                   </TypographySpan>
                 </div>
@@ -258,7 +300,7 @@ export function PlanComparisonGrid({
                   >
                     Current Plan
                   </Button>
-                ) : plan.slug === "starter" ? (
+                ) : tier.tier === "starter" ? (
                   <Button
                     variant="outline"
                     disabled
@@ -275,13 +317,17 @@ export function PlanComparisonGrid({
                   >
                     Owner Access Required
                   </Button>
+                ) : isIntervalSwitch && paysThroughStripe ? (
+                  <Button asChild variant="outline" className="w-full text-xs font-semibold">
+                    <Link href="/contact">Contact us to switch to {isYearly ? "yearly" : "monthly"}</Link>
+                  </Button>
                 ) : (
                   <Button
                     onClick={() => onCheckout(plan)}
                     disabled={isCheckoutLoading}
-                    variant={isPopular ? "default" : "secondary"}
+                    variant={isChosen ? "default" : "secondary"}
                     className={`w-full text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
-                      isPopular
+                      isChosen
                         ? "shadow-md hover:shadow-primary/20"
                         : "hover:bg-primary hover:text-primary-foreground"
                     }`}
@@ -293,7 +339,11 @@ export function PlanComparisonGrid({
                       </>
                     ) : (
                       <>
-                        <TypographySpan>Upgrade to {plan.name}</TypographySpan>
+                        <TypographySpan>
+                          {isIntervalSwitch
+                            ? `Switch to ${isYearly ? "yearly" : "monthly"} billing`
+                            : `Upgrade to ${plan.name}`}
+                        </TypographySpan>
                         <ArrowRight className="size-3.5" />
                       </>
                     )}

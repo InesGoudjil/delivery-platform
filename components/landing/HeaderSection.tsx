@@ -12,14 +12,12 @@ interface HeaderSectionProps {
   user?: UserNavMenuProps["user"] | null;
   workspace?: UserNavMenuProps["workspace"] | null;
   onOpenDemo?: () => void;
-  onStartTrial?: () => void;
 }
 
 export function HeaderSection({
   user,
   workspace,
   onOpenDemo,
-  onStartTrial,
 }: HeaderSectionProps) {
   const [scrolled, setScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

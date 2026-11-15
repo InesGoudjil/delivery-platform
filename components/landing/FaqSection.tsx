@@ -29,7 +29,7 @@ export const FAQS = [
 
 export function FaqSection() {
   return (
-    <section id="faq" className="scroll-mt-24 py-16 sm:py-20 lg:py-24 max-w-4xl mx-auto text-center">
+    <section id="faq" className="max-w-4xl mx-auto text-center">
       {/* Section Header */}
       <div className="space-y-3 max-w-2xl mx-auto">
         <div className="flex justify-center">

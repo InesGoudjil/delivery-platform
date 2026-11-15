@@ -115,6 +115,7 @@ const SERVICE_ROLE_ACTIONS: Record<string, string> = {
   // Platform admins (createPlatformAdminAction: role from the database, two-factor session, a
   // reason, audited) act on any workspace or user on purpose; that's what the admin panel is for.
   "app/actions/admin.ts#createPlanAction": "platform admin, audited; plans aren't tenant data",
+  "app/actions/admin.ts#createYearlyPlanAction": "platform admin, audited; plans aren't tenant data",
   "app/actions/admin.ts#updatePlanAction": "platform admin, audited; plans aren't tenant data",
   "app/actions/admin.ts#deletePlanAction": "platform admin, audited; plans aren't tenant data",
   "app/actions/admin.ts#updateWorkspacePlanAction": "platform admin, audited; staff choose the workspace on purpose",

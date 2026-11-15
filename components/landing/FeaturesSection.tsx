@@ -140,7 +140,7 @@ interface FeaturesSectionProps {
 export function FeaturesSection({ onOpenDemo }: FeaturesSectionProps) {
   return (
     <TooltipProvider delay={150}>
-      <section id="features" className="scroll-mt-24 py-16 sm:py-20 lg:py-24 space-y-16 sm:space-y-24">
+      <section id="features" className="space-y-(--section-gap)">
         {/* 1. 6-Card Feature Grid Section with TiltCard */}
         <ScrollReveal className="text-center">
           {/* Section Header */}

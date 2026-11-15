@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as adminContext from "@/core/admin/context";
 import {
   banUserAction,
+  createYearlyPlanAction,
   deletePlanAction,
   searchAdminAction,
   suspendWorkspaceAction,
@@ -46,8 +47,13 @@ beforeEach(() => {
       adminChangeWorkspacePlan: vi.fn().mockResolvedValue({ id: "sub_1", planId: PLAN, status: "active" }),
       updatePlan: vi.fn(async (id: string, changes: object) => ({ id, name: "Pro", priceCents: 3900, ...changes })),
       deletePlan: vi.fn().mockResolvedValue({ action: "deleted", message: "Deleted." }),
+      getPlanBySlug: vi.fn().mockResolvedValue(null),
+      createPlan: vi.fn(async (data: object) => ({ id: "plan_yearly", isActive: true, ...data })),
     },
-    stripe: { archiveStripeProductAndPrice: vi.fn().mockResolvedValue(undefined) },
+    stripe: {
+      archiveStripeProductAndPrice: vi.fn().mockResolvedValue(undefined),
+      createStripeProductAndPrice: vi.fn().mockResolvedValue({ stripePriceId: "price_yearly", stripeProductId: "prod_yearly" }),
+    },
     profile: { updatePlatformRole: vi.fn() },
   };
   sessionServices = {
@@ -197,12 +203,94 @@ describe("plan actions", () => {
     expect(services.subscription.updatePlan).toHaveBeenCalledWith(PLAN, { name: "Pro (2026)" });
   });
 
+  it("edit a tier's monthly and yearly plans together", async () => {
+    services.subscription.getPlanById.mockResolvedValue({ id: PLAN, name: "Pro", slug: "pro", billingInterval: "month", priceCents: 2900, stripePriceId: "price_1" });
+    services.subscription.getPlanBySlug.mockResolvedValue({ id: "plan_yearly", slug: "pro-yearly", billingInterval: "year" });
+
+    const result = await updatePlanAction({ planId: PLAN, name: "Pro+", reason: "Clearer name" });
+    expect(result.success).toBe(true);
+    expect(services.subscription.getPlanBySlug).toHaveBeenCalledWith("pro-yearly");
+    expect(services.subscription.updatePlan).toHaveBeenCalledWith("plan_yearly", { name: "Pro+" });
+    expect(lastAudit().changes.after).toMatchObject({ name: "Pro+", alsoUpdated: "pro-yearly" });
+  });
+
+  it("leave the other plan of the pair alone for changes they don't share, like archiving", async () => {
+    services.subscription.getPlanById.mockResolvedValue({ id: PLAN, name: "Pro", slug: "pro", billingInterval: "month", priceCents: 2900, stripePriceId: "price_1" });
+    const result = await updatePlanAction({ planId: PLAN, isActive: false, reason: "Retiring the tier" });
+    expect(result.success).toBe(true);
+    expect(services.subscription.getPlanBySlug).not.toHaveBeenCalled();
+    expect(services.subscription.updatePlan).toHaveBeenCalledTimes(1);
+  });
+
   it("refuse to delete the starter plan, before touching Stripe", async () => {
     services.subscription.getPlanById.mockResolvedValue({ id: STARTER, name: "Starter", slug: "starter", stripePriceId: "price_free" });
     const result = await deletePlanAction({ planId: STARTER, reason: "Cleaning up" });
     expect(result.success).toBe(false);
     expect(services.stripe.archiveStripeProductAndPrice).not.toHaveBeenCalled();
     expect(services.subscription.deletePlan).not.toHaveBeenCalled();
+  });
+});
+
+describe("createYearlyPlanAction", () => {
+  const PRO = {
+    id: PLAN,
+    name: "Pro",
+    slug: "pro",
+    priceCents: 2900,
+    currency: "USD",
+    billingInterval: "month",
+    sortOrder: 3,
+    isActive: true,
+    stripePriceId: "price_pro",
+    features: { storage_gb: 500, silo_archive: true },
+  };
+
+  it("creates a yearly Stripe price and the plan's yearly twin, with the same features", async () => {
+    services.subscription.getPlanById.mockResolvedValue(PRO);
+
+    const result = await createYearlyPlanAction({ planId: PLAN, yearlyPriceUsd: 261, reason: "Launch yearly billing" });
+    expect(result.success).toBe(true);
+    expect(services.stripe.createStripeProductAndPrice).toHaveBeenCalledWith({
+      name: "Pro (yearly)",
+      priceCents: 26100,
+      currency: "USD",
+      billingInterval: "year",
+    });
+    expect(services.subscription.createPlan).toHaveBeenCalledWith({
+      name: "Pro",
+      slug: "pro-yearly",
+      priceCents: 26100,
+      currency: "USD",
+      billingInterval: "year",
+      sortOrder: 3,
+      stripePriceId: "price_yearly",
+      features: PRO.features,
+    });
+    expect(lastAudit()).toMatchObject({ action: "plan.add_yearly", targetLabel: "Pro", outcome: "succeeded" });
+  });
+
+  it("refuses a yearly price that saves nothing, before touching Stripe", async () => {
+    services.subscription.getPlanById.mockResolvedValue(PRO);
+    const result = await createYearlyPlanAction({ planId: PLAN, yearlyPriceUsd: 348, reason: "Launch yearly billing" });
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/twelve monthly payments/);
+    expect(services.stripe.createStripeProductAndPrice).not.toHaveBeenCalled();
+  });
+
+  it("refuses a second yearly price, a free plan and a plan that's yearly already", async () => {
+    const reason = "Launch yearly billing";
+    services.subscription.getPlanById.mockResolvedValue(PRO);
+    services.subscription.getPlanBySlug.mockResolvedValue({ id: "plan_yearly", slug: "pro-yearly", billingInterval: "year" });
+    expect((await createYearlyPlanAction({ planId: PLAN, yearlyPriceUsd: 261, reason })).error).toMatch(/yearly price already/);
+
+    services.subscription.getPlanById.mockResolvedValue({ ...PRO, slug: "starter", priceCents: 0 });
+    expect((await createYearlyPlanAction({ planId: PLAN, yearlyPriceUsd: 10, reason })).error).toMatch(/Free plans/);
+
+    services.subscription.getPlanById.mockResolvedValue({ ...PRO, slug: "pro-yearly", billingInterval: "year" });
+    expect((await createYearlyPlanAction({ planId: PLAN, yearlyPriceUsd: 200, reason })).error).toMatch(/billed yearly already/);
+
+    expect(services.stripe.createStripeProductAndPrice).not.toHaveBeenCalled();
+    expect(services.subscription.createPlan).not.toHaveBeenCalled();
   });
 });
 
