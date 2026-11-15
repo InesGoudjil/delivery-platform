@@ -17,7 +17,6 @@ import { PartnershipSection } from "@/components/landing/PartnershipSection";
 import { FaqSection } from "@/components/landing/FaqSection";
 import { CtaSection } from "@/components/landing/CtaSection";
 import { FooterSection } from "@/components/landing/FooterSection";
-import { DemoModal } from "@/components/landing/DemoModal";
 import { WaitlistModal } from "@/components/waitlist/WaitlistModal";
 import type { UserNavMenuProps } from "@/components/landing/UserNavMenu";
 import { AmbientBackground } from "@/components/ui/ambient-background";
@@ -30,6 +29,8 @@ interface LandingPageProps {
   workspace?: UserNavMenuProps["workspace"] | null;
   referralCode?: string;
   plans?: PricingPlanItem[];
+  /** "/demo" while the demo room is on (Admin -> Site settings). Without it, no demo links show. */
+  demoHref?: string;
 }
 
 export default function LandingPage({
@@ -37,9 +38,9 @@ export default function LandingPage({
   workspace,
   referralCode,
   plans,
+  demoHref,
 }: LandingPageProps) {
   const router = useRouter();
-  const [showDemoModal, setShowDemoModal] = useState(false);
   const [showWaitlistModal, setShowWaitlistModal] = useState(Boolean(referralCode));
   const [loadingPlanSlug, setLoadingPlanSlug] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -138,7 +139,7 @@ export default function LandingPage({
         <HeaderSection
           user={user}
           workspace={workspace}
-          onOpenDemo={() => setShowDemoModal(true)}
+          demoHref={demoHref}
         />
       </div>
 
@@ -148,12 +149,12 @@ export default function LandingPage({
       <main className="w-full px-4 sm:px-6 lg:px-8 relative z-10 [--section-gap:5rem] sm:[--section-gap:6rem] lg:[--section-gap:7rem] space-y-(--section-gap) pb-(--section-gap)">
         {/* 2. Hero Section */}
         <HeroSection
-          onOpenDemo={() => setShowDemoModal(true)}
+          demoHref={demoHref}
           startHref={startHref}
         />
 
         {/* 3. Features Section (6-Card Grid & Feature Spotlights 01, 02, 03, Client Experience) */}
-        <FeaturesSection onOpenDemo={() => setShowDemoModal(true)} />
+        <FeaturesSection demoHref={demoHref} />
 
         {/* 4. How It Works Section */}
         {/* <WorkflowSection /> */}
@@ -180,13 +181,6 @@ export default function LandingPage({
 
       {/* 10. Multi-Column Footer */}
       <FooterSection />
-
-      {/* Interactive Client Room Demo Modal */}
-      <DemoModal
-        isOpen={showDemoModal}
-        onClose={() => setShowDemoModal(false)}
-        onShowToast={showToast}
-      />
 
       {/* Waitlist Modal (Auto opens on referral link visit or manual trigger) */}
       <WaitlistModal

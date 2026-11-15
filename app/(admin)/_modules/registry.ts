@@ -5,7 +5,15 @@ import type { AdminPlatformKpis } from "@/core/admin/types";
  * from this list, so a new section is a folder under app/(admin)/admin/ plus one entry here.
  */
 
-export type AdminIconName = "overview" | "workspaces" | "users" | "billing" | "waitlist" | "notifications" | "audit";
+export type AdminIconName =
+  | "overview"
+  | "workspaces"
+  | "users"
+  | "billing"
+  | "waitlist"
+  | "notifications"
+  | "site"
+  | "audit";
 
 export type AdminNavGroup = "Overview" | "Customers" | "Billing" | "Growth" | "Operations" | "System";
 
@@ -47,6 +55,7 @@ export const ADMIN_MODULES: readonly AdminModule[] = [
     group: "Operations",
     attention: (kpis) => kpis.notificationsFailed24h + kpis.commentBatchesOverdue,
   },
+  { id: "site", label: "Site settings", href: "/admin/site", icon: "site", group: "System" },
   { id: "audit", label: "Audit log", href: "/admin/audit", icon: "audit", group: "System" },
 ];
 

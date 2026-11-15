@@ -11,13 +11,14 @@ import { useTranslation } from "@/i18n";
 interface HeaderSectionProps {
   user?: UserNavMenuProps["user"] | null;
   workspace?: UserNavMenuProps["workspace"] | null;
-  onOpenDemo?: () => void;
+  /** The demo room (/demo) while it's on: adds a Demo link to the menu. */
+  demoHref?: string;
 }
 
 export function HeaderSection({
   user,
   workspace,
-  onOpenDemo,
+  demoHref,
 }: HeaderSectionProps) {
   const [scrolled, setScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -121,6 +122,11 @@ export function HeaderSection({
             >
               Partnership
             </Link>
+            {demoHref && (
+              <Link href={demoHref} className="transition-colors duration-200 hover:text-white">
+                Demo
+              </Link>
+            )}
             <Link
               href="/contact"
               onClick={() => setIsMobileMenuOpen(false)}
@@ -202,6 +208,15 @@ export function HeaderSection({
             >
               Partnership
             </Link>
+            {demoHref && (
+              <Link
+                href={demoHref}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="py-2 px-3 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
+              >
+                Demo
+              </Link>
+            )}
             <Link
               href="/contact"
               onClick={() => setIsMobileMenuOpen(false)}

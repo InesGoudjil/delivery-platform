@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { cookies } from "next/headers";
 import * as serverModule from "@/core/server";
 import * as guards from "@/core/security/guards";
+import * as mediaServer from "@/lib/media-server";
 import { getClientRoom, requireClientRoom } from "@/core/security/client-room";
 import {
   createRoomAccessToken,
@@ -21,6 +22,7 @@ import {
   approveAllAssetsAction,
   toggleAssetApprovalAction,
   getDeliveryDownloadManifestAction,
+  loadMoreDeliveryAssetsAction,
   recordClientDownloadAction,
 } from "@/app/actions/deliveries";
 
@@ -95,6 +97,8 @@ const replies: Record<string, any> = {
 let delivery: ReturnType<typeof makeDelivery>;
 /** The studio's workspace suspension, as the client room reads it. */
 let workspaceSuspendedAt: string | null = null;
+/** The delivery saved as the site's demo room (site setting demo_room). */
+let demoDeliveryId: string | null = null;
 let admin: any;
 let user: any;
 
@@ -150,6 +154,7 @@ function servicesFor(kind: "admin" | "user") {
     subscription: { isDownloadNotificationAllowed: vi.fn(async () => true) },
     profile: { getProfile: vi.fn(async () => null) },
     auth: { getCurrentUser: vi.fn(async () => null) },
+    siteSettings: { get: vi.fn(async () => ({ deliveryId: demoDeliveryId, showOnLanding: true })) },
     storage: {},
     kind,
   };
@@ -167,6 +172,7 @@ beforeEach(async () => {
   vi.restoreAllMocks();
   (await cookieStore()).clear();
   delivery = makeDelivery();
+  demoDeliveryId = null;
   admin = servicesFor("admin");
   user = servicesFor("user");
   vi.spyOn(serverModule, "getServerAdminServices").mockResolvedValue(admin);
@@ -396,5 +402,97 @@ describe("approvals and downloads in the client room", () => {
     expect(admin.notification.notifyClientDownload).toHaveBeenCalledWith(
       expect.objectContaining({ itemDescription: "master deliverables" })
     );
+  });
+});
+
+describe("the demo room", () => {
+  const signInAsMember = () => {
+    user.auth.getCurrentUser.mockResolvedValue({ id: MEMBER, email: "owner@studio.test" });
+    user.member.getMember.mockResolvedValue({ role: "owner" });
+  };
+
+  beforeEach(() => {
+    demoDeliveryId = DEL_A;
+  });
+
+  it("lets guests look, refuses their comments, approvals and downloads, and tells nobody", async () => {
+    delivery = makeDelivery({ isDownloadAllowed: true, notifyOnDownload: true });
+    const room = await requireClientRoom(TOKEN_A);
+    expect(room.isDemo).toBe(true);
+    expect(room.canView).toBe(true);
+    expect(room.canDownload).toBe(false);
+
+    expect((await addFeedbackAction({ assetVersionId: VERSION_A, commentText: "Trim the intro", shareToken: TOKEN_A })).error).toContain(
+      "demo room"
+    );
+    expect((await addFeedbackReplyAction({ feedbackId: FB_STUDIO, commentText: "Thanks", shareToken: TOKEN_A })).error).toContain(
+      "demo room"
+    );
+    expect((await toggleAssetApprovalAction({ shareToken: TOKEN_A }, ASSET_A, true)).error).toContain("demo room");
+    expect((await approveAllAssetsAction({ shareToken: TOKEN_A }, "Visitor")).error).toContain("demo room");
+    expect((await getDeliveryDownloadManifestAction({ shareToken: TOKEN_A })).success).toBe(false);
+    await recordClientDownloadAction({ shareToken: TOKEN_A, assetId: ASSET_A, downloadedCount: 1 });
+
+    expect(admin.feedback.addFeedback).not.toHaveBeenCalled();
+    expect(admin.feedback.addReply).not.toHaveBeenCalled();
+    expect(admin.delivery.toggleAssetApproval).not.toHaveBeenCalled();
+    expect(admin.delivery.approveAllAssets).not.toHaveBeenCalled();
+    expect(admin.commentEmail.record).not.toHaveBeenCalled();
+    expect(admin.whatsapp.recordClientComment).not.toHaveBeenCalled();
+    expect(admin.whatsapp.notifyCutApproved).not.toHaveBeenCalled();
+    expect(admin.whatsapp.notifyClientDownload).not.toHaveBeenCalled();
+    expect(admin.notification.notifyClientDownload).not.toHaveBeenCalled();
+  });
+
+  it("refuses a guest's changes to the comments already there, even ones from their own browser", async () => {
+    await setCookie(guestAuthorCookieName(TOKEN_A), GUEST_KEY);
+    expect((await deleteFeedbackAction(FB_MINE, TOKEN_A)).error).toContain("demo room");
+    expect((await updateFeedbackAction({ feedbackId: FB_MINE, commentText: "edited", shareToken: TOKEN_A })).error).toContain(
+      "demo room"
+    );
+    expect((await toggleFeedbackResolvedAction(FB_MINE, true, TOKEN_A)).error).toContain("demo room");
+    expect(admin.feedback.deleteFeedback).not.toHaveBeenCalled();
+    expect(admin.feedback.updateFeedback).not.toHaveBeenCalled();
+    expect(admin.feedback.toggleResolved).not.toHaveBeenCalled();
+  });
+
+  it("lets members of the demo's workspace comment and approve as in any of their rooms", async () => {
+    signInAsMember();
+    const room = await requireClientRoom(TOKEN_A, "comment");
+    expect(room.isDemo).toBe(true);
+    expect(room.canDownload).toBe(true);
+
+    const comment = await addFeedbackAction({ assetVersionId: VERSION_A, commentText: "Seeded note", shareToken: TOKEN_A });
+    expect(comment.error).toBeUndefined();
+    expect(user.feedback.addFeedback).toHaveBeenCalledTimes(1);
+    expect((await toggleAssetApprovalAction({ shareToken: TOKEN_A }, ASSET_A, true)).error).toBeUndefined();
+  });
+
+  it("leaves every other room as it was", async () => {
+    demoDeliveryId = DEL_B;
+    expect((await getClientRoom(TOKEN_A))?.isDemo).toBe(false);
+    const result = await addFeedbackAction({ assetVersionId: VERSION_A, commentText: "Trim the intro", shareToken: TOKEN_A });
+    expect(result.error).toBeUndefined();
+    expect(admin.feedback.addFeedback).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps client rooms working when the setting can't be read", async () => {
+    admin.siteSettings.get.mockRejectedValue(new Error('relation "public.site_settings" does not exist'));
+    expect((await getClientRoom(TOKEN_A))?.isDemo).toBe(false);
+    const result = await addFeedbackAction({ assetVersionId: VERSION_A, commentText: "Trim the intro", shareToken: TOKEN_A });
+    expect(result.error).toBeUndefined();
+  });
+
+  it("signs no download links for guests on later pages of files either", async () => {
+    delivery = makeDelivery({ isDownloadAllowed: true });
+    admin.delivery.getDeliveryAssetsPage = vi.fn(async () => ({ assets: [], hasMore: false, totalCount: 0 }));
+    const presign = vi.spyOn(mediaServer, "presignDeliveryAssets").mockResolvedValue([]);
+
+    expect((await loadMoreDeliveryAssetsAction({ shareToken: TOKEN_A, page: 2 })).success).toBe(true);
+    expect(presign).toHaveBeenCalledWith([], expect.anything(), expect.objectContaining({ allowDownload: false }));
+
+    demoDeliveryId = null; // the same delivery as an ordinary room: downloads are on
+    await loadMoreDeliveryAssetsAction({ shareToken: TOKEN_A, page: 2 });
+    expect(presign).toHaveBeenLastCalledWith([], expect.anything(), expect.objectContaining({ allowDownload: true }));
   });
 });

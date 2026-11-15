@@ -25,8 +25,9 @@ import { runAfterResponse } from "@/lib/after-response";
 
 const log = createScopedLogger({ actionGroup: "deliveries" });
 
+/** Guests: what the room gate decided, so the demo room's rule holds on every page of files. */
 function canDownload(actor: DeliveryActor): boolean {
-  return actor.kind === "member" || actor.delivery.isDownloadAllowed === true;
+  return actor.kind === "member" || actor.canDownload;
 }
 
 function isPhotoType(type: string): boolean {

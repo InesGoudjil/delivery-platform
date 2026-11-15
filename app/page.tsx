@@ -1,5 +1,6 @@
 import LandingPage from "@/components/landing/LandingPage";
-import { getServerServices } from "@/core/server";
+import { getServerAdminServices, getServerServices } from "@/core/server";
+import { isDemoRoomLive, loadDemoRoom } from "@/lib/client-room/demo-room";
 import { createScopedLogger } from "@/lib/logger";
 
 const log = createScopedLogger({ page: "Home" });
@@ -13,7 +14,10 @@ export default async function Home(props: {
   try {
     // Fetch authentication, workspace, and subscription plans via Core Domain Services
     const services = await getServerServices();
-    const { user, workspace } = await services.auth.getCurrentSessionData();
+    const [{ user, workspace }, demoHref] = await Promise.all([
+      services.auth.getCurrentSessionData(),
+      demoRoomHref(),
+    ]);
 
     let availablePlans: any[] = [];
     try {
@@ -44,6 +48,7 @@ export default async function Home(props: {
         workspace={workspace}
         referralCode={referralCode}
         plans={displayPlans}
+        demoHref={demoHref}
       />
     );
   } catch {
@@ -51,3 +56,16 @@ export default async function Home(props: {
   }
 }
 
+/**
+ * "/demo" when an admin put the demo room on the landing page (Admin -> Site settings) and
+ * visitors can open it. Otherwise no demo link at all.
+ */
+async function demoRoomHref(): Promise<string | undefined> {
+  try {
+    const demo = await loadDemoRoom(await getServerAdminServices());
+    return isDemoRoomLive(demo) ? "/demo" : undefined;
+  } catch (err) {
+    log.warn({ err }, "Could not check the demo room");
+    return undefined;
+  }
+}

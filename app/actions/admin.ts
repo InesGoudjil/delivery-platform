@@ -15,8 +15,10 @@ import {
   updateWorkspacePlanSchema,
   userTargetSchema,
   suspendWorkspaceSchema,
+  updateDemoRoomSchema,
   workspaceTargetSchema,
 } from "@/lib/validations/admin";
+import { shareTokenFromReviewLink } from "@/lib/client-room/demo-room";
 import type { AdminActionContext } from "./safe-action";
 import { createScopedLogger } from "@/lib/logger";
 import { planTier, yearlyPlanSlug } from "@/core/entities/plan";
@@ -486,5 +488,49 @@ export const unsuspendWorkspaceAction = createPlatformAdminAction(
     });
     refreshAdminPages();
     return { unsuspended: true };
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Site settings
+// ---------------------------------------------------------------------------
+
+/**
+ * The demo room: which delivery /demo shows (found from its review link), and whether the landing
+ * page links to it. Removing the delivery also takes the link off the landing page.
+ */
+export const updateDemoRoomAction = createPlatformAdminAction(
+  {
+    action: "site.update_demo_room",
+    schema: updateDemoRoomSchema,
+    target: () => ({ type: "site_setting", id: "demo_room", label: "Demo room" }),
+  },
+  async (input, ctx) => {
+    if (input.reviewLink === undefined && input.showOnLanding === undefined) {
+      throw new Error("Change at least one thing.");
+    }
+    const before = await ctx.services.siteSettings.get("demo_room");
+
+    let deliveryId = before.deliveryId;
+    if (input.reviewLink === "") {
+      deliveryId = null;
+    } else if (input.reviewLink !== undefined) {
+      const shareToken = shareTokenFromReviewLink(input.reviewLink);
+      if (!shareToken) throw new Error("Paste the delivery's review link, the one with /deliver/ in it.");
+      const delivery = await ctx.services.delivery.getDeliveryByShareToken(shareToken, { allowExpired: true });
+      if (!delivery) throw new Error("No delivery has this review link. Copy it again from the delivery's share dialog.");
+      deliveryId = delivery.id;
+      ctx.setTargetLabel(`Demo room: ${delivery.title}`);
+    }
+
+    if (input.showOnLanding && !deliveryId) throw new Error("Choose the demo delivery first.");
+    const showOnLanding = deliveryId ? (input.showOnLanding ?? before.showOnLanding) : false;
+
+    const saved = await ctx.services.siteSettings.set("demo_room", { deliveryId, showOnLanding }, ctx.user.id);
+    ctx.recordChanges({ before, after: saved.value });
+    refreshAdminPages();
+    revalidatePath("/");
+    revalidatePath("/demo");
+    return { demoRoom: saved.value };
   }
 );

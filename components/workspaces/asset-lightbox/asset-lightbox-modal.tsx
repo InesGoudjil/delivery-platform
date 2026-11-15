@@ -57,6 +57,7 @@ export function AssetLightboxModal({
   onDeleteReply,
   onEditFeedback,
   onEditReply,
+  keepFeedbackLocal = false,
   onDeleteAsset,
   onEditAsset,
   authorName = "Filmmaker",
@@ -321,7 +322,7 @@ export function AssetLightboxModal({
         : `Note tagged at [${formatTimecode(roundedTime || 0, 24)}] on V${activeVersionNumber}`
     );
 
-    if (targetVerId) {
+    if (targetVerId && !keepFeedbackLocal) {
       try {
         const res = await addFeedbackAction({
           assetVersionId: targetVerId,
@@ -358,6 +359,7 @@ export function AssetLightboxModal({
 
     onAddReply(feedbackId, tempReply);
     triggerToast("Reply posted");
+    if (keepFeedbackLocal) return;
 
     try {
       const res = await addFeedbackReplyAction({

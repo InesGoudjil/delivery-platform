@@ -105,4 +105,5 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "user.reset_two_factor": "Reset two-factor sign-in",
   "workspace.suspend": "Suspended workspace",
   "workspace.unsuspend": "Lifted suspension",
+  "site.update_demo_room": "Changed the demo room",
 };

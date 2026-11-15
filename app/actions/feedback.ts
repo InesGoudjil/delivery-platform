@@ -252,7 +252,7 @@ export async function addFeedbackReplyAction(params: AddFeedbackReplyInput): Pro
 export async function deleteFeedbackReplyAction(replyId: string, shareToken?: string, deliveryId?: string): Promise<FeedbackActionResult> {
   try {
     if (!replyId?.trim()) return { error: "Reply ID is required." };
-    const actor = await resolveDeliveryActor({ shareToken, deliveryId } satisfies DeliveryRef, "view");
+    const actor = await resolveDeliveryActor({ shareToken, deliveryId } satisfies DeliveryRef, "manage_comments");
     const { reply } = await replyInDelivery(actor.adminServices, actor.delivery, replyId.trim());
     if (!canModifyComment(await viewerFor(actor), reply)) return { error: CHANGE_REFUSED };
 
@@ -294,7 +294,7 @@ export async function toggleFeedbackResolvedAction(
 
     const actor = await resolveDeliveryActor(
       { shareToken: validated.data.shareToken, deliveryId: validated.data.deliveryId },
-      "view"
+      "manage_comments"
     );
     const { feedback } = await feedbackInDelivery(actor.adminServices, actor.delivery, validated.data.feedbackId);
     const viewer = await viewerFor(actor);
@@ -330,7 +330,7 @@ export async function updateFeedbackAction(params: UpdateFeedbackInput): Promise
 export async function deleteFeedbackAction(feedbackId: string, shareToken?: string, deliveryId?: string): Promise<FeedbackActionResult> {
   try {
     if (!feedbackId?.trim()) return { error: "Feedback ID is required." };
-    const actor = await resolveDeliveryActor({ shareToken, deliveryId } satisfies DeliveryRef, "view");
+    const actor = await resolveDeliveryActor({ shareToken, deliveryId } satisfies DeliveryRef, "manage_comments");
     const { feedback } = await feedbackInDelivery(actor.adminServices, actor.delivery, feedbackId.trim());
     if (!canModifyComment(await viewerFor(actor), feedback)) return { error: CHANGE_REFUSED };
 

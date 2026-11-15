@@ -97,6 +97,14 @@ export interface DeliveryRoomProps {
   } | null;
   isWorkspaceMember?: boolean;
   whiteLabel?: boolean;
+  /**
+   * Set when this room is the site's demo room (/demo). "visitor": what they do stays in their
+   * browser (the server refuses it anyway). "member": a member of the demo's workspace, whose
+   * comments and approvals are saved and seen by every visitor.
+   */
+  demoMode?: DemoRoomMode | null;
 }
+
+export type DemoRoomMode = "visitor" | "member";
 
 export type AssetFilterTab = "all" | "video" | "photo";

@@ -129,3 +129,13 @@ export const workspaceTargetSchema = z.object({
 });
 
 export type WorkspaceTargetInput = z.infer<typeof workspaceTargetSchema>;
+
+/** The demo room (Admin -> Site settings). Send only what changes. */
+export const updateDemoRoomSchema = z.object({
+  /** The delivery's review link (…/deliver/<token>) or bare share token. An empty string removes the demo room. */
+  reviewLink: z.string().trim().max(500, "That link is too long.").optional(),
+  /** Whether the landing page links to /demo. */
+  showOnLanding: z.boolean().optional(),
+});
+
+export type UpdateDemoRoomInput = z.infer<typeof updateDemoRoomSchema>;

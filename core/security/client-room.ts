@@ -19,10 +19,19 @@ import { hasMinRole, type WorkspaceRoleLevel } from "./guards";
  *
  * After the gate, room data is read with the service role, so callers must only touch
  * rows that belong to `room.delivery` (see lib/client-room/scope.ts).
+ *
+ * The site's demo room (the delivery picked in Admin -> Site settings, shown at /demo) is
+ * open to anyone, so guests there can only look: the gate refuses their comments,
+ * approvals and downloads, whichever link they came in by. The room's page keeps what they
+ * do in their browser instead. Members of the demo's workspace use it like any of their rooms.
  */
 
 export type ClientRoomState = "open" | "locked" | "expired" | "unavailable";
-export type ClientRoomNeed = "view" | "comment" | "approve" | "download";
+/**
+ * What a room action is about to do. "manage_comments" resolves or deletes an existing comment
+ * or reply: unlike "comment" (writing one), it still works while comments are turned off.
+ */
+export type ClientRoomNeed = "view" | "comment" | "manage_comments" | "approve" | "download";
 
 export interface ClientRoomMember {
   userId: string;
@@ -45,7 +54,12 @@ export interface ClientRoom {
   canView: boolean;
   canComment: boolean;
   canDownload: boolean;
+  /** This delivery is the site's demo room: guests may look, and nothing they do is saved. */
+  isDemo: boolean;
 }
+
+/** Why a guest's comment, approval or download in the demo room was refused. */
+export const DEMO_ROOM_REFUSAL = "This is a demo room, so nothing you do here is saved or sent to the studio.";
 
 const SHARE_TOKEN = /^[A-Za-z0-9_-]{8,128}$/;
 
@@ -76,6 +90,19 @@ async function findWorkspaceMember(workspaceId: string): Promise<ClientRoomMembe
   }
 }
 
+/**
+ * The delivery set as the demo room (site setting demo_room). A failed read counts as no demo
+ * room, so client rooms keep working when the settings can't be read (or before the
+ * site_settings table exists).
+ */
+async function findDemoRoomDeliveryId(services: AdminServices): Promise<string | null> {
+  try {
+    return (await services.siteSettings.get("demo_room")).deliveryId;
+  } catch {
+    return null;
+  }
+}
+
 /** Looks up a room by its share token. Returns null when the token matches no delivery. */
 export async function getClientRoom(shareToken: string): Promise<ClientRoom | null> {
   if (!isWellFormedShareToken(shareToken)) return null;
@@ -85,14 +112,16 @@ export async function getClientRoom(shareToken: string): Promise<ClientRoom | nu
   const delivery = await services.delivery.getDeliveryByShareToken(token, { allowExpired: true });
   if (!delivery || delivery.shareToken !== token) return null;
 
-  const [member, cookieStore, workspace] = await Promise.all([
+  const [member, cookieStore, workspace, demoDeliveryId] = await Promise.all([
     findWorkspaceMember(delivery.workspaceId),
     cookies(),
     services.workspace.getWorkspaceById(delivery.workspaceId),
+    findDemoRoomDeliveryId(services),
   ]);
   // A suspended studio's links show as unavailable; its members can still look at their own room.
   const suspended = Boolean(workspace?.suspendedAt);
   const state = suspended ? "unavailable" : roomState(delivery, hasRoomAccess(cookieStore, delivery));
+  const isDemo = demoDeliveryId === delivery.id;
 
   const canView = state === "open" || (member !== null && state !== "locked");
   return {
@@ -103,8 +132,14 @@ export async function getClientRoom(shareToken: string): Promise<ClientRoom | nu
     services,
     canView,
     canComment: canView && (member !== null || delivery.isCommentAllowed !== false),
-    canDownload: canView && (member !== null || delivery.isDownloadAllowed === true),
+    canDownload: canView && mayDownload(delivery, member, isDemo),
+    isDemo,
   };
+}
+
+/** Members always may; guests when the studio turned downloads on, and never in the demo room. */
+function mayDownload(delivery: Delivery, member: ClientRoomMember | null, isDemo: boolean): boolean {
+  return member !== null || (!isDemo && delivery.isDownloadAllowed === true);
 }
 
 /** The room as it is right after a successful unlock (the cookie is only readable next request). */
@@ -116,7 +151,7 @@ export function unlockedRoom(room: ClientRoom): ClientRoom {
     state: "open",
     canView: true,
     canComment: member !== null || delivery.isCommentAllowed !== false,
-    canDownload: member !== null || delivery.isDownloadAllowed === true,
+    canDownload: mayDownload(delivery, member, room.isDemo),
   };
 }
 
@@ -137,10 +172,12 @@ export function roomRefusal(room: ClientRoom | null): string {
 /**
  * The room, when the visitor may do `need` in it. Throws a message that's safe to show
  * otherwise. Members act with their workspace role: approving needs at least editor.
+ * In the demo room, guests may only view.
  */
 export async function requireClientRoom(shareToken: string, need: ClientRoomNeed = "view"): Promise<ClientRoom> {
   const room = await getClientRoom(shareToken);
   if (!room || !room.canView) throw new Error(roomRefusal(room));
+  if (room.isDemo && !room.member && need !== "view") throw new Error(DEMO_ROOM_REFUSAL);
   if (room.suspended && (need === "comment" || need === "approve")) {
     throw new Error("This delivery can't be changed while the studio's workspace is suspended.");
   }

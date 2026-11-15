@@ -12,6 +12,7 @@ import { DeliveryHeroBanner } from "./_components/delivery-hero-banner";
 import { DeliveryActionBar } from "./_components/delivery-action-bar";
 import { DeliveryAssetGrid } from "./_components/delivery-asset-grid";
 import { DeliveryRoomFooter } from "./_components/delivery-room-footer";
+import { DemoRoomBanner } from "./_components/demo-room-banner";
 import { useDeliveryRoom } from "./_components/use-delivery-room";
 
 import type {
@@ -44,7 +45,7 @@ export function DeliveryRoomClient(props: DeliveryRoomProps) {
 }
 
 function DeliveryRoomView(props: DeliveryRoomProps) {
-  const { delivery, workspace, clientName, isWorkspaceMember, whiteLabel } = props;
+  const { delivery, workspace, clientName, isWorkspaceMember, whiteLabel, demoMode } = props;
   const room = useDeliveryRoom(props);
 
   return (
@@ -84,6 +85,9 @@ function DeliveryRoomView(props: DeliveryRoomProps) {
                   mobile browser toolbars never cover it). The gap above and below the banner is the
                   same as the side padding. A banner taller than that grows the column instead. */}
               <div className="flex flex-col min-h-svh pt-4 sm:pt-6 gap-4 sm:gap-6 lg:gap-8 pb-4 sm:pb-6 lg:pb-8">
+                {/* The site's demo room says so, above everything else */}
+                {demoMode && <DemoRoomBanner mode={demoMode} />}
+
                 {/* Header & Expiration Notice */}
                 <DeliveryRoomHeader
                   brandName={workspace.brandName}
@@ -166,6 +170,7 @@ function DeliveryRoomView(props: DeliveryRoomProps) {
               onDeleteReply={room.handleDeleteReply}
               onEditFeedback={room.handleEditFeedback}
               onEditReply={room.handleEditReply}
+              keepFeedbackLocal={demoMode === "visitor"}
               onToggleApproval={room.handleToggleAssetApproval}
               authorName={room.commentAuthor}
               showFeedback={delivery.isCommentAllowed ?? true}

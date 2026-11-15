@@ -29,6 +29,8 @@ export type DeliveryActor =
       services: AdminServices;
       adminServices: AdminServices;
       shareToken: string;
+      /** The room gate's answer (downloads turned on, and not the demo room). Never recompute it. */
+      canDownload: boolean;
     }
   | {
       kind: "member";
@@ -49,6 +51,8 @@ export interface DeliveryRefInput {
 const MEMBER_MIN_ROLE: Record<ClientRoomNeed, WorkspaceRoleLevel> = {
   view: "viewer",
   comment: "viewer",
+  // Whose comments a member may resolve or delete is decided per comment (canModifyComment).
+  manage_comments: "viewer",
   download: "viewer",
   approve: "editor",
 };
@@ -87,6 +91,7 @@ export async function resolveDeliveryActor(
       services: room.services,
       adminServices: room.services,
       shareToken: room.delivery.shareToken,
+      canDownload: room.canDownload,
     };
   }
 
