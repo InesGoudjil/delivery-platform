@@ -6,6 +6,7 @@ import type { SessionIdentity } from "@/core/services/session.service";
 import { trackUserSession } from "@/lib/session-manager";
 import { clientIpFromHeaders } from "@/lib/security/client-ip";
 import { hasVerifiedFactor, twoFactorUrl } from "@/lib/security/two-factor";
+import { TERMS_VERSION } from "@/lib/legal/terms";
 import { createScopedLogger } from "@/lib/logger";
 
 const log = createScopedLogger({ module: "finish-sign-in" });
@@ -23,6 +24,8 @@ export interface FinishSignInInput {
   waitlistToken?: string | null;
   /** Google sign-in: the name and picture to copy onto the profile. */
   oauthProfile?: { fullName: string; avatarUrl: string | null };
+  /** The Terms version the user just accepted on the sign-up page (Google sign-up), if any. */
+  acceptedTermsVersion?: string | null;
 }
 
 export interface FinishSignInResult {
@@ -83,11 +86,40 @@ export async function finishSignIn(input: FinishSignInInput): Promise<FinishSign
     destination = input.requestedPath;
   }
 
+  if (await needsTermsAcceptance(user.id, input.acceptedTermsVersion)) {
+    destination = `/accept-terms?redirect=${encodeURIComponent(destination)}`;
+  }
+
   return {
     redirectTo: needsTwoFactor ? twoFactorUrl(destination) : destination,
     workspace,
     needsTwoFactor,
   };
+}
+
+/**
+ * Terms of Service (roadmap 5.3). A Google sign-up accepted them on the sign-up page (the callback
+ * carries the version), so that's recorded here. Anyone else who hasn't accepted the current
+ * version goes to /accept-terms first.
+ *
+ * Reads and writes use the service role, because users can't write these columns. If they can't be
+ * read (the migration isn't applied), sign-in carries on.
+ */
+async function needsTermsAcceptance(userId: string, acceptedVersion: string | null | undefined): Promise<boolean> {
+  try {
+    const admin = await getServerAdminServices();
+    if (acceptedVersion === TERMS_VERSION) {
+      await admin.profile.recordTermsAcceptance(userId, TERMS_VERSION);
+      return false;
+    }
+    const profile = await admin.profile.getProfile(userId);
+    // undefined: the column doesn't exist yet. Nothing could be recorded, so don't ask.
+    if (!profile || profile.termsVersion === undefined) return false;
+    return profile.termsVersion !== TERMS_VERSION;
+  } catch (err) {
+    log.warn({ err, userId }, "Could not check the terms acceptance");
+    return false;
+  }
 }
 
 function studioNameFor(user: User): string {

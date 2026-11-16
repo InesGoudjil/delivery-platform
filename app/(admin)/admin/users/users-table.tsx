@@ -112,6 +112,7 @@ export function UsersTable({
             platformRole: row.original.platformRole,
             bannedUntil: row.original.bannedUntil,
             mfaEnabled: row.original.mfaEnabled,
+            lastSignInAt: row.original.lastSignInAt,
           }}
         />
       ),

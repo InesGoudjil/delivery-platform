@@ -10,6 +10,7 @@ import {
 } from '@/core/services/session.service';
 import { LEGACY_SESSION_COOKIE_NAME, trackUserSession } from '@/lib/session-manager';
 import { isAdminMfaRequired } from '@/lib/security/admin-mfa';
+import { AUTH_COOKIE_OPTIONS } from './cookie-options';
 import { safeReturnPath } from '@/lib/security/return-path';
 import { isAwaitingTwoFactor } from '@/lib/security/two-factor';
 
@@ -41,6 +42,7 @@ function needsFinishedSignIn(pathname: string): boolean {
     pathname.startsWith('/invite/') ||
     pathname === '/new-workspace' ||
     pathname === '/reset-password' ||
+    pathname === '/accept-terms' ||
     pathname === '/login' ||
     pathname === '/signup'
   );
@@ -92,6 +94,7 @@ export async function updateSession(request: NextRequest) {
   const pendingHeaders = new Map<string, string>();
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookieOptions: AUTH_COOKIE_OPTIONS,
     cookies: {
       getAll() {
         return request.cookies.getAll();

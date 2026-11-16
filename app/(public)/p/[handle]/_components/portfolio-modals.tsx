@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Play,
   MessageCircle,
@@ -16,6 +16,7 @@ import { TypographySpan } from "@/components/ui/typography";
 import { usePortfolioModal } from "./portfolio-context";
 import { Button } from "@/components/ui/button";
 import { submitPortfolioInquiryAction } from "@/app/actions/inquiries";
+import { TurnstileWidget, isCaptchaEnabled, type TurnstileHandle } from "@/components/security/turnstile-widget";
 import { AssetLightboxModal } from "@/components/workspaces/asset-lightbox-modal";
 import { detectAspectRatioFromDimensions } from "@/lib/media-ratios";
 import {
@@ -46,6 +47,9 @@ export function PortfolioModals() {
   const [clientContact, setClientContact] = useState("");
   const [projectDetails, setProjectDetails] = useState("");
   const [isSubmittingContact, setIsSubmittingContact] = useState(false);
+  // Bot check on the inquiry form; the server verifies the token, which works once.
+  const captchaRef = useRef<TurnstileHandle>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const handleSubmitInquiry = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +65,8 @@ export function PortfolioModals() {
         name: clientName,
         emailOrPhone: clientContact,
         details: projectDetails,
-      });
+      }, captchaToken);
+      captchaRef.current?.reset();
 
       if (!res.success) {
         toast.error(res.error || "Failed to submit inquiry.");
@@ -531,9 +536,10 @@ export function PortfolioModals() {
                     />
                   </div>
 
+                  <TurnstileWidget ref={captchaRef} action="portfolio-inquiry" onToken={setCaptchaToken} />
                   <Button
                     type="submit"
-                    disabled={isSubmittingContact}
+                    disabled={isSubmittingContact || (isCaptchaEnabled() && !captchaToken)}
                     className="w-full py-2.5 min-h-[44px] rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-primary/25 disabled:opacity-50 active:scale-95 touch-manipulation"
                   >
                     {isSubmittingContact ? (

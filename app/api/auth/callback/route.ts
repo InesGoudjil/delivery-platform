@@ -32,6 +32,8 @@ export async function GET(request: Request) {
           inviteToken: searchParams.get('invite_token'),
           waitlistToken: searchParams.get('waitlist_token'),
           oauthProfile: { fullName, avatarUrl },
+          // Set by the sign-up page's Google button once its terms box is ticked.
+          acceptedTermsVersion: searchParams.get('terms'),
         }));
       } catch (err) {
         log.error({ err }, 'Could not finish the sign-in in the OAuth callback');

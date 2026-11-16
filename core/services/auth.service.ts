@@ -6,6 +6,7 @@ import { IWorkspaceRepository } from '@/core/repositories/workspace.repository';
 import { IUserProfileRepository } from '@/core/repositories/user-profile.repository';
 import { readSessionIdentity, type SessionIdentity } from '@/core/services/session.service';
 import { hasVerifiedFactor, isAwaitingTwoFactor as claimsAwaitTwoFactor } from '@/lib/security/two-factor';
+import { createStatelessClient } from '@/lib/supabase/server';
 import { type QueryLog, timeQuery } from '@/core/observability/query-log';
 
 export interface UserSessionData {
@@ -104,11 +105,13 @@ export class AuthService {
     }
   }
 
-  async signInWithPassword(email: string, password: string) {
+  /** `captchaToken`: the Turnstile token from the form, required once Supabase's CAPTCHA protection is on. */
+  async signInWithPassword(email: string, password: string, captchaToken?: string) {
     try {
       const res = await this.supabase.auth.signInWithPassword({
         email,
         password,
+        ...(captchaToken ? { options: { captchaToken } } : {}),
       });
 
       if (res.data?.user) {
@@ -130,12 +133,13 @@ export class AuthService {
    *   confirmed. It's kept in the user's metadata.
    * - `emailRedirectTo`: where Supabase's own link (`{{ .ConfirmationURL }}`, the old template)
    *   lands. It must be in Supabase's Redirect URLs list; otherwise Supabase uses the Site URL.
+   * - `captchaToken`: the form's Turnstile token (Supabase's CAPTCHA protection).
    */
   async signUp(
     email: string,
     password: string,
     fullName: string,
-    options: { emailRedirectTo?: string; signupRedirect?: string } = {}
+    options: { emailRedirectTo?: string; signupRedirect?: string; captchaToken?: string } = {}
   ) {
     try {
       return await this.supabase.auth.signUp({
@@ -147,6 +151,7 @@ export class AuthService {
             ...(options.signupRedirect ? { signup_redirect: options.signupRedirect } : {}),
           },
           ...(options.emailRedirectTo ? { emailRedirectTo: options.emailRedirectTo } : {}),
+          ...(options.captchaToken ? { captchaToken: options.captchaToken } : {}),
         },
       });
     } catch (err: any) {
@@ -157,10 +162,11 @@ export class AuthService {
     }
   }
 
-  async resetPasswordForEmail(email: string, redirectTo: string) {
+  async resetPasswordForEmail(email: string, redirectTo: string, captchaToken?: string) {
     try {
       return await this.supabase.auth.resetPasswordForEmail(email, {
         redirectTo,
+        ...(captchaToken ? { captchaToken } : {}),
       });
     } catch (err: any) {
       return {
@@ -170,15 +176,65 @@ export class AuthService {
     }
   }
 
-  async updateUserPassword(newPassword: string) {
+  /**
+   * Sets the signed-in user's password; this session stays signed in. `currentPassword` is passed
+   * on for Supabase's "Require current password" setting, which then checks it as well.
+   */
+  async updateUserPassword(newPassword: string, currentPassword?: string) {
     try {
       return await this.supabase.auth.updateUser({
         password: newPassword,
+        ...(currentPassword ? { current_password: currentPassword } : {}),
       });
     } catch (err: any) {
       return {
         data: { user: null },
         error: { message: err?.message || 'Failed to update password.' },
+      };
+    }
+  }
+
+  /**
+   * Checks a user's password without touching this session.
+   *
+   * It signs in on a separate client that stores nothing, then ends that login at once. The
+   * signed-in user keeps their session, including its two-factor level. Signing in on this client
+   * instead would replace that session with an aal1 one.
+   */
+  async verifyPassword(
+    email: string,
+    password: string,
+    captchaToken?: string
+  ): Promise<{ ok: true } | { ok: false; code?: string; message: string }> {
+    try {
+      const probe = createStatelessClient();
+      const { data, error } = await probe.auth.signInWithPassword({
+        email,
+        password,
+        ...(captchaToken ? { options: { captchaToken } } : {}),
+      });
+      if (error || !data.session) {
+        return { ok: false, code: error?.code, message: error?.message || 'The password could not be checked.' };
+      }
+      await probe.auth.signOut({ scope: 'local' }).catch(() => undefined);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, message: err instanceof Error ? err.message : 'The password could not be checked.' };
+    }
+  }
+
+  /**
+   * Starts an email change. Supabase emails a confirmation link to the new address, and also to
+   * the current one when "Secure email change" is on. The change happens once the links are opened
+   * (/api/auth/confirm, type email_change).
+   */
+  async requestEmailChange(newEmail: string, emailRedirectTo?: string) {
+    try {
+      return await this.supabase.auth.updateUser({ email: newEmail }, emailRedirectTo ? { emailRedirectTo } : undefined);
+    } catch (err: any) {
+      return {
+        data: { user: null },
+        error: { message: err?.message || 'Failed to start the email change.' },
       };
     }
   }

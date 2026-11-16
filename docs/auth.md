@@ -4,6 +4,7 @@ What the app expects from each Supabase project (staging and production). The co
 - `app/actions/auth.ts`;
 - `app/api/auth/*`;
 - `core/security/finish-sign-in.ts`;
+- `app/actions/account.ts`: email, password and terms;
 - `lib/supabase/middleware.ts`;
 - `lib/security/two-factor.ts`.
 
@@ -17,8 +18,9 @@ What the app expects from each Supabase project (staging and production). The co
 | Email links | `/api/auth/confirm` | Takes a `token_hash`. Handles the sign-up confirmation and the password reset (`emails/supabase/README.md`). |
 | Two-factor code | `/mfa` | For everyone with an authenticator, after any of the above. |
 
-After each of these, `finishSignIn()` records the device, finds the workspace, and sends users with
-an authenticator to `/mfa`. Password resets sign out every other device, as password changes do.
+After each of these, `finishSignIn()` records the device and finds the workspace. It sends users with
+an authenticator to `/mfa`, and anyone who hasn't accepted the current Terms to `/accept-terms`.
+Password resets sign out every other device, as password changes do.
 
 ## Two-factor sign-in
 
@@ -50,12 +52,60 @@ Every new table with RLS needs the policy "Two-factor sign-in finished".
 To check it: sign in with a test account that has an authenticator. You should land on `/mfa`, and a
 workspace URL opened directly should send you back there.
 
+## Bot check (Cloudflare Turnstile)
+
+The widget is `components/security/turnstile-widget.tsx`. It's usually invisible, and it shows a
+challenge only when Cloudflare isn't sure.
+
+- **Sign-in, sign-up, password reset, and the current-password check on the Security page:** the
+  token goes to Supabase, which checks it. Turn on Supabase's CAPTCHA protection with Turnstile and
+  the secret key.
+- **Waitlist, contact form, portfolio inquiries and partnerships:** the server checks the token itself
+  (`lib/security/turnstile.ts`).
+- **Keys:** `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (browser) and `TURNSTILE_SECRET_KEY` (server).
+  - Leave both empty in development.
+  - Once Supabase's CAPTCHA protection is on, the site key must be set, or nobody can sign in.
+  - A token works once, so the forms ask for a new one after each attempt.
+
+## Passwords and email address
+
+- **Minimum length:**
+  - 10 characters for new passwords (`PASSWORD_MIN_LENGTH` in `lib/validations/auth.ts`);
+  - set the same in Supabase: Authentication → Providers → Email.
+  - Older, shorter passwords still sign in.
+- **Changing the password (Security page):**
+  - the current password is checked on a separate client, so this session keeps its two-factor
+    level and isn't asked for the code again;
+  - Supabase also checks it when "Require current password" is on;
+  - every other device is signed out.
+- **Google-only accounts** have no password. The Security page offers "Set a password" instead
+  (`auth_user_has_password()`, migration `20261116170000_account_settings.sql`).
+- **Changing the email address:** Supabase emails a link to the new address and, with "Secure email
+  change" on, one to the current address too. `/api/auth/confirm` sends the first click to
+  `/email-change?status=partial` and the second to `?status=done`.
+
+## Terms acceptance
+
+- Sign-up needs the terms box ticked, for Google sign-up too. The server records
+  `user_profiles.terms_version` and `terms_accepted_at`; a trigger stops users from changing them.
+- After sign-in, anyone without the current version (`TERMS_VERSION` in `lib/legal/terms.ts`) goes
+  to `/accept-terms` once. When the Terms change, update `TERMS_VERSION` with the date on `/terms`,
+  and everyone is asked again.
+
+## Session cookies
+
+Supabase's auth cookies are `Secure` in production builds (`lib/supabase/cookie-options.ts`),
+Vercel previews and staging included. Session lifetime and inactivity timeout are Pro plan settings
+(Authentication → Sessions). They take effect at each user's next token refresh.
+
 ## Rate limits
 
 - **App (Upstash, `lib/upstash/ratelimit-policies.ts`):**
   - `authLogin`: 5 per 15 minutes per IP and email.
   - `authSignup`: 5 per 15 minutes per IP.
   - `passwordReset`: 3 per 15 minutes per IP, and the same per email.
+  - `passwordChange`: 5 per 15 minutes per user (change or set).
+  - `emailChange`: 3 per hour per user.
   - If the limiter fails, sign-in still goes through.
   - Production needs the Upstash keys: the in-memory fallback doesn't work on serverless.
 - **Supabase:** these calls come from the app's server, so Supabase counts them against the server's
@@ -67,10 +117,16 @@ workspace URL opened directly should send you back there.
 
 - **SMTP:** Zoho, sending from `contact@cinespace.pro`. Set it up before turning on "Confirm email": the
   built-in sender allows 2 emails an hour.
-- **Email templates:** paste them from `emails/supabase`.
-- **Email provider:** "Confirm email" and "Secure email change" on.
+- **Email templates:** paste all three from `emails/supabase`.
+- **Email provider:**
+  - "Confirm email", "Secure email change" and "Require current password" on;
+  - minimum password length 10;
+  - leaked-password protection (Pro plan).
+- **CAPTCHA protection:** Turnstile with the secret key. Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and
+  `TURNSTILE_SECRET_KEY` in the app first.
+- **Sessions (Pro plan):** inactivity timeout and maximum session length.
 - **URL configuration:**
   - Site URL `https://cinespace.pro`, with no trailing slash.
   - Redirect URLs: `https://cinespace.pro/**`, plus the staging host.
-- **Auth Hooks:** Customize Access Token, set as described above.
+- **Auth Hooks:** Custom Access Token, set as described above.
 - **JWT keys:** the ES256 key is the current one, so the server verifies tokens without calling Supabase.

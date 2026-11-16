@@ -101,12 +101,47 @@ changes per 10 minutes.
 | Sign out everywhere | Every device is signed out at once and every Supabase login ends. They can sign in again. Not on yourself. |
 | Ban | 24 hours, 7 days, 30 days or until lifted. They're signed out everywhere. Not on yourself or another platform admin: remove the role first. |
 | Reset two-factor | Removes all their authenticators and signs them out. Their next sign-in is password only, and they can set up a new one. Check it's really them first. Not on yourself. |
+| New client | Makes an account and a Free workspace for someone you're in touch with, and gives them a setup link. See [New client accounts](#new-client-accounts). |
+| Send a new setup link | Only for accounts nobody has signed in to yet. The previous link stops working. |
 | Suspend a workspace | Type its slug to confirm. Lift it from the same menu. |
 | The demo room | Choose the delivery by pasting its review link. The landing page links to it only while it's switched on and the room opens for anyone. See [The demo room](#the-demo-room). |
 
-Admins can't send a password-reset or confirmation email for a user yet. Sign-in links are only
-accepted in the browser that asked for them, so a link an admin requested wouldn't work for the
-user. This needs the sign-in emails to switch to one-time token links first.
+Admins can't send a password-reset or confirmation email to someone who already uses their
+account. Setup links (below) are only for accounts nobody has signed in to yet; anyone else resets
+their password from the sign-in page.
+
+## New client accounts
+
+**Users → New client** makes an account for someone you're in touch with, so they don't have to
+sign up themselves. Fill in their name and email, and their studio's name if it differs from
+theirs. Then:
+
+1. The account is created with the email already confirmed and no password. The sign-up trigger
+   gives it what any sign-up gets: a profile, a workspace and a Free trial. The studio name
+   becomes the workspace's name and address.
+2. They get a **setup link**, by email ("Welcome to CineSpace", from Pedro) or, with the email
+   switched off, for you to send another way (WhatsApp, say). The dialog shows the link once.
+   It's not stored anywhere you can see it again, and it's not in the audit log.
+3. The link opens `/welcome/…`, where they choose a password. They're then signed in and land in
+   their workspace. They can also skip it and use "Continue with Google" with the same address.
+
+The link works **once, for 7 days**, and stops working as soon as anyone signs in to the account.
+If it expires or the email goes astray, use **Send a new setup link** in the user's actions menu.
+The old link stops working. Once they've signed in, they use "Forgot password" like anyone else.
+
+Things to know:
+
+- **Whoever opens the link can choose the password.** Send it only to them, and don't open it
+  yourself: it would sign your browser out and into their account.
+- **Check the email address.** A typo gives the account to whoever owns that address. If it
+  happens, ban the account and create the right one.
+- **The plan is Free**, as for any sign-up. Change it on the workspace page (the rules above apply).
+- **Waitlist mode** (`WAITLIST_ONLY=true`) hides `/welcome` with the rest of the app, unless they
+  have the preview cookie.
+- **How it works:** only a SHA-256 hash of the link's secret is kept, in the user's Supabase
+  `app_metadata`, which only the service role can write. Opening the page changes nothing (email
+  scanners that follow links don't use it up); sending the form sets the password, confirms the
+  email and deletes the hash in one update. The code is in `core/security/account-setup.ts`.
 
 ## Suspension and reports
 

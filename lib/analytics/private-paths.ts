@@ -8,6 +8,7 @@
 const PRIVATE_PATH_PREFIXES = [
   "/deliver", // client rooms: /deliver/<share token>
   "/invite", // workspace invitations: /invite/<token>
+  "/welcome", // setup links for accounts the team made: /welcome/<token>
   "/login",
   "/signup",
   "/forgot-password",

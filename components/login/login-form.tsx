@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
 
@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { loginSchema } from "@/lib/validations/auth";
 import { loginAction } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/client";
+import { TurnstileWidget, isCaptchaEnabled, type TurnstileHandle } from "@/components/security/turnstile-widget";
 
 export function LoginForm({
   className,
@@ -35,6 +36,10 @@ export function LoginForm({
   const [oauthLoadingProvider, setOauthLoadingProvider] = useState<"google" | "apple" | null>(null);
   // Where to go after signing in (an invite link, for example). The server checks it.
   const [returnTo, setReturnTo] = useState<string | null>(null);
+  // Bot check (Supabase verifies the token); a token works once, so it's reset after each refusal.
+  const captchaRef = useRef<TurnstileHandle>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const waitingForCaptcha = isCaptchaEnabled() && !captchaToken;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -112,6 +117,7 @@ export function LoginForm({
       const res = await loginAction(null, formData);
       if (res?.error) {
         setError(res.error);
+        captchaRef.current?.reset();
       }
     });
   };
@@ -209,8 +215,10 @@ export function LoginForm({
           )}
         </Field>
 
+        <TurnstileWidget ref={captchaRef} action="login" onToken={setCaptchaToken} />
+
         <Field>
-          <Button type="submit" disabled={isPending} className="w-full">
+          <Button type="submit" disabled={isPending || waitingForCaptcha} className="w-full">
             {isPending ? (
               <>
                 <Loader2 className="mr-2 size-4 animate-spin" />

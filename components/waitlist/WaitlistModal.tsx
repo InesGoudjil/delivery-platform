@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useRef } from "react";
 import {
   Sparkles,
   Copy,
@@ -17,6 +17,7 @@ import {
   checkWaitlistStatusAction,
   WaitlistActionState,
 } from "@/app/actions/waitlist";
+import { TurnstileWidget, isCaptchaEnabled, type TurnstileHandle } from "@/components/security/turnstile-widget";
 import { trackLead } from "@/lib/meta/pixel";
 import { motion, AnimatePresence } from "@/components/ui/motion";
 import { Button } from "@/components/ui/button";
@@ -46,12 +47,17 @@ export function WaitlistModal({
   // Status check state
   const [statusEmail, setStatusEmail] = useState("");
 
+  // Bot check on the join form; the server verifies the token, which works once.
+  const captchaRef = useRef<TurnstileHandle>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+
   const handleJoin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
 
     startTransition(async () => {
       const res = await joinWaitlistAction(null, formData);
+      captchaRef.current?.reset();
       setResult(res);
       if (res?.data?.eventId) {
         trackLead({ email, eventId: res.data.eventId });
@@ -266,9 +272,11 @@ export function WaitlistModal({
               </div>
             )}
 
+            <TurnstileWidget ref={captchaRef} action="waitlist" onToken={setCaptchaToken} />
+
             <Button
               type="submit"
-              disabled={isPending}
+              disabled={isPending || (isCaptchaEnabled() && !captchaToken)}
               className="w-full h-auto flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-lg hover:bg-primary/90 transition-all disabled:opacity-50"
             >
               {isPending ? (

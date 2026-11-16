@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
@@ -15,10 +15,14 @@ import {
   FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { signupSchema } from "@/lib/validations/auth";
+import { PASSWORD_MIN_LENGTH, signupSchema } from "@/lib/validations/auth";
+import { TERMS_VERSION } from "@/lib/legal/terms";
 import { signupAction } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/client";
 import { trackCompleteRegistration } from "@/lib/meta/pixel";
+import { TurnstileWidget, isCaptchaEnabled, type TurnstileHandle } from "@/components/security/turnstile-widget";
+
+const TERMS_REQUIRED = "Please accept the Terms of Service and Privacy Policy to create your account.";
 
 export function SignupForm({
   className,
@@ -43,6 +47,11 @@ export function SignupForm({
   const [oauthLoadingProvider, setOauthLoadingProvider] = useState<"google" | "apple" | null>(null);
   // Where to go after signing up (an invite link, for example). The server checks it.
   const [returnTo, setReturnTo] = useState<string | null>(null);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  // Bot check (Supabase verifies the token); a token works once, so it's reset after each refusal.
+  const captchaRef = useRef<TurnstileHandle>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const waitingForCaptcha = isCaptchaEnabled() && !captchaToken;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -70,6 +79,10 @@ export function SignupForm({
   }, []);
 
   const handleOAuthSignup = async (provider: "google" | "apple") => {
+    if (!acceptTerms) {
+      setError(TERMS_REQUIRED);
+      return;
+    }
     try {
       setError(null);
       setSuccess(null);
@@ -86,6 +99,8 @@ export function SignupForm({
       if (token) {
         callbackUrl.searchParams.set("waitlist_token", token);
       }
+      // The callback records the acceptance for the new account.
+      callbackUrl.searchParams.set("terms", TERMS_VERSION);
 
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider,
@@ -140,12 +155,17 @@ export function SignupForm({
       setFieldErrors(errors);
       return;
     }
+    if (!acceptTerms) {
+      setError(TERMS_REQUIRED);
+      return;
+    }
 
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       const res = await signupAction(null, formData);
       if (res?.error) {
         setError(res.error);
+        captchaRef.current?.reset();
       } else if (res?.success) {
         setSuccess(res.success);
         // The auto-login branch redirects before reaching here; the
@@ -284,7 +304,7 @@ export function SignupForm({
             <FieldError errors={[{ message: fieldErrors.password }]} />
           )}
           <FieldDescription>
-            Must be at least 8 characters long.
+            Use at least {PASSWORD_MIN_LENGTH} characters.
           </FieldDescription>
         </Field>
 
@@ -333,7 +353,36 @@ export function SignupForm({
         </Field>
 
         <Field>
-          <Button type="submit" disabled={isPending} className="w-full">
+          <label className="flex items-start gap-3 text-sm leading-snug text-muted-foreground">
+            <input
+              type="checkbox"
+              name="accept_terms"
+              checked={acceptTerms}
+              onChange={(e) => {
+                setAcceptTerms(e.target.checked);
+                if (e.target.checked && error === TERMS_REQUIRED) setError(null);
+              }}
+              disabled={isPending}
+              className="mt-0.5 size-4 shrink-0 accent-primary"
+            />
+            <span>
+              I agree to the{" "}
+              <Link href="/terms" target="_blank" className="font-medium text-foreground underline underline-offset-4">
+                Terms of Service
+              </Link>{" "}
+              and the{" "}
+              <Link href="/privacy" target="_blank" className="font-medium text-foreground underline underline-offset-4">
+                Privacy Policy
+              </Link>
+              .
+            </span>
+          </label>
+        </Field>
+
+        <TurnstileWidget ref={captchaRef} action="signup" onToken={setCaptchaToken} />
+
+        <Field>
+          <Button type="submit" disabled={isPending || waitingForCaptcha} className="w-full">
             {isPending ? (
               <>
                 <Loader2 className="mr-2 size-4 animate-spin" />

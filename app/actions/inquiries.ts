@@ -16,6 +16,8 @@ import {
 } from "@/lib/validations";
 import { createScopedLogger } from "@/lib/logger";
 import { configuredAppOrigin } from "@/lib/app-origin";
+import { CAPTCHA_FAILED_MESSAGE, verifyTurnstileToken } from "@/lib/security/turnstile";
+import { getClientIp } from "@/lib/upstash";
 
 const log = createScopedLogger({ actionGroup: "inquiries" });
 
@@ -29,11 +31,14 @@ function portfolioUrlFor(handle: string): string | undefined {
  * Server Action: Submit a client lead/inquiry from a filmmaker's public portfolio.
  * Stores inquiry in the database and dispatches an instant notification email via Zoho ZeptoMail.
  */
-export async function submitPortfolioInquiryAction(input: SubmitPortfolioInquiryInput) {
+export async function submitPortfolioInquiryAction(input: SubmitPortfolioInquiryInput, captchaToken?: string | null) {
   try {
     const validated = safeValidate(submitPortfolioInquirySchema, input);
     if (!validated.success) {
       return { success: false, error: validated.error };
+    }
+    if (!(await verifyTurnstileToken(captchaToken, await getClientIp()))) {
+      return { success: false, error: CAPTCHA_FAILED_MESSAGE };
     }
 
     const { handle, name: cleanName, emailOrPhone: cleanContact, details: cleanDetails } = validated.data;
@@ -126,11 +131,14 @@ export async function submitPortfolioInquiryAction(input: SubmitPortfolioInquiry
  * Server Action: Submit a general contact or feedback message from /contact.
  * Stores message in inquiries table and notifies team via Resend.
  */
-export async function submitContactFormAction(input: SubmitContactFormInput) {
+export async function submitContactFormAction(input: SubmitContactFormInput, captchaToken?: string | null) {
   try {
     const validated = safeValidate(submitContactFormSchema, input);
     if (!validated.success) {
       return { success: false, error: validated.error };
+    }
+    if (!(await verifyTurnstileToken(captchaToken, await getClientIp()))) {
+      return { success: false, error: CAPTCHA_FAILED_MESSAGE };
     }
 
     const { email: cleanEmail, message: cleanMessage, fullName: cleanName, reason: cleanReason } = validated.data;
@@ -180,11 +188,14 @@ export async function submitContactFormAction(input: SubmitContactFormInput) {
  * Server Action: Submit a creator partnership application.
  * Stores lead in inquiries table and notifies team via Zoho ZeptoMail.
  */
-export async function submitPartnershipAction(input: SubmitPartnershipInput) {
+export async function submitPartnershipAction(input: SubmitPartnershipInput, captchaToken?: string | null) {
   try {
     const validated = safeValidate(submitPartnershipSchema, input);
     if (!validated.success) {
       return { success: false, error: validated.error };
+    }
+    if (!(await verifyTurnstileToken(captchaToken, await getClientIp()))) {
+      return { success: false, error: CAPTCHA_FAILED_MESSAGE };
     }
 
     const {

@@ -49,6 +49,7 @@ describe("the library copy", () => {
   });
 
   it("keeps the library numbers for the emails wired so far", () => {
+    expect(LIBRARY_EMAILS["account-setup"].number).toBe(7);
     expect(LIBRARY_EMAILS["second-client-link"].number).toBe(14);
     expect(LIBRARY_EMAILS["cut-approved"].number).toBe(27);
     expect(LIBRARY_EMAILS["team-invite"].number).toBe(29);
@@ -57,6 +58,22 @@ describe("the library copy", () => {
     expect(LIBRARY_EMAILS["client-reply"].number).toBe(32);
     expect(LIBRARY_EMAILS["client-approval"].number).toBe(33);
     expect(LIBRARY_EMAILS["client-comment"].number).toBe(26);
+  });
+
+  it("renders the welcome email for an account the team made, with the setup link and its expiry", () => {
+    const { subject, html, text } = renderLibraryEmail(
+      "account-setup",
+      { first_name: "Karim", setup_link: "https://app.test/welcome/u1.secret", link_days: 7 },
+      PEDRO
+    );
+    expect(subject).toBe("Welcome to CineSpace");
+    expect(text).toContain("Hi Karim,");
+    expect(text).toContain("Choose your password: https://app.test/welcome/u1.secret");
+    expect(text).toContain("The link works once, for 7 days.");
+    expect(html).toContain('href="https://app.test/welcome/u1.secret"');
+    expect(() =>
+      renderLibraryEmail("account-setup", { first_name: "Karim", setup_link: "", link_days: 7 }, PEDRO)
+    ).toThrow(/setup_link/);
   });
 
   it("renders the comment email with the count, the version and the latest comment", () => {

@@ -1,9 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Logger } from "@/lib/logger";
+import { newSetupSecret, setupToken, SETUP_CLAIM_KEY } from "@/core/security/account-setup";
 import { timedQuery } from "./query-timing";
 import {
+  ADMIN_ACCOUNT_EXISTS_MESSAGE,
   ADMIN_BAN_DURATIONS,
   type AdminBanDuration,
+  type AdminSetupLink,
   type AdminSignOutResult,
   type AdminUserFactor,
   type AdminUserMembership,
@@ -14,9 +17,15 @@ type Row = Record<string, unknown>;
 
 const str = (value: unknown): string | null => (value === null || value === undefined ? null : String(value));
 
+/** Supabase Auth's answer when the address already has an account. */
+function isEmailTaken(error: { code?: string; message: string } | null): boolean {
+  return Boolean(error && (error.code === "email_exists" || /already (been )?registered/i.test(error.message)));
+}
+
 /**
- * Account controls for the admin user page (B3), on the service-role client: devices, bans and
- * two-factor. Only build it through getPlatformAdminServices(), after the platform-admin check.
+ * Account controls for the admin user page (B3), on the service-role client: devices, bans,
+ * two-factor, and accounts made for new clients. Only build it through getPlatformAdminServices(),
+ * after the platform-admin check.
  */
 export class AdminUserControls {
   constructor(
@@ -143,5 +152,38 @@ export class AdminUserControls {
       }
     });
     return { removedFactors: factors.length, ...(await this.signOutEverywhere(userId)) };
+  }
+
+  /**
+   * Makes an account for someone the team is in touch with: email confirmed, no password, and a
+   * setup link they use to choose one. The sign-up trigger (handle_new_user) gives it a profile,
+   * a workspace named after them and a Free trial, as for any sign-up.
+   */
+  async createClientAccount(input: { email: string; fullName: string }): Promise<{ userId: string } & AdminSetupLink> {
+    const { secret, claim } = newSetupSecret();
+    const userId = await timedQuery(this.log, "user.createClientAccount", async () => {
+      const { data, error } = await this.supabase.auth.admin.createUser({
+        email: input.email,
+        email_confirm: true,
+        user_metadata: { full_name: input.fullName },
+        app_metadata: { [SETUP_CLAIM_KEY]: claim },
+      });
+      if (isEmailTaken(error)) throw new Error(ADMIN_ACCOUNT_EXISTS_MESSAGE);
+      if (error || !data.user) throw new Error(`Couldn't create the account: ${error?.message ?? "no user returned"}`);
+      return data.user.id;
+    });
+    return { userId, token: setupToken(userId, secret), expiresAt: claim.expires_at };
+  }
+
+  /** A new setup link for the user. It replaces the one before, which stops working. */
+  async issueSetupLink(userId: string): Promise<AdminSetupLink> {
+    const { secret, claim } = newSetupSecret();
+    await timedQuery(this.log, "user.issueSetupLink", async () => {
+      const { error } = await this.supabase.auth.admin.updateUserById(userId, {
+        app_metadata: { [SETUP_CLAIM_KEY]: claim },
+      });
+      if (error) throw new Error(`Couldn't make a new setup link: ${error.message}`);
+    });
+    return { token: setupToken(userId, secret), expiresAt: claim.expires_at };
   }
 }

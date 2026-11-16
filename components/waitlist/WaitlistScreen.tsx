@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { joinWaitlistAction, WaitlistActionState } from "@/app/actions/waitlist";
+import { TurnstileWidget, isCaptchaEnabled, type TurnstileHandle } from "@/components/security/turnstile-widget";
 import { getWaitlistImageUrl, CLOUDFLARE_PUBLIC_DOMAIN } from "@/lib/assets";
 import { trackLead } from "@/lib/meta/pixel";
 import {
@@ -54,6 +55,9 @@ export function WaitlistScreen({
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<WaitlistActionState | null>(null);
   const [copied, setCopied] = useState(false);
+  // Bot check; the server verifies the token, which works once.
+  const captchaRef = useRef<TurnstileHandle>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
 
   const displayCount = BASE_COUNT + initialCount;
@@ -65,9 +69,11 @@ export function WaitlistScreen({
     if (name.trim()) formData.append("name", name.trim());
     if (role) formData.append("role", role);
     if (referralCode) formData.append("referralCode", referralCode);
+    if (captchaToken) formData.append("captcha_token", captchaToken);
 
     startTransition(async () => {
       const res = await joinWaitlistAction(null, formData);
+      captchaRef.current?.reset();
       setResult(res);
       if (res?.data?.eventId) {
         trackLead({ email, eventId: res.data.eventId });
@@ -231,10 +237,12 @@ export function WaitlistScreen({
                         <div className="wl-err">{result.error}</div>
                       )}
 
+                      <TurnstileWidget ref={captchaRef} action="waitlist" onToken={setCaptchaToken} />
+
                       <Button
                         type="submit"
                         className="wl-cta h-auto"
-                        disabled={isPending || !email}
+                        disabled={isPending || !email || (isCaptchaEnabled() && !captchaToken)}
                       >
                         {isPending ? (
                           "Joining…"

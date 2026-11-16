@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { Loader2, AlertCircle, CheckCircle2, ArrowLeft, Mail } from "lucide-react";
 
@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { forgotPasswordSchema } from "@/lib/validations/auth";
 import { requestPasswordResetAction } from "@/app/actions/auth";
+import { TurnstileWidget, isCaptchaEnabled, type TurnstileHandle } from "@/components/security/turnstile-widget";
 
 export function ForgotPasswordForm({
   className,
@@ -26,6 +27,10 @@ export function ForgotPasswordForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Bot check (Supabase verifies the token); a token works once, so it's reset after each submit.
+  const captchaRef = useRef<TurnstileHandle>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const waitingForCaptcha = isCaptchaEnabled() && !captchaToken;
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -42,6 +47,7 @@ export function ForgotPasswordForm({
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       const res = await requestPasswordResetAction(null, formData);
+      captchaRef.current?.reset();
       if (res?.error) {
         setError(res.error);
       } else if (res?.success) {
@@ -108,8 +114,10 @@ export function ForgotPasswordForm({
               )}
             </Field>
 
+            <TurnstileWidget ref={captchaRef} action="password-reset" onToken={setCaptchaToken} />
+
             <Field>
-              <Button type="submit" disabled={isPending} className="w-full">
+              <Button type="submit" disabled={isPending || waitingForCaptcha} className="w-full">
                 {isPending ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" />

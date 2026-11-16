@@ -11,6 +11,7 @@
  */
 
 export type LibraryEmailId =
+  | "account-setup"
   | "second-client-link"
   | "cut-approved"
   | "team-invite"
@@ -47,6 +48,40 @@ export interface LibraryEmail {
 }
 
 export const LIBRARY_EMAILS: Record<LibraryEmailId, LibraryEmail> = {
+  /*
+   * #7 "Welcome to CineSpace", for an account the team made (Admin → Users → New client). Not in
+   * the library: the person has no password yet, so the link sets one instead of opening the
+   * dashboard, with the two lines around it.
+   */
+  "account-setup": {
+    number: 7,
+    title: "Welcome to CineSpace (account made by the team)",
+    from: "pedro",
+    stream: "transactional",
+    subject: "Welcome to CineSpace",
+    required: ["first_name", "setup_link", "link_days"],
+    body: [
+      { kind: "p", text: "Hi {{first_name}}," },
+      {
+        kind: "p",
+        text: "Your account is ready. On the Free plan you have a full portfolio page, 2 GB of video storage, one client delivery link, and review, comments, and approvals.",
+      },
+      { kind: "p", text: "Choose a password to sign in:" },
+      { kind: "link", variable: "setup_link" },
+      {
+        kind: "p",
+        text: 'The link works once, for {{link_days}} days. After that, use "Forgot password" on the sign-in page with this email address.',
+      },
+      { kind: "p", text: "Three things to do first:" },
+      { kind: "p", text: "1. Upload one film you're proud of." },
+      { kind: "p", text: "2. Add your name, bio, and photo to your portfolio page." },
+      { kind: "p", text: "3. Send your next client their delivery link." },
+      { kind: "p", text: "If you get stuck, reply to this email. It comes to me." },
+      { kind: "p", text: "Pedro" },
+    ],
+    button: "Choose your password",
+  },
+
   "second-client-link": {
     number: 14,
     title: "Delivery link limit reached",

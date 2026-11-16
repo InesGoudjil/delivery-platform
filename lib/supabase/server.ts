@@ -3,6 +3,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { cache } from 'react';
 import { env } from '@/lib/env';
+import { AUTH_COOKIE_OPTIONS } from './cookie-options';
 
 /**
  * Request-scoped singleton Supabase Server Client.
@@ -25,6 +26,7 @@ export const createClient = cache(async () => {
     url,
     key,
     {
+      cookieOptions: AUTH_COOKIE_OPTIONS,
       cookies: {
         getAll() {
           return cookieStore.getAll();
@@ -42,6 +44,20 @@ export const createClient = cache(async () => {
     }
   );
 });
+
+/**
+ * A client with the public key that keeps no session (no cookies). Use it for one-off Auth calls
+ * that must not replace the visitor's login, like checking a password (AuthService.verifyPassword).
+ */
+export function createStatelessClient() {
+  return createSupabaseClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+}
 
 /**
  * Service-role client that refuses to start without a real service key, instead of falling back

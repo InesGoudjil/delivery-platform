@@ -1,13 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as adminContext from "@/core/admin/context";
 import {
   banUserAction,
+  createClientAccountAction,
   createYearlyPlanAction,
   deletePlanAction,
   searchAdminAction,
   suspendWorkspaceAction,
   unsuspendWorkspaceAction,
   resetUserTwoFactorAction,
+  sendSetupLinkAction,
   signOutUserEverywhereAction,
   unbanUserAction,
   updateDemoRoomAction,
@@ -29,6 +31,10 @@ const PLAN = "20000000-0000-4000-8000-000000000002";
 const STARTER = "20000000-0000-4000-8000-000000000001";
 const DEMO_DELIVERY = "30000000-0000-4000-8000-0000000000d1";
 const DEMO_TOKEN = "share_token_demo_room_01";
+const NEW_USER = "00000000-0000-4000-8000-0000000000c1";
+const NEW_WS = "10000000-0000-4000-8000-0000000000c1";
+const SETUP_TOKEN = `${NEW_USER}.${"s".repeat(43)}`;
+const SETUP_EXPIRES = "2026-11-23T12:00:00.000Z";
 
 let record: ReturnType<typeof vi.fn>;
 let services: any;
@@ -41,7 +47,14 @@ beforeEach(() => {
   vi.restoreAllMocks();
   record = vi.fn().mockResolvedValue(undefined);
   services = {
-    workspace: { getWorkspaceById: vi.fn().mockResolvedValue({ id: WS, brandName: "Studio A" }) },
+    workspace: {
+      getWorkspaceById: vi.fn().mockResolvedValue({ id: WS, brandName: "Studio A" }),
+      getWorkspaceByOwnerId: vi.fn().mockResolvedValue({ id: NEW_WS, brandName: "Karim Benali", slug: "karim-benali" }),
+      renameNewWorkspace: vi.fn(async (id: string, brandName: string) => ({ id, brandName, slug: "benali-films" })),
+    },
+    notification: {
+      sendAccountSetupEmail: vi.fn().mockResolvedValue({ success: true, log: { id: "log_1" } }),
+    },
     subscription: {
       getFeatureOverrides: vi.fn().mockResolvedValue({ storage_gb: 500, watermark: false, junk_key: 1 }),
       updateWorkspaceFeatures: vi.fn(async (workspaceId: string, features: object) => ({ workspaceId, features, updatedAt: "" })),
@@ -85,6 +98,8 @@ beforeEach(() => {
     ban: vi.fn().mockResolvedValue({ bannedUntil: "2026-11-20T00:00:00Z", revokedDevices: 2, endedLogins: 3 }),
     unban: vi.fn().mockResolvedValue(undefined),
     resetTwoFactor: vi.fn().mockResolvedValue({ removedFactors: 1, revokedDevices: 2, endedLogins: 3 }),
+    createClientAccount: vi.fn().mockResolvedValue({ userId: NEW_USER, token: SETUP_TOKEN, expiresAt: SETUP_EXPIRES }),
+    issueSetupLink: vi.fn().mockResolvedValue({ token: SETUP_TOKEN, expiresAt: SETUP_EXPIRES }),
   };
   vi.spyOn(adminContext, "getPlatformAdminServices").mockResolvedValue({
     user: { id: ADMIN, email: "admin@test" },
@@ -466,3 +481,150 @@ describe("the demo room setting", () => {
     expect(services.siteSettings.set).not.toHaveBeenCalled();
   });
 });
+
+describe("createClientAccountAction", () => {
+  const input = {
+    fullName: "Karim Benali",
+    email: " Karim@Studio.test ",
+    studioName: "Benali Films",
+    sendEmail: true,
+    reason: "Met at the Dubai film market, wants to try deliveries",
+  };
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://cinespace.test";
+  });
+  afterEach(() => {
+    process.env.NEXT_PUBLIC_APP_URL = appUrl;
+  });
+
+  it("creates the account, names its workspace after the studio and emails the setup link", async () => {
+    const result = await createClientAccountAction(input);
+
+    expect(result.success).toBe(true);
+    expect(userControls.createClientAccount).toHaveBeenCalledWith({ email: "karim@studio.test", fullName: "Karim Benali" });
+    expect(services.workspace.renameNewWorkspace).toHaveBeenCalledWith(NEW_WS, "Benali Films");
+    expect(services.notification.sendAccountSetupEmail).toHaveBeenCalledWith({
+      workspaceId: NEW_WS,
+      recipientEmail: "karim@studio.test",
+      fullName: "Karim Benali",
+      setupLink: `https://cinespace.test/welcome/${SETUP_TOKEN}`,
+      linkDays: 7,
+    });
+    expect(result).toMatchObject({
+      userId: NEW_USER,
+      email: "karim@studio.test",
+      workspace: { id: NEW_WS, name: "Benali Films", slug: "benali-films" },
+      setupLink: `https://cinespace.test/welcome/${SETUP_TOKEN}`,
+      emailSent: true,
+      emailError: null,
+      workspaceWarning: null,
+    });
+  });
+
+  it("audits the new user by id, without the link", async () => {
+    await createClientAccountAction(input);
+    const audit = lastAudit();
+    expect(audit).toMatchObject({
+      action: "user.create",
+      targetType: "user",
+      targetId: NEW_USER,
+      targetLabel: "karim@studio.test",
+      outcome: "succeeded",
+      reason: "Met at the Dubai film market, wants to try deliveries",
+      changes: { after: { email: "karim@studio.test", workspaceId: NEW_WS, setupEmail: "sent", setupLinkExpiresAt: SETUP_EXPIRES } },
+    });
+    expect(JSON.stringify(audit)).not.toContain(SETUP_TOKEN.split(".")[1]);
+  });
+
+  it("keeps the trigger's workspace name when no studio name is given", async () => {
+    const result = await createClientAccountAction({ ...input, studioName: "" });
+    expect(services.workspace.renameNewWorkspace).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ workspace: { name: "Karim Benali", slug: "karim-benali" } });
+  });
+
+  it("only shows the link when the admin sends it themselves", async () => {
+    const result = await createClientAccountAction({ ...input, sendEmail: false });
+    expect(services.notification.sendAccountSetupEmail).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ emailSent: false, emailError: null });
+    expect(lastAudit().changes.after.setupEmail).toBe("not requested");
+  });
+
+  it("still succeeds when the email or the rename fails: the account exists, and the link can be copied", async () => {
+    services.notification.sendAccountSetupEmail.mockResolvedValue({ success: false, error: "Provider rejected the sender" });
+    services.workspace.renameNewWorkspace.mockRejectedValue(new Error("slug taken"));
+    const result = await createClientAccountAction(input);
+    expect(result).toMatchObject({
+      success: true,
+      emailSent: false,
+      emailError: "Provider rejected the sender",
+      workspace: { name: "Karim Benali" },
+    });
+    expect(result.success && result.workspaceWarning).toMatch(/Karim Benali/);
+    expect(lastAudit().changes.after.setupEmail).toBe("failed");
+  });
+
+  it("refuses an address that already has an account, and audits the attempt", async () => {
+    userControls.createClientAccount.mockRejectedValue(new Error("An account with this email already exists."));
+    const result = await createClientAccountAction(input);
+    expect(result).toEqual({ success: false, error: "An account with this email already exists." });
+    expect(services.notification.sendAccountSetupEmail).not.toHaveBeenCalled();
+    expect(lastAudit()).toMatchObject({ action: "user.create", outcome: "failed", targetId: null });
+  });
+
+  it("checks the email address", async () => {
+    const result = await createClientAccountAction({ ...input, email: "not-an-email" });
+    expect(result.success).toBe(false);
+    expect(userControls.createClientAccount).not.toHaveBeenCalled();
+  });
+});
+
+describe("sendSetupLinkAction", () => {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  afterEach(() => {
+    process.env.NEXT_PUBLIC_APP_URL = appUrl;
+  });
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://cinespace.test";
+    readModel.getUser.mockResolvedValue({
+      id: NEW_USER,
+      email: "karim@studio.test",
+      fullName: "Karim Benali",
+      platformRole: "user",
+      bannedUntil: null,
+      lastSignInAt: null,
+      primaryWorkspace: { id: NEW_WS, name: "Benali Films", slug: "benali-films" },
+    });
+  });
+
+  it("replaces the link of an account nobody has signed in to, and emails it", async () => {
+    const result = await sendSetupLinkAction({ userId: NEW_USER, sendEmail: true, reason: "The first link expired" });
+    expect(result).toMatchObject({ success: true, setupLink: `https://cinespace.test/welcome/${SETUP_TOKEN}`, emailSent: true });
+    expect(userControls.issueSetupLink).toHaveBeenCalledWith(NEW_USER);
+    expect(services.notification.sendAccountSetupEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ workspaceId: NEW_WS, recipientEmail: "karim@studio.test" })
+    );
+    expect(lastAudit()).toMatchObject({ action: "user.send_setup_link", targetId: NEW_USER, outcome: "succeeded" });
+  });
+
+  it("refuses once they've signed in: they reset their password instead", async () => {
+    readModel.getUser.mockResolvedValue({ id: NEW_USER, email: "karim@studio.test", lastSignInAt: "2026-11-16T09:00:00Z" });
+    const result = await sendSetupLinkAction({ userId: NEW_USER, sendEmail: true, reason: "They lost the email" });
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/signed in before/);
+    expect(userControls.issueSetupLink).not.toHaveBeenCalled();
+  });
+
+  it("refuses for a banned account", async () => {
+    readModel.getUser.mockResolvedValue({
+      id: NEW_USER,
+      email: "karim@studio.test",
+      lastSignInAt: null,
+      bannedUntil: "2099-01-01T00:00:00Z",
+    });
+    const result = await sendSetupLinkAction({ userId: NEW_USER, sendEmail: true, reason: "They asked again" });
+    expect(result).toEqual({ success: false, error: "Lift their ban before sending a setup link." });
+  });
+});
+
