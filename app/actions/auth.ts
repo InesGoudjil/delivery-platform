@@ -6,6 +6,8 @@ import { headers } from 'next/headers';
 import { cookies } from 'next/headers';
 import { randomUUID } from 'crypto';
 import { getServerServices } from '@/core/server';
+import type { Workspace } from '@/core/entities/workspace';
+import { finishSignIn } from '@/core/security/finish-sign-in';
 import { sendServerEvent } from '@/lib/meta';
 import { captureSignup, captureLogin } from '@/lib/posthog';
 import {
@@ -16,6 +18,8 @@ import {
   changePasswordSchema,
 } from '@/lib/validations/auth';
 import { signOutCurrentSession, trackUserSession } from '@/lib/session-manager';
+import { safeReturnPath } from '@/lib/security/return-path';
+import { checkRateLimit, getClientIp, RATELIMIT_POLICIES, type RatelimitPolicy } from '@/lib/upstash';
 import { createScopedLogger } from '@/lib/logger';
 
 const log = createScopedLogger({ actionGroup: 'auth' });
@@ -23,6 +27,28 @@ const log = createScopedLogger({ actionGroup: 'auth' });
 export interface AuthState {
   error?: string | null;
   success?: string | null;
+}
+
+/** This request's public origin (scheme and host), for links in emails. */
+async function requestOrigin(): Promise<string> {
+  const headersList = await headers();
+  const host = headersList.get('x-forwarded-host') || headersList.get('host') || 'localhost:3000';
+  const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+  return `${protocol}://${host}`;
+}
+
+/**
+ * The message to show when `identifier` is over `policy`'s limit, or null. If the limiter itself
+ * fails, the request goes through: an outage shouldn't lock everyone out.
+ */
+async function rateLimitRefusal(policy: RatelimitPolicy, identifier: string[]): Promise<string | null> {
+  try {
+    const result = await checkRateLimit({ policy, identifier });
+    return result.success ? null : result.error || 'Too many attempts. Please try again later.';
+  } catch (err) {
+    log.warn({ err, policy: policy.keyPrefix }, 'Rate limiter unavailable; letting the request through');
+    return null;
+  }
 }
 
 export async function requestPasswordResetAction(
@@ -36,16 +62,19 @@ export async function requestPasswordResetAction(
     return { error: parsed.error.issues[0]?.message || 'Please enter a valid email address.' };
   }
 
+  // Per visitor, and per address, so nobody can flood someone's inbox with reset emails.
+  const refusal =
+    (await rateLimitRefusal(RATELIMIT_POLICIES.passwordReset, ['ip', await getClientIp()])) ??
+    (await rateLimitRefusal(RATELIMIT_POLICIES.passwordReset, ['email', parsed.data.email.toLowerCase()]));
+  if (refusal) return { error: refusal };
+
   try {
-    const headersList = await headers();
-    const host = headersList.get('x-forwarded-host') || headersList.get('host') || 'localhost:3000';
-    const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
-    const origin = `${protocol}://${host}`;
-
     const services = await getServerServices();
-    const redirectTo = `${origin}/api/auth/callback?next=/reset-password`;
+    // Only the old `{{ .ConfirmationURL }}` template uses this. The token_hash template links to
+    // /api/auth/confirm, which sends resets to /reset-password.
+    const redirectTo = `${await requestOrigin()}/api/auth/callback?next=/reset-password`;
 
-    const { error } = await services.auth.resetPasswordForEmail(email, redirectTo);
+    const { error } = await services.auth.resetPasswordForEmail(parsed.data.email, redirectTo);
     if (error) {
       return { error: error.message };
     }
@@ -78,6 +107,20 @@ export async function resetPasswordAction(
 
     if (error) {
       return { error: error.message };
+    }
+
+    // People reset a password when it's lost or stolen, so end every other login, as a password
+    // change does. This device stays signed in.
+    try {
+      const current = await services.auth.getSessionIdentity();
+      if (current) {
+        await trackUserSession(services.session, current, await headers());
+        await services.session.revokeAllOtherSessions(current);
+      }
+      const { error: othersError } = await services.auth.signOutOthers();
+      if (othersError) throw othersError;
+    } catch (sessionErr) {
+      log.warn({ err: sessionErr }, 'Password reset, but signing out other devices failed');
     }
 
     const user = await services.auth.getCurrentUser();
@@ -169,29 +212,42 @@ export async function changePasswordAction(
 export async function loginAction(prevState: AuthState | null, formData: FormData): Promise<AuthState> {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
+  // Set by the login form from `?redirect=` (an invite link, a page the visitor was sent from).
+  const requestedPath = safeReturnPath(formData.get('redirect') as string | null, '/');
 
   const parsed = loginSchema.safeParse({ email, password });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message || 'Please fill in all required fields.' };
   }
 
+  // Per visitor and address: slows down password guessing against one account from one place.
+  const refusal = await rateLimitRefusal(RATELIMIT_POLICIES.authLogin, [
+    await getClientIp(),
+    parsed.data.email.toLowerCase(),
+  ]);
+  if (refusal) return { error: refusal };
+
   try {
     const services = await getServerServices();
-    const { error } = await services.auth.signInWithPassword(email, password);
+    const { data, error } = await services.auth.signInWithPassword(email, password);
 
     if (error) {
       return { error: error.message };
     }
 
-    const user = await services.auth.getCurrentUser();
-    let workspace = null;
+    // Supabase Auth's response, not the session cookie: it decides whether the user has to
+    // enter a two-factor code next.
+    const user = data.user;
+    let redirectTo = requestedPath;
+    let workspace: Workspace | null = null;
     if (user) {
-      // Record the device behind the new login (keyed on its Supabase session id).
-      await trackUserSession(services.session, await services.auth.getSessionIdentity(), await headers()).catch(
-        (err) => log.warn({ err, userId: user.id }, 'Could not record the login session')
-      );
-      const userWorkspaces = await services.workspace.getUserWorkspaces(user.id);
-      workspace = userWorkspaces[0] || await services.workspace.getOrCreateWorkspace(user.id, user.user_metadata?.full_name || 'My Studio').catch(() => null);
+      // Records the device, finds the workspace and sends users with two-factor sign-in to /mfa.
+      ({ redirectTo, workspace } = await finishSignIn({
+        user,
+        identity: await services.auth.getSessionIdentity(),
+        headers: await headers(),
+        requestedPath,
+      }));
     }
 
     // Fire server-side Login (no client echo needed — Login is server-only
@@ -231,7 +287,7 @@ export async function loginAction(prevState: AuthState | null, formData: FormDat
     }
 
     revalidatePath('/', 'layout');
-    redirect(workspace?.slug ? `/${workspace.slug}` : '/');
+    redirect(redirectTo);
   } catch (err: any) {
     // Next.js redirect() works by throwing an internal NEXT_REDIRECT error. We must rethrow it.
     if (err?.message === 'NEXT_REDIRECT' || err?.digest?.startsWith('NEXT_REDIRECT')) {
@@ -246,6 +302,7 @@ export async function signupAction(prevState: AuthState | null, formData: FormDa
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
   const confirmPassword = formData.get('confirm-password') as string;
+  const requestedPath = safeReturnPath(formData.get('redirect') as string | null, '/');
 
   const parsed = signupSchema.safeParse({
     name,
@@ -258,29 +315,43 @@ export async function signupAction(prevState: AuthState | null, formData: FormDa
     return { error: parsed.error.issues[0]?.message || 'Please fill in all required fields.' };
   }
 
+  const refusal = await rateLimitRefusal(RATELIMIT_POLICIES.authSignup, [await getClientIp()]);
+  if (refusal) return { error: refusal };
+
   try {
     const services = await getServerServices();
-    const { data, error } = await services.auth.signUp(email, password, name);
+    // Where the confirmation link should take the person (an invite, say). The confirm route reads
+    // it from their metadata. Supabase's own link (the old template) gets it as a callback redirect.
+    const signupRedirect = requestedPath !== '/' ? requestedPath : undefined;
+    const emailRedirectTo = `${await requestOrigin()}/api/auth/callback${
+      signupRedirect ? `?redirect=${encodeURIComponent(signupRedirect)}` : ''
+    }`;
+    const { data, error } = await services.auth.signUp(email, password, name, { emailRedirectTo, signupRedirect });
 
     if (error) {
       return { error: error.message };
     }
 
-    if (data.session && data.user) {
-      // Record the device behind the new login (keyed on its Supabase session id).
-      await trackUserSession(services.session, await services.auth.getSessionIdentity(), await headers()).catch(
-        (err) => log.warn({ err, userId: data.user.id }, 'Could not record the login session')
-      );
-      const waitlistToken = formData.get('waitlist_token') as string | null;
-      if (waitlistToken) {
-        try {
-          await services.waitlist.claimInvite(waitlistToken);
-        } catch (e) {
-          log.warn({ err: e, waitlistToken }, "Could not claim waitlist token");
-        }
+    // Claimed now, whether or not the email still needs confirming. (The confirmation link may be
+    // opened on another device, without the token.) A sign-up for an address that already has an
+    // account comes back as a user without identities: nothing to claim.
+    const waitlistToken = formData.get('waitlist_token') as string | null;
+    if (waitlistToken && data.user && (data.user.identities?.length ?? 0) > 0) {
+      try {
+        await services.waitlist.claimInvite(waitlistToken);
+      } catch (e) {
+        log.warn({ err: e, waitlistToken }, "Could not claim waitlist token");
       }
+    }
 
-      const workspace = await services.workspace.getOrCreateWorkspace(data.user.id, name);
+    if (data.session && data.user) {
+      // Records the device and finds the workspace the sign-up trigger made.
+      const { redirectTo, workspace } = await finishSignIn({
+        user: data.user,
+        identity: await services.auth.getSessionIdentity(),
+        headers: await headers(),
+        requestedPath,
+      });
 
       // Fire server-side CompleteRegistration and hand the eventId to
       // the client via a short-lived cookie so the browser pixel can
@@ -329,15 +400,15 @@ export async function signupAction(prevState: AuthState | null, formData: FormDa
           userId: data.user.id,
           email: data.user.email || email,
           status: 'signed_in',
-          workspaceId: workspace.id,
-          workspaceSlug: workspace.slug,
+          workspaceId: workspace?.id,
+          workspaceSlug: workspace?.slug,
         });
       } catch (e) {
         // already logged
       }
 
       revalidatePath('/', 'layout');
-      redirect(`/${workspace.slug}`);
+      redirect(redirectTo);
     }
 
     // Email-pending branch: no session yet, but the account exists.
@@ -351,7 +422,7 @@ export async function signupAction(prevState: AuthState | null, formData: FormDa
     }
 
     return {
-      success: 'Account created! Please check your email to confirm your subscription.',
+      success: 'Account created! Check your email for the link to confirm your address.',
     };
   } catch (err: any) {
     if (err?.message === 'NEXT_REDIRECT' || err?.digest?.startsWith('NEXT_REDIRECT')) {

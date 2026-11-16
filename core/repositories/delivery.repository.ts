@@ -3,38 +3,43 @@ import { Database } from "@/types/database.types";
 import { Delivery, DeliveryStatus, CreateDeliveryDTO, UpdateDeliveryDTO, DeliverySummaryItem } from "@/core/entities/delivery";
 import { IDeliveryRepository } from "./i-delivery-repository";
 
+/** A deliveries row as a Delivery. Also used for deliveries embedded in other queries (share links). */
+export function mapDeliveryRow(row: any): Delivery {
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    clientId: row.client_id,
+    title: row.title,
+    description: row.description,
+    shareToken: row.share_token,
+    passcodeHash: row.passcode_hash,
+    status: row.status as DeliveryStatus,
+    isDownloadAllowed: row.is_download_allowed ?? false,
+    isCommentAllowed: row.is_comment_allowed ?? true,
+    notifyOnDownload: row.notify_on_download ?? false,
+    isWatermarked: row.is_watermarked ?? false,
+    appearance: row.appearance ?? null,
+    approvedAt: row.approved_at,
+    approvedByName: row.approved_by_name,
+    expiresAt: row.expires_at,
+    location: row.location,
+    deliveryDate: row.delivery_date,
+    siloStatus: row.silo_status ?? null,
+    siloArchivedAt: row.silo_archived_at ?? null,
+    siloRestoreRequestedAt: row.silo_restore_requested_at ?? null,
+    siloRestoreTier: row.silo_restore_tier ?? null,
+    siloRestoredAt: row.silo_restored_at ?? null,
+    siloMetadata: row.silo_metadata ?? null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 export class SupabaseDeliveryRepository implements IDeliveryRepository {
   constructor(private readonly supabase: SupabaseClient<Database>) {}
 
   private mapRowToEntity(row: any): Delivery {
-    return {
-      id: row.id,
-      workspaceId: row.workspace_id,
-      clientId: row.client_id,
-      title: row.title,
-      description: row.description,
-      shareToken: row.share_token,
-      passcodeHash: row.passcode_hash,
-      status: row.status as DeliveryStatus,
-      isDownloadAllowed: row.is_download_allowed ?? false,
-      isCommentAllowed: row.is_comment_allowed ?? true,
-      notifyOnDownload: row.notify_on_download ?? false,
-      isWatermarked: row.is_watermarked ?? false,
-      appearance: row.appearance ?? null,
-      approvedAt: row.approved_at,
-      approvedByName: row.approved_by_name,
-      expiresAt: row.expires_at,
-      location: row.location,
-      deliveryDate: row.delivery_date,
-      siloStatus: row.silo_status ?? null,
-      siloArchivedAt: row.silo_archived_at ?? null,
-      siloRestoreRequestedAt: row.silo_restore_requested_at ?? null,
-      siloRestoreTier: row.silo_restore_tier ?? null,
-      siloRestoredAt: row.silo_restored_at ?? null,
-      siloMetadata: row.silo_metadata ?? null,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
+    return mapDeliveryRow(row);
   }
 
   async findById(id: string): Promise<Delivery | null> {

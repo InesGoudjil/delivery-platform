@@ -10,6 +10,8 @@ import {
 } from '@/core/services/session.service';
 import { LEGACY_SESSION_COOKIE_NAME, trackUserSession } from '@/lib/session-manager';
 import { isAdminMfaRequired } from '@/lib/security/admin-mfa';
+import { safeReturnPath } from '@/lib/security/return-path';
+import { isAwaitingTwoFactor } from '@/lib/security/two-factor';
 
 export const SESSION_REVOKED_MESSAGE = 'This device was signed out of your account. Please sign in again.';
 export const SESSION_UNVERIFIED_MESSAGE = 'Your session could not be verified. Please sign in again.';
@@ -21,6 +23,28 @@ interface PendingCookie {
 }
 
 type SessionStatus = 'active' | 'revoked' | 'unknown';
+
+/** Workspace pages (/[workspaceSlug]/[section]): signed-out visitors are sent to /login. */
+const WORKSPACE_ROUTE =
+  /^\/([^/]+)\/(deliveries|portfolio|settings|storage|billing|members|notifications|security|projects|docs|help)/;
+
+/**
+ * Pages only a fully signed-in user can use. A session awaiting its two-factor code is sent from
+ * them to /mfa. /login and /signup are on the list because the user is already signed in there;
+ * /mfa has a sign-out button if they'd rather use another account.
+ */
+function needsFinishedSignIn(pathname: string): boolean {
+  return (
+    WORKSPACE_ROUTE.test(pathname) ||
+    pathname === '/admin' ||
+    pathname.startsWith('/admin/') ||
+    pathname.startsWith('/invite/') ||
+    pathname === '/new-workspace' ||
+    pathname === '/reset-password' ||
+    pathname === '/login' ||
+    pathname === '/signup'
+  );
+}
 
 /** Supabase's auth cookie name (supabase-js derives it from the project URL), chunks are `<key>.N`. */
 function authCookieKey(supabaseUrl: string): string | null {
@@ -187,6 +211,17 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
+  // 1.6 Two-factor sign-in (lib/security/two-factor.ts): until a user with an authenticator enters
+  //     their code, pages that need a signed-in user send them to /mfa. Public pages see them as
+  //     signed out. /mfa, sign-out and the auth routes stay reachable.
+  if (user && isAwaitingTwoFactor(claims) && needsFinishedSignIn(pathname)) {
+    const returnTo =
+      pathname === '/login' || pathname === '/signup'
+        ? safeReturnPath(request.nextUrl.searchParams.get('redirect'), '/')
+        : pathname + request.nextUrl.search;
+    return redirectTo('/mfa', `redirect=${encodeURIComponent(returnTo)}`);
+  }
+
   // 2. AUTH PAGES: If already logged in, redirect away from /login and /signup to home
   if (user && (pathname === '/login' || pathname === '/signup')) {
     return redirectTo('/', request.nextUrl.search);
@@ -218,10 +253,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // 4. WORKSPACE ROUTE GUARD (/[workspaceSlug]/[section])
-  const workspacePattern =
-    /^\/([^/]+)\/(deliveries|portfolio|settings|storage|billing|members|notifications|security|projects|docs|help)/;
-
-  if (!user && workspacePattern.test(pathname)) {
+  if (!user && WORKSPACE_ROUTE.test(pathname)) {
     return redirectTo('/login', `redirect=${encodeURIComponent(pathname)}`);
   }
 

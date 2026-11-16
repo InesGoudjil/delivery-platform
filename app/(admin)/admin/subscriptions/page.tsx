@@ -45,7 +45,7 @@ export default async function AdminSubscriptionsPage() {
       features.client_links === -1
         ? "Unlimited links"
         : typeof features.client_links === "number"
-          ? `${features.client_links} active links`
+          ? `${features.client_links} active rooms`
           : "Links not set";
     return {
       id: plan.id,

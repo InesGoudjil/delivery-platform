@@ -33,6 +33,7 @@ import {
 } from "@/app/actions/deliveries";
 import { toast } from "sonner";
 import { generatePassphrase, passcodeProblem } from "@/lib/security/passphrase";
+import { EXTENDED_LINK_EXPIRY_MESSAGE, hasExtendedLinkExpiry } from "@/lib/security/link-expiry";
 
 interface ShareLinkDialogProps {
   isOpen: boolean;
@@ -48,6 +49,10 @@ interface ShareLinkDialogProps {
   initialDownloadAllowed: boolean;
   initialCommentAllowed?: boolean;
   initialExpiresAt?: string | null;
+  /** The saved "notify me when the client downloads" setting. */
+  initialNotifyOnDownload?: boolean;
+  /** Admins and owners change the link's settings; other members can only copy and send it. */
+  canManage?: boolean;
   onShareTokenRegenerated?: (newToken: string) => void;
   onDownloadAllowedChange?: (allowed: boolean) => void;
   onCommentAllowedChange?: (allowed: boolean) => void;
@@ -56,22 +61,32 @@ interface ShareLinkDialogProps {
   workspaceSlug?: string;
 }
 
-function getInitialExpiryOption(expiresAt?: string | null): "24 hours" | "7 days" | "30 days" | "Never" {
-  if (!expiresAt) return "Never";
-  const diffHours = (new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60);
-  if (diffHours <= 0) return "24 hours";
-  if (diffHours <= 36) return "24 hours";
-  if (diffHours <= 8 * 24) return "7 days";
-  return "30 days";
+type ExpiryOption = "24 hours" | "7 days" | "30 days" | "90 days" | "Never";
+
+/** Each option counts from now. `extended`: needs extended link expiry (Pro and up). */
+const EXPIRY_OPTIONS: ReadonlyArray<{ option: ExpiryOption; hours: number | null; extended: boolean }> = [
+  { option: "24 hours", hours: 24, extended: false },
+  { option: "7 days", hours: 7 * 24, extended: false },
+  { option: "30 days", hours: 30 * 24, extended: false },
+  { option: "90 days", hours: 90 * 24, extended: true },
+  { option: "Never", hours: null, extended: true },
+];
+
+/**
+ * The option to show as picked when the window opens. A saved expiry shows as its date, not as
+ * a guess at the option that made it (time has passed since); only "Never" always matches.
+ */
+function initialExpiryOption(expiresAt?: string | null): ExpiryOption | null {
+  return expiresAt ? null : "Never";
 }
 
-function calculateExpiresAt(opt: "24 hours" | "7 days" | "30 days" | "Never"): string | null {
-  if (opt === "Never") return null;
-  const now = Date.now();
-  if (opt === "24 hours") return new Date(now + 24 * 60 * 60 * 1000).toISOString();
-  if (opt === "7 days") return new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString();
-  if (opt === "30 days") return new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString();
-  return null;
+function calculateExpiresAt(opt: ExpiryOption): string | null {
+  const hours = EXPIRY_OPTIONS.find((o) => o.option === opt)?.hours ?? null;
+  return hours === null ? null : new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+}
+
+function daysLabel(days: number): string {
+  return `${days} day${days === 1 ? "" : "s"}`;
 }
 
 export function ShareLinkDialog({
@@ -87,6 +102,8 @@ export function ShareLinkDialog({
   initialDownloadAllowed,
   initialCommentAllowed = true,
   initialExpiresAt,
+  initialNotifyOnDownload = false,
+  canManage = true,
   onShareTokenRegenerated,
   onDownloadAllowedChange,
   onCommentAllowedChange,
@@ -100,13 +117,11 @@ export function ShareLinkDialog({
   }, [shareToken]);
 
   const [expiresAtState, setExpiresAtState] = useState<string | null>(initialExpiresAt ?? null);
-  const [shareExpires, setShareExpires] = useState<"24 hours" | "7 days" | "30 days" | "Never">(
-    getInitialExpiryOption(initialExpiresAt)
-  );
+  const [shareExpires, setShareExpires] = useState<ExpiryOption | null>(initialExpiryOption(initialExpiresAt));
 
   useEffect(() => {
     setExpiresAtState(initialExpiresAt ?? null);
-    setShareExpires(getInitialExpiryOption(initialExpiresAt));
+    setShareExpires(initialExpiryOption(initialExpiresAt));
   }, [initialExpiresAt]);
 
   const [isUpdatingExpiry, setIsUpdatingExpiry] = useState(false);
@@ -118,6 +133,7 @@ export function ShareLinkDialog({
   const canPasswordProtect = entitlements?.can.passwordProtect ?? (features ? Boolean(features.password_protected) : false);
   const canWhatsApp = entitlements?.can.sendWhatsApp ?? (features ? Boolean(features.whatsapp_delivery) : false);
   const canNotifyDownloads = entitlements?.can.receiveDownloadNotifications ?? (features ? Boolean(features.download_notifications) : false);
+  const canExtendExpiry = entitlements?.can.extendedLinkExpiry ?? hasExtendedLinkExpiry(features);
 
   const [sharePassphrase, setSharePassphrase] = useState(initialPasscodeProtected);
   const [passphraseValue, setPassphraseValue] = useState("");
@@ -134,8 +150,12 @@ export function ShareLinkDialog({
   const [shareDownloads, setShareDownloads] = useState(initialDownloadAllowed);
   const [isUpdatingComments, setIsUpdatingComments] = useState(false);
   const [isUpdatingDownloads, setIsUpdatingDownloads] = useState(false);
-  const [notifyComments, setNotifyComments] = useState(true);
-  const [notifyDownloads, setNotifyDownloads] = useState(true);
+  const [notifyDownloads, setNotifyDownloads] = useState(initialNotifyOnDownload);
+  const [isUpdatingNotifyDownloads, setIsUpdatingNotifyDownloads] = useState(false);
+
+  useEffect(() => {
+    setNotifyDownloads(initialNotifyOnDownload);
+  }, [initialNotifyOnDownload]);
 
   useEffect(() => {
     setShareComments(initialCommentAllowed ?? true);
@@ -193,28 +213,60 @@ export function ShareLinkDialog({
     }
   };
 
-  const handleSelectExpiry = async (opt: "24 hours" | "7 days" | "30 days" | "Never") => {
-    if ((opt === "30 days" || opt === "Never") && !canPasswordProtect) {
-      toast.error("Extended link expiration (30 days & Never Expire) is available on Pro and Studio plans. Upgrade to unlock.");
+  const handleSelectExpiry = async (opt: ExpiryOption) => {
+    if (!canManage) return;
+    if (EXPIRY_OPTIONS.find((o) => o.option === opt)?.extended && !canExtendExpiry) {
+      toast.error(`${EXTENDED_LINK_EXPIRY_MESSAGE} Upgrade to unlock.`);
       return;
     }
-    setShareExpires(opt);
+    const previousOption = shareExpires;
+    const previousExpiresAt = expiresAtState;
     const newExpiresAt = calculateExpiresAt(opt);
+    setShareExpires(opt);
     setExpiresAtState(newExpiresAt);
     setIsUpdatingExpiry(true);
+    const restore = () => {
+      setShareExpires(previousOption);
+      setExpiresAtState(previousExpiresAt);
+    };
     try {
       const res = await updateDeliverySecurityAction(projectId, {
         expiresAt: newExpiresAt,
       });
       if (res.success) {
-        triggerToast(opt === "Never" ? "Link set to never expire" : `Link expiration updated to ${opt}`);
+        triggerToast(opt === "Never" ? "Link set to never expire" : `Link now expires in ${opt}`);
       } else {
+        restore();
         toast.error(res.error || "Failed to update link expiration.");
       }
     } catch (err: any) {
+      restore();
       toast.error(err.message || "Failed to update link expiration.");
     } finally {
       setIsUpdatingExpiry(false);
+    }
+  };
+
+  const handleToggleNotifyDownloads = async (val: boolean) => {
+    if (!canNotifyDownloads) {
+      toast.error("Download notifications are available on Pro and Studio plans.");
+      return;
+    }
+    setNotifyDownloads(val);
+    setIsUpdatingNotifyDownloads(true);
+    try {
+      const res = await updateDeliverySecurityAction(projectId, { notifyOnDownload: val });
+      if (res.success) {
+        triggerToast(val ? "You'll hear when the client downloads files" : "Download alerts turned off for this link");
+      } else {
+        setNotifyDownloads(!val);
+        toast.error(res.error || "Failed to update download alerts.");
+      }
+    } catch (err: unknown) {
+      setNotifyDownloads(!val);
+      toast.error(err instanceof Error && err.message ? err.message : "Failed to update download alerts.");
+    } finally {
+      setIsUpdatingNotifyDownloads(false);
     }
   };
 
@@ -363,18 +415,12 @@ export function ShareLinkDialog({
     }
     setIsSavingSecurity(true);
     try {
-      const currentExpiryDate = calculateExpiresAt(shareExpires);
+      // Only the passcode. The other settings save as soon as they change, and sending the
+      // expiry again would restart it from now.
       const res = await updateDeliverySecurityAction(projectId, {
         passphrase: sharePassphrase ? passphraseValue.trim() : null,
-        isDownloadAllowed: shareDownloads,
-        isCommentAllowed: shareComments,
-        notifyOnDownload: canNotifyDownloads ? notifyDownloads : false,
-        expiresAt: currentExpiryDate,
       });
       if (res.success) {
-        onDownloadAllowedChange?.(shareDownloads);
-        onCommentAllowedChange?.(shareComments);
-        setExpiresAtState(currentExpiryDate);
         setIsPasscodeSaved(Boolean(res.passcodeProtected));
         setVerificationStatus("valid");
         setVerificationMsg("Passphrase & security verified with delivery token!");
@@ -455,7 +501,7 @@ export function ShareLinkDialog({
           <div className="flex items-center gap-2 text-muted-foreground truncate min-w-0 flex-1">
             <Link2 className="size-4 shrink-0 text-primary" />
             <TypographySpan className=" text-white truncate text-[11px]">
-              {typeof window !== "undefined" ? window.location.host : "cinespace.film"}{shareUrl}
+              {typeof window !== "undefined" ? window.location.host : "cinespace.pro"}{shareUrl}
             </TypographySpan>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -464,7 +510,7 @@ export function ShareLinkDialog({
               variant="ghost"
               size="icon-xs"
               onClick={handleRegenerateToken}
-              disabled={isRegeneratingToken}
+              disabled={isRegeneratingToken || !canManage}
               className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-white transition-colors cursor-pointer"
               title="Regenerate link (revokes the previous link immediately)"
             >
@@ -481,6 +527,15 @@ export function ShareLinkDialog({
             )}
           </div>
         </div>
+
+        {!canManage && (
+          <div className="flex items-start gap-2 text-[11px] text-neutral-300 bg-white/5 border border-white/10 px-3 py-2 rounded-xl">
+            <Lock className="size-3.5 text-muted-foreground shrink-0 mt-0.5" />
+            <TypographySpan>
+              Only workspace admins can change this link&apos;s settings. You can still copy it and send it.
+            </TypographySpan>
+          </div>
+        )}
 
         {/* SECURITY */}
         <div className="space-y-3">
@@ -507,7 +562,7 @@ export function ShareLinkDialog({
               )}
             </div>
             <Switch
-              disabled={!canPasswordProtect}
+              disabled={!canPasswordProtect || !canManage}
               checked={sharePassphrase}
               onCheckedChange={(val) => handleTogglePassphrase(val)}
               aria-label="Toggle passphrase protection"
@@ -537,6 +592,7 @@ export function ShareLinkDialog({
                   type={showPassphraseText ? "text" : "password"}
                   placeholder="Enter or generate passphrase..."
                   value={passphraseValue}
+                  disabled={!canManage}
                   onChange={(e) => {
                     setPassphraseValue(e.target.value);
                     setIsPasscodeSaved(false);
@@ -561,6 +617,7 @@ export function ShareLinkDialog({
                     variant="ghost"
                     size="icon-xs"
                     onClick={generateRandomPassphrase}
+                    disabled={!canManage}
                     className="p-1 rounded-lg hover:bg-white/10 text-primary hover:text-primary/80 transition-colors cursor-pointer"
                     title="Generate memorable passphrase"
                   >
@@ -603,7 +660,7 @@ export function ShareLinkDialog({
                 <Button
                   type="button"
                   onClick={handleSaveSecuritySettings}
-                  disabled={isSavingSecurity || !passphraseValue.trim()}
+                  disabled={isSavingSecurity || !passphraseValue.trim() || !canManage}
                   className="flex-1 bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground font-extrabold text-[11px] py-2 px-3 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-primary/10 h-auto"
                 >
                   {isSavingSecurity ? (
@@ -618,7 +675,7 @@ export function ShareLinkDialog({
                   type="button"
                   variant="outline"
                   onClick={handleVerifyPassphraseWithToken}
-                  disabled={isVerifyingSecurity || !passphraseValue.trim()}
+                  disabled={isVerifyingSecurity || !passphraseValue.trim() || !canManage}
                   className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white  text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1.5 border border-white/10 h-auto"
                   title="Test verification between token and passphrase"
                 >
@@ -632,7 +689,7 @@ export function ShareLinkDialog({
               </div>
 
               <TypographyMuted className="text-[10px] text-muted-foreground font-sans leading-relaxed">
-                Passphrases are cryptographically hashed (SHA-256) and verified against the delivery share token before client access is granted.
+                Passcodes are stored as a one-way hash, so nobody can read this one back once you close this window. Copy it before you go.
               </TypographyMuted>
             </div>
           )}
@@ -650,7 +707,7 @@ export function ShareLinkDialog({
                 <TypographySpan>Comments</TypographySpan>
               </div>
               <Switch
-                disabled={isUpdatingComments}
+                disabled={isUpdatingComments || !canManage}
                 checked={shareComments}
                 onCheckedChange={handleToggleComments}
                 aria-label="Allow comments"
@@ -663,7 +720,7 @@ export function ShareLinkDialog({
                 <TypographySpan>Downloads</TypographySpan>
               </div>
               <Switch
-                disabled={isUpdatingDownloads}
+                disabled={isUpdatingDownloads || !canManage}
                 checked={shareDownloads}
                 onCheckedChange={handleToggleDownloads}
                 aria-label="Allow downloads"
@@ -679,12 +736,12 @@ export function ShareLinkDialog({
               <TypographySpan className="text-[10px]  text-muted-foreground uppercase tracking-widest block">
                 LINK EXPIRES
               </TypographySpan>
-              {!canPasswordProtect && (
+              {!canExtendExpiry && (
                 <Link
                   href={workspaceSlug ? `/${workspaceSlug}/subscription` : "#"}
                   className="text-[10px] text-primary hover:underline inline-block mt-0.5"
                 >
-                  Upgrade to Pro for 30-day &amp; permanent links
+                  Upgrade to Pro for 90-day &amp; permanent links
                 </Link>
               )}
             </div>
@@ -709,11 +766,10 @@ export function ShareLinkDialog({
                 <Clock className="size-3.5 text-emerald-400 shrink-0" />
                 <TypographySpan>
                   Active · Expires in{" "}
-                  {Math.max(
-                    1,
-                    Math.ceil((new Date(expiresAtState).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                  {daysLabel(
+                    Math.max(1, Math.ceil((new Date(expiresAtState).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
                   )}{" "}
-                  days ({new Date(expiresAtState).toLocaleDateString()})
+                  ({new Date(expiresAtState).toLocaleDateString()})
                 </TypographySpan>
               </div>
             )
@@ -724,23 +780,23 @@ export function ShareLinkDialog({
             </div>
           )}
 
-          <div className="grid grid-cols-4 gap-1 bg-black/60 p-1 rounded-2xl border border-white/10 text-xs">
-            {(["24 hours", "7 days", "30 days", "Never"] as const).map((opt) => {
-              const isLocked = (opt === "30 days" || opt === "Never") && !canPasswordProtect;
+          <div className="grid grid-cols-5 gap-1 bg-black/60 p-1 rounded-2xl border border-white/10 text-xs">
+            {EXPIRY_OPTIONS.map(({ option: opt, extended }) => {
+              const isLocked = extended && !canExtendExpiry;
               return (
                 <Button
                   key={opt}
                   type="button"
                   variant={shareExpires === opt ? "default" : "ghost"}
                   size="sm"
-                  disabled={isUpdatingExpiry}
+                  disabled={isUpdatingExpiry || !canManage}
                   onClick={() => handleSelectExpiry(opt)}
-                  className={`py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer text-center h-auto ${
+                  className={`py-2 px-1 rounded-xl text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer text-center h-auto ${
                     shareExpires === opt
                       ? "bg-primary text-primary-foreground hover:bg-primary/90"
                       : "text-muted-foreground hover:text-white hover:bg-white/5"
                   } ${isLocked ? "opacity-70" : ""}`}
-                  title={isLocked ? "30 days & permanent links require Pro or Studio" : undefined}
+                  title={isLocked ? "90-day and permanent links need Pro or Studio" : undefined}
                 >
                   <span className="flex items-center justify-center gap-1">
                     {opt}
@@ -750,6 +806,9 @@ export function ShareLinkDialog({
               );
             })}
           </div>
+          <TypographyMuted className="text-[10px] text-muted-foreground">
+            Each option counts from now.
+          </TypographyMuted>
         </div>
 
         {/* NOTIFY ME WHEN THE CLIENT... */}
@@ -763,11 +822,14 @@ export function ShareLinkDialog({
                 <MessageCircle className="size-4 text-muted-foreground" />
                 <TypographySpan>Leaves a comment</TypographySpan>
               </div>
-              <Switch
-                checked={notifyComments}
-                onCheckedChange={setNotifyComments}
-                aria-label="Notify on comments"
-              />
+              {/* Comment emails are a workspace setting: there's no per-delivery switch behind this row. */}
+              <Link
+                href={workspaceSlug ? `/${workspaceSlug}/notifications` : "#"}
+                className="text-[11px] text-primary hover:underline shrink-0"
+                title="Comment emails are set for the whole workspace"
+              >
+                Set in Notifications
+              </Link>
             </div>
 
             <div className="flex items-center justify-between">
@@ -781,15 +843,9 @@ export function ShareLinkDialog({
                 </div>
               </div>
               <Switch
-                disabled={!canNotifyDownloads}
+                disabled={!canNotifyDownloads || !canManage || isUpdatingNotifyDownloads}
                 checked={canNotifyDownloads && notifyDownloads}
-                onCheckedChange={(val) => {
-                  if (!canNotifyDownloads) {
-                    toast.error("Download notifications are available on Pro and Studio plans.");
-                    return;
-                  }
-                  setNotifyDownloads(val);
-                }}
+                onCheckedChange={handleToggleNotifyDownloads}
                 aria-label="Notify on downloads"
               />
             </div>

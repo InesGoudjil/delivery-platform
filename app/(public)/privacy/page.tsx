@@ -90,10 +90,10 @@ export default async function PrivacyPage() {
         <p>
           Depending on where you live, you may have rights to access, correct, delete, or port your personal data, restrict or object to processing, and lodge a complaint with a supervisory authority. To exercise any of these rights, contact{" "}
           <a
-            href="mailto:hello@cinespace.film"
+            href="mailto:contact@cinespace.pro"
             className="text-white hover:text-primary transition-colors underline underline-offset-2"
           >
-            hello@cinespace.film
+            contact@cinespace.pro
           </a>{" "}
           — we verify all requests before acting on them.
         </p>
@@ -129,10 +129,10 @@ export default async function PrivacyPage() {
         <p>
           For privacy questions or requests, contact CineSpace at{" "}
           <a
-            href="mailto:hello@cinespace.film"
+            href="mailto:contact@cinespace.pro"
             className="text-white hover:text-primary transition-colors underline underline-offset-2"
           >
-            hello@cinespace.film
+            contact@cinespace.pro
           </a>
           .
         </p>

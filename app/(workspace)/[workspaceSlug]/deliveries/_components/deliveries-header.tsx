@@ -50,7 +50,7 @@ export function DeliveriesHeader({
       <div className="flex items-center gap-3">
         {!isUnlimited && (
           <TypographySpan className="text-xs text-muted-foreground hidden sm:inline px-3 py-1.5 rounded-full border border-border bg-card/60">
-            {activeCount} / {clientLinksLimit} active links
+            {activeCount} / {clientLinksLimit} active rooms
           </TypographySpan>
         )}
         <Button

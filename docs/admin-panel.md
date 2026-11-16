@@ -196,7 +196,8 @@ The admin panel needs `SUPABASE_SERVICE_ROLE_KEY`. It never falls back to the an
   3. Build lists with `AdminDataTable`, with their URL parsers in `app/(admin)/_lib/search-params.ts`.
   4. Put reads in `core/admin/read-model.ts`.
 - **Slow pages.** Each admin query is timed. Over 300 ms it logs a warning with the request ID, so
-  slow pages show up in the logs.
+  slow pages show up in the logs. The rest of the app logs its queries the same way
+  ([query-logs.md](query-logs.md)).
 
 ## When something looks wrong
 

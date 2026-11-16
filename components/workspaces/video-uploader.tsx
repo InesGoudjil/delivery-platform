@@ -15,6 +15,8 @@ import { TypographyH3, TypographyMuted, TypographySpan } from "@/components/ui/t
 import {
   requestAssetUploadAction,
   confirmUploadCompletedAction,
+  requestDeliveryCoverUploadAction,
+  confirmDeliveryCoverUploadAction,
 } from "@/app/actions/upload";
 import { createUploadProgressToast } from "@/lib/upload-toast";
 import { inspectMediaFile } from "@/lib/media-inspector";
@@ -22,6 +24,7 @@ import { aspectRatioValueFromDimensions } from "@/lib/media-ratios";
 import {
   UPLOAD_ACCEPT,
   assetTypeForFile,
+  checkCoverFile,
   checkUploadFile,
   type UploadPlacement,
 } from "@/lib/validations/upload";
@@ -86,6 +89,119 @@ export const formatBytes = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
+/** Where the server said to send one file (a DirectUploadResult from the storage provider). */
+export interface DirectUploadTarget {
+  uploadUrl: string;
+  uploadType: "direct_post" | "tus_chunked" | "presigned_put";
+  headers?: Record<string, string>;
+}
+
+/**
+ * Sends a file straight to storage: a Cloudflare R2 presigned PUT (signed for exactly these
+ * headers and this file's size), or a POST to the local mock upload route.
+ */
+export function sendDirectUpload(
+  { uploadUrl, uploadType, headers }: DirectUploadTarget,
+  file: File,
+  {
+    onProgress,
+    onXhrCreated,
+  }: {
+    onProgress?: (percent: number, loaded: number, total: number) => void;
+    onXhrCreated?: (xhr: XMLHttpRequest) => void;
+  } = {}
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    onXhrCreated?.(xhr);
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        onProgress?.(percent, event.loaded, event.total);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`Direct upload failed with status ${xhr.status}`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during direct upload."));
+    xhr.onabort = () => reject(new Error("Upload cancelled by user."));
+
+    if (uploadType === "presigned_put") {
+      xhr.open("PUT", uploadUrl, true);
+      // The URL is signed for exactly these headers (Content-Type) and this file's size.
+      if (headers) {
+        Object.entries(headers).forEach(([k, v]) => {
+          if (!BROWSER_CONTROLLED_HEADERS.has(k.toLowerCase())) xhr.setRequestHeader(k, v);
+        });
+      }
+      xhr.send(file);
+    } else {
+      xhr.open("POST", uploadUrl, true);
+      const formData = new FormData();
+      formData.append("file", file);
+      xhr.send(formData);
+    }
+  });
+}
+
+export interface DeliveryCoverUploadParams {
+  deliveryId: string;
+  file: File;
+  onProgress?: (percent: number, loaded: number, total: number) => void;
+  onStatusChange?: (statusText: string) => void;
+  onXhrCreated?: (xhr: XMLHttpRequest) => void;
+}
+
+/**
+ * Uploads a delivery's cover image the same way as its files: the server checks the image and
+ * hands out a direct upload URL, the browser sends the file to Cloudflare, and the server
+ * checks the stored image before the delivery uses it. Returns a URL to show the new cover
+ * (null when it couldn't be signed; the page shows the cover after a reload then).
+ */
+export async function directUploadDeliveryCover({
+  deliveryId,
+  file,
+  onProgress,
+  onStatusChange,
+  onXhrCreated,
+}: DeliveryCoverUploadParams): Promise<{ coverUrl: string | null }> {
+  // Same rules the server enforces; fail before uploading anything.
+  const check = checkCoverFile({ filename: file.name, declaredType: file.type, sizeBytes: file.size });
+  if (!check.ok) {
+    throw new Error(check.error);
+  }
+
+  onStatusChange?.("Requesting direct upload token...");
+  const initRes = await requestDeliveryCoverUploadAction({
+    deliveryId,
+    filename: file.name,
+    fileSizeBytes: file.size,
+    contentType: file.type || undefined,
+  });
+  if (!initRes.success || !initRes.directUpload || !initRes.location) {
+    throw new Error(initRes.error || "Couldn't start the cover upload.");
+  }
+
+  onStatusChange?.("Uploading directly to Cloudflare...");
+  await sendDirectUpload(initRes.directUpload, file, { onProgress, onXhrCreated });
+
+  onStatusChange?.("Checking the uploaded cover...");
+  const confirmRes = await confirmDeliveryCoverUploadAction({ deliveryId, location: initRes.location });
+  if (!confirmRes.success) {
+    throw new Error(confirmRes.error || "Couldn't save the cover.");
+  }
+
+  onProgress?.(100, file.size, file.size);
+  return { coverUrl: confirmRes.coverUrl ?? null };
+}
+
 export async function directUploadMediaFile({
   workspaceId,
   projectId,
@@ -145,50 +261,12 @@ export async function directUploadMediaFile({
     throw new Error(initRes.error || "Failed to initialize upload.");
   }
 
-  const { uploadUrl, uploadType, headers } = initRes.directUpload;
   const assetVersionId = initRes.assetVersion.id;
 
-  onStatusChange?.(`Uploading directly (${uploadType})...`);
+  onStatusChange?.(`Uploading directly (${initRes.directUpload.uploadType})...`);
 
   // 2. Perform direct upload from client to Cloudflare (or mock)
-  await new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    onXhrCreated?.(xhr);
-
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        const percent = Math.round((event.loaded / event.total) * 100);
-        onProgress?.(percent, event.loaded, event.total);
-      }
-    };
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
-      } else {
-        reject(new Error(`Direct upload failed with status ${xhr.status}`));
-      }
-    };
-
-    xhr.onerror = () => reject(new Error("Network error during direct upload."));
-    xhr.onabort = () => reject(new Error("Upload cancelled by user."));
-
-    if (uploadType === "presigned_put") {
-      xhr.open("PUT", uploadUrl, true);
-      // The URL is signed for exactly these headers (Content-Type) and this file's size.
-      if (headers) {
-        Object.entries(headers).forEach(([k, v]) => {
-          if (!BROWSER_CONTROLLED_HEADERS.has(k.toLowerCase())) xhr.setRequestHeader(k, v);
-        });
-      }
-      xhr.send(file);
-    } else {
-      xhr.open("POST", uploadUrl, true);
-      const formData = new FormData();
-      formData.append("file", file);
-      xhr.send(formData);
-    }
-  });
+  await sendDirectUpload(initRes.directUpload, file, { onProgress, onXhrCreated });
 
   // 3. Confirm upload on backend and fetch playback & transcoding records
   onStatusChange?.("Finalizing transcoding and storage records...");

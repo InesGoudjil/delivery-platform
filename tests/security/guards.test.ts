@@ -4,6 +4,7 @@ import {
   requireWorkspaceMember,
   requireDeliveryAccess,
   requirePlatformAdmin,
+  getPlatformAdminStatus,
 } from "@/core/security/guards";
 import * as serverModule from "@/core/server";
 
@@ -21,6 +22,7 @@ describe("core/security/guards", () => {
       auth: {
         getCurrentUser: vi.fn().mockResolvedValue(mockUser),
         getAssuranceLevel: vi.fn().mockResolvedValue("aal2"),
+        isAwaitingTwoFactor: vi.fn().mockResolvedValue(false),
       },
       workspace: {
         getWorkspaceById: vi.fn().mockResolvedValue(mockWorkspace),
@@ -50,6 +52,16 @@ describe("core/security/guards", () => {
       mockServices.auth.getCurrentUser.mockResolvedValue(null);
       mockServices.profile = { getProfile: vi.fn() };
       await expect(requirePlatformAdmin()).rejects.toThrow("Unauthorized");
+      expect(mockServices.profile.getProfile).not.toHaveBeenCalled();
+    });
+
+    it("sends a session that is waiting for its two-factor code to the code, not to sign-in", async () => {
+      // getCurrentUser() treats that session as signed out (AuthService).
+      mockServices.auth.getCurrentUser.mockResolvedValue(null);
+      mockServices.auth.isAwaitingTwoFactor.mockResolvedValue(true);
+      mockServices.profile = { getProfile: vi.fn() };
+      await expect(getPlatformAdminStatus()).resolves.toEqual({ kind: "mfa-required", enrolled: true });
+      await expect(requirePlatformAdmin()).rejects.toThrow("Two-factor verification is required");
       expect(mockServices.profile.getProfile).not.toHaveBeenCalled();
     });
 

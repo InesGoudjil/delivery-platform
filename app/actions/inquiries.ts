@@ -15,8 +15,15 @@ import {
   type SubmitPartnershipInput,
 } from "@/lib/validations";
 import { createScopedLogger } from "@/lib/logger";
+import { configuredAppOrigin } from "@/lib/app-origin";
 
 const log = createScopedLogger({ actionGroup: "inquiries" });
+
+/** The portfolio's address on this app (NEXT_PUBLIC_APP_URL), for the link in the lead email. */
+function portfolioUrlFor(handle: string): string | undefined {
+  const origin = configuredAppOrigin();
+  return origin ? `${origin}/p/${encodeURIComponent(handle)}` : undefined;
+}
 
 /**
  * Server Action: Submit a client lead/inquiry from a filmmaker's public portfolio.
@@ -89,13 +96,14 @@ export async function submitPortfolioInquiryAction(input: SubmitPortfolioInquiry
     });
 
     // 4. Send notification email via Zoho ZeptoMail
-    const recipient = ownerEmail || process.env.CONTACT_EMAIL || "filmmaker@cinespace.film";
+    const recipient = ownerEmail || process.env.CONTACT_EMAIL || "contact@cinespace.pro";
     const { subject, html } = renderPortfolioLeadEmail({
       clientName: cleanName,
       clientContact: cleanContact,
       projectDetails: cleanDetails,
       filmmakerName,
       portfolioHandle: cleanHandle,
+      portfolioUrl: portfolioUrlFor(cleanHandle),
       brandName: filmmakerName,
     });
 
@@ -153,7 +161,7 @@ export async function submitContactFormAction(input: SubmitContactFormInput) {
       process.env.CONTACT_EMAIL ||
       process.env.ZEPTOMAIL_FROM_EMAIL ||
       process.env.RESEND_FROM_EMAIL ||
-      "contact@cinespace.film";
+      "contact@cinespace.pro";
     await core.services.email.sendEmail({
       to: contactRecipient,
       subject,
@@ -217,7 +225,7 @@ export async function submitPartnershipAction(input: SubmitPartnershipInput) {
       process.env.CONTACT_EMAIL ||
       process.env.ZEPTOMAIL_FROM_EMAIL ||
       process.env.RESEND_FROM_EMAIL ||
-      "contact@cinespace.film";
+      "contact@cinespace.pro";
     await core.services.email.sendEmail({
       to: contactRecipient,
       subject,

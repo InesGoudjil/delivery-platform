@@ -7,6 +7,7 @@ import { verifyDeliveryPasscode } from "@/lib/security/passcode";
 import { loadRoomAssets } from "@/lib/client-room/content";
 import { verifyDeliveryPasscodeSchema, safeValidate } from "@/lib/validations";
 import { normalizeActionError } from "../safe-action";
+import { recordUnlockAttempt } from "./link-activity";
 import { checkRateLimit, getClientIp, RATELIMIT_POLICIES } from "@/lib/upstash";
 
 /**
@@ -34,7 +35,7 @@ export async function verifyDeliveryPasscodeAction(shareToken: string, passcode:
 
     const room = await getClientRoom(token);
     if (!room) return { success: false, error: roomRefusal(null) };
-    if (!room.member && (room.state === "expired" || room.state === "unavailable")) {
+    if (!room.member && (room.state === "expired" || room.state === "unavailable" || room.state === "revoked")) {
       return { success: false, error: roomRefusal(room) };
     }
 
@@ -42,6 +43,8 @@ export async function verifyDeliveryPasscodeAction(shareToken: string, passcode:
     if (!room.member && delivery.passcodeHash) {
       if (!candidate) return { success: false, error: "Please enter the passcode." };
       const isMatch = await verifyDeliveryPasscode(candidate, delivery.passcodeHash);
+      // The studio can see wrong attempts on the link's activity.
+      await recordUnlockAttempt(room, isMatch).catch(() => undefined);
       if (!isMatch) return { success: false, error: "Incorrect passcode. Please try again." };
     }
 

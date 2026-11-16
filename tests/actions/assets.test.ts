@@ -294,6 +294,25 @@ describe("app/actions/assets", () => {
       expect(mockServices.delivery.deleteDelivery).toHaveBeenCalledWith("del_123");
     });
 
+    it("deletes the delivery's cover image with it, and still succeeds when that fails", async () => {
+      const cover = "private/workspaces/ws_test/deliveries/del_123/cover/c1/1-banner.jpg";
+      const deleteDeliveryCover = vi.fn().mockResolvedValue(true);
+      mockServices.upload = { deleteDeliveryCover };
+      vi.spyOn(guards, "requireDeliveryAccess").mockResolvedValue({
+        services: mockServices,
+        delivery: { id: "del_123", workspaceId: "ws_test", appearance: { coverThumbnailUrl: cover } },
+        workspace: { id: "ws_test" },
+        role: "admin",
+        user: { id: "user_test" },
+      } as any);
+
+      expect((await deleteDeliveryAction("del_123", "ws-test")).success).toBe(true);
+      expect(deleteDeliveryCover).toHaveBeenCalledWith("ws_test", "del_123", cover);
+
+      deleteDeliveryCover.mockRejectedValueOnce(new Error("R2 unavailable"));
+      expect((await deleteDeliveryAction("del_123", "ws-test")).success).toBe(true);
+    });
+
     it("touches nothing when the caller isn't an admin", async () => {
       vi.spyOn(guards, "requireDeliveryAccess").mockRejectedValue(
         new Error('Forbidden: Requires at least "admin" role permissions.')

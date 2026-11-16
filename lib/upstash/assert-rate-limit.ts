@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { clientIpFromHeaders } from "@/lib/security/client-ip";
 import { createRatelimiter, type RateLimitResult } from "./ratelimit";
 import type { RatelimitPolicy } from "./ratelimit-policies";
 
@@ -22,16 +23,11 @@ export function formatRetryAfter(resetAt: number): string {
 }
 
 /**
- * Extracts client IP safely from incoming Next.js request headers.
+ * The visitor's IP address from the incoming request (see lib/security/client-ip.ts).
  */
 export async function getClientIp(): Promise<string> {
   try {
-    const headerList = await headers();
-    const forwardedFor = headerList.get("x-forwarded-for");
-    if (forwardedFor) {
-      return forwardedFor.split(",")[0].trim();
-    }
-    return headerList.get("x-real-ip") || "127.0.0.1";
+    return clientIpFromHeaders(await headers());
   } catch {
     return "127.0.0.1";
   }

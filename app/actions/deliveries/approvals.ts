@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { Delivery } from "@/core/entities/delivery";
 import { checkRateLimit, getClientIp, RATELIMIT_POLICIES } from "@/lib/upstash";
 import { resolveRequestOrigin, getApprovalRecipients } from "./helpers";
-import { resolveDeliveryActor, type DeliveryActor, type DeliveryRefInput } from "./room-access";
+import { recordGuestLinkEvent, resolveDeliveryActor, type DeliveryActor, type DeliveryRefInput } from "./room-access";
 import { normalizeActionError } from "../safe-action";
 import { runAfterResponse } from "@/lib/after-response";
 
@@ -84,6 +84,7 @@ export async function approveCutAction(ref: DeliveryRef, approvedByName?: string
     });
     alertStudioOnWhatsApp(actor, name, origin);
     confirmApprovalToClient(actor, origin);
+    recordGuestLinkEvent(actor, "approve");
 
     revalidate(updated);
     const state = approvalState(updated);
@@ -100,6 +101,7 @@ export async function toggleAssetApprovalAction(ref: DeliveryRef, assetId: strin
     if (limited) return { error: limited };
 
     const asset = await actor.services.delivery.toggleAssetApproval(actor.delivery, assetId, Boolean(isApproved));
+    if (asset.isApproved) recordGuestLinkEvent(actor, "approve", asset.id);
     const updated = (await actor.services.delivery.getDeliveryById(actor.delivery.id)) ?? actor.delivery;
 
     revalidate(updated);
@@ -128,6 +130,7 @@ export async function approveAllAssetsAction(ref: DeliveryRef, approvedByName?: 
     });
     alertStudioOnWhatsApp(actor, name, origin);
     confirmApprovalToClient(actor, origin);
+    recordGuestLinkEvent(actor, "approve");
     const updated = (await actor.services.delivery.getDeliveryById(actor.delivery.id)) ?? actor.delivery;
 
     revalidate(updated);

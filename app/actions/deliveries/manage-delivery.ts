@@ -3,6 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { requireDeliveryAccess } from "@/core/security/guards";
 import { hashDeliveryPasscode } from "@/lib/security/passcode";
+import {
+  EXTENDED_LINK_EXPIRY_MESSAGE,
+  isExtendedLinkExpiry,
+  isSameLinkExpiry,
+  linkExpiryProblem,
+} from "@/lib/security/link-expiry";
 import { createScopedLogger } from "@/lib/logger";
 import type { DeliveryAppearanceSettings } from "@/core/entities/delivery";
 import {
@@ -121,7 +127,7 @@ export async function updateDeliveryDetailsAction(
         return {
           error:
             eligibility.reason ||
-            "Cannot restore delivery: your current plan's active client link limit has been reached. Please upgrade your plan.",
+            "Cannot restore delivery: your current plan's active delivery room limit has been reached. Please upgrade your plan.",
         };
       }
     }
@@ -164,6 +170,11 @@ export async function updateDeliveryAppearanceAction(
       };
     }
 
+    // The cover isn't set here: it changes only through an upload, which checks the image
+    // (confirmDeliveryCoverUploadAction). A cover sent along is ignored.
+    const settings = { ...validated.data };
+    delete settings.coverThumbnailUrl;
+
     const mergedAppearance: DeliveryAppearanceSettings = {
       cardSize: (existing.appearance as any)?.cardSize || "M",
       aspectRatioSetting: (existing.appearance as any)?.aspectRatioSetting || "masonry",
@@ -173,7 +184,7 @@ export async function updateDeliveryAppearanceAction(
         ? ((existing.appearance as any)?.watermarkMedia ?? true)
         : false,
       coverThumbnailUrl: (existing.appearance as any)?.coverThumbnailUrl ?? null,
-      ...validated.data,
+      ...settings,
     };
 
     if (!canWatermark) {
@@ -265,6 +276,20 @@ export async function updateDeliverySecurityAction(
       }
     }
 
+    // A new expiry follows the plan's rule (lib/security/link-expiry.ts). Sending the expiry the
+    // link already has isn't a change, so links keep the expiry they were given.
+    const nextExpiresAt = validated.data.expiresAt;
+    if (nextExpiresAt !== undefined && !isSameLinkExpiry(nextExpiresAt, delivery.expiresAt)) {
+      const problem = linkExpiryProblem(nextExpiresAt);
+      if (problem) return { error: problem };
+      if (
+        isExtendedLinkExpiry(nextExpiresAt) &&
+        !(await services.subscription.isExtendedLinkExpiryAllowed(delivery.workspaceId))
+      ) {
+        return { error: EXTENDED_LINK_EXPIRY_MESSAGE };
+      }
+    }
+
     let passcodeHash: string | null | undefined = undefined;
     if (validated.data.passphrase !== undefined) {
       if (validated.data.passphrase && validated.data.passphrase.trim().length > 0) {
@@ -345,10 +370,21 @@ export async function deleteDeliveryAction(
   try {
     if (!deliveryId?.trim()) return { success: false, error: "Delivery not found." };
     // Admin first: nothing is touched unless the delivery can actually be deleted.
-    const { services } = await requireDeliveryAccess(deliveryId.trim(), "admin");
+    const { services, delivery } = await requireDeliveryAccess(deliveryId.trim(), "admin");
 
     await services.asset.detachAllFromDelivery(deliveryId.trim());
     await services.delivery.deleteDelivery(deliveryId.trim());
+    // The cover image isn't one of the files that go to Trash: it goes with the delivery.
+    // Best effort: the delivery is already gone.
+    try {
+      await services.upload.deleteDeliveryCover(
+        delivery.workspaceId,
+        delivery.id,
+        delivery.appearance?.coverThumbnailUrl
+      );
+    } catch (err) {
+      log.warn({ err, deliveryId }, "Couldn't delete the delivery's cover image");
+    }
 
     if (workspaceSlug) {
       revalidatePath(`/${workspaceSlug}/deliveries`);

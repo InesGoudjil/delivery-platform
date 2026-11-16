@@ -124,6 +124,23 @@ export function isR2KeyInWorkspace(value: string | null | undefined, workspaceId
   return parsed?.kind === "r2" && parsed.workspaceId !== null && parsed.workspaceId === workspaceId.toLowerCase();
 }
 
+/**
+ * True when the value is a cover image of this delivery: a private R2 object under the
+ * delivery's own cover prefix, "private/workspaces/<workspaceId>/deliveries/<deliveryId>/cover/".
+ * Only the server creates objects there (see AssetUploadService.requestDeliveryCoverUpload).
+ */
+export function isDeliveryCoverKey(
+  value: string | null | undefined,
+  workspaceId: string | null | undefined,
+  deliveryId: string | null | undefined
+): boolean {
+  if (!isUuid(workspaceId) || !isUuid(deliveryId)) return false;
+  const parsed = parseStoredMedia(value);
+  if (parsed?.kind !== "r2" || parsed.visibility !== "private") return false;
+  const prefix = `private/workspaces/${workspaceId!.toLowerCase()}/deliveries/${deliveryId!.toLowerCase()}/cover/`;
+  return parsed.key.startsWith(prefix) && parsed.key.length > prefix.length;
+}
+
 /** The Stream UID a value points at, or null. */
 export function streamUidOf(value: string | null | undefined): string | null {
   const parsed = parseStoredMedia(value);

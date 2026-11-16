@@ -40,7 +40,8 @@ interface DeliveryAssetCardProps {
   thumbnailScale?: "Fit" | "Fill";
   showCardInfo?: boolean;
   onSelect: (asset: DeliveryAssetItem) => void;
-  onToggleApproval: (assetId: string) => void;
+  /** Left out when this visitor's link can't approve: the card shows the status only. */
+  onToggleApproval?: (assetId: string) => void;
   onDownload: (asset: DeliveryAssetItem) => void;
 }
 
@@ -121,11 +122,17 @@ export function DeliveryAssetCard({
           )}
           <Badge
             variant={asset.isApproved ? "sage" : "outline"}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleApproval(asset.id);
-            }}
-            className={`text-[9px] px-2 py-0.5 font-bold uppercase rounded-md shadow-md border cursor-pointer active:scale-95 touch-manipulation transition-all ${
+            onClick={
+              onToggleApproval
+                ? (e) => {
+                    e.stopPropagation();
+                    onToggleApproval(asset.id);
+                  }
+                : undefined
+            }
+            className={`text-[9px] px-2 py-0.5 font-bold uppercase rounded-md shadow-md border ${
+              onToggleApproval ? "cursor-pointer active:scale-95" : ""
+            } touch-manipulation transition-all ${
               asset.isApproved
                 ? "bg-emerald-500/80 border-emerald-400/50 text-black hover:bg-amber-400 opacity-100"
                 : "bg-black/60 border-amber-500/30 text-amber-300 backdrop-blur-md hover:bg-amber-500/20"
@@ -161,6 +168,7 @@ export function DeliveryAssetCard({
             </Tooltip>
           )}
 
+          {onToggleApproval && (
           <Tooltip>
             <TooltipTrigger
               render={
@@ -193,6 +201,7 @@ export function DeliveryAssetCard({
                 : "Click to approve cut"}
             </TooltipContent>
           </Tooltip>
+          )}
         </div>
       }
       bottomRight={

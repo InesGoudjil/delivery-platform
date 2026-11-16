@@ -5,6 +5,9 @@ import { handleWaitlistMiddleware } from "./lib/middleware/waitlist";
 export async function middleware(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") || crypto.randomUUID();
   request.headers.set("x-request-id", requestId);
+  // For the query log (core/observability): server components can't see the path otherwise.
+  // Always overwritten, so a path a client sends is never used.
+  request.headers.set("x-pathname", request.nextUrl.pathname);
 
   // 1. Waitlist gatekeeping, preview bypass tokens, and cookies
   const waitlistResponse = handleWaitlistMiddleware(request, { requestId });

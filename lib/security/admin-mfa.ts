@@ -1,3 +1,5 @@
+import { safeReturnPath as safePath } from "./return-path";
+
 /**
  * Platform admins must use a two-factor (aal2) session to open the admin panel or run an
  * admin action.
@@ -13,6 +15,5 @@ export function isAdminMfaRequired(): boolean {
 
 /** Same-site path to return to after the two-factor check; anything else falls back to /admin. */
 export function safeReturnPath(raw: string | null | undefined, fallback = "/admin"): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return fallback;
-  return raw;
+  return safePath(raw, fallback);
 }

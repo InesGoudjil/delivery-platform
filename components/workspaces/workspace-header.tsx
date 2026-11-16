@@ -101,7 +101,7 @@ export function WorkspaceHeader({
 
   const brandName = workspace?.brandName || "Pedro Concreato";
   const workspaceSlug = workspace?.slug || "studio";
-  const userEmail = user?.email || "pedro@cinespace.film";
+  const userEmail = user?.email || "pedro@cinespace.pro";
   const userName = profile?.fullName || user?.user_metadata?.full_name || brandName;
   const avatarUrl = profile?.avatarUrl || user?.user_metadata?.avatar_url || workspace?.logoUrl;
   const planName = plan?.name || "Studio";

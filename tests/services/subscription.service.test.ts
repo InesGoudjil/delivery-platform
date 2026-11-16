@@ -110,7 +110,7 @@ describe("core/services/SubscriptionService", () => {
       const result = await service.canCreateProject("ws_1");
       expect(result.allowed).toBe(false);
       expect(result.currentCount).toBe(1);
-      expect(result.reason).toContain("allows up to 1 active project link");
+      expect(result.reason).toContain("allows up to 1 active delivery room");
     });
 
     it("does not count archived deliveries against the active link limit", async () => {

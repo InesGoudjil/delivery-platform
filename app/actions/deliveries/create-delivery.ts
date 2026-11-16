@@ -7,6 +7,7 @@ import { normalizeActionError } from "../safe-action";
 import { getServerAdminServices } from "@/core/server";
 import { runAfterResponse } from "@/lib/after-response";
 import { checkRateLimit, RATELIMIT_POLICIES } from "@/lib/upstash";
+import { isExtendedDefaultLinkDays, newLinkExpiresAt } from "@/lib/security/link-expiry";
 import { resolveRequestOrigin } from "./helpers";
 
 /**
@@ -72,7 +73,7 @@ export async function createDeliveryAction(
       return {
         error:
           eligibility.reason ||
-          "Active client delivery link limit reached. Please upgrade your subscription plan.",
+          "Active delivery room limit reached. Please upgrade your subscription plan.",
       };
     }
 
@@ -110,16 +111,20 @@ export async function createDeliveryAction(
       }
     }
 
-    // Auto-calculate default expiration date based on workspace security policy if not explicitly set
-    let calculatedExpiresAt: string | undefined = undefined;
+    // The link gets the workspace's default lifetime (Security page), held to the plan's rule:
+    // 30 days at most unless the plan has extended link expiry (lib/security/link-expiry.ts).
+    // Saved null means "never". Unreadable settings get the standard 30 days, never no expiry.
+    let defaultDays: number | null | undefined = undefined;
     try {
-      const settings = await services.settings.findByWorkspaceId(cleanWorkspaceId);
-      const days = settings?.defaultLinkExpirationDays ?? 30;
-      if (days && days > 0) {
-        calculatedExpiresAt = new Date(Date.now() + days * 86400000).toISOString();
-      }
+      defaultDays = (await services.settings.findByWorkspaceId(cleanWorkspaceId))?.defaultLinkExpirationDays;
     } catch {
-      // Fallback: no auto-expiration
+      defaultDays = undefined;
+    }
+    let extendedExpiry = false;
+    if (defaultDays !== undefined && isExtendedDefaultLinkDays(defaultDays)) {
+      extendedExpiry = await services.subscription
+        .isExtendedLinkExpiryAllowed(cleanWorkspaceId)
+        .catch(() => false);
     }
 
     const delivery = await services.delivery.createDelivery({
@@ -127,7 +132,7 @@ export async function createDeliveryAction(
       title: cleanTitle,
       description: cleanDescription,
       clientId,
-      expiresAt: calculatedExpiresAt,
+      expiresAt: newLinkExpiresAt(defaultDays, extendedExpiry),
     });
 
     const workspace = await services.workspace.getWorkspaceById(cleanWorkspaceId);

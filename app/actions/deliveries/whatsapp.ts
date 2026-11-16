@@ -6,7 +6,7 @@ import { requireDeliveryAccess } from "@/core/security/guards";
 import { checkRateLimit, RATELIMIT_POLICIES } from "@/lib/upstash";
 import { maskPhone, normalizePhone } from "@/lib/phone";
 import { createScopedLogger } from "@/lib/logger";
-import { resolveRequestOrigin } from "./helpers";
+import { resolveRequestOrigin, sendableShareLink } from "./helpers";
 import { normalizeActionError } from "../safe-action";
 
 /**
@@ -18,12 +18,14 @@ import { normalizeActionError } from "../safe-action";
 
 const log = createScopedLogger({ actionGroup: "deliveries" });
 
+/** Sends a review link on WhatsApp: `input.linkId` picks one of the delivery's share links, else its primary link. */
 export async function sendDeliveryWhatsAppAction(
   deliveryId: string,
-  input: { phone: string; clientConsent: boolean }
+  input: { phone: string; clientConsent: boolean; linkId?: string | null }
 ): Promise<{ success: boolean; sentTo?: string; error?: string }> {
   try {
     const { delivery, workspace, user, services } = await requireDeliveryAccess(String(deliveryId || ""), "editor");
+    const link = await sendableShareLink(services, delivery.id, input?.linkId);
 
     if (input?.clientConsent !== true) {
       return { success: false, error: "Confirm your client agreed to get WhatsApp messages about this delivery first." };
@@ -35,7 +37,7 @@ export async function sendDeliveryWhatsAppAction(
     if (!(await services.subscription.canDeliverWhatsApp(workspace.id))) {
       return { success: false, error: "WhatsApp delivery is available on Basic, Pro, and Studio plans. Please upgrade your plan." };
     }
-    if (delivery.expiresAt && new Date(delivery.expiresAt).getTime() <= Date.now()) {
+    if (!link && delivery.expiresAt && new Date(delivery.expiresAt).getTime() <= Date.now()) {
       return { success: false, error: "This review link has expired. Extend it before sending it." };
     }
 
@@ -57,6 +59,7 @@ export async function sendDeliveryWhatsAppAction(
       phone,
       clientId: delivery.clientId ?? null,
       origin: await resolveRequestOrigin(),
+      linkToken: link?.token,
     });
     if (!result.success) return { success: false, error: result.error || "Couldn't send the WhatsApp message." };
 

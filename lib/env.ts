@@ -59,11 +59,11 @@ const envSchema = z.object({
 
   // Zoho ZeptoMail Configuration
   ZEPTOMAIL_API_TOKEN: z.string().optional().default(""),
-  ZEPTOMAIL_FROM_EMAIL: z.string().optional().default("noreply@cinespace.film"),
+  ZEPTOMAIL_FROM_EMAIL: z.string().optional().default("noreply@cinespace.pro"),
   ZEPTOMAIL_FROM_NAME: z.string().optional().default("CineSpace"),
   // Where replies to Pedro's emails go (a monitored inbox): "reply to this email" only works with it set.
   EMAIL_REPLY_TO: z.string().optional().default(""),
-  ZEPTOMAIL_API_URL: z.string().optional().default("https://api.zeptomail.com/v1.1/email"),
+  ZEPTOMAIL_API_URL: z.string().optional().default("https://cpaas.zoho.com/v1.1/email"),
   ZEPTOMAIL_BOUNCE_ADDRESS: z.string().optional().default(""),
 
   // Zoho CPaaS (ZeptoMail's new name): WhatsApp through a Meta WhatsApp Business Account

@@ -1,5 +1,6 @@
 import { env } from "@/lib/env";
 import { createScopedLogger } from "@/lib/logger";
+import { zohoAuthorization } from "../zoho-auth";
 
 /**
  * WhatsApp messages through Zoho CPaaS (ZeptoMail's new name), from the CineSpace WhatsApp
@@ -63,9 +64,8 @@ export class ZohoCpaasWhatsAppProvider implements IWhatsAppProvider {
   }
 
   private authorization(): string {
-    const token = this.config.token.trim();
-    // Zoho tokens are sent as "Zoho-encztoken <key>", like ZeptoMail email.
-    return /^Zoho-enc/i.test(token) ? token : `Zoho-encztoken ${token}`;
+    // The same key format as email: "Zoho-enczapikey <key>".
+    return zohoAuthorization(this.config.token);
   }
 
   async sendTemplate(message: WhatsAppTemplateMessage): Promise<WhatsAppSendResult> {

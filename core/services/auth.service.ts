@@ -5,6 +5,8 @@ import { UserProfile } from '@/core/entities/user-profile';
 import { IWorkspaceRepository } from '@/core/repositories/workspace.repository';
 import { IUserProfileRepository } from '@/core/repositories/user-profile.repository';
 import { readSessionIdentity, type SessionIdentity } from '@/core/services/session.service';
+import { hasVerifiedFactor, isAwaitingTwoFactor as claimsAwaitTwoFactor } from '@/lib/security/two-factor';
+import { type QueryLog, timeQuery } from '@/core/observability/query-log';
 
 export interface UserSessionData {
   user: User | null;
@@ -16,20 +18,46 @@ export class AuthService {
   constructor(
     private readonly supabase: SupabaseClient<Database>,
     private readonly workspaceRepo: IWorkspaceRepository,
-    private readonly profileRepo: IUserProfileRepository
+    private readonly profileRepo: IUserProfileRepository,
+    /** Times the session lookups below; they're network calls to Supabase Auth. */
+    private readonly queryLog?: QueryLog
   ) {}
 
+  /**
+   * The signed-in user, checked with Supabase Auth, or null.
+   *
+   * Also null while someone with two-factor sign-in hasn't entered their code yet
+   * (lib/security/two-factor.ts). Every page, action and guard then treats the session as signed
+   * out, and the middleware sends it to /mfa. isAwaitingTwoFactor() tells the two cases apart.
+   */
   async getCurrentUser(): Promise<User | null> {
     try {
       const {
         data: { user },
         error,
-      } = await this.supabase.auth.getUser();
+      } = await timeQuery(this.queryLog, 'auth.getUser', () => this.supabase.auth.getUser());
 
       if (error || !user) return null;
+      this.queryLog?.setUser(user.id);
+      // Only users with an authenticator pay for the token check.
+      if (hasVerifiedFactor(user) && (await this.isAwaitingTwoFactor())) return null;
       return user;
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * True when this session belongs to someone with two-factor sign-in who hasn't entered their
+   * code yet. It reads the verified token's claims, as the middleware and RLS do.
+   */
+  async isAwaitingTwoFactor(): Promise<boolean> {
+    try {
+      const { data, error } = await timeQuery(this.queryLog, 'auth.getClaims', () => this.supabase.auth.getClaims());
+      if (error || !data?.claims) return false;
+      return claimsAwaitTwoFactor(data.claims);
+    } catch {
+      return false;
     }
   }
 
@@ -39,7 +67,7 @@ export class AuthService {
    */
   async getAssuranceLevel(): Promise<'aal1' | 'aal2' | null> {
     try {
-      const { data, error } = await this.supabase.auth.getClaims();
+      const { data, error } = await timeQuery(this.queryLog, 'auth.getClaims', () => this.supabase.auth.getClaims());
       if (error || !data?.claims) return null;
       return (data.claims as { aal?: string }).aal === 'aal2' ? 'aal2' : 'aal1';
     } catch {
@@ -96,7 +124,19 @@ export class AuthService {
     }
   }
 
-  async signUp(email: string, password: string, fullName: string) {
+  /**
+   * Options:
+   * - `signupRedirect`: a same-site path for /api/auth/confirm to open once the email is
+   *   confirmed. It's kept in the user's metadata.
+   * - `emailRedirectTo`: where Supabase's own link (`{{ .ConfirmationURL }}`, the old template)
+   *   lands. It must be in Supabase's Redirect URLs list; otherwise Supabase uses the Site URL.
+   */
+  async signUp(
+    email: string,
+    password: string,
+    fullName: string,
+    options: { emailRedirectTo?: string; signupRedirect?: string } = {}
+  ) {
     try {
       return await this.supabase.auth.signUp({
         email,
@@ -104,7 +144,9 @@ export class AuthService {
         options: {
           data: {
             full_name: fullName,
+            ...(options.signupRedirect ? { signup_redirect: options.signupRedirect } : {}),
           },
+          ...(options.emailRedirectTo ? { emailRedirectTo: options.emailRedirectTo } : {}),
         },
       });
     } catch (err: any) {

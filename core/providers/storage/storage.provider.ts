@@ -24,7 +24,11 @@ export interface CreateUploadUrlParams {
   maxDurationSeconds?: number;
   /** Public bucket (portfolio, branding) or private bucket (anything in a delivery). */
   isPublic: boolean;
-  /** Which flow a public upload comes from; decides its key prefix (see uploadPlacementSchema). */
+  /**
+   * Which flow a public upload comes from; decides its key prefix (see uploadPlacementSchema).
+   * For a private upload only "cover" counts: the delivery's cover image, stored under
+   * deliveries/<deliveryId>/cover/ (set by the server only, never from client input).
+   */
   placement?: UploadPlacement;
 }
 

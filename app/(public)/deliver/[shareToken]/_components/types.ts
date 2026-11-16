@@ -68,6 +68,8 @@ export interface DeliveryRoomProps {
     status: "draft" | "in_review" | "approved" | "archived";
     isDownloadAllowed: boolean;
     isCommentAllowed?: boolean;
+    /** False when this visitor's link can't approve: the room shows approval status only. */
+    isApproveAllowed?: boolean;
     isWatermarked: boolean;
     appearance?: DeliveryAppearance | null;
     approvedAt?: string | null;

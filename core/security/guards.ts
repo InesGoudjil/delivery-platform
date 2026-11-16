@@ -71,7 +71,11 @@ export type PlatformAdminStatus =
 export const getPlatformAdminStatus = cache(async (): Promise<PlatformAdminStatus> => {
   const services = await getServerServices();
   const user = await services.auth.getCurrentUser();
-  if (!user) return { kind: "signed-out" };
+  if (!user) {
+    // Someone with an authenticator who hasn't entered their code counts as signed out
+    // (AuthService.getCurrentUser). Send them to the code instead of the sign-in page.
+    return (await services.auth.isAwaitingTwoFactor()) ? { kind: "mfa-required", enrolled: true } : { kind: "signed-out" };
+  }
 
   const profile = await services.profile.getProfile(user.id);
   if (!profile || profile.platformRole !== "admin") return { kind: "forbidden" };

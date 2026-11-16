@@ -33,7 +33,7 @@ export default async function DemoRoomPage() {
 
 async function openDemoRoom(): Promise<ClientRoom | null> {
   try {
-    const demo = await loadDemoRoom(await getServerAdminServices());
+    const demo = await loadDemoRoom(await getServerAdminServices({ request: true }));
     if (!demo.delivery) return null;
     const room = await getClientRoom(demo.delivery.shareToken);
     // Visitors only get a room that's open. Members of its workspace can preview it in any state.

@@ -83,10 +83,10 @@ export default async function CookiesPage() {
         <p>
           Questions about this policy or your cookie preferences:{" "}
           <a
-            href="mailto:hello@cinespace.film"
+            href="mailto:contact@cinespace.pro"
             className="text-white hover:text-primary transition-colors underline underline-offset-2"
           >
-            hello@cinespace.film
+            contact@cinespace.pro
           </a>
           .
         </p>

@@ -25,7 +25,7 @@ describe("ZohoCpaasWhatsAppProvider", () => {
     const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://cpaas.zoho.com/v1.1/whatsapp");
     expect(init.method).toBe("POST");
-    expect((init.headers as Record<string, string>).Authorization).toBe("Zoho-encztoken secret-token");
+    expect((init.headers as Record<string, string>).Authorization).toBe("Zoho-enczapikey secret-token");
     expect(JSON.parse(init.body as string)).toEqual({
       from: "971500000001",
       to: "971501234567",
@@ -34,12 +34,14 @@ describe("ZohoCpaasWhatsAppProvider", () => {
     });
   });
 
-  it("doesn't add the prefix twice to a token pasted with it", async () => {
-    const fetchImpl = vi.fn(async () => jsonResponse(200, { request_id: "r-1" }));
-    const provider = new ZohoCpaasWhatsAppProvider({ ...CONFIG, token: "Zoho-encztoken abc" }, fetchImpl);
-    expect(await provider.sendTemplate(MESSAGE)).toEqual({ success: true, messageId: "r-1" });
-    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
-    expect((init.headers as Record<string, string>).Authorization).toBe("Zoho-encztoken abc");
+  it("sends a key pasted with its Zoho scheme as is", async () => {
+    for (const token of ["Zoho-enczapikey abc==", "Zoho-encztoken abc"]) {
+      const fetchImpl = vi.fn(async () => jsonResponse(200, { request_id: "r-1" }));
+      const provider = new ZohoCpaasWhatsAppProvider({ ...CONFIG, token }, fetchImpl);
+      expect(await provider.sendTemplate(MESSAGE)).toEqual({ success: true, messageId: "r-1" });
+      const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      expect((init.headers as Record<string, string>).Authorization).toBe(token);
+    }
   });
 
   it("returns Zoho's reason when it refuses a message", async () => {

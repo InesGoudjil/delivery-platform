@@ -62,7 +62,7 @@ export default async function Home(props: {
  */
 async function demoRoomHref(): Promise<string | undefined> {
   try {
-    const demo = await loadDemoRoom(await getServerAdminServices());
+    const demo = await loadDemoRoom(await getServerAdminServices({ request: true }));
     return isDemoRoomLive(demo) ? "/demo" : undefined;
   } catch (err) {
     log.warn({ err }, "Could not check the demo room");

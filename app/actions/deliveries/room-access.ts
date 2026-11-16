@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { getServerAdminServices, getServerServices } from "@/core/server";
 import type { Delivery } from "@/core/entities/delivery";
+import { isStoredShareLink, type ShareLink, type ShareLinkEventKind } from "@/core/entities/share-link";
+import { runAfterResponse } from "@/lib/after-response";
 import { requireClientRoom, type AdminServices, type ClientRoomNeed } from "@/core/security/client-room";
 import { hasMinRole, requireDeliveryAccess, type WorkspaceRoleLevel } from "@/core/security/guards";
 import type { RoomViewer } from "@/lib/client-room/content";
@@ -31,6 +33,8 @@ export type DeliveryActor =
       shareToken: string;
       /** The room gate's answer (downloads turned on, and not the demo room). Never recompute it. */
       canDownload: boolean;
+      /** The link the guest came in by (server-side only). */
+      link: ShareLink;
     }
   | {
       kind: "member";
@@ -92,6 +96,7 @@ export async function resolveDeliveryActor(
       adminServices: room.services,
       shareToken: room.delivery.shareToken,
       canDownload: room.canDownload,
+      link: room.link,
     };
   }
 
@@ -107,6 +112,20 @@ export async function resolveDeliveryActor(
     role: ctx.role,
     shareToken: null,
   };
+}
+
+/** The id of the link a guest came in by, when it's a stored link (null for members, and before the migration). */
+export function guestLinkId(actor: DeliveryActor): string | null {
+  return actor.kind === "guest" && isStoredShareLink(actor.link) ? actor.link.id : null;
+}
+
+/** Notes a guest's comment, approval or download on their link's activity, after the response. */
+export function recordGuestLinkEvent(actor: DeliveryActor, kind: ShareLinkEventKind, assetId?: string | null) {
+  if (actor.kind !== "guest" || !isStoredShareLink(actor.link)) return;
+  const { link } = actor;
+  runAfterResponse(`share-link:${kind}`, () =>
+    actor.adminServices.shareLink.recordEvent(link, kind, { assetId: assetId ?? null })
+  );
 }
 
 /** The actor as a comment viewer (for `canModifyComment`). */

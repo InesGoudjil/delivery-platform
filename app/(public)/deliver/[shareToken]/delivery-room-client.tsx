@@ -46,6 +46,8 @@ export function DeliveryRoomClient(props: DeliveryRoomProps) {
 
 function DeliveryRoomView(props: DeliveryRoomProps) {
   const { delivery, workspace, clientName, isWorkspaceMember, whiteLabel, demoMode } = props;
+  // The link this visitor came in by may leave approvals to someone else.
+  const canApprove = delivery.isApproveAllowed !== false;
   const room = useDeliveryRoom(props);
 
   return (
@@ -126,6 +128,7 @@ function DeliveryRoomView(props: DeliveryRoomProps) {
                   onMessageCreator={room.handleMessageCreator}
                   onApproveAll={room.handleApproveAll}
                   onUnapproveAll={room.handleUnapproveAll}
+                  canApprove={canApprove}
                 />
 
                 {/* Asset Library / Project Files */}
@@ -139,7 +142,7 @@ function DeliveryRoomView(props: DeliveryRoomProps) {
                   isGlobalDownloadUnlocked={room.isGlobalDownloadUnlocked}
                   approvingAssetId={room.approvingAssetId}
                   onSelectAsset={room.openAssetModal}
-                  onToggleApproval={room.handleToggleAssetApproval}
+                  onToggleApproval={canApprove ? room.handleToggleAssetApproval : undefined}
                   onDownloadAsset={room.handleSingleAssetDownload}
                 />
 
@@ -171,7 +174,7 @@ function DeliveryRoomView(props: DeliveryRoomProps) {
               onEditFeedback={room.handleEditFeedback}
               onEditReply={room.handleEditReply}
               keepFeedbackLocal={demoMode === "visitor"}
-              onToggleApproval={room.handleToggleAssetApproval}
+              onToggleApproval={canApprove ? room.handleToggleAssetApproval : undefined}
               authorName={room.commentAuthor}
               showFeedback={delivery.isCommentAllowed ?? true}
               showVersions={Boolean(

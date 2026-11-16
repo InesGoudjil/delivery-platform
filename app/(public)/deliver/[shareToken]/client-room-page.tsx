@@ -1,5 +1,6 @@
 import type { ClientRoom } from "@/core/security/client-room";
 import { loadRoomAssets, signRoomCover } from "@/lib/client-room/content";
+import { recordRoomOpen } from "@/app/actions/deliveries/link-activity";
 import { DeliveryRoomClient } from "./delivery-room-client";
 import { DeliveryExpiredScreen } from "./_components/delivery-expired-screen";
 
@@ -24,7 +25,7 @@ export async function ClientRoomPage({ room }: { room: ClientRoom }) {
   };
   const portfolioUrl = portfolio?.isPublished ? `/p/${portfolio.slug || branding.slug}` : undefined;
 
-  if (!room.canView && (room.state === "expired" || room.state === "unavailable")) {
+  if (!room.canView && (room.state === "expired" || room.state === "unavailable" || room.state === "revoked")) {
     return (
       <DeliveryExpiredScreen
         title={delivery.title}
@@ -47,6 +48,8 @@ export async function ClientRoomPage({ room }: { room: ClientRoom }) {
     : await Promise.all([
         signRoomCover(room),
         room.member ? services.profile.getProfile(room.member.userId).catch(() => null) : null,
+        // A guest's visit counts on their link (saved after the response).
+        recordRoomOpen(room).catch(() => undefined),
       ]);
 
   const initialAssets = roomPage?.assets ?? [];
@@ -66,6 +69,8 @@ export async function ClientRoomPage({ room }: { room: ClientRoom }) {
         status: delivery.status,
         isDownloadAllowed: room.canDownload,
         isCommentAllowed: isLocked ? false : room.canComment,
+        // Demo visitors try approvals in their browser (the server refuses them anyway).
+        isApproveAllowed: room.isDemo || room.canApprove,
         isWatermarked: effectiveWatermark,
         appearance: {
           ...delivery.appearance,

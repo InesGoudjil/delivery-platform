@@ -1,8 +1,7 @@
 # Notifications: email and WhatsApp
 
 CineSpace tells studios about client activity, and sends review links to clients, through
-Zoho: **ZeptoMail** for email and **Zoho CPaaS** for WhatsApp. (Zoho renamed ZeptoMail to
-Zoho CPaaS in September 2026; email keeps working on the ZeptoMail API.)
+**Zoho CPaaS** (ZeptoMail's name since September 2026), by email and WhatsApp.
 
 | What happens | Email | WhatsApp |
 | --- | --- | --- |
@@ -19,11 +18,19 @@ Every message is logged in `notification_logs` and shown on the Notifications pa
 status. A failed WhatsApp message shows Zoho's reason (for example a template that isn't
 approved yet).
 
-## Email (ZeptoMail)
+## Email (Zoho CPaaS, formerly ZeptoMail)
 
-Unchanged: `ZEPTOMAIL_API_TOKEN`, `ZEPTOMAIL_FROM_EMAIL`, `ZEPTOMAIL_FROM_NAME`,
-`ZEPTOMAIL_API_URL` (see `.env.example`). Set `NEXT_PUBLIC_APP_URL` to the app's public URL:
-links in emails and WhatsApp messages are built from it.
+The settings keep their ZeptoMail names (see `.env.example`):
+
+- `ZEPTOMAIL_API_TOKEN`: the Mail Agent's API key, pasted as the console shows it (`Zoho-enczapikey …`).
+- `ZEPTOMAIL_FROM_EMAIL`, `ZEPTOMAIL_FROM_NAME`: the sender. The address must be on a domain verified
+  in that Mail Agent (`cinespace.pro`).
+- `ZEPTOMAIL_API_URL`: the send URL from the console's sample request (`https://cpaas.zoho.com/v1.1/email`).
+- `EMAIL_REPLY_TO`: where replies go, an inbox someone reads.
+
+Set `NEXT_PUBLIC_APP_URL` to the app's public URL: links in emails and WhatsApp messages are built
+from it. In development, `/api/dev/emails` on the dev server previews every email and sends any of
+them to an address you type.
 
 ## WhatsApp (Zoho CPaaS)
 
@@ -40,7 +47,7 @@ WhatsApp is in **beta** on Zoho CPaaS. Before relying on it, confirm with Zoho
 - that WhatsApp sending works for a UAE sender number and UAE recipients, and from which data
   center (`ZOHO_CPAAS_API_URL`);
 - the send endpoint and body. The app sends `POST {ZOHO_CPAAS_API_URL}/v1.1/whatsapp` with
-  `Authorization: Zoho-encztoken <token>` and
+  `Authorization: Zoho-enczapikey <key>` (the key as the console shows it, like email) and
   `{ "from": "<sender>", "to": "<number>", "template_key": "<key>", "merge_info": { "<field>": "<value>" } }`.
   If Zoho's final API differs, only `core/providers/whatsapp/index.ts` needs to change;
 - pricing: Meta's per-message rate plus Zoho's margin. Authentication (codes) and utility

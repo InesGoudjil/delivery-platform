@@ -49,16 +49,16 @@ const ROOT = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
 /** Callable without a session on purpose. */
 const PUBLIC_ACTIONS: Record<string, PublicActionEntry> = {
   "app/actions/auth.ts#loginAction": {
-    rateLimited: false,
-    reason: "sign-in form. Not rate limited: RATELIMIT_POLICIES.authLogin is defined but never applied",
+    rateLimited: true,
+    reason: "sign-in form; RATELIMIT_POLICIES.authLogin per IP and email",
   },
   "app/actions/auth.ts#signupAction": {
-    rateLimited: false,
-    reason: "sign-up form. Not rate limited: RATELIMIT_POLICIES.authSignup is defined but never applied",
+    rateLimited: true,
+    reason: "sign-up form; RATELIMIT_POLICIES.authSignup per IP",
   },
   "app/actions/auth.ts#requestPasswordResetAction": {
-    rateLimited: false,
-    reason: "forgot-password form (Supabase sends the mail). Not rate limited: RATELIMIT_POLICIES.passwordReset is unused",
+    rateLimited: true,
+    reason: "forgot-password form (Supabase sends the mail); RATELIMIT_POLICIES.passwordReset per IP and per email",
   },
   "app/actions/auth.ts#signOutAction": {
     rateLimited: false,

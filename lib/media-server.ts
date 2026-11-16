@@ -1,6 +1,7 @@
 import { IStorageProvider } from "@/core/providers/storage";
 import { createScopedLogger } from "@/lib/logger";
 import { isR2KeyInWorkspace, parseStoredMedia } from "@/lib/storage/keys";
+import { downloadTicketPath, type TicketLink } from "@/lib/security/download-ticket";
 
 const log = createScopedLogger({ service: "MediaServer" });
 
@@ -86,6 +87,21 @@ export interface PresignAssetsOptions extends PresignScope {
   allowDownload: boolean;
   /** The client room's share token, for /api/media download links a guest can use. */
   roomShareToken?: string;
+  /**
+   * A guest's share link: their download links are tickets checked and counted on every use
+   * (/api/links/dl), instead of storage URLs that work for hours. Members get storage URLs.
+   */
+  downloadTicketLink?: TicketLink;
+}
+
+/** A ticket download path, or null when tickets can't be signed (no secret set): then a storage URL. */
+function ticketPathOrNull(link: TicketLink, versionId: string, filename: string): string | null {
+  try {
+    return downloadTicketPath(link, versionId, filename);
+  } catch (err) {
+    log.warn({ err }, "Couldn't sign a download ticket; using a storage URL");
+    return null;
+  }
 }
 
 function isVideoType(type: string | undefined): boolean {
@@ -98,6 +114,7 @@ function isVideoType(type: string | undefined): boolean {
  */
 export async function presignDeliveryAssets<
   V extends {
+    id?: string;
     rawFileUrl?: string | null;
     thumbnailUrl?: string | null;
     downloadUrl?: string | null;
@@ -144,13 +161,20 @@ export async function presignDeliveryAssets<
 
           // Without downloads, a video with a streaming copy plays from the stream only.
           const exposeMaster = options.allowDownload || !isVideo || !v.hlsManifestUrl;
+          // A guest's downloads go through tickets, checked and counted on every use.
+          const ticketPath =
+            options.allowDownload && v.id && v.rawFileUrl && options.downloadTicketLink
+              ? ticketPathOrNull(options.downloadTicketLink, v.id, downloadFilename)
+              : null;
 
           const [presignedRaw, presignedThumb, presignedDownload] = await Promise.all([
             exposeMaster ? presignPrivateMediaUrl(v.rawFileUrl, storageProvider, options) : Promise.resolve(""),
             presignPrivateMediaUrl(v.thumbnailUrl, storageProvider, options),
-            options.allowDownload
-              ? presignPrivateMediaUrl(v.rawFileUrl, storageProvider, options, downloadFilename)
-              : Promise.resolve(""),
+            ticketPath
+              ? Promise.resolve(ticketPath)
+              : options.allowDownload
+                ? presignPrivateMediaUrl(v.rawFileUrl, storageProvider, options, downloadFilename)
+                : Promise.resolve(""),
           ]);
 
           const proxyDownloadUrl =

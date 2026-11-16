@@ -230,6 +230,7 @@ describe("signed-in callers and functions", () => {
       "is_platform_admin",
       "is_workspace_admin",
       "is_workspace_member",
+      "two_factor_satisfied",
     ]);
   });
 

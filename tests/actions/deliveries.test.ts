@@ -288,6 +288,124 @@ describe("app/actions/deliveries", () => {
     });
   });
 
+  describe("link expiry plan rule (lib/security/link-expiry.ts)", () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    const inDays = (days: number) => new Date(Date.now() + days * DAY).toISOString();
+    const daysFromNow = (iso: string | null) => (iso === null ? null : Math.round((Date.parse(iso) - Date.now()) / DAY));
+
+    describe("updateDeliverySecurityAction", () => {
+      function setup(extended: boolean, delivery: Record<string, unknown> = mockDelivery) {
+        const services = {
+          delivery: {
+            updateDelivery: vi.fn().mockImplementation((_id, data) => Promise.resolve({ ...delivery, ...data })),
+          },
+          subscription: {
+            isPasswordProtectionAllowed: vi.fn().mockResolvedValue(true),
+            isDownloadNotificationAllowed: vi.fn().mockResolvedValue(true),
+            isExtendedLinkExpiryAllowed: vi.fn().mockResolvedValue(extended),
+          },
+        };
+        vi.spyOn(guards, "requireDeliveryAccess").mockResolvedValue({
+          services: services as any,
+          delivery: delivery as any,
+          workspace: { id: "ws_test" } as any,
+          role: "admin",
+          user: { id: "user_1" } as any,
+        });
+        return services;
+      }
+
+      it("lets every plan pick up to 30 days", async () => {
+        const services = setup(false);
+        const result = await updateDeliverySecurityAction("del_101", { expiresAt: inDays(30) });
+        expect(result.success).toBe(true);
+        expect(services.subscription.isExtendedLinkExpiryAllowed).not.toHaveBeenCalled();
+      });
+
+      it("refuses never, or more than 30 days, without extended link expiry", async () => {
+        const services = setup(false, { ...mockDelivery, expiresAt: inDays(7) });
+        for (const expiresAt of [null, inDays(90)]) {
+          const result = await updateDeliverySecurityAction("del_101", { expiresAt });
+          expect(result.error).toContain("Pro and Studio");
+        }
+        expect(services.delivery.updateDelivery).not.toHaveBeenCalled();
+      });
+
+      it("lets plans with extended link expiry make the link never expire", async () => {
+        const services = setup(true, { ...mockDelivery, expiresAt: inDays(7) });
+        const result = await updateDeliverySecurityAction("del_101", { expiresAt: null });
+        expect(result.success).toBe(true);
+        expect(services.delivery.updateDelivery).toHaveBeenCalledWith(
+          "del_101",
+          expect.objectContaining({ expiresAt: null })
+        );
+      });
+
+      it("keeps the expiry a link already has, even one the plan couldn't set today", async () => {
+        // mockDelivery never expires, like a link made before a downgrade.
+        const services = setup(false);
+        const result = await updateDeliverySecurityAction("del_101", { expiresAt: null, isCommentAllowed: false });
+        expect(result.success).toBe(true);
+        expect(services.subscription.isExtendedLinkExpiryAllowed).not.toHaveBeenCalled();
+      });
+
+      it("refuses an expiry in the past", async () => {
+        const services = setup(true);
+        const result = await updateDeliverySecurityAction("del_101", { expiresAt: inDays(-1) });
+        expect(result.error).toContain("future");
+        expect(services.delivery.updateDelivery).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("createDeliveryAction", () => {
+      function setup(defaultLinkExpirationDays: number | null | undefined, extended: boolean) {
+        mockUserServices.settings = {
+          findByWorkspaceId: vi
+            .fn()
+            .mockResolvedValue(defaultLinkExpirationDays === undefined ? null : { defaultLinkExpirationDays }),
+        };
+        mockUserServices.subscription.isExtendedLinkExpiryAllowed = vi.fn().mockResolvedValue(extended);
+        vi.spyOn(guards, "requireWorkspaceMember").mockResolvedValue({
+          workspace: { id: "ws_test" },
+          role: "editor",
+          services: mockUserServices,
+          user: { id: "user_1" },
+        } as any);
+      }
+
+      const createdExpiry = () => mockUserServices.delivery.createDelivery.mock.calls[0][0].expiresAt;
+
+      it("gives a new link the workspace's default lifetime", async () => {
+        setup(14, false);
+        await createDeliveryAction("ws_test", "Teaser");
+        expect(daysFromNow(createdExpiry())).toBe(14);
+        expect(mockUserServices.subscription.isExtendedLinkExpiryAllowed).not.toHaveBeenCalled();
+      });
+
+      it("makes new links never expire when that's the default and the plan allows it", async () => {
+        setup(null, true);
+        await createDeliveryAction("ws_test", "Teaser");
+        expect(createdExpiry()).toBeNull();
+      });
+
+      it("holds never and long defaults to 30 days on plans without extended link expiry", async () => {
+        for (const days of [null, 90]) {
+          mockUserServices.delivery.createDelivery.mockClear();
+          setup(days, false);
+          await createDeliveryAction("ws_test", "Teaser");
+          expect(daysFromNow(createdExpiry())).toBe(30);
+        }
+      });
+
+      it("gives 30 days, not no expiry, when the settings can't be read", async () => {
+        setup(undefined, true);
+        mockUserServices.settings.findByWorkspaceId.mockRejectedValue(new Error("db down"));
+        await createDeliveryAction("ws_test", "Teaser");
+        expect(daysFromNow(createdExpiry())).toBe(30);
+      });
+    });
+  });
+
   describe("archiveDeliveryAction", () => {
     const withSilo = async (enabled: boolean, run: () => Promise<void>) => {
       const { env } = await import("@/lib/env");

@@ -1,4 +1,5 @@
 import { parseUserAgentString } from '@/lib/session-parser';
+import { clientIpFromHeaders } from '@/lib/security/client-ip';
 import type { UserSession } from '@/core/entities/user-session';
 import type { DeviceDetails } from '@/core/repositories/user-session.repository';
 import type { SessionIdentity, SessionService } from '@/core/services/session.service';
@@ -28,10 +29,7 @@ function isLocalAddress(ip: string): boolean {
 
 /** Device and network details for a user_sessions row, from the request headers. */
 export function deviceInfoFromHeaders(headers: Headers): DeviceDetails {
-  const ipAddress =
-    headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    headers.get('x-real-ip') ||
-    '127.0.0.1';
+  const ipAddress = clientIpFromHeaders(headers);
 
   const rawCity = headers.get('x-vercel-ip-city') || headers.get('cf-ipcity') || undefined;
   const country = headers.get('x-vercel-ip-country') || headers.get('cf-ipcountry') || undefined;

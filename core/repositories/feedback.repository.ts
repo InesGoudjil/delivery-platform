@@ -10,6 +10,8 @@ export interface CreateFeedbackDTO {
   commentText: string;
   timestampSeconds?: number | null;
   parentId?: string | null;
+  /** The share link a guest comment came through (needs the share_links migration). */
+  shareLinkId?: string | null;
 }
 
 export interface CreateFeedbackReplyDTO {
@@ -18,6 +20,8 @@ export interface CreateFeedbackReplyDTO {
   guestAuthorKeyHash?: string | null;
   authorName: string;
   commentText: string;
+  /** The share link a guest reply came through (needs the share_links migration). */
+  shareLinkId?: string | null;
 }
 
 export interface IFeedbackRepository {
@@ -124,6 +128,8 @@ export class SupabaseFeedbackRepository implements IFeedbackRepository {
         author_name: dto.authorName,
         comment_text: dto.commentText,
         timestamp_seconds: dto.timestampSeconds,
+        // Only sent when set, so comments keep working before the column exists.
+        ...(dto.shareLinkId ? { share_link_id: dto.shareLinkId } : {}),
       })
       .select('*, feedback_replies(*)')
       .single();
@@ -181,6 +187,7 @@ export class SupabaseFeedbackRepository implements IFeedbackRepository {
         guest_author_key_hash: dto.guestAuthorKeyHash ?? null,
         author_name: dto.authorName,
         comment_text: dto.commentText,
+        ...(dto.shareLinkId ? { share_link_id: dto.shareLinkId } : {}),
       })
       .select()
       .single();

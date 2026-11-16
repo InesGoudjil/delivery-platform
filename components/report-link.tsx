@@ -5,7 +5,7 @@ import { Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Where reports go: NEXT_PUBLIC_ABUSE_EMAIL, else the address the legal pages already publish. */
-const REPORT_EMAIL = process.env.NEXT_PUBLIC_ABUSE_EMAIL || "hello@cinespace.film";
+const REPORT_EMAIL = process.env.NEXT_PUBLIC_ABUSE_EMAIL || "contact@cinespace.pro";
 
 /**
  * "Report a problem" on public pages (roadmap 5.6): opens an email to CineSpace with the page's

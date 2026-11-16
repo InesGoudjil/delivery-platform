@@ -8,7 +8,8 @@ import { Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
-import { safeReturnPath } from "@/lib/security/admin-mfa";
+import { safeReturnPath } from "@/lib/security/return-path";
+import { isAwaitingTwoFactor } from "@/lib/security/two-factor";
 
 type Step =
   | { kind: "loading" }
@@ -23,9 +24,24 @@ function newFactorName(): string {
   return `Authenticator ${new Date().toISOString().slice(0, 10)} ${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** Leaves the two-factor check by signing this device out (the POST route answers with /login). */
+function SignOutButton() {
+  return (
+    <form action="/api/auth/signout" method="post" className="text-center">
+      <button
+        type="submit"
+        className="text-xs text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+      >
+        Sign out
+      </button>
+    </form>
+  );
+}
+
 /**
  * Steps a signed-in session up to two-factor (aal2). Users with a verified authenticator enter a
- * code; users without one set it up here first. Platform admins are sent here before the admin panel.
+ * code; users without one set it up here first. Everyone with an authenticator comes here after
+ * signing in (lib/security/two-factor.ts), and platform admins before the admin panel.
  *
  * Loading the page only reads (React runs effects twice in development); enrolling, which creates
  * a factor, only happens when the user asks for it.
@@ -64,6 +80,20 @@ export function TwoFactorCheck() {
         return;
       }
       const verified = factors.totp.find((factor) => factor.status === "verified");
+      if (!verified) {
+        // The token still says this user has an authenticator, but it's gone (an admin reset it).
+        // A fresh token drops the old claim, and the middleware lets them through.
+        const { data: claimsData } = await supabase.auth.getClaims();
+        if (isAwaitingTwoFactor(claimsData?.claims)) {
+          await supabase.auth.refreshSession();
+          if (!cancelled) {
+            router.replace(returnTo);
+            router.refresh();
+          }
+          return;
+        }
+      }
+      if (cancelled) return;
       setStep(verified ? { kind: "verify", factorId: verified.id } : { kind: "setup" });
     }
 
@@ -176,53 +206,65 @@ export function TwoFactorCheck() {
           {busy && <Loader2 className="size-4 animate-spin" />}
           Set up an authenticator app
         </Button>
+        <SignOutButton />
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      {step.kind === "enroll"
-        ? heading("Scan the code", "Scan this QR code with your authenticator app, then enter the 6-digit code it shows.")
-        : heading("Enter your code", "Open your authenticator app and enter the 6-digit code for CineSpace.")}
+    <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {step.kind === "enroll"
+          ? heading("Scan the code", "Scan this QR code with your authenticator app, then enter the 6-digit code it shows.")
+          : heading("Enter your code", "Open your authenticator app and enter the 6-digit code for CineSpace.")}
 
-      {step.kind === "enroll" && (
-        <div className="space-y-3 rounded-xl border border-border bg-muted/40 p-4">
-          {/* Supabase returns the QR code as an SVG data URL. */}
-          <img src={step.qrCode} alt="QR code for your authenticator app" className="mx-auto size-44 rounded-lg bg-white p-2" />
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Can&apos;t scan it? Enter this key instead:</p>
-            <code className="block break-all rounded-md bg-background px-2 py-1.5 text-xs">{step.secret}</code>
+        {step.kind === "enroll" && (
+          <div className="space-y-3 rounded-xl border border-border bg-muted/40 p-4">
+            {/* Supabase returns the QR code as an SVG data URL. */}
+            <img src={step.qrCode} alt="QR code for your authenticator app" className="mx-auto size-44 rounded-lg bg-white p-2" />
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Can&apos;t scan it? Enter this key instead:</p>
+              <code className="block break-all rounded-md bg-background px-2 py-1.5 text-xs">{step.secret}</code>
+            </div>
           </div>
-        </div>
-      )}
-
-      <div className="space-y-2">
-        <label htmlFor="mfa-code" className="text-sm font-medium">
-          6-digit code
-        </label>
-        <Input
-          id="mfa-code"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={6}
-          autoFocus
-          value={code}
-          onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
-          aria-invalid={codeError ? true : undefined}
-          aria-describedby={codeError ? "mfa-code-error" : undefined}
-        />
-        {codeError && (
-          <p id="mfa-code-error" className="text-sm text-destructive">
-            {codeError}
-          </p>
         )}
-      </div>
 
-      <Button type="submit" className="w-full" disabled={busy || code.length !== 6}>
-        {busy && <Loader2 className="size-4 animate-spin" />}
-        {step.kind === "enroll" ? "Turn on two-factor and continue" : "Verify and continue"}
-      </Button>
-    </form>
+        <div className="space-y-2">
+          <label htmlFor="mfa-code" className="text-sm font-medium">
+            6-digit code
+          </label>
+          <Input
+            id="mfa-code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            autoFocus
+            value={code}
+            onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
+            aria-invalid={codeError ? true : undefined}
+            aria-describedby={codeError ? "mfa-code-error" : undefined}
+          />
+          {codeError && (
+            <p id="mfa-code-error" className="text-sm text-destructive">
+              {codeError}
+            </p>
+          )}
+        </div>
+
+        <Button type="submit" className="w-full" disabled={busy || code.length !== 6}>
+          {busy && <Loader2 className="size-4 animate-spin" />}
+          {step.kind === "enroll" ? "Turn on two-factor and continue" : "Verify and continue"}
+        </Button>
+      </form>
+      {step.kind === "verify" && (
+        <p className="text-center text-xs text-muted-foreground">
+          Lost access to your authenticator app?{" "}
+          <Link href="/contact" className="underline underline-offset-4 transition-colors hover:text-foreground">
+            Contact support
+          </Link>
+        </p>
+      )}
+      <SignOutButton />
+    </div>
   );
 }

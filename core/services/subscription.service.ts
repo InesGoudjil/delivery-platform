@@ -8,6 +8,10 @@ import { IWorkspaceFeaturesRepository } from '@/core/repositories/workspace.repo
 import { IDeliveryRepository } from '@/core/repositories/i-delivery-repository';
 import { IInvoiceRepository } from '@/core/repositories/invoice.repository';
 import { env } from '@/lib/env';
+import { hasExtendedLinkExpiry } from '@/lib/security/link-expiry';
+import { shareLinksPerDelivery } from '@/lib/share-links/limits';
+
+export { shareLinksPerDelivery };
 
 export class SubscriptionService {
   constructor(
@@ -222,6 +226,7 @@ export class SubscriptionService {
         storageGbMax: storageGb,
         storageBytesMax,
         clientLinksMax,
+        shareLinksPerDeliveryMax: shareLinksPerDelivery(features, tier),
         teamSeatsMax,
         portfolioVideosMax,
       },
@@ -232,6 +237,7 @@ export class SubscriptionService {
         whiteLabel: Boolean(features.white_label),
         sendWhatsApp: Boolean(features.whatsapp_delivery),
         receiveDownloadNotifications: Boolean(features.download_notifications),
+        extendedLinkExpiry: hasExtendedLinkExpiry(features),
         // The Silo kill switch (SILO_ENABLED) overrides every plan.
         useSiloArchive: env.isSiloEnabled && Boolean(features.silo_archive),
         bilingual: Array.isArray(features.languages) && features.languages.length > 1,
@@ -371,7 +377,7 @@ export class SubscriptionService {
       maxAllowed: clientLinksLimit,
       reason: allowed
         ? undefined
-        : `Your current plan allows up to ${clientLinksLimit} active project link(s). Upgrade to Pro or Studio for unlimited client projects.`,
+        : `Your current plan allows up to ${clientLinksLimit} active delivery room(s). Upgrade to Pro or Studio for unlimited delivery rooms.`,
     };
   }
 
@@ -383,6 +389,17 @@ export class SubscriptionService {
   async isPasswordProtectionAllowed(workspaceId: string): Promise<boolean> {
     const features = await this.getFeatures(workspaceId);
     return Boolean(features.password_protected);
+  }
+
+  /** Links longer than 30 days, or that never expire (lib/security/link-expiry.ts). */
+  async isExtendedLinkExpiryAllowed(workspaceId: string): Promise<boolean> {
+    return hasExtendedLinkExpiry(await this.getFeatures(workspaceId));
+  }
+
+  /** Share links per delivery room, -1 for unlimited. */
+  async getShareLinksPerDeliveryLimit(workspaceId: string): Promise<number> {
+    const [plan, features] = await Promise.all([this.getCurrentPlan(workspaceId), this.getFeatures(workspaceId)]);
+    return shareLinksPerDelivery(features, plan ? planTier(plan.slug) : undefined);
   }
 
   async isWatermarkAllowed(workspaceId: string): Promise<boolean> {
