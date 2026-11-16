@@ -42,7 +42,10 @@ import {
   TypographySmall,
   TypographySpan,
 } from "@/components/ui/typography";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useOptionalEntitlements } from "@/components/providers/entitlements-provider";
+import { EXTENDED_LINK_EXPIRY_MESSAGE, isExtendedDefaultLinkDays } from "@/lib/security/link-expiry";
 import { changePasswordAction } from "@/app/actions/auth";
 import {
   getWorkspaceSettingsAction,
@@ -77,6 +80,8 @@ export default function SecurityPage() {
   const params = useParams();
   const workspaceSlug = (params?.workspaceSlug as string) || "studio";
   const supabase = createClient();
+  // Defaults longer than 30 days, or "never", need extended link expiry (Pro and up).
+  const canExtendExpiry = useOptionalEntitlements()?.can.extendedLinkExpiry ?? false;
 
   // 2FA State
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
@@ -253,6 +258,11 @@ export default function SecurityPage() {
 
   // Update Link Expiration
   const handleSelectExpiration = async (days: number | null) => {
+    if (!canExtendExpiry && isExtendedDefaultLinkDays(days)) {
+      toast.error(`${EXTENDED_LINK_EXPIRY_MESSAGE} Upgrade to unlock.`);
+      return;
+    }
+    const previousDays = expirationDays;
     setExpirationDays(days);
     setIsSavingExpiration(true);
 
@@ -264,6 +274,7 @@ export default function SecurityPage() {
     if (res.success) {
       toast.success("Default link expiration policy updated");
     } else {
+      setExpirationDays(previousDays);
       toast.error(res.error || "Failed to save link expiration policy");
     }
   };
@@ -523,25 +534,41 @@ export default function SecurityPage() {
           <div className="flex flex-wrap gap-2.5">
             {EXPIRATION_OPTIONS.map((opt) => {
               const isSelected = expirationDays === opt.value;
+              const isLocked = !canExtendExpiry && isExtendedDefaultLinkDays(opt.value);
               return (
                 <button
                   key={opt.label}
                   type="button"
                   disabled={isSavingExpiration}
                   onClick={() => handleSelectExpiration(opt.value)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                  title={isLocked ? "Needs Pro or Studio" : undefined}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer inline-flex items-center gap-1.5 ${
                     isSelected
                       ? "bg-primary text-primary-foreground border-primary shadow-sm"
                       : "bg-muted border-border text-muted-foreground hover:text-foreground hover:border-primary/50"
-                  }`}
+                  } ${isLocked ? "opacity-70" : ""}`}
                 >
                   {opt.label}
+                  {isLocked && <Lock className="size-3 text-amber-500" />}
                 </button>
               );
             })}
           </div>
+          {!canExtendExpiry && isExtendedDefaultLinkDays(expirationDays) && (
+            <TypographyMuted className="text-[11px] text-amber-600 dark:text-amber-400 mt-2.5 block">
+              Your plan gives links 30 days at most, so new links get 30 days.
+            </TypographyMuted>
+          )}
           <TypographyMuted className="text-[11px] text-muted-foreground mt-2.5 block">
-            Note: You can always override or remove the expiration date for specific project links in their Share Dialog.
+            You can change a link&apos;s expiry in its Share dialog.
+            {!canExtendExpiry && (
+              <>
+                {" "}Links longer than 30 days, or that never expire, need Pro or Studio.{" "}
+                <Link href={`/${workspaceSlug}/subscription`} className="text-primary hover:underline">
+                  Upgrade
+                </Link>
+              </>
+            )}
           </TypographyMuted>
         </div>
       </div>

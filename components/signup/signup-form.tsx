@@ -41,10 +41,13 @@ export function SignupForm({
   const [isPending, startTransition] = useTransition();
   const [waitlistToken, setWaitlistToken] = useState<string | null>(null);
   const [oauthLoadingProvider, setOauthLoadingProvider] = useState<"google" | "apple" | null>(null);
+  // Where to go after signing up (an invite link, for example). The server checks it.
+  const [returnTo, setReturnTo] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
+      setReturnTo(params.get("redirect") || params.get("next"));
       const errorParam = params.get("error");
       if (errorParam) {
         if (errorParam === "auth-callback-failed") {
@@ -169,6 +172,7 @@ export function SignupForm({
           </p>
         </div>
 
+        {returnTo && <input type="hidden" name="redirect" value={returnTo} />}
         {waitlistToken && (
           <>
             <input type="hidden" name="waitlist_token" value={waitlistToken} />
@@ -222,7 +226,7 @@ export function SignupForm({
             id="email"
             name="email"
             type="email"
-            placeholder="creator@cinespace.film"
+            placeholder="creator@cinespace.pro"
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
@@ -419,7 +423,7 @@ export function SignupForm({
         <FieldDescription className="text-center pt-2">
           Already have an account?{" "}
           <Link
-            href="/login"
+            href={returnTo ? `/login?redirect=${encodeURIComponent(returnTo)}` : "/login"}
             className="font-medium text-foreground underline underline-offset-4 hover:text-primary transition-colors"
           >
             Sign in

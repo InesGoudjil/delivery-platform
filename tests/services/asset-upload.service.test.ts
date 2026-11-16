@@ -163,7 +163,7 @@ function setup(options: Setup = {}) {
     undefined,
     subscriptionService as any
   );
-  return { service, storage, assetRepo, versionRepo, deliveryRepo };
+  return { service, storage, assetRepo, versionRepo, deliveryRepo, subscriptionService };
 }
 
 /** Every argument any storage call received, flattened to strings. */
@@ -658,5 +658,145 @@ describe("AssetUploadService file sizes", () => {
     await olderSetup.service.handleTranscodeWebhook({ uid: UID });
     expect(olderSetup.versionRepo.update).toHaveBeenCalledWith(VERSION, expect.objectContaining({ width: 1080, height: 1920 }));
     expect(olderSetup.assetRepo.setAspectRatioIfUnset).not.toHaveBeenCalled();
+  });
+});
+
+describe("AssetUploadService delivery covers", () => {
+  const COVER_PREFIX = `private/workspaces/${WS}/deliveries/${DEL}/cover/`;
+  const COVER_KEY = `${COVER_PREFIX}60000000-0000-4000-8000-0000000000c1/1700000000000-Banner.jpg`;
+  const JPEG_HEAD = { sizeBytes: 2048, contentType: "image/jpeg" };
+  const coverRequest = {
+    workspaceId: WS,
+    deliveryId: DEL,
+    filename: "Banner.jpg",
+    fileSizeBytes: 2048,
+    contentType: "image/jpeg",
+  };
+  const coverConfirm = { workspaceId: WS, deliveryId: DEL, location: COVER_KEY };
+
+  it("hands out a presigned PUT for a new private object under the delivery's cover prefix, creating no file", async () => {
+    const { service, storage, assetRepo, versionRepo } = setup();
+    const ticket = await service.requestDeliveryCoverUpload(coverRequest);
+
+    expect(ticket.location).toMatch(new RegExp(`^${COVER_PREFIX}[0-9a-f-]{36}/\\d+-Banner\\.jpg$`));
+    expect(ticket.directUpload).toMatchObject({
+      uploadType: "presigned_put",
+      providerUid: ticket.location,
+      headers: { "Content-Type": "image/jpeg" },
+    });
+    expect(new URL(ticket.directUpload.uploadUrl).pathname).toBe(`/media-private/${ticket.location}`);
+    expect(storage.createDirectUploadUrl.mock.calls[0][0]).toMatchObject({
+      workspaceId: WS,
+      deliveryId: DEL,
+      isPublic: false,
+      placement: "cover",
+      contentType: "image/jpeg",
+      fileSizeBytes: 2048,
+    });
+    expect(assetRepo.create).not.toHaveBeenCalled();
+    expect(versionRepo.create).not.toHaveBeenCalled();
+
+    // Every cover is a new object.
+    expect((await service.requestDeliveryCoverUpload(coverRequest)).location).not.toBe(ticket.location);
+  });
+
+  it("refuses another workspace's delivery, files that aren't banner images, covers over 10 MB and a full quota", async () => {
+    const { service, storage, subscriptionService } = setup();
+    await expect(service.requestDeliveryCoverUpload({ ...coverRequest, deliveryId: OTHER_DEL })).rejects.toThrow("Delivery not found");
+    await expect(service.requestDeliveryCoverUpload({ ...coverRequest, workspaceId: "../x" })).rejects.toThrow("Workspace not found");
+    for (const filename of ["cut.mp4", "logo.svg", "page.html", "photo.heic", "scan.tiff", "banner"]) {
+      await expect(service.requestDeliveryCoverUpload({ ...coverRequest, filename, contentType: null })).rejects.toThrow(
+        "JPG, PNG or WebP"
+      );
+    }
+    await expect(service.requestDeliveryCoverUpload({ ...coverRequest, contentType: "text/html" })).rejects.toThrow("doesn't match");
+    await expect(service.requestDeliveryCoverUpload({ ...coverRequest, fileSizeBytes: 10 * 1024 * 1024 + 1 })).rejects.toThrow("10 MB");
+
+    subscriptionService.getEntitlements.mockResolvedValueOnce({ limits: { storageBytesMax: 1024, storageGbMax: 0 } });
+    await expect(service.requestDeliveryCoverUpload(coverRequest)).rejects.toThrow("Storage quota exceeded");
+
+    expect(storage.createDirectUploadUrl).not.toHaveBeenCalled();
+  });
+
+  it("confirms a real image under the delivery's cover prefix and returns it to store", async () => {
+    const { service, storage } = setup({ head: JPEG_HEAD, firstBytes: JPEG_START });
+    await expect(service.confirmDeliveryCoverUpload(coverConfirm)).resolves.toBe(COVER_KEY);
+    expect(storage.headObject).toHaveBeenCalledWith(COVER_KEY);
+    expect(storage.deleteAsset).not.toHaveBeenCalled();
+  });
+
+  it("never touches a location that isn't one of this delivery's covers", async () => {
+    const { service, storage } = setup({ head: JPEG_HEAD, firstBytes: JPEG_START });
+    const others = [
+      `private/workspaces/${WS}/deliveries/${DEL}/assets/${ASSET}/v1/1-still.jpg`,
+      `private/workspaces/${WS}/deliveries/${DEL_2}/cover/c/1-Banner.jpg`,
+      `private/workspaces/${OTHER_WS}/deliveries/${OTHER_DEL}/cover/c/1-Banner.jpg`,
+      `public/workspaces/${WS}/portfolio/covers/${ASSET}/1-Banner.jpg`,
+      `${COVER_PREFIX}../assets/${ASSET}/v1/1-cut.mp4`,
+      "https://images.example/cover.jpg",
+      "data:image/jpeg;base64,/9j/4AAQ",
+      "/api/mock-upload/../../etc",
+    ];
+    for (const location of others) {
+      await expect(service.confirmDeliveryCoverUpload({ ...coverConfirm, location })).rejects.toBeInstanceOf(UploadRejectedError);
+    }
+    expect(storage.headObject).not.toHaveBeenCalled();
+    expect(storage.deleteAsset).not.toHaveBeenCalled();
+  });
+
+  it("deletes and refuses an object that isn't a banner image: HTML, SVG or video bytes, wrong type, empty or too big", async () => {
+    const cases = [
+      { head: JPEG_HEAD, firstBytes: HTML_START, error: "isn't a valid image" },
+      { head: JPEG_HEAD, firstBytes: SVG_START, error: "isn't a valid image" },
+      { head: JPEG_HEAD, firstBytes: MP4_START, error: "isn't a valid image" },
+      { head: { sizeBytes: 2048, contentType: "text/html" }, firstBytes: JPEG_START, error: "wrong content type" },
+      { head: { sizeBytes: 0, contentType: "image/jpeg" }, firstBytes: JPEG_START, error: "empty" },
+      { head: { sizeBytes: 10 * 1024 * 1024 + 1, contentType: "image/jpeg" }, firstBytes: JPEG_START, error: "10 MB" },
+    ];
+    for (const { head, firstBytes, error } of cases) {
+      const { service, storage } = setup({ head, firstBytes });
+      await expect(service.confirmDeliveryCoverUpload(coverConfirm)).rejects.toThrow(error);
+      expect(storage.deleteAsset).toHaveBeenCalledWith(COVER_KEY);
+    }
+  });
+
+  it("leaves the object alone while it hasn't arrived", async () => {
+    const { service, storage } = setup({ head: null });
+    await expect(service.confirmDeliveryCoverUpload(coverConfirm)).rejects.toThrow("wasn't found");
+    expect(storage.deleteAsset).not.toHaveBeenCalled();
+  });
+
+  it("works with the local mock uploads outside production", async () => {
+    const { service, storage } = setup();
+    storage.createDirectUploadUrl.mockResolvedValueOnce({
+      uploadUrl: "/api/mock-upload/mock_stream_1_abc",
+      providerUid: "mock_stream_1_abc",
+      uploadType: "direct_post",
+    } as any);
+    const ticket = await service.requestDeliveryCoverUpload(coverRequest);
+    expect(ticket.location).toBe("/api/mock-upload/mock_stream_1_abc");
+    await expect(service.confirmDeliveryCoverUpload({ ...coverConfirm, location: ticket.location })).resolves.toBe(ticket.location);
+    expect(storage.headObject).not.toHaveBeenCalled();
+  });
+
+  it("deletes only the delivery's own cover objects, and never throws", async () => {
+    const { service, storage } = setup();
+    expect(await service.deleteDeliveryCover(WS, DEL, COVER_KEY)).toBe(true);
+    expect(storage.deleteAsset).toHaveBeenCalledWith(COVER_KEY);
+    storage.deleteAsset.mockClear();
+
+    for (const value of [
+      `private/workspaces/${WS}/deliveries/${DEL}/assets/${ASSET}/v1/1-still.jpg`,
+      `private/workspaces/${WS}/deliveries/${DEL_2}/cover/c/1-Banner.jpg`,
+      "data:image/png;base64,AAAA",
+      "https://images.example/cover.jpg",
+      null,
+    ]) {
+      expect(await service.deleteDeliveryCover(WS, DEL, value)).toBe(false);
+    }
+    expect(storage.deleteAsset).not.toHaveBeenCalled();
+
+    storage.deleteAsset.mockRejectedValueOnce(new Error("R2 unavailable"));
+    expect(await service.deleteDeliveryCover(WS, DEL, COVER_KEY)).toBe(false);
   });
 });

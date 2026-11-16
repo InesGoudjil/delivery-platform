@@ -137,6 +137,34 @@ export function checkUploadFile(file: {
 }
 
 // ---------------------------------------------------------------------------
+// Delivery covers: the banner at the top of a delivery room.
+// ---------------------------------------------------------------------------
+
+/** A cover is a cropped banner image (the crop editor exports a 1920px-wide JPEG). */
+export const MAX_COVER_BYTES = 10 * 1024 * 1024;
+
+/** Formats every browser shows as a banner. */
+const COVER_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
+
+/** True for a file name or object key with a cover image extension. */
+export function hasCoverExtension(filename: string | null | undefined): boolean {
+  return COVER_EXTENSIONS.has(fileExtension(filename));
+}
+
+/** Checks a delivery cover: a JPG, PNG or WebP image (type matching its extension) of at most 10 MB. */
+export function checkCoverFile(file: { filename: string; declaredType?: string | null; sizeBytes: number }): UploadFileCheck {
+  if (!hasCoverExtension(file.filename)) {
+    return { ok: false, error: "Covers must be JPG, PNG or WebP images." };
+  }
+  const check = checkUploadFile({ assetType: "photo_gallery", ...file });
+  if (!check.ok) return check;
+  if (file.sizeBytes > MAX_COVER_BYTES) {
+    return { ok: false, error: "Covers can be at most 10 MB." };
+  }
+  return check;
+}
+
+// ---------------------------------------------------------------------------
 // Content sniffing: what the first bytes of an uploaded object really are.
 // ---------------------------------------------------------------------------
 
@@ -310,3 +338,30 @@ export const confirmUploadSchema = z.object({
 });
 
 export type ConfirmUploadInput = z.input<typeof confirmUploadSchema>;
+
+/** A delivery's cover image: which delivery, and the file the browser is about to upload. */
+export const requestDeliveryCoverUploadSchema = z.object({
+  deliveryId: uuidSchema,
+  filename: z
+    .string()
+    .trim()
+    .min(1, "Filename is required")
+    .max(255, "Filename is too long"),
+  fileSizeBytes: z
+    .number()
+    .int("File size must be a whole number of bytes")
+    .positive("The file is empty")
+    .max(MAX_COVER_BYTES, "Covers can be at most 10 MB."),
+  /** The type the browser reports for the file (File.type); must match the extension. */
+  contentType: z.string().trim().max(255).optional().nullable(),
+});
+
+export type RequestDeliveryCoverUploadInput = z.input<typeof requestDeliveryCoverUploadSchema>;
+
+/** Confirming a cover: where the server said it would be stored (it checks that again). */
+export const confirmDeliveryCoverUploadSchema = z.object({
+  deliveryId: uuidSchema,
+  location: z.string().trim().min(1, "Upload location is required").max(1024),
+});
+
+export type ConfirmDeliveryCoverUploadInput = z.input<typeof confirmDeliveryCoverUploadSchema>;

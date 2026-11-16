@@ -2,7 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import type { Feedback, FeedbackReply } from "@/core/entities/feedback";
-import { actorViewer, resolveDeliveryActor, type DeliveryActor } from "./deliveries/room-access";
+import {
+  actorViewer,
+  guestLinkId,
+  recordGuestLinkEvent,
+  resolveDeliveryActor,
+  type DeliveryActor,
+} from "./deliveries/room-access";
 import { resolveRequestOrigin } from "./deliveries/helpers";
 import { feedbackInDelivery, replyInDelivery, versionInDelivery } from "@/lib/client-room/scope";
 import { canModifyComment, type RoomViewer } from "@/lib/client-room/content";
@@ -118,7 +124,8 @@ function recordClientComment(
   actor: DeliveryActor,
   input: { assetVersionId: string; authorName: string; commentText: string }
 ) {
-  if (actor.kind !== "guest") return;
+  // The link may have comment alerts turned off (e.g. an agency's review link).
+  if (actor.kind !== "guest" || !actor.link.notifyOnComment) return;
   runAfterResponse("email:client-comment", async () => {
     const version = await actor.adminServices.asset.getVersionById(input.assetVersionId);
     return actor.adminServices.commentEmail.record({
@@ -132,7 +139,7 @@ function recordClientComment(
 
 /** A client comment or reply counts toward the studio's grouped WhatsApp alert. */
 function countForWhatsApp(actor: DeliveryActor, authorName: string, commentText: string) {
-  if (actor.kind !== "guest") return;
+  if (actor.kind !== "guest" || !actor.link.notifyOnComment) return;
   runAfterResponse("whatsapp:comment", async () =>
     actor.adminServices.whatsapp.recordClientComment({
       deliveryId: actor.delivery.id,
@@ -172,6 +179,7 @@ async function addReplyAs(
           guestAuthorKeyHash: await ensureGuestAuthorKeyHash(actor.shareToken),
           authorName,
           commentText,
+          shareLinkId: guestLinkId(actor),
         })
       : await actor.services.feedback.addReply({
           feedbackId: feedback.id,
@@ -184,6 +192,7 @@ async function addReplyAs(
   // A studio reply to a client's comment: the client gets it by email (library 32).
   if (!feedback.authorUserId) emailClientAboutReply(actor, commentText);
   recordClientComment(actor, { assetVersionId: feedback.assetVersionId, authorName, commentText });
+  recordGuestLinkEvent(actor, "comment");
   revalidateRoom(actor);
   return { success: true, reply: replyDto(reply) };
 }
@@ -214,6 +223,7 @@ export async function addFeedbackAction(params: AddFeedbackInput): Promise<Feedb
             authorName: name,
             commentText,
             timestampSeconds,
+            shareLinkId: guestLinkId(actor),
           })
         : await actor.services.feedback.addFeedback({
             assetVersionId,
@@ -225,6 +235,7 @@ export async function addFeedbackAction(params: AddFeedbackInput): Promise<Feedb
 
     recordClientComment(actor, { assetVersionId, authorName: name, commentText });
     countForWhatsApp(actor, name, commentText);
+    recordGuestLinkEvent(actor, "comment");
     revalidateRoom(actor);
     return { success: true, feedback: feedbackDto(feedback) };
   } catch (err: unknown) {

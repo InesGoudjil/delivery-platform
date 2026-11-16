@@ -15,6 +15,10 @@ export interface WorkspaceFeatureConfig {
   priority_support?: boolean;
   silo_archive?: boolean;
   white_label?: boolean;
+  /** Links longer than 30 days, or that never expire. Unset: follows password_protected. */
+  extended_link_expiry?: boolean;
+  /** Share links per delivery, -1 for unlimited. Unset: Starter 1, Basic 3, Pro and up unlimited. */
+  share_links_per_delivery?: number;
   [key: string]: any;
 }
 
@@ -27,7 +31,10 @@ export interface WorkspaceFeatures {
 export interface PlanLimits {
   storageBytesMax: number;
   storageGbMax: number;
-  clientLinksMax: number; // -1 for unlimited
+  /** Active delivery rooms (feature client_links), -1 for unlimited. */
+  clientLinksMax: number;
+  /** Share links per delivery room, -1 for unlimited. */
+  shareLinksPerDeliveryMax: number;
   teamSeatsMax: number;
   portfolioVideosMax: number; // -1 for unlimited
 }
@@ -39,6 +46,8 @@ export interface PlanCapabilities {
   whiteLabel: boolean;
   sendWhatsApp: boolean;
   receiveDownloadNotifications: boolean;
+  /** Links longer than 30 days, or that never expire (lib/security/link-expiry.ts). */
+  extendedLinkExpiry: boolean;
   useSiloArchive: boolean;
   bilingual: boolean;
   prioritySupport: boolean;

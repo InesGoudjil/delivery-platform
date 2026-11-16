@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { getServerAdminServices, getServerServices } from "@/core/server";
 import type { Delivery } from "@/core/entities/delivery";
+import { primaryLinkFromDelivery, type ShareLink, type ShareLinkSource } from "@/core/entities/share-link";
 import { hasRoomAccess } from "@/lib/security/delivery-token";
 import { hasMinRole, type WorkspaceRoleLevel } from "./guards";
 
@@ -8,12 +9,18 @@ import { hasMinRole, type WorkspaceRoleLevel } from "./guards";
  * The one gate for client rooms (/deliver/<share token>).
  *
  * Everything a client-room visitor can reach goes through `getClientRoom` or
- * `requireClientRoom`: the page, every room action and media download. The share token
- * is the only way in. A delivery's id never opens its room, so rotating the share link
- * cuts off everyone who had the old one.
+ * `requireClientRoom`: the page, every room action and media download. A share link's
+ * token is the only way in. A delivery can have several links (share_links), each with its
+ * own passcode, expiry and permissions; the visitor gets the rules of the link they came in
+ * by. A delivery's id never opens its room, and a new token for a link cuts off everyone
+ * who had the old one.
  *
- * A guest gets in when the room is open: not archived, not expired, and either without
- * a passcode or with a valid unlock cookie (bound to the current link and passcode).
+ * Before the share_links migration is applied (or when that table can't be read), the
+ * delivery's own columns stand in for its primary link, which they mirror: only primary
+ * links open then.
+ *
+ * A guest gets in when the room is open: not archived, the link not turned off or expired,
+ * and either without a passcode or with a valid unlock cookie (bound to the link and passcode).
  * A signed-in member of the studio's workspace can preview any state of their own room
  * except a locked one; they unlock it with one click (the server checks membership).
  *
@@ -26,7 +33,8 @@ import { hasMinRole, type WorkspaceRoleLevel } from "./guards";
  * do in their browser instead. Members of the demo's workspace use it like any of their rooms.
  */
 
-export type ClientRoomState = "open" | "locked" | "expired" | "unavailable";
+/** "revoked": the studio turned this link off. "unavailable": the delivery is archived or the studio suspended. */
+export type ClientRoomState = "open" | "locked" | "expired" | "revoked" | "unavailable";
 /**
  * What a room action is about to do. "manage_comments" resolves or deletes an existing comment
  * or reply: unlike "comment" (writing one), it still works while comments are turned off.
@@ -42,8 +50,16 @@ export interface ClientRoomMember {
 export type AdminServices = Awaited<ReturnType<typeof getServerAdminServices>>;
 
 export interface ClientRoom {
-  /** Server-side only: holds the passcode hash and share token. Never send it to the browser. */
+  /**
+   * The delivery as seen through the visitor's link: its share token, passcode hash, expiry,
+   * comment, download and download-notice settings are the link's, so code that reads them
+   * follows the link. Server-side only: never send it to the browser.
+   */
   delivery: Delivery;
+  /** The link the visitor came in by. Server-side only (passcode hash, sealed passcode). */
+  link: ShareLink;
+  /** "delivery": share_links couldn't be read, so `link` is the primary link from the delivery's columns. */
+  linkSource: ShareLinkSource;
   state: ClientRoomState;
   /** The studio's workspace is suspended: closed to guests, and read-only for its members. */
   suspended: boolean;
@@ -54,6 +70,8 @@ export interface ClientRoom {
   canView: boolean;
   canComment: boolean;
   canDownload: boolean;
+  /** Members by their role (editor and up); guests when the link allows approvals. */
+  canApprove: boolean;
   /** This delivery is the site's demo room: guests may look, and nothing they do is saved. */
   isDemo: boolean;
 }
@@ -103,14 +121,56 @@ async function findDemoRoomDeliveryId(services: AdminServices): Promise<string |
   }
 }
 
-/** Looks up a room by its share token. Returns null when the token matches no delivery. */
+/** True when this delivery is the site's demo room, where guests can't download. */
+export async function isDemoRoomDelivery(services: AdminServices, deliveryId: string): Promise<boolean> {
+  return (await findDemoRoomDeliveryId(services)) === deliveryId;
+}
+
+/**
+ * The link with this token and its delivery. When share_links can't be read (the migration
+ * isn't applied yet, or the read failed), the delivery's own columns stand in for its primary
+ * link, which they mirror: only primary links open then, with the same rules.
+ */
+async function findRoomLink(
+  services: AdminServices,
+  token: string
+): Promise<{ link: ShareLink; delivery: Delivery; source: ShareLinkSource } | null> {
+  try {
+    const found = await services.shareLink.findByToken(token);
+    if (!found || found.link.token !== token) return null;
+    return { ...found, source: "table" };
+  } catch {
+    const delivery = await services.delivery.getDeliveryByShareToken(token, { allowExpired: true });
+    if (!delivery || delivery.shareToken !== token) return null;
+    return { link: primaryLinkFromDelivery(delivery), delivery, source: "delivery" };
+  }
+}
+
+/** The delivery with the link's token, passcode, expiry and permissions in place of its own columns. */
+function deliveryThroughLink(delivery: Delivery, link: ShareLink): Delivery {
+  return {
+    ...delivery,
+    shareToken: link.token,
+    passcodeHash: link.passcodeHash,
+    expiresAt: link.expiresAt,
+    isCommentAllowed: link.canComment,
+    isDownloadAllowed: link.canDownload,
+    notifyOnDownload: link.notifyOnDownload,
+  };
+}
+
+/** Looks up a room by a share link's token. Returns null when the token matches no link. */
 export async function getClientRoom(shareToken: string): Promise<ClientRoom | null> {
   if (!isWellFormedShareToken(shareToken)) return null;
   const token = shareToken.trim();
 
-  const services = await getServerAdminServices();
-  const delivery = await services.delivery.getDeliveryByShareToken(token, { allowExpired: true });
-  if (!delivery || delivery.shareToken !== token) return null;
+  // Rooms are rendered per request (they read the unlock cookie), so their queries are logged
+  // with the request.
+  const services = await getServerAdminServices({ request: true });
+  const found = await findRoomLink(services, token);
+  if (!found) return null;
+  const { link, source } = found;
+  const delivery = deliveryThroughLink(found.delivery, link);
 
   const [member, cookieStore, workspace, demoDeliveryId] = await Promise.all([
     findWorkspaceMember(delivery.workspaceId),
@@ -120,12 +180,19 @@ export async function getClientRoom(shareToken: string): Promise<ClientRoom | nu
   ]);
   // A suspended studio's links show as unavailable; its members can still look at their own room.
   const suspended = Boolean(workspace?.suspendedAt);
-  const state = suspended ? "unavailable" : roomState(delivery, hasRoomAccess(cookieStore, delivery));
+  const fromDelivery = roomState(delivery, hasRoomAccess(cookieStore, delivery));
+  const state: ClientRoomState = suspended
+    ? "unavailable"
+    : fromDelivery !== "unavailable" && link.revokedAt
+      ? "revoked"
+      : fromDelivery;
   const isDemo = demoDeliveryId === delivery.id;
 
   const canView = state === "open" || (member !== null && state !== "locked");
   return {
     delivery,
+    link,
+    linkSource: source,
     state,
     suspended,
     member,
@@ -133,6 +200,7 @@ export async function getClientRoom(shareToken: string): Promise<ClientRoom | nu
     canView,
     canComment: canView && (member !== null || delivery.isCommentAllowed !== false),
     canDownload: canView && mayDownload(delivery, member, isDemo),
+    canApprove: canView && mayApprove(link, member, isDemo),
     isDemo,
   };
 }
@@ -142,16 +210,23 @@ function mayDownload(delivery: Delivery, member: ClientRoomMember | null, isDemo
   return member !== null || (!isDemo && delivery.isDownloadAllowed === true);
 }
 
+/** Members from editor up; guests when the link allows approvals, and never in the demo room. */
+function mayApprove(link: ShareLink, member: ClientRoomMember | null, isDemo: boolean): boolean {
+  if (member) return hasMinRole(member.role, "editor");
+  return !isDemo && link.canApprove;
+}
+
 /** The room as it is right after a successful unlock (the cookie is only readable next request). */
 export function unlockedRoom(room: ClientRoom): ClientRoom {
   if (room.state !== "locked") return room;
-  const { delivery, member } = room;
+  const { delivery, member, link } = room;
   return {
     ...room,
     state: "open",
     canView: true,
     canComment: member !== null || delivery.isCommentAllowed !== false,
     canDownload: mayDownload(delivery, member, room.isDemo),
+    canApprove: mayApprove(link, member, room.isDemo),
   };
 }
 
@@ -162,6 +237,8 @@ export function roomRefusal(room: ClientRoom | null): string {
       return "Enter the passcode to open this delivery.";
     case "expired":
       return "This review link has expired.";
+    case "revoked":
+      return "This review link was turned off. Ask the studio for a new one.";
     case "unavailable":
       return "This delivery is no longer available.";
     default:
@@ -185,6 +262,9 @@ export async function requireClientRoom(shareToken: string, need: ClientRoomNeed
   if (need === "download" && !room.canDownload) throw new Error("Downloads are turned off for this delivery.");
   if (need === "approve" && room.member && !hasMinRole(room.member.role, "editor")) {
     throw new Error("Viewers can't change approvals.");
+  }
+  if (need === "approve" && !room.member && !room.canApprove) {
+    throw new Error("Approvals are turned off for this link.");
   }
   return room;
 }

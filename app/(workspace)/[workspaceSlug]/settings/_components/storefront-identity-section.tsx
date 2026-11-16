@@ -446,7 +446,7 @@ export function StorefrontIdentitySection({
               </Tooltip>
             </div>
             <div className="flex items-center bg-muted/50 border border-border rounded-xl px-4 h-10 text-sm text-muted-foreground focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 transition-colors">
-              <TypographySpan className=" text-xs select-none">cinespace.film/p/</TypographySpan>
+              <TypographySpan className=" text-xs select-none">cinespace.pro/p/</TypographySpan>
               <input
                 type="text"
                 required

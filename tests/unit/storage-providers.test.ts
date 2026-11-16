@@ -78,6 +78,23 @@ describe("Cloudflare R2: presigned uploads", () => {
     }
   });
 
+  it("files a delivery's cover under the delivery's private cover prefix, apart from its files", async () => {
+    const r2 = r2Provider();
+    const cover = await r2.createDirectUploadUrl(
+      uploadParams({ placement: "cover", assetType: "image", filename: "Banner.jpg", contentType: "image/jpeg" })
+    );
+    expect(cover.providerUid).toMatch(new RegExp(`^private/workspaces/${WS}/deliveries/${DEL}/cover/${ASSET}/\\d+-Banner\\.jpg$`));
+    expect(new URL(cover.uploadUrl).pathname).toBe(`/media-private/${cover.providerUid}`);
+    expect(cover.headers).toEqual({ "Content-Type": "image/jpeg" });
+
+    // Any other placement leaves a delivery's files where they are.
+    for (const placement of ["portfolio", "hero", "branding", undefined] as const) {
+      expect((await r2.createDirectUploadUrl(uploadParams({ placement }))).providerUid).toMatch(
+        new RegExp(`^private/workspaces/${WS}/deliveries/${DEL}/assets/${ASSET}/v2/`)
+      );
+    }
+  });
+
   it("makes file names safe for keys and URLs", () => {
     expect(safeObjectName("My Cut #1 (final).mov")).toBe("My_Cut_1_final.mov");
     expect(safeObjectName("../../secret?.mp4")).toBe("secret.mp4");

@@ -14,7 +14,7 @@ interface HeroSectionProps {
 
 export function HeroSection({ demoHref, startHref }: HeroSectionProps) {
   return (
-    <section className="relative pt-6 sm:pt-10 overflow-hidden">
+    <section className="relative pt-6 sm:pt-10 overflow-hidden px-1">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           {/* Left Column: Headline & Action */}
           <div className="lg:col-span-6 space-y-6 text-left">

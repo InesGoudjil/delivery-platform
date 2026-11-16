@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Users,
   Trash2,
+  Share2,
 } from "lucide-react";
 import { useModals } from "@/components/modals";
 
@@ -124,6 +125,11 @@ export function WorkspaceSidebar({
         name: "Client Deliveries",
         url: `/${workspaceSlug}/deliveries`,
         icon: Link2,
+      },
+      {
+        name: "Client Links",
+        url: `/${workspaceSlug}/links`,
+        icon: Share2,
       },
       {
         name: "Storage & Usage",

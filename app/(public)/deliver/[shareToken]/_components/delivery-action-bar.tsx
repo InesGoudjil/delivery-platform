@@ -14,6 +14,8 @@ interface DeliveryActionBarProps {
   onMessageCreator: () => void;
   onApproveAll: () => void;
   onUnapproveAll: () => void;
+  /** False when this visitor's link can't approve: the progress shows, the buttons don't. */
+  canApprove?: boolean;
 }
 
 export function DeliveryActionBar({
@@ -25,6 +27,7 @@ export function DeliveryActionBar({
   onMessageCreator,
   onApproveAll,
   onUnapproveAll,
+  canApprove = true,
 }: DeliveryActionBarProps) {
   const percent = Math.round((approvedCount / (totalAssets || 1)) * 100);
   const brandFirstName = brandName.split(" ")[0].toUpperCase();
@@ -56,7 +59,7 @@ export function DeliveryActionBar({
             <TypographySpan className="truncate">MESSAGE {brandFirstName}</TypographySpan>
           </Button>
 
-          {allApproved ? (
+          {!canApprove ? null : allApproved ? (
             <Button
               variant="outline"
               onClick={onUnapproveAll}

@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getServerServices } from "@/core/server";
-import { presignDeliveryAssets } from "@/lib/media-server";
+import { hasMinRole } from "@/core/security/guards";
+import { presignDeliveryAssets, presignPrivateMediaUrl } from "@/lib/media-server";
 import {
   DeliveryDetailClient,
   AssetVersionItem,
@@ -33,6 +34,7 @@ export default async function DeliveryDetailPage({
       <DeliveryDetailContent
         workspace={workspace}
         projectId={projectId}
+        userId={user.id}
       />
     </Suspense>
   );
@@ -41,9 +43,11 @@ export default async function DeliveryDetailPage({
 async function DeliveryDetailContent({
   workspace,
   projectId,
+  userId,
 }: {
   workspace: any;
   projectId: string;
+  userId: string;
 }) {
   const services = await getServerServices();
   const INITIAL_PAGE_SIZE = 12;
@@ -262,8 +266,26 @@ async function DeliveryDetailContent({
     allowDownload: true,
   });
 
-  // Fetch workspace features to enforce plan tier controls
-  const workspaceFeatures = await services.subscription.getFeatures(workspace.id);
+  // The custom cover is a private image of the delivery: signed like its files, and dropped
+  // (back to the first file) when it isn't an image in this workspace's storage, as in the room.
+  const storedCover = project.appearance?.coverThumbnailUrl ?? null;
+  const signedCover = storedCover
+    ? await presignPrivateMediaUrl(storedCover, services.storage, {
+        workspaceId: fullDetails?.workspaceId ?? workspace.id,
+      })
+    : "";
+  const appearance = project.appearance
+    ? { ...project.appearance, coverThumbnailUrl: signedCover || null }
+    : project.appearance;
+
+  // Plan features, and whether the viewer may change the client link's settings (admins and owners;
+  // the server and the database enforce the same rule).
+  const [workspaceFeatures, membership, linksEnabled] = await Promise.all([
+    services.subscription.getFeatures(workspace.id),
+    services.member.getMember(workspace.id, userId).catch(() => null),
+    services.shareLink.isInstalled(),
+  ]);
+  const canManageLinks = hasMinRole(membership?.role, "admin");
 
   return (
     <div className="w-full space-y-8 pb-16 animate-in fade-in duration-200 text-foreground selection:bg-primary selection:text-primary-foreground">
@@ -276,6 +298,7 @@ async function DeliveryDetailContent({
         portfolio={portfolio ? { id: portfolio.id, slug: portfolio.slug, title: portfolio.title } : null}
         project={{
           ...project,
+          appearance,
           clientName,
           clientEmail,
           clientPhone,
@@ -288,6 +311,8 @@ async function DeliveryDetailContent({
         initialFeedback={initialFeedback}
         features={workspaceFeatures}
         whatsappAvailable={services.whatsapp.isConfigured()}
+        canManageLinks={canManageLinks}
+        linksEnabled={linksEnabled}
       />
     </div>
   );

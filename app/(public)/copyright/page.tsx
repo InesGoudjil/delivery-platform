@@ -35,10 +35,10 @@ export default async function CopyrightPage() {
         <p>
           Send notices to our copyright contact: CineSpace — Attn: Copyright Agent,{" "}
           <a
-            href="mailto:hello@cinespace.film"
+            href="mailto:contact@cinespace.pro"
             className="text-white hover:text-primary transition-colors underline underline-offset-2"
           >
-            hello@cinespace.film
+            contact@cinespace.pro
           </a>
           . Please include &ldquo;Copyright Takedown Notice&rdquo; in the subject line.
         </p>

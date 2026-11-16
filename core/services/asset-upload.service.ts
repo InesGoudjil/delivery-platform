@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { IStorageProvider, DirectUploadResult, StorageAssetType } from "@/core/providers/storage";
 import { IWorkspaceRepository } from "@/core/repositories/workspace.repository";
 import { IDeliveryRepository } from "@/core/repositories/i-delivery-repository";
@@ -13,13 +14,23 @@ import { isPlaceholderUrl } from "@/lib/media";
 import { aspectRatioValueFromDimensions, isSameAspectRatio } from "@/lib/media-ratios";
 import { env } from "@/lib/env";
 import { createScopedLogger } from "@/lib/logger";
-import { isR2KeyInWorkspace, isStreamUid, isUuid, parseStoredMedia, streamUidOf } from "@/lib/storage/keys";
 import {
+  isDeliveryCoverKey,
+  isR2KeyInWorkspace,
+  isStreamUid,
+  isUuid,
+  parseStoredMedia,
+  streamUidOf,
+} from "@/lib/storage/keys";
+import {
+  MAX_COVER_BYTES,
   MAX_UPLOAD_BYTES,
   SNIFF_BYTES,
   bytesMatchAssetType,
+  checkCoverFile,
   checkUploadFile,
   contentTypeForUpload,
+  hasCoverExtension,
   isStandalonePortfolioUpload,
   sniffMediaKind,
   type UploadPlacement,
@@ -84,6 +95,27 @@ export type RequestVideoUploadResult = RequestUploadResult;
 /** Confirming takes only the version: where the file lives was decided when the upload was requested. */
 export interface ConfirmUploadDTO {
   assetVersionId: string;
+}
+
+export interface RequestDeliveryCoverUploadDTO {
+  workspaceId: string;
+  deliveryId: string;
+  filename: string;
+  fileSizeBytes: number;
+  /** File.type as the browser reports it. Must match the extension. */
+  contentType?: string | null;
+}
+
+export interface DeliveryCoverUploadTicket {
+  directUpload: DirectUploadResult;
+  /** Where the cover will be stored; the browser hands it back to confirm the upload. */
+  location: string;
+}
+
+export interface ConfirmDeliveryCoverDTO {
+  workspaceId: string;
+  deliveryId: string;
+  location: string;
 }
 
 /** The uploaded file was refused: its object is deleted and the version marked failed. */
@@ -612,6 +644,132 @@ export class AssetUploadService {
     return { thumbnailUrl: updated.thumbnailUrl ?? stored, changed: true };
   }
 
+  /**
+   * A delivery's cover image, through the same direct upload as the delivery's files: checks
+   * the image (JPG, PNG or WebP, at most 10 MB) and the storage quota, and returns a presigned
+   * PUT for one new private object under the delivery's cover prefix. No file record is
+   * created: the cover isn't one of the delivery's files and never shows in its gallery. The
+   * delivery points at the object only after confirmDeliveryCoverUpload has checked it.
+   */
+  async requestDeliveryCoverUpload(dto: RequestDeliveryCoverUploadDTO): Promise<DeliveryCoverUploadTicket> {
+    const workspace = isUuid(dto.workspaceId) ? await this.workspaceRepo.findById(dto.workspaceId) : null;
+    if (!workspace) {
+      throw new Error("Workspace not found.");
+    }
+    const deliveryId = await this.requireDeliveryInWorkspace((dto.deliveryId ?? "").trim(), workspace.id);
+
+    const fileCheck = checkCoverFile({
+      filename: dto.filename,
+      declaredType: dto.contentType,
+      sizeBytes: dto.fileSizeBytes,
+    });
+    if (!fileCheck.ok) {
+      throw new Error(fileCheck.error);
+    }
+
+    await this.assertWithinQuota(workspace.id, workspace.storageUsedBytes || 0, dto.fileSizeBytes);
+
+    const directUpload = await this.storageProvider.createDirectUploadUrl({
+      workspaceId: workspace.id,
+      deliveryId,
+      // A new object for every cover, under its own id.
+      assetId: randomUUID(),
+      versionNumber: 1,
+      assetTitle: "Delivery cover",
+      assetType: "image",
+      fileSizeBytes: dto.fileSizeBytes,
+      filename: dto.filename,
+      contentType: fileCheck.contentType,
+      isPublic: false,
+      placement: "cover",
+    });
+
+    const providerUid = (directUpload.providerUid || "").trim();
+    if (directUpload.uploadUrl.startsWith("/api/mock-upload/")) {
+      // Local development without Cloudflare.
+      const location = `/api/mock-upload/${providerUid}`;
+      if (!isMockLocation(location)) throw new Error("Storage returned an unexpected upload location.");
+      return { directUpload, location };
+    }
+    if (!isDeliveryCoverKey(providerUid, workspace.id, deliveryId)) {
+      throw new Error("Storage returned an unexpected upload location.");
+    }
+    return { directUpload, location: providerUid };
+  }
+
+  /**
+   * Checks an uploaded delivery cover before the delivery points at it. The location must be a
+   * cover object of this delivery, and the object must be there, at most 10 MB, stored with
+   * the image type of its extension, and start with real JPG, PNG or WebP bytes (not HTML or
+   * SVG). A refused object is deleted. Returns the value to store as the delivery's cover.
+   */
+  async confirmDeliveryCoverUpload(dto: ConfirmDeliveryCoverDTO): Promise<string> {
+    const value = (dto.location ?? "").trim();
+    if (isMockLocation(value) && process.env.NODE_ENV !== "production") {
+      // Local development without Cloudflare: nothing to inspect.
+      return value;
+    }
+
+    const parsed = parseStoredMedia(value);
+    if (parsed?.kind !== "r2" || !isDeliveryCoverKey(parsed.key, dto.workspaceId, dto.deliveryId)) {
+      // Not one of this delivery's covers: never touched, not even to delete it.
+      throw new UploadRejectedError("This upload can't be verified. Upload the cover again.");
+    }
+    const key = parsed.key;
+
+    const expectedType = hasCoverExtension(key) ? contentTypeForUpload("photo_gallery", key) : null;
+    if (!expectedType) {
+      throw await this.rejectCover(key, "Covers must be JPG, PNG or WebP images.");
+    }
+
+    if (typeof this.storageProvider.headObject !== "function" || typeof this.storageProvider.readObjectStart !== "function") {
+      throw new Error("Uploads can't be checked right now. Please try again later.");
+    }
+
+    const head = await this.storageProvider.headObject(key);
+    if (!head) {
+      throw new Error("The uploaded cover wasn't found. Please upload it again.");
+    }
+    if (head.sizeBytes <= 0) {
+      throw await this.rejectCover(key, "The uploaded cover is empty. Please upload it again.");
+    }
+    if (head.sizeBytes > MAX_COVER_BYTES) {
+      throw await this.rejectCover(key, "Covers can be at most 10 MB.");
+    }
+    if (normalizedContentType(head.contentType) !== expectedType) {
+      throw await this.rejectCover(key, "The uploaded cover has the wrong content type. Please upload it again.");
+    }
+
+    const kind = sniffMediaKind(await this.storageProvider.readObjectStart(key, SNIFF_BYTES));
+    if (kind !== "jpeg" && kind !== "png" && kind !== "webp") {
+      throw await this.rejectCover(key, "This file isn't a valid image.");
+    }
+
+    return storedValueForKey(key);
+  }
+
+  /**
+   * Deletes a cover image a delivery no longer uses. Only the delivery's own cover objects
+   * are deleted; anything else (a file's image, another delivery's cover) is left alone.
+   */
+  async deleteDeliveryCover(
+    workspaceId: string,
+    deliveryId: string,
+    value: string | null | undefined
+  ): Promise<boolean> {
+    const parsed = parseStoredMedia(value);
+    if (parsed?.kind !== "r2" || !isDeliveryCoverKey(parsed.key, workspaceId, deliveryId)) {
+      return false;
+    }
+    try {
+      await this.storageProvider.deleteAsset(parsed.key);
+      return true;
+    } catch (err) {
+      log.warn({ err, deliveryId }, "Old delivery cover deletion failed");
+      return false;
+    }
+  }
+
   // ---------------------------------------------------------------------------
 
   private async requireDeliveryInWorkspace(deliveryId: string, workspaceId: string): Promise<string> {
@@ -846,6 +1004,17 @@ export class AssetUploadService {
       log.warn({ err, assetVersionId: version.id }, "Couldn't mark a rejected upload as failed");
     }
     log.warn({ assetVersionId: version.id, reason: message }, "Upload rejected");
+    return new UploadRejectedError(message);
+  }
+
+  /** Refuses an uploaded cover: deletes its object (one of the delivery's covers) and returns the error to throw. */
+  private async rejectCover(key: string, message: string): Promise<UploadRejectedError> {
+    try {
+      await this.storageProvider.deleteAsset(key);
+    } catch (err) {
+      log.warn({ err }, "Couldn't delete a rejected cover upload");
+    }
+    log.warn({ reason: message }, "Cover upload rejected");
     return new UploadRejectedError(message);
   }
 

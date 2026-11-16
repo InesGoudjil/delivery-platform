@@ -17,8 +17,8 @@ interface DeliveryExpiredScreenProps {
     accentColor?: string;
   };
   portfolioUrl?: string | null;
-  /** "unavailable": the studio archived the delivery. */
-  reason?: "expired" | "unavailable";
+  /** "unavailable": the studio archived the delivery. "revoked": the studio turned this link off. */
+  reason?: "expired" | "unavailable" | "revoked";
 }
 
 export function DeliveryExpiredScreen({
@@ -29,6 +29,7 @@ export function DeliveryExpiredScreen({
   reason = "expired",
 }: DeliveryExpiredScreenProps) {
   const isArchived = reason === "unavailable";
+  const isRevoked = reason === "revoked";
   const formattedDate = expiresAt
     ? new Date(expiresAt).toLocaleDateString("en-US", {
         month: "short",
@@ -74,7 +75,7 @@ export function DeliveryExpiredScreen({
         <div className="flex items-center gap-2">
           <TypographySpan className="text-[10px]  uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
             <Clock className="size-3" />
-            {isArchived ? "Unavailable" : "Expired Link"}
+            {isArchived ? "Unavailable" : isRevoked ? "Link Turned Off" : "Expired Link"}
           </TypographySpan>
         </div>
       </header>
@@ -91,7 +92,7 @@ export function DeliveryExpiredScreen({
               CLIENT REVIEW ROOM
             </TypographySpan>
             <h1 className="text-2xl font-bold font-heading text-white tracking-tight">
-              {isArchived ? "Delivery No Longer Available" : "Review Link Expired"}
+              {isArchived ? "Delivery No Longer Available" : isRevoked ? "Review Link Turned Off" : "Review Link Expired"}
             </h1>
             <p className="text-sm font-medium text-white/90 line-clamp-1">
               &ldquo;{title}&rdquo;
@@ -104,6 +105,8 @@ export function DeliveryExpiredScreen({
               <TypographySpan>
                 {isArchived ? (
                   <>The studio has archived this delivery. Contact them if you still need these files.</>
+                ) : isRevoked ? (
+                  <>The studio turned this link off. Ask them for a new link if you still need these files.</>
                 ) : (
                   <>
                     Access to this delivery cut ended on{" "}

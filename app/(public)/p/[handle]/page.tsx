@@ -58,7 +58,7 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { handle } = await params;
   try {
-    const services = await getServerAdminServices();
+    const services = await getServerAdminServices({ area: "portfolio" });
     let workspace = await services.workspace.getWorkspaceBySlug(handle);
     let portfolio = null;
 
@@ -111,7 +111,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PublicPortfolioPage({ params }: PageProps) {
   const { handle } = await params;
-  const services = await getServerAdminServices();
+  const services = await getServerAdminServices({ area: "portfolio" });
 
   // 1. The workspace by its slug, or by its portfolio's slug. Only published portfolios.
   let workspace = await services.workspace.getWorkspaceBySlug(handle).catch(() => null);
@@ -386,7 +386,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     },
     experience: realExperiences,
     whatsappNumber: portfolio?.whatsappNumber || "",
-    email: `${workspace?.slug || handle}@cinespace.film`,
+    email: `${workspace?.slug || handle}@cinespace.pro`,
     cta: {
       title: "LET'S CREATE\nTOGETHER.",
       subtitle: "Brand films, commercial campaigns, and launch content.",

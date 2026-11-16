@@ -698,7 +698,7 @@ export function renderPortfolioLeadEmail({
 }: RenderPortfolioLeadEmailOptions): { subject: string; html: string } {
   const subject = `🎬 New Project Inquiry from ${oneLine(clientName, NAME_MAX)} on CineSpace`;
   const viewHref = escapeHref(
-    portfolioUrl || `https://cinespace.film/p/${encodeURIComponent(portfolioHandle)}`
+    portfolioUrl || `https://cinespace.pro/p/${encodeURIComponent(portfolioHandle)}`
   );
 
   const contentHtml = `

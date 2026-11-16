@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     }),
     "password-reset": renderResetPasswordEmail({
       resetLink: "http://localhost:3000/reset-password?token=dev-test-token",
-      userEmail: "creator@cinespace.film",
+      userEmail: "creator@cinespace.pro",
     }),
     "confirm-signup": renderConfirmSignupEmail({
       confirmLink: "http://localhost:3000/api/auth/callback?token=dev-confirm-token",

@@ -325,7 +325,7 @@ export function FeaturesSection({ demoHref }: FeaturesSectionProps) {
                     onClick={(e) => e.preventDefault()}
                     className="text-xs  text-primary hover:underline block"
                   >
-                    cinespace.film/aisha-omar
+                    cinespace.pro/aisha-omar
                   </a>
                 </div>
 

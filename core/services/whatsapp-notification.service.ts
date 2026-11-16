@@ -251,7 +251,14 @@ export class WhatsAppNotificationService {
   // ---------------------------------------------------------------------------
 
   /** Sends the client room link. The caller checked the role, the plan and the client's consent. */
-  async sendDeliveryToClient(params: { deliveryId: string; phone: string; clientId?: string | null; origin: string }) {
+  /** `linkToken`: send this share link instead of the delivery's primary link. */
+  async sendDeliveryToClient(params: {
+    deliveryId: string;
+    phone: string;
+    clientId?: string | null;
+    origin: string;
+    linkToken?: string;
+  }) {
     const ctx = await this.context(params.deliveryId);
     if (!ctx) return { success: false, error: "Delivery not found." } satisfies WhatsAppSendResult;
     const to = normalizePhone(params.phone);
@@ -266,7 +273,7 @@ export class WhatsAppNotificationService {
       values: {
         studio_name: ctx.workspace.brandName || FALLBACK_NAMES.studio[language],
         delivery_title: ctx.delivery.title,
-        link: `${baseUrl(params.origin)}/deliver/${ctx.delivery.shareToken}`,
+        link: `${baseUrl(params.origin)}/deliver/${params.linkToken ?? ctx.delivery.shareToken}`,
       },
     });
   }

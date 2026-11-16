@@ -24,7 +24,8 @@ interface DeliveryAssetGridProps {
   isGlobalDownloadUnlocked: boolean;
   approvingAssetId: string | null;
   onSelectAsset: (asset: DeliveryAssetItem) => void;
-  onToggleApproval: (assetId: string) => void;
+  /** Left out when this visitor's link can't approve. */
+  onToggleApproval?: (assetId: string) => void;
   onDownloadAsset: (asset: DeliveryAssetItem) => void;
 }
 

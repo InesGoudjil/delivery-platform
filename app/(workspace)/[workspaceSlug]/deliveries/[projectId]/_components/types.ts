@@ -88,6 +88,7 @@ export interface DeliveryDetailClientProps {
     shareToken: string;
     isDownloadAllowed: boolean;
     isCommentAllowed?: boolean;
+    notifyOnDownload?: boolean;
     passcodeProtected: boolean;
     clientName: string;
     clientEmail?: string | null;
@@ -114,4 +115,8 @@ export interface DeliveryDetailClientProps {
   features?: Record<string, any>;
   /** CineSpace's WhatsApp sender is set up, so review links can go out on WhatsApp. */
   whatsappAvailable?: boolean;
+  /** The viewer is an admin or owner, so they may change the client link's settings. */
+  canManageLinks?: boolean;
+  /** The share_links migration is applied: the delivery can have several links (Links dialog). */
+  linksEnabled?: boolean;
 }

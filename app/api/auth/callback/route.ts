@@ -1,101 +1,42 @@
-import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getServerServices } from '@/core/server';
-import { trackUserSession } from '@/lib/session-manager';
 import { readSessionIdentity } from '@/core/services/session.service';
+import { finishSignIn, redirectWithinApp } from '@/core/security/finish-sign-in';
+import { safeReturnPath } from '@/lib/security/return-path';
 import { createScopedLogger } from '@/lib/logger';
 
 const log = createScopedLogger({ route: 'api/auth/callback' });
 
+/**
+ * Google sign-in (and the old PKCE email links) land here with a `code`. Email links sent with
+ * the token_hash templates go to /api/auth/confirm instead.
+ */
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/';
-  const redirectParam = searchParams.get('redirect');
-  const inviteToken = searchParams.get('invite_token');
-  const waitlistToken = searchParams.get('waitlist_token');
 
   if (code) {
     const supabase = await createClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error && data?.user) {
-      let targetPath = redirectParam || next;
+      const meta = data.user.user_metadata ?? {};
+      const fullName = meta.full_name || meta.name || data.user.email?.split('@')[0] || 'Creator';
+      const avatarUrl = meta.avatar_url || meta.picture || null;
+
+      let target = '/';
       try {
-        const services = await getServerServices();
-
-        // 1. Claim waitlist invite if present
-        if (waitlistToken) {
-          try {
-            await services.waitlist.claimInvite(waitlistToken);
-          } catch (e) {
-            log.warn({ err: e, waitlistToken }, 'Could not claim waitlist token in OAuth callback');
-          }
-        }
-
-        const fullName =
-          data.user.user_metadata?.full_name ||
-          data.user.user_metadata?.name ||
-          data.user.email?.split('@')[0] ||
-          'Creator';
-
-        const avatarUrl =
-          data.user.user_metadata?.avatar_url ||
-          data.user.user_metadata?.picture ||
-          null;
-
-        const clientIp =
-          request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-          request.headers.get('x-real-ip') ||
-          undefined;
-
-        // 2. Record the device behind the new login (keyed on its Supabase session id, read
-        //    from the client that just exchanged the code).
-        await trackUserSession(services.session, await readSessionIdentity(supabase.auth), request.headers).catch(
-          (err) => log.warn({ err, userId: data.user.id }, 'Could not record the login session in callback')
-        );
-
-        // 3. Sync OAuth user profile (name, avatar, last login)
-        await services.profile.syncOAuthProfile(data.user.id, {
-          fullName,
-          avatarUrl,
-          ip: clientIp,
-        }).catch((err) => {
-          log.warn({ err, userId: data.user.id }, 'Could not sync OAuth profile in callback');
-        });
-
-        // 3. Route to workspace or invite token
-        if (inviteToken) {
-          targetPath = `/invite/${inviteToken}`;
-        } else {
-          // Check if user already belongs to an existing workspace (owner or member)
-          const userWorkspaces = await services.workspace.getUserWorkspaces(data.user.id).catch(() => []);
-          let workspace = userWorkspaces[0];
-          if (!workspace) {
-            workspace = await services.workspace.getOrCreateWorkspace(data.user.id, fullName);
-          }
-          if ((targetPath === '/' || !targetPath) && workspace?.slug) {
-            targetPath = `/${workspace.slug}`;
-          }
-        }
+        ({ redirectTo: target } = await finishSignIn({
+          user: data.user,
+          identity: await readSessionIdentity(supabase.auth),
+          headers: request.headers,
+          requestedPath: safeReturnPath(searchParams.get('redirect') || searchParams.get('next'), '/'),
+          inviteToken: searchParams.get('invite_token'),
+          waitlistToken: searchParams.get('waitlist_token'),
+          oauthProfile: { fullName, avatarUrl },
+        }));
       } catch (err) {
-        log.error({ err }, 'Workspace setup error in OAuth callback');
+        log.error({ err }, 'Could not finish the sign-in in the OAuth callback');
       }
-
-      // 4. Sanitize targetPath to avoid open redirect vulnerabilities
-      if (!targetPath.startsWith('/') || targetPath.startsWith('//') || targetPath.includes('\\')) {
-        targetPath = '/';
-      }
-
-      const forwardedHost = request.headers.get('x-forwarded-host');
-      const isLocalEnv = process.env.NODE_ENV === 'development';
-      
-      if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${targetPath}`);
-      } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${targetPath}`);
-      } else {
-        return NextResponse.redirect(`${origin}${targetPath}`);
-      }
+      return redirectWithinApp(request, target);
     }
   }
 
@@ -106,5 +47,5 @@ export async function GET(request: Request) {
     errorMsg = 'Google sign-in was cancelled or access was denied.';
   }
 
-  return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(errorMsg)}`);
+  return redirectWithinApp(request, `/login?error=${encodeURIComponent(errorMsg)}`);
 }

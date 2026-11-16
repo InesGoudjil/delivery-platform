@@ -3,6 +3,7 @@ export * from "./auth";
 export * from "./waitlist";
 export * from "./inquiries";
 export * from "./deliveries";
+export * from "./share-links";
 export * from "./workspaces";
 export * from "./projects";
 export * from "./upload";

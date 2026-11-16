@@ -137,7 +137,7 @@ export function NewDeliveryModal({
             <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-400" />
             <div className="space-y-1">
               <TypographySpan className="font-semibold block">
-                Active Client Links Limit Reached ({clientLinksLimit}/{clientLinksLimit})
+                Active Delivery Room Limit Reached ({clientLinksLimit}/{clientLinksLimit})
               </TypographySpan>
               <TypographyMuted className="text-zinc-300 text-xs">
                 Your current plan only permits up to {clientLinksLimit} active delivery{" "}

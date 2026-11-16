@@ -49,6 +49,7 @@ import { DeliveryAppearanceCard } from "./_components/delivery-appearance-card";
 import { DeliveryAssetsGallery } from "./_components/delivery-assets-gallery";
 import { DeliveryProjectDetailsCard } from "./_components/delivery-project-details-card";
 import { ShareLinkDialog } from "./_components/share-link-dialog";
+import { ShareLinksDialog } from "./_components/share-links/share-links-dialog";
 import { EditDeliveryDialog } from "./_components/edit-delivery-dialog";
 import { PublishPortfolioDialog } from "./_components/publish-portfolio-dialog";
 import { FloatingUploadProgress } from "./_components/floating-upload-progress";
@@ -154,6 +155,8 @@ export function DeliveryDetailClient({
   initialFeedback,
   features,
   whatsappAvailable = false,
+  canManageLinks = true,
+  linksEnabled = false,
 }: DeliveryDetailClientProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -479,23 +482,12 @@ export function DeliveryDetailClient({
   });
   const [isSiloPending, setIsSiloPending] = useState(false);
 
-  // 7. Cover Thumbnail (Derived with persisted custom override)
+  // 7. Cover Thumbnail: the custom cover (signed by the page; uploaded and saved from the
+  //    Edit delivery dialog), else the first file.
   const [customCoverUrl, setCustomCoverUrl] = useState<string | null>(
     (project.appearance as any)?.coverThumbnailUrl || null
   );
   const coverThumbnailUrl = customCoverUrl || items[0]?.src || "";
-
-  const handlePersistCoverUrl = async (newCoverUrl: string) => {
-    setCustomCoverUrl(newCoverUrl);
-    const res = await updateDeliveryAppearanceAction(
-      project.id,
-      { coverThumbnailUrl: newCoverUrl },
-      workspace.slug
-    );
-    if (!res.success) {
-      toast.error(res.error || "Failed to save delivery cover");
-    }
-  };
 
   // 8. Appearance Settings State
   const [appearance, setAppearance] = useState<AppearanceSettings>({
@@ -1375,7 +1367,22 @@ export function DeliveryDetailClient({
           triggerToast={triggerToast}
         />
 
-        {/* 7. SHARE A LINK Modal Dialog */}
+        {/* 7. SHARE: the delivery's links (or its one link, before the share_links migration) */}
+        {linksEnabled ? (
+          <ShareLinksDialog
+            isOpen={activeDialog === "share"}
+            onOpenChange={(open) => setActiveDialog(open ? "share" : null)}
+            deliveryId={project.id}
+            projectTitle={projectMeta.title}
+            clientEmail={projectMeta.clientEmail}
+            clientPhone={projectMeta.clientPhone}
+            whatsappAvailable={whatsappAvailable}
+            features={features}
+            workspaceSlug={workspace.slug}
+            onPrimaryTokenChange={setCurrentShareToken}
+            triggerToast={triggerToast}
+          />
+        ) : (
         <ShareLinkDialog
           isOpen={activeDialog === "share"}
           onOpenChange={(open) => setActiveDialog(open ? "share" : null)}
@@ -1389,6 +1396,8 @@ export function DeliveryDetailClient({
           initialDownloadAllowed={isDownloadAllowed}
           initialCommentAllowed={isCommentAllowed}
           initialExpiresAt={project.expiresAt ?? null}
+          initialNotifyOnDownload={project.notifyOnDownload ?? false}
+          canManage={canManageLinks}
           onShareTokenRegenerated={(newToken) => {
             setCurrentShareToken(newToken);
           }}
@@ -1402,23 +1411,21 @@ export function DeliveryDetailClient({
           features={features}
           workspaceSlug={workspace.slug}
         />
+        )}
 
         {/* 8. EDIT DELIVERY Modal Dialog */}
         <EditDeliveryDialog
           isOpen={activeDialog === "edit-delivery"}
           onOpenChange={(open) => setActiveDialog(open ? "edit-delivery" : null)}
+          deliveryId={project.id}
           coverThumbnailUrl={coverThumbnailUrl}
-          onChangeCoverUrl={(newUrl) => {
-            void handlePersistCoverUrl(newUrl);
-          }}
+          onCoverChange={setCustomCoverUrl}
           items={items}
           onDeleteItem={handleDeleteItemFromGallery}
           onEditItem={handleOpenEditAsset}
           onAddAssetClick={() => setShowUploader(true)}
           onSaveChanges={() => {
-            if (customCoverUrl) {
-              void handlePersistCoverUrl(customCoverUrl);
-            }
+            // The cover is saved as soon as its upload is checked; nothing else to send here.
             setActiveDialog(null);
             triggerToast("Delivery cover and details saved");
           }}

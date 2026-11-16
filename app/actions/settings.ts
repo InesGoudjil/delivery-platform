@@ -5,6 +5,11 @@ import { getServerServices } from "@/core/server";
 import { hasMinRole, requireWorkspaceMember } from "@/core/security/guards";
 import { toWorkspaceSettingsView, type WorkspaceSettingsView } from "@/core/entities/workspace-settings";
 import { NotificationLog } from "@/core/entities/notification";
+import {
+  EXTENDED_LINK_EXPIRY_MESSAGE,
+  defaultLinkDaysProblem,
+  isExtendedDefaultLinkDays,
+} from "@/lib/security/link-expiry";
 
 export interface SettingsActionResult<T = any> {
   success: boolean;
@@ -133,8 +138,18 @@ export async function updateWorkspaceSecuritySettingsAction(
 
     await requireWorkspaceMember(workspace.id, "admin");
 
+    // 30 days at most, unless the plan has extended link expiry (lib/security/link-expiry.ts).
+    const days = dto.defaultLinkExpirationDays;
+    if (days !== undefined) {
+      const problem = defaultLinkDaysProblem(days);
+      if (problem) return { success: false, error: problem };
+      if (isExtendedDefaultLinkDays(days) && !(await services.subscription.isExtendedLinkExpiryAllowed(workspace.id))) {
+        return { success: false, error: EXTENDED_LINK_EXPIRY_MESSAGE };
+      }
+    }
+
     const updated = await services.settings.upsert(workspace.id, {
-      defaultLinkExpirationDays: dto.defaultLinkExpirationDays,
+      defaultLinkExpirationDays: days,
     });
 
     revalidatePath(`/${workspaceSlug}/security`);

@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { env } from "@/lib/env";
 import { createScopedLogger } from "@/lib/logger";
+import { zohoAuthorization } from "../zoho-auth";
 import {
   renderWaitlistWelcomeEmail,
   renderWaitlistInviteEmail,
@@ -91,12 +92,12 @@ export class ZeptoMailEmailProvider implements IEmailProvider {
       options?.apiUrl ||
       env.ZEPTOMAIL_API_URL ||
       process.env.ZEPTOMAIL_API_URL ||
-      "https://api.zeptomail.com/v1.1/email";
+      "https://cpaas.zoho.com/v1.1/email";
     this.fromEmail =
       options?.fromEmail ||
       env.ZEPTOMAIL_FROM_EMAIL ||
       process.env.ZEPTOMAIL_FROM_EMAIL ||
-      "noreply@cinespace.film";
+      "noreply@cinespace.pro";
     this.fromName =
       options?.fromName ||
       env.ZEPTOMAIL_FROM_NAME ||
@@ -147,13 +148,7 @@ export class ZeptoMailEmailProvider implements IEmailProvider {
       this.apiToken !== "your-zeptomail-token"
     ) {
       try {
-        let authHeader = this.apiToken.trim();
-        if (
-          !authHeader.startsWith("Zoho-encztoken ") &&
-          !authHeader.startsWith("Zoho-enczpttoken ")
-        ) {
-          authHeader = `Zoho-encztoken ${authHeader}`;
-        }
+        const authHeader = zohoAuthorization(this.apiToken);
 
         const payload: Record<string, any> = {
           from: {

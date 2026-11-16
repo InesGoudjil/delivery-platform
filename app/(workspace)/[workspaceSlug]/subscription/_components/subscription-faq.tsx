@@ -89,7 +89,7 @@ export function SubscriptionFaq() {
                 Do my active client delivery links expire if I downgrade?
               </AccordionTrigger>
               <AccordionContent className="text-xs text-muted-foreground leading-relaxed pb-4">
-                No active delivery links will be deleted. Any link already shared with a client will honor its configured expiration date. However, creating new delivery links will be subject to your newly selected plan&apos;s active link limit.
+                No active delivery links will be deleted. Any link already shared with a client will honor its configured expiration date. However, creating new delivery rooms will be subject to your newly selected plan&apos;s active room limit.
               </AccordionContent>
             </AccordionItem>
 

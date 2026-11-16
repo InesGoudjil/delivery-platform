@@ -216,6 +216,35 @@ describe("app/actions/settings", () => {
         defaultLinkExpirationDays: 14,
       });
     });
+
+    it("refuses never, or more than 30 days, without extended link expiry", async () => {
+      mockServices.subscription.isExtendedLinkExpiryAllowed = vi.fn().mockResolvedValue(false);
+
+      for (const days of [null, 90]) {
+        const res = await updateWorkspaceSecuritySettingsAction("cinespace", { defaultLinkExpirationDays: days });
+        expect(res.success).toBe(false);
+        expect(res.error).toContain("Pro and Studio");
+      }
+      expect(mockServices.settings.upsert).not.toHaveBeenCalled();
+    });
+
+    it("lets plans with extended link expiry make new links never expire", async () => {
+      mockServices.subscription.isExtendedLinkExpiryAllowed = vi.fn().mockResolvedValue(true);
+
+      const res = await updateWorkspaceSecuritySettingsAction("cinespace", { defaultLinkExpirationDays: null });
+
+      expect(res.success).toBe(true);
+      expect(mockServices.settings.upsert).toHaveBeenCalledWith("ws_1", { defaultLinkExpirationDays: null });
+    });
+
+    it("refuses a default that isn't a whole number of days", async () => {
+      for (const days of [0, -5, 2.5]) {
+        const res = await updateWorkspaceSecuritySettingsAction("cinespace", { defaultLinkExpirationDays: days });
+        expect(res.success).toBe(false);
+        expect(res.error).toContain("between 1 and 3650");
+      }
+      expect(mockServices.settings.upsert).not.toHaveBeenCalled();
+    });
   });
 
   describe("getWorkspaceNotificationLogsAction", () => {

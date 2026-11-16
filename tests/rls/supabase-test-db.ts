@@ -23,6 +23,8 @@ const SUPABASE_BOOTSTRAP = `
   create role anon nologin noinherit;
   create role authenticated nologin noinherit;
   create role service_role nologin noinherit bypassrls;
+  -- Supabase Auth's role; it runs Auth hooks (the access-token hook).
+  create role supabase_auth_admin nologin noinherit;
   grant usage on schema public, auth, extensions to anon, authenticated, service_role;
 
   create table auth.users (

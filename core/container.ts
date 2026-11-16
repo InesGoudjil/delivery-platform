@@ -2,8 +2,11 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { SupabaseSystemHeartbeatRepository, type ISystemHeartbeatRepository } from "./repositories/system-heartbeat.repository";
 import { SupabaseSiteSettingsRepository } from "./repositories/site-settings.repository";
 import { SiteSettingsService } from "./services/site-settings.service";
+import { SupabaseShareLinkRepository } from "./repositories/share-link.repository";
+import { ShareLinkService } from "./services/share-link.service";
 import { Database } from "@/types/database.types";
 import { logger, Logger } from "@/lib/logger";
+import { type QueryLog, timeQueries } from "./observability/query-log";
 
 // Storage Provider
 import {
@@ -121,12 +124,22 @@ export interface CoreServices {
     heartbeat: ISystemHeartbeatRepository;
     /** Site-wide settings from the admin panel, e.g. the demo room (site_settings). Service role inside. */
     siteSettings: SiteSettingsService;
+    /**
+     * Client links into delivery rooms (share_links). Reads use this client; writes use the
+     * service role, so authorize before writing (an admin of the workspace, or the room gate).
+     */
+    shareLink: ShareLinkService;
   };
 }
 
 export interface ContainerOptions {
   storageOptions?: StorageFactoryOptions;
   adminSupabase?: SupabaseClient<Database>;
+  /**
+   * Times every repository query ("<repository>.<method>") and auth call on this log, one line
+   * each, like the admin panel's query log. core/server.ts passes the request's log.
+   */
+  queryLog?: QueryLog;
 }
 
 /**
@@ -144,38 +157,43 @@ export function createCoreServices(
   // Privileged client to bypass RLS for system/billing tables (subscriptions, plans, features, invoices)
   const systemClient = options?.adminSupabase || supabase;
 
+  // Each repository's queries are timed as "<name>.<method>" when there's a query log.
+  const queryLog = options?.queryLog;
+  const timed = <T extends object>(name: string, repository: T): T =>
+    queryLog ? timeQueries(repository, name, queryLog) : repository;
+
   // 1. Repositories
-  const workspaceRepo = new SupabaseWorkspaceRepository(supabase);
-  const workspaceFeaturesRepo = new SupabaseWorkspaceFeaturesRepository(systemClient);
-  const userProfileRepo = new SupabaseUserProfileRepository(supabase);
-  const workspaceMemberRepo = new SupabaseWorkspaceMemberRepository(supabase);
-  const systemWorkspaceMemberRepo = new SupabaseWorkspaceMemberRepository(systemClient);
-  const workspaceInvitationRepo = new SupabaseWorkspaceInvitationRepository(systemClient);
-  const planRepo = new SupabasePlanRepository(systemClient);
-  const subscriptionRepo = new SupabaseSubscriptionRepository(systemClient);
-  const clientRepo = new SupabaseClientRepository(supabase);
-  const portfolioRepo = new SupabasePortfolioRepository(supabase);
-  const deliveryRepo = new SupabaseDeliveryRepository(supabase);
-  const projectRepo = new SupabaseProjectRepository(supabase);
-  const assetRepo = new SupabaseAssetRepository(supabase);
-  const assetVersionRepo = new SupabaseAssetVersionRepository(supabase);
-  const feedbackRepo = new SupabaseFeedbackRepository(supabase);
-  const notificationRepo = new SupabaseNotificationLogRepository(supabase);
-  const invoiceRepo = new SupabaseInvoiceRepository(systemClient);
-  const waitlistRepo = new SupabaseWaitlistRepository(systemClient);
-  const inquiryRepo = new SupabaseInquiryRepository(systemClient);
-  const workspaceSettingsRepo = new SupabaseWorkspaceSettingsRepository(supabase);
-  const userSessionRepo = new SupabaseUserSessionRepository(systemClient);
-  const billingEventRepo = new SupabaseProcessedBillingEventRepository(systemClient);
+  const workspaceRepo = timed("workspace", new SupabaseWorkspaceRepository(supabase));
+  const workspaceFeaturesRepo = timed("workspaceFeatures", new SupabaseWorkspaceFeaturesRepository(systemClient));
+  const userProfileRepo = timed("userProfile", new SupabaseUserProfileRepository(supabase));
+  const workspaceMemberRepo = timed("workspaceMember", new SupabaseWorkspaceMemberRepository(supabase));
+  const systemWorkspaceMemberRepo = timed("workspaceMember", new SupabaseWorkspaceMemberRepository(systemClient));
+  const workspaceInvitationRepo = timed("workspaceInvitation", new SupabaseWorkspaceInvitationRepository(systemClient));
+  const planRepo = timed("plan", new SupabasePlanRepository(systemClient));
+  const subscriptionRepo = timed("subscription", new SupabaseSubscriptionRepository(systemClient));
+  const clientRepo = timed("client", new SupabaseClientRepository(supabase));
+  const portfolioRepo = timed("portfolio", new SupabasePortfolioRepository(supabase));
+  const deliveryRepo = timed("delivery", new SupabaseDeliveryRepository(supabase));
+  const projectRepo = timed("project", new SupabaseProjectRepository(supabase));
+  const assetRepo = timed("asset", new SupabaseAssetRepository(supabase));
+  const assetVersionRepo = timed("assetVersion", new SupabaseAssetVersionRepository(supabase));
+  const feedbackRepo = timed("feedback", new SupabaseFeedbackRepository(supabase));
+  const notificationRepo = timed("notification", new SupabaseNotificationLogRepository(supabase));
+  const invoiceRepo = timed("invoice", new SupabaseInvoiceRepository(systemClient));
+  const waitlistRepo = timed("waitlist", new SupabaseWaitlistRepository(systemClient));
+  const inquiryRepo = timed("inquiry", new SupabaseInquiryRepository(systemClient));
+  const workspaceSettingsRepo = timed("workspaceSettings", new SupabaseWorkspaceSettingsRepository(supabase));
+  const userSessionRepo = timed("userSession", new SupabaseUserSessionRepository(systemClient));
+  const billingEventRepo = timed("billingEvent", new SupabaseProcessedBillingEventRepository(systemClient));
 
   // Email Provider (Zoho ZeptoMail)
   const emailProvider = new ZeptoMailEmailProvider();
 
   // Addresses of the people we email (studio alerts, client emails) come from Supabase Auth.
-  const authEmailLookup = new SupabaseAuthEmailLookup(systemClient);
+  const authEmailLookup = timed("authEmail", new SupabaseAuthEmailLookup(systemClient));
 
   // 2. Services (Injected with Repository Interfaces & Storage Provider)
-  const authService = new AuthService(supabase, workspaceRepo, userProfileRepo);
+  const authService = new AuthService(supabase, workspaceRepo, userProfileRepo, queryLog);
   const workspaceService = new WorkspaceService(
     workspaceRepo,
     workspaceFeaturesRepo,
@@ -266,10 +284,10 @@ export function createCoreServices(
 
   const whatsappService = new WhatsAppNotificationService({
     provider: createWhatsAppProvider(),
-    settingsRepo: new SupabaseWorkspaceSettingsRepository(systemClient),
-    workspaceRepo: new SupabaseWorkspaceRepository(systemClient),
-    deliveryRepo: new SupabaseDeliveryRepository(systemClient),
-    notificationRepo: new SupabaseNotificationLogRepository(systemClient),
+    settingsRepo: timed("workspaceSettings", new SupabaseWorkspaceSettingsRepository(systemClient)),
+    workspaceRepo: timed("workspace", new SupabaseWorkspaceRepository(systemClient)),
+    deliveryRepo: timed("delivery", new SupabaseDeliveryRepository(systemClient)),
+    notificationRepo: timed("notification", new SupabaseNotificationLogRepository(systemClient)),
     subscriptionService,
     supabase: systemClient,
   });
@@ -335,8 +353,12 @@ export function createCoreServices(
       session: sessionService,
       whatsapp: whatsappService,
       commentEmail: commentEmailService,
-      heartbeat: new SupabaseSystemHeartbeatRepository(systemClient),
-      siteSettings: new SiteSettingsService(new SupabaseSiteSettingsRepository(systemClient)),
+      heartbeat: timed("heartbeat", new SupabaseSystemHeartbeatRepository(systemClient)),
+      siteSettings: new SiteSettingsService(timed("siteSettings", new SupabaseSiteSettingsRepository(systemClient))),
+      shareLink: new ShareLinkService(
+        timed("shareLink", new SupabaseShareLinkRepository(supabase)),
+        timed("shareLink", new SupabaseShareLinkRepository(systemClient))
+      ),
     },
   };
 }

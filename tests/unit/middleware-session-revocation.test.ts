@@ -295,3 +295,76 @@ describe("lib/supabase/middleware: device sign-out enforcement", () => {
     expect(res.cookies.get(AUTH_COOKIE)?.value).toBe("base64-refreshed");
   });
 });
+
+describe("lib/supabase/middleware: two-factor sign-in", () => {
+  /** A user with an authenticator who hasn't entered their code (claim from the access-token hook). */
+  const awaiting = { ...claims, mfa_enrolled: true, aal: "aal1" };
+
+  beforeEach(() => {
+    mocks.createServerClient.mockReset();
+    mocks.createClient.mockReset();
+  });
+
+  it("sends a session awaiting its code from a workspace page to /mfa, keeping the page", async () => {
+    setup({ claims: awaiting, userQueries: activeRow() });
+
+    const res = await updateSession(request("/studio/deliveries?tab=shared", signedIn));
+
+    expect(location(res).pathname).toBe("/mfa");
+    expect(location(res).searchParams.get("redirect")).toBe("/studio/deliveries?tab=shared");
+  });
+
+  it("does the same on the other signed-in pages, and on /login with its redirect", async () => {
+    for (const path of ["/admin/users", "/invite/abc123", "/new-workspace", "/reset-password", "/signup"]) {
+      setup({ claims: awaiting, userQueries: activeRow() });
+      const res = await updateSession(request(path, signedIn));
+      expect(location(res).pathname, path).toBe("/mfa");
+    }
+
+    setup({ claims: awaiting, userQueries: activeRow() });
+    const res = await updateSession(request("/login?redirect=/invite/abc123", signedIn));
+    expect(location(res).pathname).toBe("/mfa");
+    expect(location(res).searchParams.get("redirect")).toBe("/invite/abc123");
+  });
+
+  it("doesn't pass an unsafe /login redirect on to /mfa", async () => {
+    setup({ claims: awaiting, userQueries: activeRow() });
+
+    const res = await updateSession(request("/login?redirect=//evil.example", signedIn));
+
+    expect(location(res).searchParams.get("redirect")).toBe("/");
+  });
+
+  it("leaves /mfa, the auth routes and public pages alone", async () => {
+    for (const path of ["/mfa", "/api/auth/signout", "/api/auth/confirm", "/p/some-studio", "/"]) {
+      setup({ claims: awaiting, userQueries: activeRow() });
+      const res = await updateSession(request(path, signedIn));
+      expect(passedThrough(res), path).toBe(true);
+    }
+  });
+
+  it("still checks the device row first: a revoked device is signed out, not sent to /mfa", async () => {
+    const { auth } = setup({ claims: awaiting, userQueries: revokedRow() });
+
+    const res = await updateSession(request("/studio/deliveries", signedIn));
+
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(location(res).pathname).toBe("/login");
+  });
+
+  it("lets the session through once the code is entered (aal2)", async () => {
+    setup({ claims: { ...claims, mfa_enrolled: true, aal: "aal2" }, userQueries: activeRow() });
+
+    const res = await updateSession(request("/studio/deliveries", signedIn));
+
+    expect(passedThrough(res)).toBe(true);
+  });
+
+  it("changes nothing for users without an authenticator, or for tokens without the claim (hook off)", async () => {
+    for (const tokenClaims of [{ ...claims, mfa_enrolled: false }, claims]) {
+      setup({ claims: tokenClaims, userQueries: activeRow() });
+      const res = await updateSession(request("/studio/deliveries", signedIn));
+      expect(passedThrough(res)).toBe(true);
+    }
+  });
+});

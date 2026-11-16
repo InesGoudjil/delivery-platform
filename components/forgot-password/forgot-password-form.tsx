@@ -92,7 +92,7 @@ export function ForgotPasswordForm({
                 id="email"
                 name="email"
                 type="email"
-                placeholder="filmmaker@cinespace.film"
+                placeholder="filmmaker@cinespace.pro"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);

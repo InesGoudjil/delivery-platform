@@ -4,6 +4,7 @@ import { presignDeliveryAssets } from "@/lib/media-server";
 import { resolveThumbnailUrl, resolveMediaUrl } from "@/lib/media";
 import { mapRoomAssets } from "@/lib/client-room/content";
 import { assetInDelivery } from "@/lib/client-room/scope";
+import { isStoredShareLink } from "@/core/entities/share-link";
 import {
   loadMoreDeliveryAssetsSchema,
   getDeliveryDownloadManifestSchema,
@@ -28,6 +29,11 @@ const log = createScopedLogger({ actionGroup: "deliveries" });
 /** Guests: what the room gate decided, so the demo room's rule holds on every page of files. */
 function canDownload(actor: DeliveryActor): boolean {
   return actor.kind === "member" || actor.canDownload;
+}
+
+/** A guest on a stored link downloads through tickets (checked and counted on every use). */
+function ticketLinkFor(actor: DeliveryActor) {
+  return actor.kind === "guest" && isStoredShareLink(actor.link) ? actor.link : undefined;
 }
 
 function isPhotoType(type: string): boolean {
@@ -68,6 +74,7 @@ export async function loadMoreDeliveryAssetsAction(params: {
       workspaceId: actor.delivery.workspaceId,
       allowDownload: canDownload(actor),
       roomShareToken: actor.shareToken ?? undefined,
+      downloadTicketLink: ticketLinkFor(actor),
     });
 
     const items = presigned.map((a) => {
@@ -126,6 +133,7 @@ export async function getDeliveryDownloadManifestAction(params: { deliveryId?: s
       workspaceId: actor.delivery.workspaceId,
       allowDownload: true,
       roomShareToken: actor.shareToken ?? undefined,
+      downloadTicketLink: ticketLinkFor(actor),
     });
 
     const items = presigned.map((a) => {

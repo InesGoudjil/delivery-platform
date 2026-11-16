@@ -169,9 +169,13 @@ export class CloudflareR2StorageProvider implements IStorageProvider {
           subPath = `portfolio/media/${media}/${assetId}/v${version}/${name}`;
       }
     } else {
-      // Private bucket: files in a client delivery.
+      // Private bucket: files in a client delivery, and the delivery's cover image.
       if (!isUuid(params.deliveryId)) throw new Error("Private uploads need a delivery.");
-      subPath = `deliveries/${params.deliveryId.toLowerCase()}/assets/${assetId}/v${version}/${name}`;
+      const deliveryPath = `deliveries/${params.deliveryId.toLowerCase()}`;
+      subPath =
+        params.placement === "cover"
+          ? `${deliveryPath}/cover/${assetId}/${name}`
+          : `${deliveryPath}/assets/${assetId}/v${version}/${name}`;
     }
 
     const key = `${isPublic ? "public" : "private"}/workspaces/${workspaceId}/${subPath}`;

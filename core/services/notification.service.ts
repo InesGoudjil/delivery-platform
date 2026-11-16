@@ -14,6 +14,7 @@ import {
   renderClientDownloadEmail,
 } from "@/core/providers/email";
 import { renderLibraryEmail, type EmailLayout, type EmailValues } from "@/core/notifications/render-email";
+import { renderLinkOpenedEmail } from "@/core/notifications/share-link-emails";
 import type { LibraryEmailId } from "@/core/notifications/email-library";
 import type { SubscriptionService } from "./subscription.service";
 import { env } from "@/lib/env";
@@ -36,6 +37,8 @@ export interface SendDeliveryEmailParams {
   origin?: string;
   /** The filmmaker who sent the link: where the client's replies go. Defaults to the owner. */
   replyTo?: string | null;
+  /** Send this share link instead of the delivery's primary link. */
+  link?: { token: string; hasPasscode: boolean };
 }
 
 /** Someone who gets a studio alert: the address to write to, and their first name for the greeting. */
@@ -250,10 +253,10 @@ export class NotificationService {
       values: {
         client_name: client?.name || "there",
         project_name: delivery.title,
-        delivery_link: `${appOrigin(params.origin)}/deliver/${delivery.shareToken}`,
+        delivery_link: `${appOrigin(params.origin)}/deliver/${params.link?.token ?? delivery.shareToken}`,
         filmmaker_name: studio,
         custom_message: clip(params.customMessage ?? "", CUSTOM_MESSAGE_MAX),
-        passcode_required: delivery.passcodeHash ? "yes" : "",
+        passcode_required: (params.link ? params.link.hasPasscode : Boolean(delivery.passcodeHash)) ? "yes" : "",
       },
       layout: clientLayout(workspace, plan?.slug),
       fromName: clientSender(studio),
@@ -344,6 +347,48 @@ export class NotificationService {
         errorMessage: sendRes.error,
       });
       logs.push(log);
+    }
+    return { success: true, logs };
+  }
+
+  /** A client opened a share link for the first time (the link's "First open" alert). Owners and admins. */
+  async notifyLinkOpened(params: {
+    deliveryId: string;
+    linkLabel: string;
+    recipientName?: string | null;
+    recipientEmails: string[];
+    origin?: string;
+  }): Promise<{ success: boolean; logs: NotificationLog[] }> {
+    const delivery = await this.deliveryRepo.findById(params.deliveryId);
+    if (!delivery) throw new Error("Delivery not found");
+    if (params.recipientEmails.length === 0) return { success: true, logs: [] };
+
+    const workspace = await this.workspaceRepo.findById(delivery.workspaceId);
+    const baseUrl = appOrigin(params.origin);
+    const { subject, html } = renderLinkOpenedEmail({
+      brandName: workspace?.brandName || "Studio",
+      deliveryTitle: delivery.title,
+      linkLabel: params.linkLabel,
+      recipientName: params.recipientName,
+      dashboardUrl: `${baseUrl}/${workspace?.slug || "workspace"}/deliveries/${delivery.id}`,
+    });
+
+    const logs: NotificationLog[] = [];
+    for (const email of params.recipientEmails) {
+      const sendRes = await this.emailProvider.sendEmail({ to: email, subject, html });
+      logs.push(
+        await this.notificationRepo.create({
+          workspaceId: delivery.workspaceId,
+          projectId: delivery.id,
+          clientId: delivery.clientId,
+          channel: "email",
+          recipientEmail: email,
+          subject,
+          status: sendRes.success ? "sent" : "failed",
+          providerMessageId: sendRes.messageId,
+          errorMessage: sendRes.error,
+        })
+      );
     }
     return { success: true, logs };
   }

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import type { ClientRoom } from "@/core/security/client-room";
+import { isStoredShareLink } from "@/core/entities/share-link";
 import { hasMinRole, type WorkspaceRoleLevel } from "@/core/security/guards";
 import type { DeliveryWithDetails } from "@/core/services/delivery.service";
 import { readGuestAuthorKeyHash } from "@/lib/security/delivery-token";
@@ -112,6 +113,8 @@ export async function loadRoomAssets(
     workspaceId: room.delivery.workspaceId,
     allowDownload: room.canDownload,
     roomShareToken: room.delivery.shareToken,
+    // A guest on a stored link downloads through tickets (checked and counted on every use).
+    downloadTicketLink: !room.member && isStoredShareLink(room.link) ? room.link : undefined,
   });
 
   return {

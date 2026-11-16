@@ -19,6 +19,7 @@ import {
   type PlanTierGroup,
 } from "@/core/entities/plan";
 import { formatUsd, monthlyPriceCents as monthlyCents } from "@/lib/billing/price";
+import { shareLinksPerDelivery } from "@/lib/share-links/limits";
 
 export interface PricingPlanItem {
   id?: string;
@@ -86,6 +87,7 @@ export function PricingSection({
     const f = featuresOf(tier);
     const storageGb = f.storage_gb ?? (slug === "starter" ? 2 : slug === "basic" ? 100 : slug === "pro" ? 500 : 2048);
     const clientLinks = f.client_links ?? (slug === "starter" ? 1 : slug === "basic" ? 20 : -1);
+    const linksPerRoom = shareLinksPerDelivery(f, slug);
     const teamSeats = f.team_seats ?? (slug === "studio" ? 5 : 1);
     const hasArabic = Array.isArray(f.languages) ? f.languages.includes("ar") : slug === "pro" || slug === "studio";
     const hasSilo = Boolean(f.silo_archive);
@@ -94,7 +96,8 @@ export function PricingSection({
       return [
         "Full portfolio showcase page",
         `${storageGb} GB video storage`,
-        `${clientLinks} client delivery link`,
+        `${clientLinks} active delivery room${clientLinks === 1 ? "" : "s"}`,
+        `${linksPerRoom} client link per room`,
         "Review, comments & approvals",
         "English only",
       ];
@@ -104,7 +107,8 @@ export function PricingSection({
       return [
         "Full portfolio showcase page",
         `${storageGb} GB video storage`,
-        `${clientLinks} client delivery links`,
+        `${clientLinks} active delivery rooms`,
+        `${linksPerRoom} client links per room`,
         "Review, comments & approvals",
         "Direct WhatsApp delivery",
         "English only",
@@ -115,7 +119,7 @@ export function PricingSection({
       return [
         "Everything in Basic, plus:",
         `${storageGb} GB video storage`,
-        "Unlimited client delivery links",
+        "Unlimited delivery rooms and client links",
         "Password-protected links",
         "Custom watermark overlay",
         hasArabic ? "Arabic + English bilingual" : "Bilingual review room",
@@ -175,9 +179,16 @@ export function PricingSection({
       studio: `${featuresOf(studio).storage_gb ? Math.round(featuresOf(studio).storage_gb / 1024) + " TB" : "2 TB"}`,
     },
     {
-      name: "Client delivery links",
+      name: "Active delivery rooms",
       starter: `${featuresOf(starter).client_links ?? 1}`,
       basic: `${featuresOf(basic).client_links ?? 20}`,
+      pro: "Unlimited",
+      studio: "Unlimited",
+    },
+    {
+      name: "Client links per room",
+      starter: `${shareLinksPerDelivery(featuresOf(starter), "starter")}`,
+      basic: `${shareLinksPerDelivery(featuresOf(basic), "basic")}`,
       pro: "Unlimited",
       studio: "Unlimited",
     },

@@ -306,6 +306,7 @@ export class DeliveryService {
     customMessage?: string;
     origin?: string;
     replyTo?: string | null;
+    link?: { token: string; hasPasscode: boolean };
   }) {
     if (!this.notificationService) {
       throw new Error("NotificationService is not configured in DeliveryService");

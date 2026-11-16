@@ -16,6 +16,7 @@ import {
   type BillingInterval,
 } from "@/core/entities/plan";
 import { formatUsd, monthlyPriceCents } from "@/lib/billing/price";
+import { shareLinksPerDelivery } from "@/lib/share-links/limits";
 
 export interface PlanItem {
   id: string;
@@ -166,7 +167,7 @@ export function PlanComparisonGrid({
           const whiteLabel = Boolean(f.white_label);
           const prioritySupport = Boolean(f.priority_support);
 
-          // Standardized 9-feature comparison matrix
+          // Standardized feature comparison matrix
           const matrixRows = [
             {
               label: `${storageGb >= 1024 ? `${(storageGb / 1024).toFixed(0)} TB` : `${storageGb} GB`} Cloud Storage`,
@@ -175,8 +176,15 @@ export function PlanComparisonGrid({
             {
               label:
                 clientLinks === -1
-                  ? "Unlimited client delivery links"
-                  : `${clientLinks ?? 1} active delivery link${(clientLinks ?? 1) > 1 ? "s" : ""}`,
+                  ? "Unlimited delivery rooms"
+                  : `${clientLinks ?? 1} active delivery room${(clientLinks ?? 1) > 1 ? "s" : ""}`,
+              included: true,
+            },
+            {
+              label: (() => {
+                const perRoom = shareLinksPerDelivery(f, planTier(plan.slug));
+                return perRoom === -1 ? "Unlimited client links per room" : `${perRoom} client link${perRoom > 1 ? "s" : ""} per room`;
+              })(),
               included: true,
             },
             {

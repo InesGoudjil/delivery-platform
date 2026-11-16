@@ -33,10 +33,13 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [oauthLoadingProvider, setOauthLoadingProvider] = useState<"google" | "apple" | null>(null);
+  // Where to go after signing in (an invite link, for example). The server checks it.
+  const [returnTo, setReturnTo] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
+      setReturnTo(params.get("redirect") || params.get("next"));
       const errorParam = params.get("error");
       if (errorParam) {
         if (errorParam === "auth-callback-failed") {
@@ -121,6 +124,7 @@ export function LoginForm({
       {...props}
     >
       <FieldGroup>
+        {returnTo && <input type="hidden" name="redirect" value={returnTo} />}
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold tracking-tight">Login to your account</h1>
           <p className="text-sm text-balance text-muted-foreground">
@@ -141,7 +145,7 @@ export function LoginForm({
             id="email"
             name="email"
             type="email"
-            placeholder="filmmaker@cinespace.film"
+            placeholder="filmmaker@cinespace.pro"
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
@@ -296,7 +300,7 @@ export function LoginForm({
         <FieldDescription className="text-center pt-2">
           Don&apos;t have an account?{" "}
           <Link
-            href="/signup"
+            href={returnTo ? `/signup?redirect=${encodeURIComponent(returnTo)}` : "/signup"}
             className="font-medium text-foreground underline underline-offset-4 hover:text-primary transition-colors"
           >
             Sign up

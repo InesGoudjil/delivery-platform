@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isR2KeyInWorkspace, parseStoredMedia, r2KeyWorkspaceId, streamUidOf } from "@/lib/storage/keys";
+import { isDeliveryCoverKey, isR2KeyInWorkspace, parseStoredMedia, r2KeyWorkspaceId, streamUidOf } from "@/lib/storage/keys";
 
 const WS = "2f1a3dfe-1111-4222-8333-444455556666";
 const OTHER = "9b9b9b9b-1111-4222-8333-444455556666";
@@ -72,5 +72,29 @@ describe("workspace ownership", () => {
     expect(isR2KeyInWorkspace(`private/workspaces/not-a-uuid/x.mp4`, WS)).toBe(false);
     expect(isR2KeyInWorkspace(key, null)).toBe(false);
     expect(r2KeyWorkspaceId(key)).toBe(WS);
+  });
+});
+
+describe("delivery covers", () => {
+  const cover = `private/workspaces/${WS}/deliveries/${DEL}/cover/c1/1-banner.jpg`;
+
+  it("matches private objects under the delivery's own cover prefix, also inside URLs", () => {
+    expect(isDeliveryCoverKey(cover, WS, DEL)).toBe(true);
+    expect(isDeliveryCoverKey(cover, WS.toUpperCase(), DEL.toUpperCase())).toBe(true);
+    expect(isDeliveryCoverKey(`/api/media/${cover}`, WS, DEL)).toBe(true);
+    expect(isDeliveryCoverKey(`https://account.r2.cloudflarestorage.com/media-private/${cover}?X-Amz-Signature=x`, WS, DEL)).toBe(true);
+  });
+
+  it("refuses other workspaces and deliveries, the delivery's files, public keys and path tricks", () => {
+    expect(isDeliveryCoverKey(cover, OTHER, DEL)).toBe(false);
+    expect(isDeliveryCoverKey(cover, WS, OTHER)).toBe(false);
+    expect(isDeliveryCoverKey(`private/workspaces/${WS}/deliveries/${DEL}/assets/a/v1/1-still.jpg`, WS, DEL)).toBe(false);
+    expect(isDeliveryCoverKey(`public/workspaces/${WS}/deliveries/${DEL}/cover/c1/1-banner.jpg`, WS, DEL)).toBe(false);
+    expect(isDeliveryCoverKey(`private/workspaces/${WS}/deliveries/${DEL}/cover/`, WS, DEL)).toBe(false);
+    expect(isDeliveryCoverKey(`private/workspaces/${WS}/deliveries/${DEL}/cover/../assets/a/v1/1-x.jpg`, WS, DEL)).toBe(false);
+    expect(isDeliveryCoverKey("data:image/jpeg;base64,/9j/4AAQ", WS, DEL)).toBe(false);
+    expect(isDeliveryCoverKey("https://images.example/cover.jpg", WS, DEL)).toBe(false);
+    expect(isDeliveryCoverKey(cover, null, DEL)).toBe(false);
+    expect(isDeliveryCoverKey(cover, WS, "del_1")).toBe(false);
   });
 });
