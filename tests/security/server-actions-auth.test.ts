@@ -48,6 +48,11 @@ const ROOT = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
 
 /** Callable without a session on purpose. */
 const PUBLIC_ACTIONS: Record<string, PublicActionEntry> = {
+  "app/actions/account-setup.ts#completeAccountSetupAction": {
+    rateLimited: true,
+    reason:
+      "/welcome form for accounts a platform admin made; the setup link is the credential (core/security/account-setup.ts); RATELIMIT_POLICIES.authLogin per IP",
+  },
   "app/actions/auth.ts#loginAction": {
     rateLimited: true,
     reason: "sign-in form; RATELIMIT_POLICIES.authLogin per IP and email",
@@ -93,6 +98,10 @@ const KNOWN_GAPS: Record<string, string> = {};
 const USER_SCOPED_ACTIONS: Record<string, string> = {
   "app/actions/auth.ts#resetPasswordAction": "sets the caller's own password; Supabase rejects it without a recovery session",
   "app/actions/auth.ts#changePasswordAction": "changes the caller's own password after re-checking the current one",
+  "app/actions/account.ts#getAccountCredentialsAction": "reads the caller's own email address and password status",
+  "app/actions/account.ts#setPasswordAction": "adds a password to the caller's own account, only when it has none",
+  "app/actions/account.ts#changeEmailAction": "starts an email change on the caller's own account; Supabase emails both addresses",
+  "app/actions/account.ts#acceptTermsAction": "records that the caller accepts the Terms, on their own profile",
   "app/actions/members.ts#acceptWorkspaceInvitationAction":
     "the invitation token plus the caller's confirmed email matching the invited one; it adds the caller to the inviting workspace",
   "app/actions/projects.ts#createProjectAction": "creates a delivery in the caller's own workspace (getOrCreateWorkspace(user.id))",
@@ -112,6 +121,17 @@ const KNOWN_AUTHZ_GAPS: Record<string, string> = {};
  * resource the caller is authorized for. A new entry needs the same review.
  */
 const SERVICE_ROLE_ACTIONS: Record<string, string> = {
+  // The caller's own account: the user id comes from their session (getCurrentUser()) or from
+  // Supabase Auth's sign-up response, never from the browser. Terms acceptance needs the service
+  // role because a trigger refuses API users; the password status reads auth.users.
+  "app/actions/account.ts#getAccountCredentialsAction": "reads the password status of the caller's own account (session user id)",
+  "app/actions/account.ts#setPasswordAction": "reads the password status of the caller's own account (session user id)",
+  "app/actions/account.ts#acceptTermsAction": "records the Terms acceptance on the caller's own profile (session user id)",
+  "app/actions/auth.ts#signupAction": "records the Terms acceptance on the account Supabase just created (id from its sign-up response)",
+  // A setup link (core/security/account-setup.ts): the user id comes from the link, which only
+  // works when its secret matches the hash in that user's app_metadata.
+  "app/actions/account-setup.ts#completeAccountSetupAction":
+    "sets the password of the account the setup link belongs to, after checking the link against its stored hash",
   // Platform admins (createPlatformAdminAction: role from the database, two-factor session, a
   // reason, audited) act on any workspace or user on purpose; that's what the admin panel is for.
   "app/actions/admin.ts#createPlanAction": "platform admin, audited; plans aren't tenant data",
@@ -127,6 +147,10 @@ const SERVICE_ROLE_ACTIONS: Record<string, string> = {
   "app/actions/admin.ts#banUserAction": "platform admin, audited; not on themselves or other platform admins",
   "app/actions/admin.ts#unbanUserAction": "platform admin, audited; staff choose the user on purpose",
   "app/actions/admin.ts#resetUserTwoFactorAction": "platform admin, audited; not on themselves; staff choose the user on purpose",
+  "app/actions/admin.ts#createClientAccountAction":
+    "platform admin, audited; creates a new account (Supabase Auth returns its id) and renames only the workspace the sign-up trigger made for it",
+  "app/actions/admin.ts#sendSetupLinkAction":
+    "platform admin, audited; only for accounts nobody has signed in to yet; staff choose the user on purpose",
   "app/actions/admin.ts#searchAdminAction": "platform admin with a two-factor session (getPlatformAdminServices); read-only search",
   "app/actions/admin.ts#suspendWorkspaceAction": "platform admin, audited; the admin types the workspace's slug to confirm it",
   "app/actions/admin.ts#unsuspendWorkspaceAction": "platform admin, audited; staff choose the workspace on purpose",

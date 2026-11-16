@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { submitContactFormAction } from "@/app/actions/inquiries";
+import { TurnstileWidget, isCaptchaEnabled, type TurnstileHandle } from "@/components/security/turnstile-widget";
 import { submitContactFormSchema, safeValidate } from "@/lib/validations";
 
 export function ContactForm() {
@@ -15,6 +16,9 @@ export function ContactForm() {
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  // Bot check; the server verifies the token, which works once.
+  const captchaRef = useRef<TurnstileHandle>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +37,8 @@ export function ContactForm() {
 
     try {
       setIsSubmitting(true);
-      const res = await submitContactFormAction(validated.data);
+      const res = await submitContactFormAction(validated.data, captchaToken);
+      captchaRef.current?.reset();
 
       if (!res.success) {
         toast.error(res.error || "Failed to send message.");
@@ -206,11 +211,13 @@ export function ContactForm() {
               />
             </div>
 
+            <TurnstileWidget ref={captchaRef} action="contact" onToken={setCaptchaToken} />
+
             {/* Submit Button */}
             <div className="pt-2">
               <Button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || (isCaptchaEnabled() && !captchaToken)}
                 className="w-full h-auto rounded-xl bg-primary text-primary-foreground py-3.5 text-xs font-bold uppercase tracking-wider shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:shadow-primary/40 active:scale-[0.99] disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (

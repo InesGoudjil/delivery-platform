@@ -79,6 +79,24 @@ export const RATELIMIT_POLICIES = {
       `Too many password reset requests. Please try again in ${retryAfter}.`,
   },
 
+  // Changing or setting a password while signed in (the current password is checked).
+  passwordChange: {
+    attempts: 5,
+    window: "15 m",
+    keyPrefix: "rl:auth:password-change",
+    message: ({ retryAfter }: RatelimitMessageContext) =>
+      `Too many password attempts. Please try again in ${retryAfter}.`,
+  },
+
+  // Starting an email change: each one sends confirmation emails.
+  emailChange: {
+    attempts: 3,
+    window: "1 h",
+    keyPrefix: "rl:auth:email-change",
+    message: ({ retryAfter }: RatelimitMessageContext) =>
+      `Too many email changes. Please try again in ${retryAfter}.`,
+  },
+
   // Waitlist submissions
   waitlistJoin: {
     attempts: 5,

@@ -7,6 +7,7 @@ describe("analytics private pages", () => {
       "/deliver/0f3c9a",
       "/deliver",
       "/invite/abc123",
+      "/welcome/00000000-0000-4000-8000-000000000001.secret",
       "/login",
       "/signup",
       "/forgot-password",

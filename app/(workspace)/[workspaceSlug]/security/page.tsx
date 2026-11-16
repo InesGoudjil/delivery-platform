@@ -1,16 +1,13 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import {
   Lock,
   Shield,
   ShieldCheck,
   ShieldAlert,
-  KeyRound,
   Check,
-  Eye,
-  EyeOff,
   Smartphone,
   Laptop,
   Tablet,
@@ -40,13 +37,12 @@ import {
   TypographyMuted,
   TypographyKicker,
   TypographySmall,
-  TypographySpan,
 } from "@/components/ui/typography";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useOptionalEntitlements } from "@/components/providers/entitlements-provider";
 import { EXTENDED_LINK_EXPIRY_MESSAGE, isExtendedDefaultLinkDays } from "@/lib/security/link-expiry";
-import { changePasswordAction } from "@/app/actions/auth";
+import { AccountCredentials } from "./_components/account-credentials";
 import {
   getWorkspaceSettingsAction,
   updateWorkspaceSecuritySettingsAction,
@@ -97,14 +93,6 @@ export default function SecurityPage() {
   // Link Expiration State
   const [expirationDays, setExpirationDays] = useState<number | null>(30);
   const [isSavingExpiration, setIsSavingExpiration] = useState(false);
-
-  // Password State
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
 
   // Session state
   const [sessions, setSessions] = useState<DeviceSession[]>([]);
@@ -315,39 +303,6 @@ export default function SecurityPage() {
     }
   };
 
-  // Handle Password Update
-  const handleUpdatePassword = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setFormError(null);
-
-    if (!currentPassword || !newPassword) {
-      setFormError("Please fill in all password fields.");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setFormError("New passwords do not match.");
-      return;
-    }
-    if (newPassword.length < 8) {
-      setFormError("New password must be at least 8 characters long.");
-      return;
-    }
-
-    const formData = new FormData(e.currentTarget);
-    startTransition(async () => {
-      const res = await changePasswordAction(null, formData);
-      if (res?.error) {
-        setFormError(res.error);
-        toast.error(res.error);
-      } else if (res?.success) {
-        toast.success(res.success);
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
-      }
-    });
-  };
-
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       {/* Header */}
@@ -413,105 +368,8 @@ export default function SecurityPage() {
           </div>
         </div>
 
-        {/* Password Change Form */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-muted border border-border text-foreground">
-              <KeyRound className="size-4 text-primary" />
-            </div>
-            <div>
-              <TypographyH3 className="font-heading text-base font-bold text-card-foreground">
-                Change Account Password
-              </TypographyH3>
-              <TypographyMuted className="text-xs text-muted-foreground">
-                Ensure your account is using a long, random password.
-              </TypographyMuted>
-            </div>
-          </div>
-
-          <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md pt-2">
-            {formError && (
-              <div className="flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive animate-in fade-in-50">
-                <AlertCircle className="size-4 shrink-0 mt-0.5" />
-                <TypographySpan className="leading-snug">{formError}</TypographySpan>
-              </div>
-            )}
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Current Password
-              </label>
-              <input
-                type={showPassword ? "text" : "password"}
-                name="current-password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="••••••••••••"
-                disabled={isPending}
-                className="w-full bg-muted border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:border-primary disabled:opacity-50"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">
-                New Password
-              </label>
-              <input
-                type={showPassword ? "text" : "password"}
-                name="new-password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="At least 8 characters"
-                disabled={isPending}
-                className="w-full bg-muted border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:border-primary disabled:opacity-50"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Confirm New Password
-              </label>
-              <input
-                type={showPassword ? "text" : "password"}
-                name="confirm-password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repeat new password"
-                disabled={isPending}
-                className="w-full bg-muted border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:border-primary disabled:opacity-50"
-              />
-            </div>
-
-            <div className="flex items-center justify-between pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowPassword(!showPassword)}
-                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 cursor-pointer h-auto py-1 px-2"
-              >
-                {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                {showPassword ? "Hide passwords" : "Show passwords"}
-              </Button>
-
-              <Button
-                type="submit"
-                disabled={isPending}
-                className="rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="size-3.5 mr-1 animate-spin" /> Updating...
-                  </>
-                ) : (
-                  <>
-                    <Check className="size-3.5 mr-1" /> Update Password
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        </div>
+        {/* Email address and password (Google-only accounts set a password here) */}
+        <AccountCredentials />
       </div>
 
       {/* 2. Studio Link Governance: Default Link Lifespan */}

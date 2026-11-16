@@ -275,6 +275,37 @@ export interface AdminSignOutResult {
   endedLogins: number;
 }
 
+/** The error when "New client" is given an email that already has an account. The dialog matches it. */
+export const ADMIN_ACCOUNT_EXISTS_MESSAGE = "An account with this email already exists.";
+
+/** A setup link (core/security/account-setup.ts): the token for /welcome/<token>, and when it stops working. */
+export interface AdminSetupLink {
+  token: string;
+  expiresAt: string;
+}
+
+/** What "New client" shows once the account exists. The link is shown once and never stored. */
+export interface AdminCreatedClient {
+  userId: string;
+  email: string;
+  workspace: { id: string; name: string; slug: string } | null;
+  /** Set when the studio name couldn't be applied: the workspace keeps the person's name. */
+  workspaceWarning: string | null;
+  setupLink: string;
+  setupLinkExpiresAt: string;
+  emailSent: boolean;
+  /** Why the email didn't go out, when it was asked for. */
+  emailError: string | null;
+}
+
+/** "Send a new setup link": the new link, and whether it was emailed. */
+export interface AdminSetupLinkResult {
+  setupLink: string;
+  setupLinkExpiresAt: string;
+  emailSent: boolean;
+  emailError: string | null;
+}
+
 // ---------------------------------------------------------------------------
 // Notifications (B5)
 // ---------------------------------------------------------------------------

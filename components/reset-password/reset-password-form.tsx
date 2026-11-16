@@ -14,7 +14,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { resetPasswordSchema } from "@/lib/validations/auth";
+import { PASSWORD_MIN_LENGTH, resetPasswordSchema } from "@/lib/validations/auth";
 import { resetPasswordAction } from "@/app/actions/auth";
 
 export function ResetPasswordForm({
@@ -97,7 +97,7 @@ export function ResetPasswordForm({
               id="password"
               name="password"
               type={showPassword ? "text" : "password"}
-              placeholder="At least 8 characters"
+              placeholder={`At least ${PASSWORD_MIN_LENGTH} characters`}
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
@@ -130,7 +130,7 @@ export function ResetPasswordForm({
             <FieldError errors={[{ message: fieldErrors.password }]} />
           )}
           <FieldDescription>
-            Must be at least 8 characters long.
+            Use at least {PASSWORD_MIN_LENGTH} characters.
           </FieldDescription>
         </Field>
 

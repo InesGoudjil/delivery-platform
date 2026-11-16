@@ -1,15 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { createPlatformAdminAction, normalizeActionError } from "./safe-action";
 import { getPlatformAdminServices } from "@/core/admin/context";
-import type { AdminSearchResults } from "@/core/admin/types";
+import type { AdminCreatedClient, AdminSearchResults, AdminSetupLinkResult } from "@/core/admin/types";
+import { SETUP_LINK_DAYS, setupLinkUrl } from "@/core/security/account-setup";
+import { configuredAppOrigin } from "@/lib/app-origin";
 import {
   banUserSchema,
+  createClientAccountSchema,
   createPlanSchema,
   createYearlyPlanSchema,
   deletePlanSchema,
   updatePlanSchema,
+  sendSetupLinkSchema,
   updateUserRoleSchema,
   updateWorkspaceFeaturesSchema,
   updateWorkspacePlanSchema,
@@ -417,6 +422,155 @@ export const resetUserTwoFactorAction = createPlatformAdminAction(
     ctx.recordChanges({ before: { mfaEnabled: target.mfaEnabled }, after: { mfaEnabled: false, ...result } });
     refreshAdminPages();
     return result;
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Client accounts: accounts the team makes for people it's in touch with
+// ---------------------------------------------------------------------------
+
+/** The app's public address for links in emails: NEXT_PUBLIC_APP_URL, else this request's host. */
+async function appOriginForLinks(): Promise<string> {
+  const configured = configuredAppOrigin();
+  if (configured) return configured;
+  const headerList = await headers();
+  const host = headerList.get("x-forwarded-host") || headerList.get("host") || "localhost:3000";
+  const local = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host);
+  const protocol = headerList.get("x-forwarded-proto") || (local ? "http" : "https");
+  return `${protocol}://${host}`;
+}
+
+/** Emails a setup link. A failure is returned, not thrown: the admin can still copy the link. */
+async function emailSetupLink(
+  ctx: AdminActionContext,
+  params: { workspaceId: string | null; email: string; fullName: string; setupLink: string }
+): Promise<{ sent: boolean; error: string | null }> {
+  if (!params.workspaceId) {
+    return { sent: false, error: "They have no workspace to log the email under. Copy the link and send it yourself." };
+  }
+  try {
+    const result = await ctx.services.notification.sendAccountSetupEmail({
+      workspaceId: params.workspaceId,
+      recipientEmail: params.email,
+      fullName: params.fullName,
+      setupLink: params.setupLink,
+      linkDays: SETUP_LINK_DAYS,
+    });
+    return result.success ? { sent: true, error: null } : { sent: false, error: result.error || "The email provider refused it." };
+  } catch (err: unknown) {
+    log.warn({ err }, "Couldn't send the account setup email");
+    return { sent: false, error: normalizeActionError(err, "The email couldn't be sent.") };
+  }
+}
+
+function setupEmailOutcome(requested: boolean, sent: boolean): "sent" | "failed" | "not requested" {
+  if (!requested) return "not requested";
+  return sent ? "sent" : "failed";
+}
+
+/**
+ * "New client" on the users page: an account for someone the team is in touch with. It has no
+ * password; the person chooses one with the setup link (core/security/account-setup.ts), which is
+ * emailed, or shown so the admin can send it another way. Only the link's expiry is audited.
+ */
+export const createClientAccountAction = createPlatformAdminAction(
+  {
+    action: "user.create",
+    schema: createClientAccountSchema,
+    target: (input) => ({ type: "user", label: input.email }),
+  },
+  async (input, ctx): Promise<AdminCreatedClient> => {
+    // 1. The account. The sign-up trigger gives it a profile, a workspace and a Free trial.
+    const account = await ctx.userControls.createClientAccount({ email: input.email, fullName: input.fullName });
+    ctx.setTargetId(account.userId);
+
+    // 2. The workspace, under the studio's name. Nothing links to it yet, so its address can change.
+    // From here on the account exists: problems are reported, so the admin doesn't make it twice.
+    let workspace = await ctx.services.workspace.getWorkspaceByOwnerId(account.userId).catch((err: unknown) => {
+      log.warn({ err, userId: account.userId }, "Couldn't find the new client's workspace");
+      return null;
+    });
+    let workspaceWarning: string | null = null;
+    if (!workspace) {
+      workspaceWarning = "Their workspace couldn't be found. They get one when they first sign in.";
+    } else if (input.studioName && input.studioName !== workspace.brandName) {
+      try {
+        workspace = await ctx.services.workspace.renameNewWorkspace(workspace.id, input.studioName);
+      } catch (err: unknown) {
+        log.warn({ err, workspaceId: workspace.id }, "Couldn't rename the new client's workspace");
+        workspaceWarning = `The studio name couldn't be applied, so the workspace is called "${workspace.brandName}".`;
+      }
+    }
+
+    // 3. The setup link, emailed unless the admin sends it themselves.
+    const setupLink = setupLinkUrl(await appOriginForLinks(), account.token);
+    const email = input.sendEmail
+      ? await emailSetupLink(ctx, { workspaceId: workspace?.id ?? null, email: input.email, fullName: input.fullName, setupLink })
+      : { sent: false, error: null };
+
+    ctx.recordChanges({
+      after: {
+        email: input.email,
+        fullName: input.fullName,
+        workspaceId: workspace?.id ?? null,
+        workspaceName: workspace?.brandName ?? null,
+        workspaceSlug: workspace?.slug ?? null,
+        setupLinkExpiresAt: account.expiresAt,
+        setupEmail: setupEmailOutcome(input.sendEmail, email.sent),
+      },
+    });
+    refreshAdminPages();
+    return {
+      userId: account.userId,
+      email: input.email,
+      workspace: workspace ? { id: workspace.id, name: workspace.brandName, slug: workspace.slug } : null,
+      workspaceWarning,
+      setupLink,
+      setupLinkExpiresAt: account.expiresAt,
+      emailSent: email.sent,
+      emailError: email.error,
+    };
+  }
+);
+
+/**
+ * A new setup link, for an account nobody has signed in to yet (the first link expired, or the
+ * email went astray). The old link stops working.
+ */
+export const sendSetupLinkAction = createPlatformAdminAction(
+  {
+    action: "user.send_setup_link",
+    schema: sendSetupLinkSchema,
+    target: (input) => ({ type: "user", id: input.userId }),
+  },
+  async (input, ctx): Promise<AdminSetupLinkResult> => {
+    const target = await targetUser(ctx, input.userId);
+    if (target.lastSignInAt) {
+      throw new Error(
+        "They've signed in before, so a setup link won't work. If they've forgotten their password, they can reset it from the sign-in page."
+      );
+    }
+    if (target.bannedUntil && new Date(target.bannedUntil) > new Date()) {
+      throw new Error("Lift their ban before sending a setup link.");
+    }
+    if (!target.email) throw new Error("This account has no email address.");
+
+    const link = await ctx.userControls.issueSetupLink(target.id);
+    const setupLink = setupLinkUrl(await appOriginForLinks(), link.token);
+    const email = input.sendEmail
+      ? await emailSetupLink(ctx, {
+          workspaceId: target.primaryWorkspace?.id ?? null,
+          email: target.email,
+          fullName: target.fullName ?? "",
+          setupLink,
+        })
+      : { sent: false, error: null };
+
+    ctx.recordChanges({
+      after: { setupLinkExpiresAt: link.expiresAt, setupEmail: setupEmailOutcome(input.sendEmail, email.sent) },
+    });
+    refreshAdminPages();
+    return { setupLink, setupLinkExpiresAt: link.expiresAt, emailSent: email.sent, emailError: email.error };
   }
 );
 

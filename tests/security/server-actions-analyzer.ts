@@ -83,6 +83,8 @@ export const PRIMITIVES: readonly Primitive[] = [
   { module: "lib/security/passcode.ts", name: "verifyDeliveryPasscode", capability: "authz" },
   { module: "lib/upstash/assert-rate-limit.ts", name: "checkRateLimit", capability: "rateLimit" },
   { module: "lib/upstash/assert-rate-limit.ts", name: "assertRateLimit", capability: "rateLimit" },
+  // checkRateLimit() that lets the request through if the limiter itself is down (auth forms).
+  { module: "lib/auth/form-helpers.ts", name: "rateLimitRefusal", capability: "rateLimit" },
 ];
 
 /** `services.auth.getCurrentUser()`: the session lookup every guard bottoms out in. */

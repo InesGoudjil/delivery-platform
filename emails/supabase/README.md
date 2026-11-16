@@ -1,17 +1,22 @@
 # Supabase auth emails
 
-Supabase sends the sign-up confirmation and the password reset itself. These two templates
-carry the client's copy from the CineSpace Email Library (emails 8 and 34). Paste them into the
-dashboard; the files here are the source of truth.
+Supabase sends the sign-up confirmation, the password reset and the email-change confirmation
+itself. The first two templates carry the client's copy from the CineSpace Email Library (emails 8
+and 34). Paste them into the dashboard; the files here are the source of truth.
 
 ## Paste the templates (hosted project)
 
 1. Supabase dashboard → Authentication → Email Templates.
 2. **Confirm signup**: subject `Confirm your email for CineSpace`; body from `confirm-signup.html`.
 3. **Reset password**: subject `Reset your CineSpace password`; body from `reset-password.html`.
+4. **Change email address**: subject `Confirm the email change on your CineSpace account`; body from
+   `change-email.html`. With "Secure email change" on, both the current and the new address get it.
+   The confirm route sends the first click to `/email-change?status=partial` and the second to
+   `?status=done`.
 
-Both link to the app's `/api/auth/confirm` with `{{ .TokenHash }}` (`type=email` for sign-up,
-`type=recovery` for reset), not to Supabase's `{{ .ConfirmationURL }}`:
+All three link to the app's `/api/auth/confirm` with `{{ .TokenHash }}`, not to Supabase's
+`{{ .ConfirmationURL }}`. The type is `email` for sign-up, `recovery` for a reset and `email_change`
+for a new address.
 
 - Supabase's link carries a PKCE code, which only works in the browser that asked for it. A reset
   requested on a laptop and opened on a phone fails with it. The token-hash link works anywhere.
@@ -45,8 +50,9 @@ Authentication → SMTP Settings → enable custom SMTP, with Zoho CPaaS (former
   up a one-time link before the person clicks it, and they then see "This link has expired or was
   already used". If that happens, the confirm route can show a page with a button that checks the
   link only when clicked.
-- **Email change (email 35).** Supabase's notice to the old address gives `{{ .OldEmail }}`, but
-  the new address isn't documented for it and the library's date has no variable. Not built here: it
-  needs our own send (a Send Email hook) or a shorter copy.
+- **Email change (email 35).** `change-email.html` is a shorter, generic copy that works for both
+  recipients. It names neither address, because the new one is typed by the person asking. The
+  library's version, with both addresses and the date, needs our own send (a Send Email hook) with
+  escaped values.
 - **Config file.** `supabase/config.toml` is git-ignored, so the template paths aren't committed
   there. Use the dashboard, or un-ignore the config when roadmap 6.1 lands.

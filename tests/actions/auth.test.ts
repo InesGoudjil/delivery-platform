@@ -10,8 +10,9 @@ vi.mock("@/lib/posthog", () => ({ captureLogin: vi.fn(), captureSignup: vi.fn() 
 
 import { headers } from "next/headers";
 import * as serverModule from "@/core/server";
-import { loginAction, signupAction, requestPasswordResetAction } from "@/app/actions/auth";
+import { loginAction, signupAction, requestPasswordResetAction, changePasswordAction } from "@/app/actions/auth";
 import { InMemoryRatelimit } from "@/lib/upstash/ratelimit";
+import { TERMS_VERSION } from "@/lib/legal/terms";
 
 /**
  * app/actions/auth.ts: rate limits, the `redirect` field and the two-factor hand-off. The services
@@ -32,10 +33,22 @@ function fakeServices() {
       signUp: vi.fn(),
       resetPasswordForEmail: vi.fn().mockResolvedValue({ data: {}, error: null }),
       getSessionIdentity: vi.fn().mockResolvedValue({ userId: USER_ID, sessionId: LOGIN }),
+      getCurrentUser: vi.fn().mockResolvedValue(plainUser),
+      verifyPassword: vi.fn().mockResolvedValue({ ok: true }),
+      updateUserPassword: vi.fn().mockResolvedValue({ data: { user: plainUser }, error: null }),
+      signOutOthers: vi.fn().mockResolvedValue({ error: null }),
     },
-    session: { registerSession: vi.fn().mockResolvedValue({ isRevoked: false }) },
+    session: {
+      registerSession: vi.fn().mockResolvedValue({ isRevoked: false }),
+      revokeAllOtherSessions: vi.fn().mockResolvedValue([]),
+    },
     waitlist: { claimInvite: vi.fn().mockResolvedValue({}) },
-    profile: { syncOAuthProfile: vi.fn().mockResolvedValue({}) },
+    profile: {
+      syncOAuthProfile: vi.fn().mockResolvedValue({}),
+      // Accepted the current Terms already, unless a test says otherwise.
+      getProfile: vi.fn().mockResolvedValue({ id: USER_ID, termsVersion: TERMS_VERSION }),
+      recordTermsAcceptance: vi.fn().mockResolvedValue(undefined),
+    },
     workspace: {
       getUserWorkspaces: vi.fn().mockResolvedValue([ACME]),
       getOrCreateWorkspace: vi.fn().mockResolvedValue(ACME),
@@ -112,6 +125,29 @@ describe("app/actions/auth", () => {
       expect(services.session.registerSession).toHaveBeenCalled();
     });
 
+    it("passes the bot-check token to Supabase, and explains a failed check", async () => {
+      await redirectOf(login({ captcha_token: "turnstile-token" }));
+      expect(services.auth.signInWithPassword).toHaveBeenCalledWith("ann@test.example", "correct horse", "turnstile-token");
+
+      services.auth.signInWithPassword.mockResolvedValue({
+        data: { user: null, session: null },
+        error: { message: "captcha protection: request disallowed (timeout-or-duplicate)", code: "captcha_failed" },
+      });
+      await expect(login()).resolves.toEqual({ error: "Please complete the security check and try again." });
+    });
+
+    it("asks a user who hasn't accepted the current Terms to accept them first", async () => {
+      adminServices.profile.getProfile.mockResolvedValue({ id: USER_ID, termsVersion: null });
+
+      expect(await redirectOf(login({ redirect: "/invite/abc123" }))).toBe("/accept-terms?redirect=%2Finvite%2Fabc123");
+    });
+
+    it("doesn't ask while the terms columns don't exist yet (migration not applied)", async () => {
+      adminServices.profile.getProfile.mockResolvedValue({ id: USER_ID });
+
+      expect(await redirectOf(login())).toBe("/acme");
+    });
+
     it("returns Supabase's error without redirecting", async () => {
       services.auth.signInWithPassword.mockResolvedValue({
         data: { user: null, session: null },
@@ -141,7 +177,14 @@ describe("app/actions/auth", () => {
     const signup = (fields: Record<string, string> = {}) =>
       signupAction(
         null,
-        form({ name: "Ann Lee", email: "ann@test.example", password: "long-enough-1", "confirm-password": "long-enough-1", ...fields })
+        form({
+          name: "Ann Lee",
+          email: "ann@test.example",
+          password: "long-enough-1",
+          "confirm-password": "long-enough-1",
+          accept_terms: "on",
+          ...fields,
+        })
       );
 
     it("keeps the page to return to for the confirmation link, and claims the waitlist invite at once", async () => {
@@ -156,8 +199,29 @@ describe("app/actions/auth", () => {
       expect(services.auth.signUp).toHaveBeenCalledWith("ann@test.example", "long-enough-1", "Ann Lee", {
         signupRedirect: "/invite/abc123",
         emailRedirectTo: "https://app.test/api/auth/callback?redirect=%2Finvite%2Fabc123",
+        captchaToken: undefined,
       });
       expect(services.waitlist.claimInvite).toHaveBeenCalledWith("wl-token");
+    });
+
+    it("needs the terms box ticked, and records the acceptance with the service role", async () => {
+      await expect(signup({ accept_terms: "" })).resolves.toEqual({
+        error: "Please accept the Terms of Service and Privacy Policy to create your account.",
+      });
+      expect(services.auth.signUp).not.toHaveBeenCalled();
+
+      services.auth.signUp.mockResolvedValue({
+        data: { user: { ...plainUser, identities: [{ id: "i1" }] }, session: null },
+        error: null,
+      });
+      await signup({ captcha_token: "turnstile-token" });
+      expect(services.auth.signUp).toHaveBeenCalledWith(
+        "ann@test.example",
+        "long-enough-1",
+        "Ann Lee",
+        expect.objectContaining({ captchaToken: "turnstile-token" })
+      );
+      expect(adminServices.profile.recordTermsAcceptance).toHaveBeenCalledWith(USER_ID, TERMS_VERSION);
     });
 
     it("claims nothing when the address already has an account (Supabase returns a user without identities)", async () => {
@@ -169,6 +233,7 @@ describe("app/actions/auth", () => {
       await signup({ waitlist_token: "wl-token" });
 
       expect(services.waitlist.claimInvite).not.toHaveBeenCalled();
+      expect(adminServices.profile.recordTermsAcceptance).not.toHaveBeenCalled();
     });
 
     it("signs straight in when no confirmation is needed, to the requested page", async () => {
@@ -209,6 +274,54 @@ describe("app/actions/auth", () => {
       for (const email of ["a@test.example", "b@test.example", "c@test.example"]) await reset(email);
 
       expect((await reset("d@test.example")).error).toMatch(/Too many password reset requests/);
+    });
+  });
+
+  describe("changePasswordAction", () => {
+    const change = (fields: Record<string, string> = {}) =>
+      changePasswordAction(
+        null,
+        form({
+          "current-password": "old password 1",
+          "new-password": "new password 22",
+          "confirm-password": "new password 22",
+          ...fields,
+        })
+      );
+
+    it("checks the current password on a separate client, so this session keeps its two-factor level", async () => {
+      await expect(change({ captcha_token: "turnstile-token" })).resolves.toEqual({
+        success: "Password updated. Your other devices were signed out.",
+      });
+
+      expect(services.auth.verifyPassword).toHaveBeenCalledWith("ann@test.example", "old password 1", "turnstile-token");
+      // Not a sign-in on the session's own client (that would replace it with an aal1 session).
+      expect(services.auth.signInWithPassword).not.toHaveBeenCalled();
+      expect(services.auth.updateUserPassword).toHaveBeenCalledWith("new password 22", "old password 1");
+      expect(services.session.revokeAllOtherSessions).toHaveBeenCalledWith({ userId: USER_ID, sessionId: LOGIN });
+      expect(services.auth.signOutOthers).toHaveBeenCalled();
+    });
+
+    it("refuses a wrong current password without changing anything", async () => {
+      services.auth.verifyPassword.mockResolvedValue({ ok: false, code: "invalid_credentials", message: "Invalid login credentials" });
+
+      await expect(change()).resolves.toEqual({ error: "Your current password is incorrect." });
+      expect(services.auth.updateUserPassword).not.toHaveBeenCalled();
+    });
+
+    it("needs at least 10 characters for the new password", async () => {
+      const res = await change({ "new-password": "short9chr", "confirm-password": "short9chr" });
+
+      expect(res.error).toMatch(/at least 10 characters/);
+      expect(services.auth.verifyPassword).not.toHaveBeenCalled();
+    });
+
+    it("allows 5 attempts per user in 15 minutes", async () => {
+      services.auth.verifyPassword.mockResolvedValue({ ok: false, code: "invalid_credentials", message: "nope" });
+      for (let attempt = 0; attempt < 5; attempt++) await change();
+
+      expect((await change()).error).toMatch(/Too many password attempts/);
+      expect(services.auth.verifyPassword).toHaveBeenCalledTimes(5);
     });
   });
 });

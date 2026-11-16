@@ -8,6 +8,16 @@ export class ProfileService {
     return this.profileRepo.findById(userId);
   }
 
+  /** Records that the user accepted `version` of the Terms. Needs the service role (admin services). */
+  async recordTermsAcceptance(userId: string, version: string): Promise<void> {
+    return this.profileRepo.recordTermsAcceptance(userId, version);
+  }
+
+  /** Whether the user can sign in with a password. Needs the service role (admin services). */
+  async hasPassword(userId: string): Promise<boolean> {
+    return this.profileRepo.hasPassword(userId);
+  }
+
   async listProfiles(limit = 100): Promise<UserProfile[]> {
     return this.profileRepo.listAll(limit);
   }

@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { cookies } from 'next/headers';
 import { randomUUID } from 'crypto';
-import { getServerServices } from '@/core/server';
+import { getServerAdminServices, getServerServices } from '@/core/server';
 import type { Workspace } from '@/core/entities/workspace';
 import { finishSignIn } from '@/core/security/finish-sign-in';
 import { sendServerEvent } from '@/lib/meta';
@@ -19,7 +19,15 @@ import {
 } from '@/lib/validations/auth';
 import { signOutCurrentSession, trackUserSession } from '@/lib/session-manager';
 import { safeReturnPath } from '@/lib/security/return-path';
-import { checkRateLimit, getClientIp, RATELIMIT_POLICIES, type RatelimitPolicy } from '@/lib/upstash';
+import { TERMS_VERSION } from '@/lib/legal/terms';
+import { getClientIp, RATELIMIT_POLICIES } from '@/lib/upstash';
+import {
+  authErrorCode,
+  authErrorMessage,
+  captchaTokenFrom,
+  rateLimitRefusal,
+  requestOrigin,
+} from '@/lib/auth/form-helpers';
 import { createScopedLogger } from '@/lib/logger';
 
 const log = createScopedLogger({ actionGroup: 'auth' });
@@ -29,27 +37,8 @@ export interface AuthState {
   success?: string | null;
 }
 
-/** This request's public origin (scheme and host), for links in emails. */
-async function requestOrigin(): Promise<string> {
-  const headersList = await headers();
-  const host = headersList.get('x-forwarded-host') || headersList.get('host') || 'localhost:3000';
-  const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
-  return `${protocol}://${host}`;
-}
-
-/**
- * The message to show when `identifier` is over `policy`'s limit, or null. If the limiter itself
- * fails, the request goes through: an outage shouldn't lock everyone out.
- */
-async function rateLimitRefusal(policy: RatelimitPolicy, identifier: string[]): Promise<string | null> {
-  try {
-    const result = await checkRateLimit({ policy, identifier });
-    return result.success ? null : result.error || 'Too many attempts. Please try again later.';
-  } catch (err) {
-    log.warn({ err, policy: policy.keyPrefix }, 'Rate limiter unavailable; letting the request through');
-    return null;
-  }
-}
+/** Shown when the sign-up form's terms checkbox wasn't ticked. */
+const TERMS_REQUIRED_MESSAGE = 'Please accept the Terms of Service and Privacy Policy to create your account.';
 
 export async function requestPasswordResetAction(
   prevState: AuthState | null,
@@ -74,9 +63,9 @@ export async function requestPasswordResetAction(
     // /api/auth/confirm, which sends resets to /reset-password.
     const redirectTo = `${await requestOrigin()}/api/auth/callback?next=/reset-password`;
 
-    const { error } = await services.auth.resetPasswordForEmail(parsed.data.email, redirectTo);
+    const { error } = await services.auth.resetPasswordForEmail(parsed.data.email, redirectTo, captchaTokenFrom(formData));
     if (error) {
-      return { error: error.message };
+      return { error: authErrorMessage(error) };
     }
 
     return {
@@ -169,28 +158,28 @@ export async function changePasswordAction(
       return { error: 'You must be signed in to change your password.' };
     }
 
-    // Verify current password by signing in
-    const { error: signInError } = await services.auth.signInWithPassword(
-      user.email,
-      currentPassword
-    );
+    const refusal = await rateLimitRefusal(RATELIMIT_POLICIES.passwordChange, [user.id]);
+    if (refusal) return { error: refusal };
 
-    if (signInError) {
-      return { error: 'Your current password is incorrect.' };
+    // Checked on a separate client, so this session (and its two-factor level) stays as it is.
+    const check = await services.auth.verifyPassword(user.email, currentPassword, captchaTokenFrom(formData));
+    if (!check.ok) {
+      return {
+        error: authErrorCode(check) === 'invalid_credentials' ? 'Your current password is incorrect.' : authErrorMessage(check),
+      };
     }
 
-    // Apply new password
-    const { error: updateError } = await services.auth.updateUserPassword(newPassword);
+    // Supabase checks the current password too when "Require current password" is on.
+    const { error: updateError } = await services.auth.updateUserPassword(newPassword, currentPassword);
     if (updateError) {
-      return { error: updateError.message };
+      return { error: authErrorMessage(updateError) };
     }
 
-    // A new password ends every other login: the one the check above replaced, and any device
-    // someone else may be using. This device stays signed in on its new login.
+    // A new password ends every other login, including any device someone else may be using.
+    // This one stays signed in.
     try {
       const current = await services.auth.getSessionIdentity();
       if (current && current.userId === user.id) {
-        await trackUserSession(services.session, current, await headers());
         await services.session.revokeAllOtherSessions(current);
       }
       const { error: othersError } = await services.auth.signOutOthers();
@@ -229,10 +218,10 @@ export async function loginAction(prevState: AuthState | null, formData: FormDat
 
   try {
     const services = await getServerServices();
-    const { data, error } = await services.auth.signInWithPassword(email, password);
+    const { data, error } = await services.auth.signInWithPassword(email, password, captchaTokenFrom(formData));
 
     if (error) {
-      return { error: error.message };
+      return { error: authErrorMessage(error) };
     }
 
     // Supabase Auth's response, not the session cookie: it decides whether the user has to
@@ -314,6 +303,9 @@ export async function signupAction(prevState: AuthState | null, formData: FormDa
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message || 'Please fill in all required fields.' };
   }
+  if (formData.get('accept_terms') !== 'on') {
+    return { error: TERMS_REQUIRED_MESSAGE };
+  }
 
   const refusal = await rateLimitRefusal(RATELIMIT_POLICIES.authSignup, [await getClientIp()]);
   if (refusal) return { error: refusal };
@@ -326,17 +318,35 @@ export async function signupAction(prevState: AuthState | null, formData: FormDa
     const emailRedirectTo = `${await requestOrigin()}/api/auth/callback${
       signupRedirect ? `?redirect=${encodeURIComponent(signupRedirect)}` : ''
     }`;
-    const { data, error } = await services.auth.signUp(email, password, name, { emailRedirectTo, signupRedirect });
+    const { data, error } = await services.auth.signUp(email, password, name, {
+      emailRedirectTo,
+      signupRedirect,
+      captchaToken: captchaTokenFrom(formData),
+    });
 
     if (error) {
-      return { error: error.message };
+      return { error: authErrorMessage(error) };
     }
 
-    // Claimed now, whether or not the email still needs confirming. (The confirmation link may be
-    // opened on another device, without the token.) A sign-up for an address that already has an
-    // account comes back as a user without identities: nothing to claim.
+    // A sign-up for an address that already has an account comes back as a user without
+    // identities: nothing to record or claim for it.
+    const isNewAccount = Boolean(data.user && (data.user.identities?.length ?? 0) > 0);
+
+    // The terms they just accepted, recorded by the server (users can't write these columns).
+    if (isNewAccount && data.user) {
+      try {
+        const admin = await getServerAdminServices();
+        await admin.profile.recordTermsAcceptance(data.user.id, TERMS_VERSION);
+      } catch (e) {
+        // finishSignIn asks again (/accept-terms) when it finds no acceptance.
+        log.error({ err: e, userId: data.user.id }, 'Could not record the terms acceptance at sign-up');
+      }
+    }
+
+    // Claimed now, whether or not the email still needs confirming: the confirmation link may be
+    // opened on another device, without the token.
     const waitlistToken = formData.get('waitlist_token') as string | null;
-    if (waitlistToken && data.user && (data.user.identities?.length ?? 0) > 0) {
+    if (waitlistToken && isNewAccount) {
       try {
         await services.waitlist.claimInvite(waitlistToken);
       } catch (e) {

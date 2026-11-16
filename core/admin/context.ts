@@ -26,7 +26,7 @@ export interface PlatformAdminContext {
   sessionServices: CoreServices["services"];
   readModel: AdminReadModel;
   audit: AdminAuditLog;
-  /** Devices, bans and two-factor of any user (the user page). */
+  /** Devices, bans and two-factor of any user (the user page), and accounts made for new clients. */
   userControls: AdminUserControls;
   /** Suspending and lifting a suspension. */
   workspaceControls: AdminWorkspaceControls;

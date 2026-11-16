@@ -15,6 +15,8 @@ import {
 } from "@/lib/validations/waitlist";
 import { WaitlistPositionResult } from "@/core/entities/waitlist";
 import { checkRateLimit, getClientIp, RATELIMIT_POLICIES } from "@/lib/upstash";
+import { CAPTCHA_FAILED_MESSAGE, verifyTurnstileToken } from "@/lib/security/turnstile";
+import { captchaTokenFrom } from "@/lib/auth/form-helpers";
 
 export interface WaitlistActionState {
   success?: boolean;
@@ -74,6 +76,11 @@ export async function joinWaitlistAction(
       success: false,
       error: rateLimit.error,
     };
+  }
+
+  // Bot check (Turnstile), once TURNSTILE_SECRET_KEY is set.
+  if (!(await verifyTurnstileToken(captchaTokenFrom(formData), ip))) {
+    return { success: false, error: CAPTCHA_FAILED_MESSAGE };
   }
 
   try {

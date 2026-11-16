@@ -43,6 +43,17 @@ export async function GET(request: Request) {
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+
+  // An email change needs both addresses confirmed ("Secure email change"). After the first link
+  // Supabase answers with a message and no session; after the second it signs the user in.
+  if (type === 'email_change') {
+    if (error) {
+      log.info({ type, reason: error.message }, 'Email link refused');
+      return redirectWithinApp(request, `/login?error=${encodeURIComponent(EMAIL_LINK_FAILED_MESSAGE)}`);
+    }
+    return redirectWithinApp(request, `/email-change?status=${data?.session ? 'done' : 'partial'}`);
+  }
+
   if (error || !data?.user) {
     log.info({ type, reason: error?.message }, 'Email link refused');
     return redirectWithinApp(request, `/login?error=${encodeURIComponent(EMAIL_LINK_FAILED_MESSAGE)}`);

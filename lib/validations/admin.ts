@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { YEARLY_SLUG_SUFFIX } from "@/core/entities/plan";
+import { emailSchema } from "./common";
 
 /*
  * Inputs of the platform-admin actions (app/actions/admin.ts). createPlatformAdminAction() adds
@@ -139,3 +140,22 @@ export const updateDemoRoomSchema = z.object({
 });
 
 export type UpdateDemoRoomInput = z.infer<typeof updateDemoRoomSchema>;
+
+/** Admin → Users → New client: an account for someone the team is in touch with. */
+export const createClientAccountSchema = z.object({
+  fullName: z.string().trim().min(2, "Enter their full name.").max(100, "Keep the name under 100 characters."),
+  email: emailSchema.max(254, "That email address is too long.").transform((email) => email.toLowerCase()),
+  /** Their studio's name, for the workspace. Empty: the workspace is named after them. */
+  studioName: z.string().trim().max(80, "Keep the studio name under 80 characters.").default(""),
+  /** False when the admin will send the setup link themselves (WhatsApp, say). */
+  sendEmail: z.boolean().default(true),
+});
+
+export type CreateClientAccountInput = z.infer<typeof createClientAccountSchema>;
+
+export const sendSetupLinkSchema = z.object({
+  userId: recordId("User"),
+  sendEmail: z.boolean().default(true),
+});
+
+export type SendSetupLinkInput = z.infer<typeof sendSetupLinkSchema>;

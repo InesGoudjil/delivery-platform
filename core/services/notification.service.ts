@@ -57,6 +57,16 @@ export interface NotifyCutApprovedParams {
   origin?: string;
 }
 
+export interface SendAccountSetupEmailParams {
+  /** The new account's workspace, for the notification log. */
+  workspaceId: string;
+  recipientEmail: string;
+  fullName: string;
+  /** The /welcome link (core/security/account-setup.ts). */
+  setupLink: string;
+  linkDays: number;
+}
+
 export interface SendMemberInvitationParams {
   workspaceId: string;
   recipientEmail: string;
@@ -440,6 +450,32 @@ export class NotificationService {
       }
     }
     return outcomes;
+  }
+
+  /**
+   * Welcomes someone the team made an account for (library email 7, "account-setup"), with the
+   * link to choose their password. From Pedro.
+   */
+  async sendAccountSetupEmail(params: SendAccountSetupEmailParams): Promise<{
+    success: boolean;
+    log: NotificationLog;
+    error?: string;
+  }> {
+    const sent = await this.sendLibraryEmail({
+      emailId: "account-setup",
+      to: params.recipientEmail,
+      values: {
+        first_name: oneLine(params.fullName, 80).split(/\s+/)[0] || "there",
+        setup_link: params.setupLink,
+        link_days: params.linkDays,
+      },
+      layout: { kind: "cinespace" },
+      fromName: PEDRO_SENDER,
+      replyTo: this.pedroReplyTo(),
+      workspaceId: params.workspaceId,
+    });
+
+    return { success: sent.success, log: sent.log, error: sent.error };
   }
 
   /**

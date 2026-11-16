@@ -1,5 +1,8 @@
+import { createHash } from "node:crypto";
 import { describe, it, expect, vi } from "vitest";
 import { AdminUserControls } from "@/core/admin/user-controls";
+import { ADMIN_ACCOUNT_EXISTS_MESSAGE } from "@/core/admin/types";
+import { parseSetupToken, SETUP_CLAIM_KEY } from "@/core/security/account-setup";
 
 /** A Supabase client double covering what AdminUserControls calls. */
 function fakeClient() {
@@ -13,6 +16,7 @@ function fakeClient() {
     rpc: vi.fn().mockResolvedValue({ data: 3, error: null }),
     auth: {
       admin: {
+        createUser: vi.fn().mockResolvedValue({ data: { user: { id: "00000000-0000-4000-8000-0000000000c1" } }, error: null }),
         updateUserById: vi.fn().mockResolvedValue({ data: { user: { banned_until: "2026-11-20T10:00:00Z" } }, error: null }),
         mfa: {
           listFactors: vi.fn().mockResolvedValue({
@@ -66,5 +70,50 @@ describe("AdminUserControls", () => {
     const client = fakeClient();
     client.auth.admin.updateUserById.mockResolvedValue({ data: { user: null }, error: { message: "User not found" } });
     await expect(new AdminUserControls(client as any).ban("user-1", "24h")).rejects.toThrow("User not found");
+  });
+
+  it("creates a client account: email confirmed, named, no password, with the hash of a new setup link", async () => {
+    const client = fakeClient();
+    const result = await new AdminUserControls(client as any).createClientAccount({
+      email: "karim@studio.test",
+      fullName: "Karim Benali",
+    });
+
+    const [args] = client.auth.admin.createUser.mock.calls[0];
+    expect(args).toMatchObject({
+      email: "karim@studio.test",
+      email_confirm: true,
+      user_metadata: { full_name: "Karim Benali" },
+    });
+    expect(args).not.toHaveProperty("password");
+
+    // The token belongs to the new user, and only its hash was stored.
+    const parsed = parseSetupToken(result.token);
+    expect(parsed?.userId).toBe("00000000-0000-4000-8000-0000000000c1");
+    const claim = args.app_metadata[SETUP_CLAIM_KEY];
+    expect(claim.token_hash).toBe(createHash("sha256").update(parsed!.secret).digest("hex"));
+    expect(JSON.stringify(args)).not.toContain(parsed!.secret);
+    expect(result.expiresAt).toBe(claim.expires_at);
+  });
+
+  it("says so when the email already has an account", async () => {
+    const client = fakeClient();
+    client.auth.admin.createUser.mockResolvedValue({
+      data: { user: null },
+      error: { status: 422, code: "email_exists", message: "A user with this email address has already been registered" },
+    });
+    await expect(
+      new AdminUserControls(client as any).createClientAccount({ email: "taken@studio.test", fullName: "Taken" })
+    ).rejects.toThrow(ADMIN_ACCOUNT_EXISTS_MESSAGE);
+  });
+
+  it("replaces the setup link with a new one", async () => {
+    const client = fakeClient();
+    const result = await new AdminUserControls(client as any).issueSetupLink("00000000-0000-4000-8000-0000000000c1");
+    const [userId, attrs] = client.auth.admin.updateUserById.mock.calls[0];
+    expect(userId).toBe("00000000-0000-4000-8000-0000000000c1");
+    expect(Object.keys(attrs)).toEqual(["app_metadata"]);
+    const parsed = parseSetupToken(result.token);
+    expect(attrs.app_metadata[SETUP_CLAIM_KEY].token_hash).toBe(createHash("sha256").update(parsed!.secret).digest("hex"));
   });
 });

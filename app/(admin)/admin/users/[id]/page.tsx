@@ -57,6 +57,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
               platformRole: user.platformRole,
               bannedUntil: user.bannedUntil,
               mfaEnabled: user.mfaEnabled,
+              lastSignInAt: user.lastSignInAt,
             }}
           />
         }

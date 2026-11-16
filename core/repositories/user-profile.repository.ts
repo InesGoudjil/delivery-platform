@@ -10,6 +10,10 @@ export interface IUserProfileRepository {
   upsert(profile: { id: string; fullName?: string | null; avatarUrl?: string | null; platformRole?: PlatformRole; lastLoginAt?: string | null; lastLoginIp?: string | null }): Promise<UserProfile>;
   updatePlatformRole(id: string, role: PlatformRole): Promise<UserProfile>;
   updateLoginInfo(id: string, ip?: string): Promise<void>;
+  /** Service role only: a trigger refuses API users (20261116170000_account_settings). */
+  recordTermsAcceptance(id: string, version: string): Promise<void>;
+  /** Service role only (auth_user_has_password): false for Google-only users. */
+  hasPassword(id: string): Promise<boolean>;
 }
 
 export class SupabaseUserProfileRepository implements IUserProfileRepository {
@@ -23,9 +27,37 @@ export class SupabaseUserProfileRepository implements IUserProfileRepository {
       platformRole: row.platform_role || 'user',
       lastLoginAt: row.last_login_at,
       lastLoginIp: row.last_login_ip,
+      // undefined (not null) while the columns don't exist yet (migration 20261116170000 not applied),
+      // so finishSignIn can tell "not accepted" from "can't record it".
+      termsVersion: row.terms_version,
+      termsAcceptedAt: row.terms_accepted_at,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
+  }
+
+  async recordTermsAcceptance(id: string, version: string): Promise<void> {
+    const acceptance = { terms_version: version, terms_accepted_at: new Date().toISOString() };
+    const { data, error } = await (this.supabase as any)
+      .from('user_profiles')
+      .update(acceptance)
+      .eq('id', id)
+      .select('id');
+    if (error) throw new Error(`Error recording terms acceptance: ${error.message}`);
+    if (data?.length) return;
+
+    // The sign-up trigger makes every profile, but a missing row must not leave the user unable to
+    // accept: create it.
+    const { error: insertError } = await (this.supabase as any)
+      .from('user_profiles')
+      .insert({ id, ...acceptance });
+    if (insertError) throw new Error(`Error recording terms acceptance: ${insertError.message}`);
+  }
+
+  async hasPassword(id: string): Promise<boolean> {
+    const { data, error } = await (this.supabase as any).rpc('auth_user_has_password', { p_user_id: id });
+    if (error) throw new Error(`Error reading the password status: ${error.message}`);
+    return data === true;
   }
 
   async findById(id: string): Promise<UserProfile | null> {

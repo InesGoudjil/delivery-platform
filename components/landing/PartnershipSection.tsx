@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Star, Film, Share2, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { submitPartnershipAction } from "@/app/actions/inquiries";
+import { TurnstileWidget, isCaptchaEnabled, type TurnstileHandle } from "@/components/security/turnstile-widget";
 import { submitPartnershipSchema, safeValidate } from "@/lib/validations";
 
 interface PartnershipSectionProps {
@@ -12,6 +13,9 @@ interface PartnershipSectionProps {
 export function PartnershipSection({ onShowToast }: PartnershipSectionProps) {
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Bot check; the server verifies the token, which works once.
+  const captchaRef = useRef<TurnstileHandle>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [platform, setPlatform] = useState("");
@@ -40,7 +44,8 @@ export function PartnershipSection({ onShowToast }: PartnershipSectionProps) {
 
     try {
       setIsSubmitting(true);
-      const res = await submitPartnershipAction(validated.data);
+      const res = await submitPartnershipAction(validated.data, captchaToken);
+      captchaRef.current?.reset();
 
       if (!res.success) {
         toast.error(res.error || "Failed to submit application.");
@@ -280,9 +285,10 @@ export function PartnershipSection({ onShowToast }: PartnershipSectionProps) {
 
             {/* Submit Button */}
             <div className="pt-2">
+              <TurnstileWidget ref={captchaRef} action="partnership" onToken={setCaptchaToken} />
               <Button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || (isCaptchaEnabled() && !captchaToken)}
                 className="w-full rounded-full bg-primary text-primary-foreground py-4 text-sm font-bold uppercase tracking-wider shadow-xl shadow-primary/30 hover:bg-primary/90 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer h-auto flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}

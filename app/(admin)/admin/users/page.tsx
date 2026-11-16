@@ -4,6 +4,7 @@ import { AdminLoadError, AdminPageHeader } from "../../_components/page-header";
 import { attempt } from "../../_lib/data";
 import { formatNumber } from "../../_lib/format";
 import { loadUserListParams, pageFrom } from "../../_lib/search-params";
+import { CreateClientButton } from "./create-client-dialog";
 import { UsersTable } from "./users-table";
 
 export const metadata = { title: "Users" };
@@ -28,7 +29,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
   if (!loaded.ok) {
     return (
       <div className="mx-auto max-w-7xl">
-        <AdminPageHeader title="Users" />
+        <AdminPageHeader title="Users" actions={<CreateClientButton />} />
         <AdminLoadError what="users" error={loaded.error} />
       </div>
     );
@@ -40,6 +41,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
       <AdminPageHeader
         title="Users"
         description={`${formatNumber(result.total)} ${result.total === 1 ? "account matches" : "accounts match"}. Emails, sign-ins and two-factor status come from Supabase Auth.`}
+        actions={<CreateClientButton />}
       />
       <UsersTable
         rows={result.rows}

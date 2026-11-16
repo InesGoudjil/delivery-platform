@@ -42,19 +42,7 @@ export class WorkspaceService {
     if (existing) return existing;
 
     const baseName = brandName || 'My Studio';
-    const baseSlug = baseName
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '') || 'studio';
-
-    let uniqueSlug = baseSlug;
-    let counter = 1;
-    while (await this.workspaceRepo.findBySlug(uniqueSlug)) {
-      uniqueSlug = `${baseSlug}-${counter}`;
-      counter++;
-    }
+    const uniqueSlug = await this.uniqueSlug(slugBase(baseName) || 'studio');
 
     const newWorkspace = await this.workspaceRepo.create({
       ownerId,
@@ -151,19 +139,7 @@ export class WorkspaceService {
     }
 
     const baseName = brandName.trim();
-    const baseSlug = (slug || baseName)
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '') || 'studio-team';
-
-    let uniqueSlug = baseSlug;
-    let counter = 1;
-    while (await this.workspaceRepo.findBySlug(uniqueSlug)) {
-      uniqueSlug = `${baseSlug}-${counter}`;
-      counter++;
-    }
+    const uniqueSlug = await this.uniqueSlug(slugBase(slug || baseName) || 'studio-team');
 
     const newWorkspace = await this.workspaceRepo.create({
       ownerId,
@@ -243,5 +219,40 @@ export class WorkspaceService {
   async updateWorkspace(workspaceId: string, data: Partial<Workspace>): Promise<Workspace> {
     return this.workspaceRepo.update(workspaceId, data);
   }
+
+  /**
+   * Renames a workspace and moves it to a slug made from the new name. Only for a workspace nobody
+   * has used yet (Admin → Users → New client): links to the old address stop working. A name with
+   * no Latin letters or digits keeps the current slug.
+   */
+  async renameNewWorkspace(workspaceId: string, brandName: string): Promise<Workspace> {
+    const current = await this.workspaceRepo.findById(workspaceId);
+    if (!current) throw new Error('Workspace not found.');
+    const name = brandName.trim();
+    const base = slugBase(name);
+    const slug = !base || base === current.slug ? current.slug : await this.uniqueSlug(base);
+    return this.workspaceRepo.update(workspaceId, { brandName: name, slug });
+  }
+
+  /** `base`, or `base-1`, `base-2`… if it's taken. */
+  private async uniqueSlug(base: string): Promise<string> {
+    let slug = base;
+    let counter = 1;
+    while (await this.workspaceRepo.findBySlug(slug)) {
+      slug = `${base}-${counter}`;
+      counter++;
+    }
+    return slug;
+  }
+}
+
+/** Lowercase letters, digits and single hyphens from `name`; empty when nothing is left. */
+function slugBase(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 

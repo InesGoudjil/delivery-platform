@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Ban, KeyRound, LogOut, MoreHorizontal, PanelRight, ShieldCheck, ShieldOff, Unlock } from "lucide-react";
+import { Ban, KeyRound, LogOut, MailPlus, MoreHorizontal, PanelRight, ShieldCheck, ShieldOff, Unlock } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,15 +12,27 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   banUserAction,
   resetUserTwoFactorAction,
+  sendSetupLinkAction,
   signOutUserEverywhereAction,
   unbanUserAction,
   updateUserRoleAction,
 } from "@/app/actions/admin";
+import type { AdminSetupLinkResult } from "@/core/admin/types";
 import { ReasonDialog } from "../../_components/reason-dialog";
+import { SetupLinkPanel } from "./setup-link-panel";
 
 export interface UserActionTarget {
   id: string;
@@ -29,9 +41,11 @@ export interface UserActionTarget {
   platformRole: "admin" | "user";
   bannedUntil: string | null;
   mfaEnabled: boolean;
+  /** Null until their first sign-in: they can still get a setup link. */
+  lastSignInAt: string | null;
 }
 
-type Dialog = "role" | "signout" | "ban" | "unban" | "mfa" | null;
+type OpenDialog = "role" | "signout" | "ban" | "unban" | "mfa" | "setup" | null;
 
 const BAN_OPTIONS = [
   { value: "24h", label: "24 hours" },
@@ -50,13 +64,21 @@ export function UserActionsMenu({
   isSelf: boolean;
   showOpen?: boolean;
 }) {
-  const [dialog, setDialog] = useState<Dialog>(null);
+  const [dialog, setDialog] = useState<OpenDialog>(null);
   const [banDuration, setBanDuration] = useState<(typeof BAN_OPTIONS)[number]["value"]>("7d");
+  const [emailSetupLink, setEmailSetupLink] = useState(true);
+  const [issuedLink, setIssuedLink] = useState<AdminSetupLinkResult | null>(null);
+  const [showIssuedLink, setShowIssuedLink] = useState(false);
   const label = user.email ?? user.fullName ?? "this user";
   const isAdmin = user.platformRole === "admin";
   const banned = user.bannedUntil !== null && new Date(user.bannedUntil) > new Date();
-  const open = (next: Dialog) => () => setDialog(next);
-  const onOpenChange = (next: Dialog) => (isOpen: boolean) => setDialog(isOpen ? next : null);
+  const neverSignedIn = user.lastSignInAt === null;
+  const open = (next: OpenDialog) => () => setDialog(next);
+  const onOpenChange = (next: OpenDialog) => (isOpen: boolean) => setDialog(isOpen ? next : null);
+  const closeIssuedLink = () => {
+    setIssuedLink(null);
+    setShowIssuedLink(false);
+  };
 
   return (
     <>
@@ -85,6 +107,11 @@ export function UserActionsMenu({
           <DropdownMenuItem onClick={open("mfa")} disabled={isSelf || !user.mfaEnabled}>
             <KeyRound /> Reset two-factor…
           </DropdownMenuItem>
+          {neverSignedIn && (
+            <DropdownMenuItem onClick={open("setup")} disabled={isSelf || banned}>
+              <MailPlus /> Send a new setup link…
+            </DropdownMenuItem>
+          )}
           {banned ? (
             <DropdownMenuItem onClick={open("unban")}>
               <Unlock /> Lift ban…
@@ -176,6 +203,59 @@ export function UserActionsMenu({
           </Select>
         </div>
       </ReasonDialog>
+
+      <ReasonDialog
+        open={dialog === "setup"}
+        onOpenChange={onOpenChange("setup")}
+        title={`Send ${label} a new setup link?`}
+        description="They haven't signed in yet. The new link lets them choose a password, once, for 7 days. Their previous link stops working."
+        confirmLabel="Make the link"
+        onConfirm={async (reason) => {
+          const result = await sendSetupLinkAction({ userId: user.id, sendEmail: emailSetupLink, reason });
+          if (!result.success) return result.error;
+          const { success: _success, ...issued } = result;
+          setIssuedLink(issued);
+          setShowIssuedLink(!issued.emailSent);
+        }}
+      >
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
+          <div className="space-y-0.5">
+            <label htmlFor={`setup-email-${user.id}`} className="text-sm font-medium">
+              Email it to them
+            </label>
+            <p className="text-xs text-muted-foreground">Turn it off to copy the link and send it yourself.</p>
+          </div>
+          <Switch id={`setup-email-${user.id}`} checked={emailSetupLink} onCheckedChange={setEmailSetupLink} />
+        </div>
+      </ReasonDialog>
+
+      <Dialog open={issuedLink !== null} onOpenChange={(isOpen) => !isOpen && closeIssuedLink()}>
+        <DialogContent size="lg">
+          <DialogHeader>
+            <DialogTitle>New setup link</DialogTitle>
+            <DialogDescription>
+              {issuedLink?.emailSent
+                ? `We emailed it to ${user.email ?? "them"}.`
+                : issuedLink?.emailError
+                  ? `The email didn't go out (${issuedLink.emailError}). Copy the link and send it yourself.`
+                  : "Copy the link and send it to them yourself."}
+            </DialogDescription>
+          </DialogHeader>
+          {issuedLink &&
+            (showIssuedLink ? (
+              <SetupLinkPanel link={issuedLink.setupLink} expiresAt={issuedLink.setupLinkExpiresAt} />
+            ) : (
+              <Button type="button" variant="link" className="h-auto justify-start p-0 text-sm" onClick={() => setShowIssuedLink(true)}>
+                Show the link, to send it another way too
+              </Button>
+            ))}
+          <DialogFooter>
+            <Button type="button" onClick={closeIssuedLink}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ReasonDialog
         open={dialog === "unban"}

@@ -12,6 +12,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 import * as serverModule from "@/core/server";
 import { GET as confirm } from "@/app/api/auth/confirm/route";
 import { GET as callback } from "@/app/api/auth/callback/route";
+import { TERMS_VERSION } from "@/lib/legal/terms";
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 const LOGIN = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -29,7 +30,12 @@ function fakeServices() {
   return {
     session: { registerSession: vi.fn().mockResolvedValue({ isRevoked: false }) },
     waitlist: { claimInvite: vi.fn().mockResolvedValue({}) },
-    profile: { syncOAuthProfile: vi.fn().mockResolvedValue({}) },
+    profile: {
+      syncOAuthProfile: vi.fn().mockResolvedValue({}),
+      // Accepted the current Terms already, unless a test says otherwise.
+      getProfile: vi.fn().mockResolvedValue({ id: USER_ID, termsVersion: TERMS_VERSION }),
+      recordTermsAcceptance: vi.fn().mockResolvedValue(undefined),
+    },
     workspace: {
       getUserWorkspaces: vi.fn().mockResolvedValue([ACME]),
       getOrCreateWorkspace: vi.fn().mockResolvedValue(ACME),
@@ -99,7 +105,7 @@ describe("auth return routes", () => {
       expect(target(await confirm(get("/api/auth/confirm?token_hash=h&type=email")))).toBe("/acme");
 
       fakeSupabase({ user: userWith() });
-      expect(target(await confirm(get("/api/auth/confirm?token_hash=h&type=email_change&next=https://evil.example")))).toBe(
+      expect(target(await confirm(get("/api/auth/confirm?token_hash=h&type=magiclink&next=https://evil.example")))).toBe(
         "/acme"
       );
     });
@@ -119,6 +125,30 @@ describe("auth return routes", () => {
 
       expect(target(res)).toBe("/mfa?redirect=%2Freset-password");
       expect(adminServices.workspace.getUserWorkspaces).toHaveBeenCalledWith(USER_ID);
+    });
+
+    it("sends an email change to /email-change: partial after the first address, done after both", async () => {
+      // First link: Supabase answers with a message and no session.
+      const auth = fakeSupabase({ user: { msg: "Confirmation link accepted" } as any });
+      auth.verifyOtp.mockResolvedValue({ data: { user: { msg: "Confirmation link accepted" }, session: null }, error: null });
+      expect(target(await confirm(get("/api/auth/confirm?token_hash=h1&type=email_change")))).toBe("/email-change?status=partial");
+      expect(services.session.registerSession).not.toHaveBeenCalled();
+
+      // Second link: signed in with the new address.
+      fakeSupabase({ user: userWith({ email: "new@test.example" }) });
+      expect(target(await confirm(get("/api/auth/confirm?token_hash=h2&type=email_change")))).toBe("/email-change?status=done");
+
+      fakeSupabase({ error: { message: "Email link is invalid or has expired" } });
+      expect(new URL((await confirm(get("/api/auth/confirm?token_hash=old&type=email_change"))).headers.get("location")!).pathname).toBe(
+        "/login"
+      );
+    });
+
+    it("asks for the Terms when the account has no record of accepting them", async () => {
+      adminServices.profile.getProfile.mockResolvedValue({ id: USER_ID, termsVersion: null });
+      fakeSupabase({ user: userWith() });
+
+      expect(target(await confirm(get("/api/auth/confirm?token_hash=h&type=email")))).toBe("/accept-terms?redirect=%2Facme");
     });
 
     it("sends expired, used or malformed links to /login with an explanation", async () => {
@@ -151,6 +181,29 @@ describe("auth return routes", () => {
 
       fakeSupabase({ user: userWith() });
       expect(target(await callback(get("/api/auth/callback?code=c1&next=//evil.example")))).toBe("/acme");
+    });
+
+    it("records the Terms a Google sign-up accepted on the sign-up page", async () => {
+      adminServices.profile.getProfile.mockResolvedValue({ id: USER_ID, termsVersion: null });
+      fakeSupabase({ user: userWith() });
+
+      expect(target(await callback(get(`/api/auth/callback?code=c1&terms=${TERMS_VERSION}`)))).toBe("/acme");
+      expect(adminServices.profile.recordTermsAcceptance).toHaveBeenCalledWith(USER_ID, TERMS_VERSION);
+
+      // An outdated or made-up version isn't recorded: they're asked on /accept-terms.
+      adminServices.profile.recordTermsAcceptance.mockClear();
+      fakeSupabase({ user: userWith() });
+      expect(target(await callback(get("/api/auth/callback?code=c1&terms=1999-01-01")))).toBe("/accept-terms?redirect=%2Facme");
+      expect(adminServices.profile.recordTermsAcceptance).not.toHaveBeenCalled();
+    });
+
+    it("sends Google users with an authenticator to /mfa first, then to the Terms if needed", async () => {
+      adminServices.profile.getProfile.mockResolvedValue({ id: USER_ID, termsVersion: null });
+      fakeSupabase({ user: userWith({ factors: [{ status: "verified" }] }) });
+
+      expect(target(await callback(get("/api/auth/callback?code=c1")))).toBe(
+        `/mfa?redirect=${encodeURIComponent("/accept-terms?redirect=%2Facme")}`
+      );
     });
 
     it("sends Google users with an authenticator to /mfa", async () => {

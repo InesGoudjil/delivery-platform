@@ -161,6 +161,8 @@ export interface AdminActionContext extends PlatformAdminContext {
   recordChanges(changes: AdminAuditChanges): void;
   /** A readable name for the target once the handler has looked it up, e.g. a brand name. */
   setTargetLabel(label: string | null | undefined): void;
+  /** The target's id once the handler knows it, e.g. a record the action created. */
+  setTargetId(id: string | null | undefined): void;
 }
 
 /** `error` is on both branches so callers can read it without strict null checks narrowing the union. */
@@ -225,6 +227,7 @@ export function createPlatformAdminAction<TSchema extends z.ZodObject, TOutput e
     }
 
     const target = config.target(input);
+    let targetId = target.id ?? null;
     let targetLabel = target.label ?? null;
     let changes: AdminAuditChanges | null = null;
     const metadata = await requestMetadata();
@@ -235,7 +238,7 @@ export function createPlatformAdminAction<TSchema extends z.ZodObject, TOutput e
         actorEmail: admin.user.email ?? null,
         action: config.action,
         targetType: target.type,
-        targetId: target.id ?? null,
+        targetId,
         targetLabel,
         reason: input.reason,
         outcome,
@@ -260,12 +263,15 @@ export function createPlatformAdminAction<TSchema extends z.ZodObject, TOutput e
         setTargetLabel: (label) => {
           targetLabel = label ?? targetLabel;
         },
+        setTargetId: (id) => {
+          targetId = id ?? targetId;
+        },
       });
       await recordAudit("succeeded");
       return { success: true, ...output };
     } catch (err: unknown) {
       const errorMsg = normalizeActionError(err);
-      adminLog.error({ err, action: config.action, targetId: target.id }, `Admin action failed: ${errorMsg}`);
+      adminLog.error({ err, action: config.action, targetId }, `Admin action failed: ${errorMsg}`);
       await recordAudit("failed", errorMsg);
       return { success: false, error: errorMsg };
     }
