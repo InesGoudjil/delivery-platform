@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { getServerAdminServices, getServerServices } from "@/core/server";
 import type { Delivery } from "@/core/entities/delivery";
@@ -159,8 +160,12 @@ function deliveryThroughLink(delivery: Delivery, link: ShareLink): Delivery {
   };
 }
 
-/** Looks up a room by a share link's token. Returns null when the token matches no link. */
-export async function getClientRoom(shareToken: string): Promise<ClientRoom | null> {
+/**
+ * Looks up a room by a share link's token. Returns null when the token matches no link.
+ * Cached per request while rendering, so the room page and its metadata share one lookup
+ * (outside a render, such as in actions and API routes, every call looks it up again).
+ */
+export const getClientRoom = cache(async (shareToken: string): Promise<ClientRoom | null> => {
   if (!isWellFormedShareToken(shareToken)) return null;
   const token = shareToken.trim();
 
@@ -203,7 +208,7 @@ export async function getClientRoom(shareToken: string): Promise<ClientRoom | nu
     canApprove: canView && mayApprove(link, member, isDemo),
     isDemo,
   };
-}
+});
 
 /** Members always may; guests when the studio turned downloads on, and never in the demo room. */
 function mayDownload(delivery: Delivery, member: ClientRoomMember | null, isDemo: boolean): boolean {

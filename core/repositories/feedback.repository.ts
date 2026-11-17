@@ -1,6 +1,19 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database.types';
 import { Feedback, FeedbackReply } from '@/core/entities/feedback';
+import { IN_FILTER_CHUNK, inChunks } from './in-chunks';
+
+/** The order comments are listed in: by timecode (comments without one last), then oldest first. */
+function byTimecodeThenAge(a: Feedback, b: Feedback): number {
+  const at = a.timestampSeconds;
+  const bt = b.timestampSeconds;
+  if (at !== bt) {
+    if (at === null || at === undefined) return 1;
+    if (bt === null || bt === undefined) return -1;
+    return at - bt;
+  }
+  return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+}
 
 export interface CreateFeedbackDTO {
   assetVersionId: string;
@@ -107,15 +120,19 @@ export class SupabaseFeedbackRepository implements IFeedbackRepository {
 
   async listByAssetVersionIds(assetVersionIds: string[]): Promise<Feedback[]> {
     if (!assetVersionIds || assetVersionIds.length === 0) return [];
-    const { data, error } = await (this.supabase as any)
-      .from('feedback')
-      .select('*, feedback_replies(*)')
-      .in('asset_version_id', assetVersionIds)
-      .order('timestamp_seconds', { ascending: true, nullsFirst: false })
-      .order('created_at', { ascending: true });
+    const rows = await inChunks<Feedback>(assetVersionIds, async (chunk) => {
+      const { data, error } = await (this.supabase as any)
+        .from('feedback')
+        .select('*, feedback_replies(*)')
+        .in('asset_version_id', chunk)
+        .order('timestamp_seconds', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: true });
 
-    if (error) throw new Error(`Error listing feedback by version IDs: ${error.message}`);
-    return data ? data.map((r: any) => this.mapRowToEntity(r)) : [];
+      if (error) throw new Error(`Error listing feedback by version IDs: ${error.message}`);
+      return data ? data.map((r: any) => this.mapRowToEntity(r)) : [];
+    });
+    // Several chunks: put the rows back in the query's order (timecode, nulls last, then age).
+    return new Set(assetVersionIds).size > IN_FILTER_CHUNK ? rows.sort(byTimecodeThenAge) : rows;
   }
 
   async create(dto: CreateFeedbackDTO): Promise<Feedback> {

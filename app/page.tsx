@@ -12,19 +12,16 @@ export default async function Home(props: {
   const referralCode = searchParams?.ref;
 
   try {
-    // Fetch authentication, workspace, and subscription plans via Core Domain Services
+    // The session, the demo link and the plans don't depend on each other: read at once.
     const services = await getServerServices();
-    const [{ user, workspace }, demoHref] = await Promise.all([
+    const [{ user, workspace }, demoHref, availablePlans] = await Promise.all([
       services.auth.getCurrentSessionData(),
       demoRoomHref(),
+      services.subscription.listAvailablePlans().catch((err: unknown): any[] => {
+        log.warn({ err }, "Could not fetch plans from DB");
+        return [];
+      }),
     ]);
-
-    let availablePlans: any[] = [];
-    try {
-      availablePlans = await services.subscription.listAvailablePlans();
-    } catch (err: any) {
-      log.warn({ err }, "Could not fetch plans from DB");
-    }
 
     const displayPlans = (availablePlans || [])
       .filter((p) => p.isActive && p.slug !== "test" && p.slug !== "test3")
@@ -62,7 +59,11 @@ export default async function Home(props: {
  */
 async function demoRoomHref(): Promise<string | undefined> {
   try {
-    const demo = await loadDemoRoom(await getServerAdminServices({ request: true }));
+    const services = await getServerAdminServices({ request: true });
+    // Most of the time the link is off: then the delivery and its workspace aren't read.
+    const setting = await services.siteSettings.get("demo_room");
+    if (!setting.showOnLanding || !setting.deliveryId) return undefined;
+    const demo = await loadDemoRoom(services);
     return isDemoRoomLive(demo) ? "/demo" : undefined;
   } catch (err) {
     log.warn({ err }, "Could not check the demo room");

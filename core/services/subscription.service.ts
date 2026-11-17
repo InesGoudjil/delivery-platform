@@ -106,8 +106,31 @@ export class SubscriptionService {
     return this.subscriptionRepo.findByWorkspaceId(workspaceId);
   }
 
-  async getCurrentPlan(workspaceId: string): Promise<Plan | null> {
-    const starterPlan = (await this.planRepo.findBySlug('starter')) || ({
+  /**
+   * The workspace's plan state, read in one round of parallel queries: every plan (a handful of
+   * rows, which hold the starter plan and the subscription's plan), the subscription, and, when
+   * asked for, the workspace's feature overrides. Pages and actions call this on most requests,
+   * so it never waits on one query before starting the next.
+   */
+  private async loadPlanState(
+    workspaceId: string,
+    withOverrides: boolean
+  ): Promise<{ plan: Plan; sub: Subscription | null; overrides: Partial<WorkspaceFeatureConfig> | null }> {
+    const [plans, sub, overridesRecord] = await Promise.all([
+      this.planRepo.listAllPlans(),
+      this.subscriptionRepo.findByWorkspaceId(workspaceId),
+      withOverrides ? this.featuresRepo.findByWorkspaceId(workspaceId) : Promise.resolve(null),
+    ]);
+    return {
+      plan: this.planForSubscription(sub, plans),
+      sub,
+      overrides: (overridesRecord?.features as Partial<WorkspaceFeatureConfig> | undefined) ?? null,
+    };
+  }
+
+  /** The plan a subscription grants now: Starter without one, after a lapse, or when its plan is retired. */
+  private planForSubscription(sub: Subscription | null, plans: Plan[]): Plan {
+    const starterPlan = plans.find((p) => p.slug === 'starter') || ({
       id: 'plan_starter',
       name: 'Starter',
       slug: 'starter',
@@ -121,7 +144,6 @@ export class SubscriptionService {
       updatedAt: new Date().toISOString(),
     } as Plan);
 
-    const sub = await this.subscriptionRepo.findByWorkspaceId(workspaceId);
     if (!sub) return starterPlan;
 
     // Check expiration for trials
@@ -137,13 +159,35 @@ export class SubscriptionService {
     }
 
     if (sub.status === 'active' || sub.status === 'trialing') {
-      const plan = await this.planRepo.findById(sub.planId);
+      const plan = plans.find((p) => p.id === sub.planId);
       if (plan && plan.isActive) {
         return plan;
       }
     }
 
     return starterPlan;
+  }
+
+  /** The plan's features with the workspace's overrides on top. */
+  private featuresFor(plan: Plan | null, overrides: Partial<WorkspaceFeatureConfig> | null): WorkspaceFeatureConfig {
+    const baselineFeatures: WorkspaceFeatureConfig =
+      plan?.features && Object.keys(plan.features).length > 0
+        ? plan.features
+        : (SEED_PLANS.starter.features as WorkspaceFeatureConfig);
+
+    // Check for custom workspace overrides (if any exist)
+    if (overrides && Object.keys(overrides).length > 0) {
+      return {
+        ...baselineFeatures,
+        ...overrides,
+      };
+    }
+
+    return baselineFeatures;
+  }
+
+  async getCurrentPlan(workspaceId: string): Promise<Plan | null> {
+    return (await this.loadPlanState(workspaceId, false)).plan;
   }
 
   /**
@@ -155,28 +199,26 @@ export class SubscriptionService {
   }
 
   async getFeatures(workspaceId: string): Promise<WorkspaceFeatureConfig> {
-    const plan = await this.getCurrentPlan(workspaceId);
-    const baselineFeatures: WorkspaceFeatureConfig =
-      plan?.features && Object.keys(plan.features).length > 0
-        ? plan.features
-        : (SEED_PLANS.starter.features as WorkspaceFeatureConfig);
-
-    // Check for custom workspace overrides (if any exist)
-    const overridesRecord = await this.featuresRepo.findByWorkspaceId(workspaceId);
-    if (overridesRecord && overridesRecord.features && Object.keys(overridesRecord.features).length > 0) {
-      return {
-        ...baselineFeatures,
-        ...overridesRecord.features,
-      };
-    }
-
-    return baselineFeatures;
+    const { plan, overrides } = await this.loadPlanState(workspaceId, true);
+    return this.featuresFor(plan, overrides);
   }
 
   async getEntitlements(workspaceId: string): Promise<WorkspaceEntitlements> {
-    const plan = await this.getCurrentPlan(workspaceId);
-    const sub = await this.subscriptionRepo.findByWorkspaceId(workspaceId);
-    const features = await this.getFeatures(workspaceId);
+    return (await this.getPlanAndEntitlements(workspaceId)).entitlements;
+  }
+
+  /** The current plan and the entitlements it gives, from one read of the plan state. */
+  async getPlanAndEntitlements(workspaceId: string): Promise<{ plan: Plan; entitlements: WorkspaceEntitlements }> {
+    const { plan, sub, overrides } = await this.loadPlanState(workspaceId, true);
+    return { plan, entitlements: this.entitlementsFor(workspaceId, plan, sub, this.featuresFor(plan, overrides)) };
+  }
+
+  private entitlementsFor(
+    workspaceId: string,
+    plan: Plan | null,
+    sub: Subscription | null,
+    features: WorkspaceFeatureConfig
+  ): WorkspaceEntitlements {
     // The fallbacks below are per tier: `pro-yearly` gets what `pro` gets.
     const tier = plan ? planTier(plan.slug) : undefined;
 
@@ -360,10 +402,11 @@ export class SubscriptionService {
     maxAllowed: number;
     reason?: string;
   }> {
-    const features = await this.getFeatures(workspaceId);
+    const [features, deliveries] = await Promise.all([
+      this.getFeatures(workspaceId),
+      this.deliveryRepo.listByWorkspaceId(workspaceId),
+    ]);
     const clientLinksLimit = features.client_links ?? 1;
-
-    const deliveries = await this.deliveryRepo.listByWorkspaceId(workspaceId);
     const activeProjects = deliveries.filter((p) => p.status !== 'archived');
 
     if (clientLinksLimit === -1) {
@@ -398,8 +441,8 @@ export class SubscriptionService {
 
   /** Share links per delivery room, -1 for unlimited. */
   async getShareLinksPerDeliveryLimit(workspaceId: string): Promise<number> {
-    const [plan, features] = await Promise.all([this.getCurrentPlan(workspaceId), this.getFeatures(workspaceId)]);
-    return shareLinksPerDelivery(features, plan ? planTier(plan.slug) : undefined);
+    const { plan, overrides } = await this.loadPlanState(workspaceId, true);
+    return shareLinksPerDelivery(this.featuresFor(plan, overrides), planTier(plan.slug));
   }
 
   async isWatermarkAllowed(workspaceId: string): Promise<boolean> {

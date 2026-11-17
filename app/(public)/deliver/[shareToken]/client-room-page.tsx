@@ -12,10 +12,18 @@ import { DeliveryExpiredScreen } from "./_components/delivery-expired-screen";
  */
 export async function ClientRoomPage({ room }: { room: ClientRoom }) {
   const { delivery, services } = room;
-  const [workspace, workspaceFeatures, portfolio] = await Promise.all([
+  // Locked: only what the passcode screen shows. Open: the room's files, signed for this visitor.
+  // Everything is read at once: the files don't depend on the branding or the plan.
+  const isLocked = !room.canView;
+  const [workspace, workspaceFeatures, portfolio, roomPage, cover, profile] = await Promise.all([
     services.workspace.getWorkspaceById(delivery.workspaceId),
     services.subscription.getFeatures(delivery.workspaceId),
     services.portfolio.getPortfolioByWorkspace(delivery.workspaceId).catch(() => null),
+    isLocked ? null : loadRoomAssets(room),
+    isLocked ? null : signRoomCover(room),
+    !isLocked && room.member ? services.profile.getProfile(room.member.userId).catch(() => null) : null,
+    // A guest's visit counts on their link (saved after the response).
+    isLocked ? undefined : recordRoomOpen(room).catch(() => undefined),
   ]);
   const branding = {
     brandName: workspace?.brandName || "Studio Workspace",
@@ -37,20 +45,8 @@ export async function ClientRoomPage({ room }: { room: ClientRoom }) {
     );
   }
 
-  const isLocked = !room.canView;
   const canWatermark = Boolean(workspaceFeatures?.watermark);
   const effectiveWatermark = canWatermark && Boolean(delivery.appearance?.watermarkMedia ?? delivery.isWatermarked);
-
-  // Locked: only what the passcode screen shows. Open: the room's files, signed for this visitor.
-  const roomPage = isLocked ? null : await loadRoomAssets(room);
-  const [cover, profile] = isLocked
-    ? [null, null]
-    : await Promise.all([
-        signRoomCover(room),
-        room.member ? services.profile.getProfile(room.member.userId).catch(() => null) : null,
-        // A guest's visit counts on their link (saved after the response).
-        recordRoomOpen(room).catch(() => undefined),
-      ]);
 
   const initialAssets = roomPage?.assets ?? [];
   const initialTotalSizeBytes = initialAssets.reduce((sum, asset) => {

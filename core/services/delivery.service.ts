@@ -130,55 +130,47 @@ export class DeliveryService {
     if (!delivery) return null;
     const workspaceId = delivery.workspaceId;
 
-    let client: Client | null = null;
-    if (delivery.clientId) {
-      client = await this.clientRepo.findById(delivery.clientId);
-    }
-
-    let assets: Asset[] = [];
-    let totalAssetsCount = 0;
-    let approvedAssetsCount = 0;
-    let hasMore = false;
-
-    if (options?.limit !== undefined) {
-      const page = options.page || 1;
-      const offset = (page - 1) * options.limit;
-      const res = await this.assetRepo.listByDeliveryIdPaginated(delivery.id, {
-        limit: options.limit,
-        offset,
-        type: options.type,
-        workspaceId,
-      });
-      assets = res.assets;
-      totalAssetsCount = res.totalCount;
-      approvedAssetsCount = await this.assetRepo.countByDeliveryId(delivery.id, { isApproved: true, workspaceId });
-      hasMore = offset + assets.length < totalAssetsCount;
-    } else {
-      assets = await this.assetRepo.listByDeliveryId(delivery.id, { workspaceId });
-      totalAssetsCount = assets.length;
-      approvedAssetsCount = assets.filter((a) => a.isApproved).length;
-      hasMore = false;
-    }
-
-    const enrichedAssets = await Promise.all(
-      assets.map(async (asset) => {
-        const versions = await this.assetVersionRepo.listByAssetId(asset.id);
-        const activeVersion = versions.find((v) => v.isActiveVersion) || versions[0] || null;
-
-        let feedback: Feedback[] = [];
-        if (versions.length > 0) {
-          const versionIds = versions.map((v) => v.id);
-          feedback = await this.feedbackRepo.listByAssetVersionIds(versionIds);
-        }
-
+    // The client and the file list don't depend on each other: one round trip for both.
+    const listAssets = async (): Promise<{
+      assets: Asset[];
+      totalAssetsCount: number;
+      approvedAssetsCount: number;
+      hasMore: boolean;
+    }> => {
+      if (options?.limit !== undefined) {
+        const page = options.page || 1;
+        const offset = (page - 1) * options.limit;
+        const [res, approvedAssetsCount] = await Promise.all([
+          this.assetRepo.listByDeliveryIdPaginated(delivery.id, {
+            limit: options.limit,
+            offset,
+            type: options.type,
+            workspaceId,
+          }),
+          this.assetRepo.countByDeliveryId(delivery.id, { isApproved: true, workspaceId }),
+        ]);
         return {
-          ...asset,
-          versions,
-          activeVersion,
-          feedback,
+          assets: res.assets,
+          totalAssetsCount: res.totalCount,
+          approvedAssetsCount,
+          hasMore: offset + res.assets.length < res.totalCount,
         };
-      })
-    );
+      }
+      const assets = await this.assetRepo.listByDeliveryId(delivery.id, { workspaceId });
+      return {
+        assets,
+        totalAssetsCount: assets.length,
+        approvedAssetsCount: assets.filter((a) => a.isApproved).length,
+        hasMore: false,
+      };
+    };
+
+    const [client, { assets, totalAssetsCount, approvedAssetsCount, hasMore }] = await Promise.all([
+      delivery.clientId ? this.clientRepo.findById(delivery.clientId) : Promise.resolve<Client | null>(null),
+      listAssets(),
+    ]);
+
+    const enrichedAssets = await this.withVersionsAndFeedback(assets);
 
     return {
       ...delivery,
@@ -226,25 +218,7 @@ export class DeliveryService {
       this.assetRepo.countByDeliveryId(delivery.id, { isApproved: true, workspaceId: delivery.workspaceId }),
     ]);
 
-    const enrichedAssets = await Promise.all(
-      paginatedResult.assets.map(async (asset) => {
-        const versions = await this.assetVersionRepo.listByAssetId(asset.id);
-        const activeVersion = versions.find((v) => v.isActiveVersion) || versions[0] || null;
-
-        let feedback: Feedback[] = [];
-        if (versions.length > 0) {
-          const versionIds = versions.map((v) => v.id);
-          feedback = await this.feedbackRepo.listByAssetVersionIds(versionIds);
-        }
-
-        return {
-          ...asset,
-          versions,
-          activeVersion,
-          feedback,
-        };
-      })
-    );
+    const enrichedAssets = await this.withVersionsAndFeedback(paginatedResult.assets);
 
     return {
       assets: enrichedAssets,
@@ -252,6 +226,46 @@ export class DeliveryService {
       approvedCount,
       hasMore: offset + paginatedResult.assets.length < paginatedResult.totalCount,
     };
+  }
+
+  /**
+   * The files with their versions (newest first), active version and comments, in two round trips
+   * however many files there are: every version of the files, then every comment on those versions.
+   */
+  private async withVersionsAndFeedback(
+    assets: Asset[]
+  ): Promise<Array<Asset & { versions: AssetVersion[]; activeVersion: AssetVersion | null; feedback: Feedback[] }>> {
+    if (assets.length === 0) return [];
+
+    const versions = await this.assetVersionRepo.listByAssetIds(assets.map((a) => a.id));
+    const versionsByAsset = new Map<string, AssetVersion[]>();
+    const assetOfVersion = new Map<string, string>();
+    for (const version of versions) {
+      const list = versionsByAsset.get(version.assetId);
+      if (list) list.push(version);
+      else versionsByAsset.set(version.assetId, [version]);
+      assetOfVersion.set(version.id, version.assetId);
+    }
+
+    const feedback = versions.length > 0 ? await this.feedbackRepo.listByAssetVersionIds(versions.map((v) => v.id)) : [];
+    const feedbackByAsset = new Map<string, Feedback[]>();
+    for (const item of feedback) {
+      const assetId = assetOfVersion.get(item.assetVersionId);
+      if (!assetId) continue;
+      const list = feedbackByAsset.get(assetId);
+      if (list) list.push(item);
+      else feedbackByAsset.set(assetId, [item]);
+    }
+
+    return assets.map((asset) => {
+      const assetVersions = versionsByAsset.get(asset.id) ?? [];
+      return {
+        ...asset,
+        versions: assetVersions,
+        activeVersion: assetVersions.find((v) => v.isActiveVersion) || assetVersions[0] || null,
+        feedback: feedbackByAsset.get(asset.id) ?? [],
+      };
+    });
   }
 
   async updateDelivery(id: string, data: UpdateDeliveryDTO): Promise<Delivery> {

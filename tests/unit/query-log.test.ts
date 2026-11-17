@@ -278,12 +278,10 @@ describe("createCoreServices with a query log", () => {
     await services.subscription.getCurrentPlan("ws-1");
 
     expect(tables).toEqual(["workspaces", "plans", "subscriptions"]);
-    expect(log.debug.mock.calls.map(([entry]: any[]) => entry.query)).toEqual([
-      "auth.getUser",
-      "workspace.findBySlug",
-      "plan.findBySlug",
-      "subscription.findByWorkspaceId",
-    ]);
+    const queries = log.debug.mock.calls.map(([entry]: any[]) => entry.query);
+    expect(queries.slice(0, 2)).toEqual(["auth.getUser", "workspace.findBySlug"]);
+    // The plans and the subscription are read at once.
+    expect(queries.slice(2).sort()).toEqual(["plan.listAllPlans", "subscription.findByWorkspaceId"]);
     expect(log.debug.mock.calls[1]).toEqual([
       {
         area: "workspace",

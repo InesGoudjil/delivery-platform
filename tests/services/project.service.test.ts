@@ -27,6 +27,7 @@ describe("core/services/ProjectService", () => {
       create: vi.fn().mockImplementation((dto) => Promise.resolve({ id: "proj_new", ...dto })),
       findById: vi.fn().mockResolvedValue(mockProject),
       getProjectAssetIds: vi.fn().mockResolvedValue(["asset_1"]),
+      getProjectAssetIdsByProjectIds: vi.fn().mockResolvedValue(new Map([["proj_123", ["asset_1"]]])),
       delete: vi.fn().mockResolvedValue(undefined),
       attachAsset: vi.fn().mockResolvedValue(undefined),
       detachAsset: vi.fn().mockResolvedValue(undefined),
@@ -39,12 +40,9 @@ describe("core/services/ProjectService", () => {
     };
 
     assetVersionRepo = {
-      findActiveVersion: vi.fn().mockResolvedValue({
-        id: "ver_1",
-        assetId: "asset_1",
-        versionNumber: 1,
-        status: "ready",
-      }),
+      findActiveVersionsByAssetIds: vi.fn().mockResolvedValue(
+        new Map([["asset_1", { id: "ver_1", assetId: "asset_1", versionNumber: 1, status: "ready" }]])
+      ),
     };
 
     subscriptionService = {
@@ -101,7 +99,39 @@ describe("core/services/ProjectService", () => {
       expect(enriched?.assets).toHaveLength(1);
       expect(enriched?.assets[0].id).toBe("asset_1");
       expect(enriched?.assets[0].activeVersion?.id).toBe("ver_1");
-      expect(assetVersionRepo.findActiveVersion).toHaveBeenCalledWith("asset_1");
+      expect(assetVersionRepo.findActiveVersionsByAssetIds).toHaveBeenCalledWith(["asset_1"]);
+    });
+
+    it("loads many projects' files in display order with a fixed number of queries", async () => {
+      vi.mocked(projectRepo.getProjectAssetIdsByProjectIds!).mockResolvedValue(
+        new Map([
+          ["proj_a", ["asset_2", "asset_1"]],
+          ["proj_b", ["asset_3", "asset_gone"]],
+          ["proj_c", []],
+        ])
+      );
+      vi.mocked(assetRepo.listByIds!).mockResolvedValue([
+        { id: "asset_1", workspaceId: "ws_1", title: "One" },
+        { id: "asset_2", workspaceId: "ws_1", title: "Two" },
+        { id: "asset_3", workspaceId: "ws_1", title: "Three" },
+      ] as any);
+      vi.mocked(assetVersionRepo.findActiveVersionsByAssetIds!).mockResolvedValue(
+        new Map([["asset_2", { id: "ver_2", assetId: "asset_2" }]]) as any
+      );
+
+      const projects = await service.withProjectAssets([
+        { ...mockProject, id: "proj_a" },
+        { ...mockProject, id: "proj_b" },
+        { ...mockProject, id: "proj_c" },
+      ] as any);
+
+      expect(projectRepo.getProjectAssetIdsByProjectIds).toHaveBeenCalledTimes(1);
+      expect(assetRepo.listByIds).toHaveBeenCalledTimes(1);
+      expect(assetRepo.listByIds).toHaveBeenCalledWith(["asset_2", "asset_1", "asset_3", "asset_gone"]);
+      expect(assetVersionRepo.findActiveVersionsByAssetIds).toHaveBeenCalledTimes(1);
+      expect(projects.map((p) => p.assets.map((a) => a.id))).toEqual([["asset_2", "asset_1"], ["asset_3"], []]);
+      expect(projects[0].assets[0].activeVersion?.id).toBe("ver_2");
+      expect(projects[0].assets[1].activeVersion).toBeNull();
     });
 
     it("returns null if project is not found", async () => {

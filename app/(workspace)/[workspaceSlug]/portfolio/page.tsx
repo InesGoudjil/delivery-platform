@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getServerServices } from "@/core/server";
-import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
-import { PortfolioClient, PortfolioItem } from "./portfolio-client";
+import { loadWorkspacePortfolioItems } from "@/lib/workspace-portfolio";
+import { PortfolioClient } from "./portfolio-client";
 import { SelectableCoverAsset } from "@/lib/portfolio-data";
 import PortfolioLoading from "./loading";
 
@@ -51,124 +51,11 @@ async function PortfolioContent({
   );
 
 
-  // 2. Query showcase projects, standalone assets, and plan features
-  const [dbProjects, standaloneAssets, features] = await Promise.all([
-    services.project.listPortfolioProjects(portfolio.id),
-    services.asset.listPortfolioAssets(workspace.id),
+  // 2. Showcase projects with their files, standalone pieces, and plan features
+  const [{ items: allPortfolioItems, featuredIds: initialFeaturedIds }, features] = await Promise.all([
+    loadWorkspacePortfolioItems(services, workspace.id, portfolio),
     services.subscription.getFeatures(workspace.id),
   ]);
-
-
-  const featuredItemIds: string[] = Array.isArray(portfolio.appearance?.featuredItemIds)
-    ? portfolio.appearance.featuredItemIds
-    : [];
-
-  // 3. Map DB projects
-  const mappedDbProjects: PortfolioItem[] = await Promise.all(
-    dbProjects.map(async (p) => {
-      const deliveryIdToQuery = p.sourceDeliveryId || p.id;
-      let assets = await services.asset.listAssets(deliveryIdToQuery);
-      if (assets.length === 0 && p.id !== deliveryIdToQuery) {
-        assets = await services.asset.listAssets(p.id);
-      }
-      if (assets.length === 0) {
-        const projectWithAssets = await services.project.getProjectWithAssets(p.id);
-        if (projectWithAssets?.assets && projectWithAssets.assets.length > 0) {
-          assets = projectWithAssets.assets;
-        }
-      }
-
-      const projectAssets = await Promise.all(
-        assets.map(async (a) => {
-          const activeVersion = await services.asset.getActiveVersion(a.id);
-          const isStill = a.type === "photo_gallery";
-          const rawMedia =
-            activeVersion?.rawFileUrl ||
-            activeVersion?.hlsManifestUrl ||
-            activeVersion?.thumbnailUrl ||
-            "";
-          const resolvedThumb = resolveThumbnailUrl(
-            activeVersion?.thumbnailUrl,
-            rawMedia,
-            isStill
-          );
-          return {
-            id: a.id,
-            title: a.title,
-            type: isStill ? ("still" as const) : ("film" as const),
-            url: resolveMediaUrl(rawMedia),
-            thumbnailUrl: resolvedThumb,
-            aspectRatio: a.aspectRatio || "16:9",
-            duration: activeVersion?.durationSeconds
-              ? `${Math.floor(activeVersion.durationSeconds / 60)}:${String(
-                  Math.floor(activeVersion.durationSeconds % 60)
-                ).padStart(2, "0")}`
-              : null,
-            category: isStill ? "Photo Still" : "Film Cut",
-          };
-        })
-      );
-
-      let thumbnailUrl = "";
-      if (projectAssets.length > 0) {
-        thumbnailUrl = projectAssets[0].thumbnailUrl;
-      }
-
-      const projectThumb = resolveThumbnailUrl(p.coverAssetUrl, thumbnailUrl, false);
-
-      const isFeatured = featuredItemIds.includes(p.id);
-
-      return {
-        id: p.id,
-        title: p.title,
-        category: p.clientName || p.category || "Commercial Project",
-        type: "project" as const,
-        assetCount: projectAssets.length,
-        thumbnailUrl: projectThumb || thumbnailUrl,
-        description: p.description,
-        isFeatured,
-        projectAssets,
-      };
-    })
-  );
-
-  // 4. Map Standalone Workspace Assets (Films & Stills)
-  const mappedStandaloneAssets: PortfolioItem[] = await Promise.all(
-    standaloneAssets.map(async (asset) => {
-      const activeVersion = await services.asset.getActiveVersion(asset.id);
-      const itemType = asset.type === "photo_gallery" ? ("still" as const) : ("film" as const);
-      const isStill = itemType === "still";
-      const rawMedia =
-        activeVersion?.rawFileUrl ||
-        activeVersion?.hlsManifestUrl ||
-        "";
-      const resolvedThumb = resolveThumbnailUrl(
-        activeVersion?.thumbnailUrl,
-        rawMedia,
-        isStill
-      );
-      const isFeatured = featuredItemIds.includes(asset.id);
-
-      return {
-        id: asset.id,
-        title: asset.title,
-        category: isStill ? "Photo Gallery" : "Film Cut",
-        type: itemType,
-        assetCount: 1,
-        thumbnailUrl: resolvedThumb,
-        mediaUrl: resolveMediaUrl(rawMedia || resolvedThumb),
-        aspectRatio: asset.aspectRatio || undefined,
-        isFeatured,
-      };
-    })
-  );
-
-  // Unified portfolio showcase containing EVERYTHING (Projects + Standalone Films + Standalone Stills)
-  const allPortfolioItems = [...mappedDbProjects, ...mappedStandaloneAssets];
-
-  const initialFeaturedIds = featuredItemIds.filter((id) =>
-    allPortfolioItems.some((item) => item.id === id)
-  );
 
   // Build selectable cover assets for the Cover Banner & Showcase Hero stage
   const availableAssets: SelectableCoverAsset[] = [];

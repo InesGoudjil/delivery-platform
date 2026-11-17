@@ -51,7 +51,7 @@ describe("core/services/DeliveryService", () => {
     };
 
     assetVersionRepo = {
-      listByAssetId: vi.fn().mockResolvedValue([
+      listByAssetIds: vi.fn().mockResolvedValue([
         { id: "ver_1", assetId: "asset_1", isActiveVersion: true },
       ]),
     };
@@ -163,6 +163,41 @@ describe("core/services/DeliveryService", () => {
       expect(fullDetails?.assets[0].feedback).toHaveLength(1);
       expect(fullDetails?.assets[0].feedback[0].commentText).toBe("Great cut!");
       expect(assetRepo.listByDeliveryId).toHaveBeenCalledWith(mockDelivery.id, { workspaceId: mockDelivery.workspaceId });
+    });
+
+    it("loads every file's versions and comments in one query each, and gives each file its own", async () => {
+      vi.mocked(assetRepo.listByDeliveryId!).mockResolvedValue([
+        { id: "asset_1", deliveryId: "del_1", title: "Film", isApproved: true },
+        { id: "asset_2", deliveryId: "del_1", title: "Still", isApproved: false },
+        { id: "asset_3", deliveryId: "del_1", title: "Empty", isApproved: false },
+      ] as any);
+      vi.mocked(assetVersionRepo.listByAssetIds!).mockResolvedValue([
+        { id: "ver_2", assetId: "asset_1", versionNumber: 2, isActiveVersion: false },
+        { id: "ver_1", assetId: "asset_1", versionNumber: 1, isActiveVersion: true },
+        { id: "ver_3", assetId: "asset_2", versionNumber: 1, isActiveVersion: false },
+      ] as any);
+      vi.mocked(feedbackRepo.listByAssetVersionIds!).mockResolvedValue([
+        { id: "fb_1", assetVersionId: "ver_2", commentText: "On v2" },
+        { id: "fb_2", assetVersionId: "ver_3", commentText: "On the still" },
+        { id: "fb_3", assetVersionId: "ver_1", commentText: "On v1" },
+      ] as any);
+
+      const details = await service.getDeliveryWithFullDetails(mockDelivery);
+
+      expect(assetVersionRepo.listByAssetIds).toHaveBeenCalledTimes(1);
+      expect(assetVersionRepo.listByAssetIds).toHaveBeenCalledWith(["asset_1", "asset_2", "asset_3"]);
+      expect(feedbackRepo.listByAssetVersionIds).toHaveBeenCalledTimes(1);
+      expect(feedbackRepo.listByAssetVersionIds).toHaveBeenCalledWith(["ver_2", "ver_1", "ver_3"]);
+
+      const [film, still, empty] = details!.assets;
+      expect(film.versions.map((v) => v.id)).toEqual(["ver_2", "ver_1"]);
+      expect(film.activeVersion?.id).toBe("ver_1");
+      expect(film.feedback.map((f) => f.id)).toEqual(["fb_1", "fb_3"]);
+      // Without an active version, the newest one stands in.
+      expect(still.activeVersion?.id).toBe("ver_3");
+      expect(still.feedback.map((f) => f.id)).toEqual(["fb_2"]);
+      expect(empty).toMatchObject({ versions: [], activeVersion: null, feedback: [] });
+      expect(details!.approvedAssetsCount).toBe(1);
     });
 
     it("looks up by delivery id only: a share token never resolves here", async () => {

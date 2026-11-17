@@ -39,6 +39,20 @@ export interface CloudflareStreamConfig {
   webhookSecret?: string;
 }
 
+
+/** When this server last asked Stream to generate each video's MP4 (see getSecureDownloadUrl). */
+const mp4WarmUps = new Map<string, number>();
+const MP4_WARM_UP_EVERY_MS = 60 * 60 * 1000;
+const MP4_WARM_UPS_KEPT = 5000;
+
+function shouldWarmUpMp4(uid: string, now: number = Date.now()): boolean {
+  const last = mp4WarmUps.get(uid);
+  if (last !== undefined && now - last < MP4_WARM_UP_EVERY_MS) return false;
+  if (mp4WarmUps.size >= MP4_WARM_UPS_KEPT) mp4WarmUps.clear();
+  mp4WarmUps.set(uid, now);
+  return true;
+}
+
 export class CloudflareStreamStorageProvider implements IStorageProvider {
   readonly providerName = "cloudflare_stream";
 
@@ -272,8 +286,13 @@ export class CloudflareStreamStorageProvider implements IStorageProvider {
     filename: string
   ): Promise<string> {
     const cleanUid = requireStreamUid(providerUid);
-    // Warm up MP4 generation on Cloudflare Stream asynchronously when presigning
-    void this.ensureMp4DownloadEnabled(cleanUid, 0);
+    // Warm up MP4 generation on Cloudflare Stream asynchronously when presigning. Pages sign every
+    // video they show, so this asks once per video per hour on this server, not on every view
+    // (each ask is a Cloudflare API call, rate-limited together with uploads). The download
+    // route (/api/media) still turns MP4s on, and waits for them, when someone downloads.
+    if (shouldWarmUpMp4(cleanUid)) {
+      void this.ensureMp4DownloadEnabled(cleanUid, 0);
+    }
     return `/api/media/${cleanUid}?download=true&filename=${encodeURIComponent(filename)}`;
   }
 

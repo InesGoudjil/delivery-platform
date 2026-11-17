@@ -72,7 +72,9 @@ So slow pages show up in production logs without turning on debug.
 - `core/observability/request-query-log.ts`: one log per request, found by React's `cache()`
   during a render and by request ID in Server Actions. It reads `x-request-id` and `x-pathname`
   (set in `middleware.ts`) and logs the summary with `after()`.
-- `getServerServices()` and `getServerCore()` always log with the request. `getServerAdminServices()`
+- `getServerServices()` and `getServerCore()` always log with the request. During a render,
+  `getServerServices()` returns one set of services for the whole request (React's `cache()`), so
+  the layout, the page and the guards share it. `getServerAdminServices()`
   doesn't read the request on its own, because that would make static and ISR pages dynamic: pass
   `{ request: true }` from pages rendered per request, or `{ area }` to label background work.
   It uses the request's log anyway when `getServerServices()` already set one up.

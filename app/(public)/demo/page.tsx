@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getServerAdminServices } from "@/core/server";
 import { getClientRoom, type ClientRoom } from "@/core/security/client-room";
-import { loadDemoRoom } from "@/lib/client-room/demo-room";
+import { loadDemoDelivery } from "@/lib/client-room/demo-room";
 import { createScopedLogger } from "@/lib/logger";
 import { ClientRoomPage } from "../deliver/[shareToken]/client-room-page";
 
@@ -33,9 +33,9 @@ export default async function DemoRoomPage() {
 
 async function openDemoRoom(): Promise<ClientRoom | null> {
   try {
-    const demo = await loadDemoRoom(await getServerAdminServices({ request: true }));
-    if (!demo.delivery) return null;
-    const room = await getClientRoom(demo.delivery.shareToken);
+    const delivery = await loadDemoDelivery(await getServerAdminServices({ request: true }));
+    if (!delivery) return null;
+    const room = await getClientRoom(delivery.shareToken);
     // Visitors only get a room that's open. Members of its workspace can preview it in any state.
     if (!room?.isDemo || !(room.state === "open" || room.member)) return null;
     return room;

@@ -102,6 +102,12 @@ export class AssetService {
     return this.assetVersionRepo.findActiveVersion(assetId);
   }
 
+  /** The active version of each file in one round trip, by file id (files without one are left out). */
+  async getActiveVersions(assetIds: string[]): Promise<Map<string, AssetVersion>> {
+    if (assetIds.length === 0) return new Map();
+    return this.assetVersionRepo.findActiveVersionsByAssetIds(assetIds);
+  }
+
   async listVersions(assetId: string): Promise<AssetVersion[]> {
     return this.assetVersionRepo.listByAssetId(assetId);
   }

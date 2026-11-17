@@ -22,6 +22,15 @@ export interface DemoRoom {
   state: ClientRoomState | null;
 }
 
+/**
+ * The demo delivery the setting points to, or null. For /demo, which opens it through the room
+ * gate (that reads the workspace itself). Needs service-role services.
+ */
+export async function loadDemoDelivery(services: Pick<Services, "siteSettings" | "delivery">): Promise<Delivery | null> {
+  const deliveryId = (await services.siteSettings.get("demo_room")).deliveryId;
+  return deliveryId ? services.delivery.getDeliveryById(deliveryId) : null;
+}
+
 /** Reads the setting, then the delivery and workspace it points to. Needs service-role services. */
 export async function loadDemoRoom(services: Services): Promise<DemoRoom> {
   const setting = await services.siteSettings.getWithMeta("demo_room");

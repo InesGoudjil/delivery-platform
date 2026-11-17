@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR, { KeyedMutator } from "swr";
+import { useServerSeededData } from "./server-data";
 import {
   getWorkspaceMembersDataAction,
   WorkspaceMembersData,
@@ -136,6 +137,8 @@ export function useWorkspaceMembers(
   initialData?: WorkspaceMembersData
 ): UseWorkspaceMembersReturn {
   const key = getWorkspaceMembersKey(workspaceSlug);
+  // The server rendered this data for the page: it isn't fetched again on mount (lib/swr/server-data.ts).
+  const revalidateOnMount = useServerSeededData(key, initialData);
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<WorkspaceMembersData>(
     key,
@@ -148,6 +151,7 @@ export function useWorkspaceMembers(
     },
     {
       fallbackData: initialData,
+      revalidateOnMount,
       dedupingInterval: 10000,
       revalidateOnFocus: false,
       keepPreviousData: true,

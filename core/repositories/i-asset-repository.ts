@@ -88,7 +88,11 @@ export interface IAssetRepository {
 export interface IAssetVersionRepository {
   findById(id: string): Promise<AssetVersion | null>;
   listByAssetId(assetId: string): Promise<AssetVersion[]>;
+  /** Every version of these files in one round trip, newest first within each file. */
+  listByAssetIds(assetIds: string[]): Promise<AssetVersion[]>;
   findActiveVersion(assetId: string): Promise<AssetVersion | null>;
+  /** The active version of each of these files in one round trip, by file id (files without one are left out). */
+  findActiveVersionsByAssetIds(assetIds: string[]): Promise<Map<string, AssetVersion>>;
   create(dto: CreateAssetVersionDTO): Promise<AssetVersion>;
   update(id: string, data: Partial<AssetVersion>): Promise<AssetVersion>;
   updateLabel(versionId: string, label: string): Promise<AssetVersion>;

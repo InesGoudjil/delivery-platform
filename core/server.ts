@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { createCoreServices, CoreServices } from './container';
 import { env } from '@/lib/env';
@@ -12,8 +13,12 @@ import {
  * Server-side helper to get initialized core domain services with dependency injection.
  * Hides direct Supabase client initialization from UI components and Server Actions.
  * Every query is logged with the request's ID and path (core/observability/query-log.ts).
+ *
+ * Cached per request while rendering: the layout, the page, its Suspense children and the
+ * guards they call share one client and one set of services. Outside a render (Server Actions,
+ * API routes) every call builds its own, as before.
  */
-export async function getServerServices(): Promise<CoreServices['services']> {
+export const getServerServices = cache(async (): Promise<CoreServices['services']> => {
   const supabase = await createClient();
   const hasServiceKey =
     Boolean(env.SUPABASE_SERVICE_ROLE_KEY) &&
@@ -24,7 +29,7 @@ export async function getServerServices(): Promise<CoreServices['services']> {
   // The session cookies above already make this request-bound, so reading its headers is free.
   const { services } = createCoreServices(supabase, { adminSupabase, queryLog: await requestQueryLog() });
   return services;
-}
+});
 
 export interface AdminServicesOptions {
   /**
