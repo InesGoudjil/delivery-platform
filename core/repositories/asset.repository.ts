@@ -1,5 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database.types";
+import { inChunks } from "./in-chunks";
 import { Asset, AssetVersion, AssetType, TranscodingStatus } from "@/core/entities/asset";
 import {
   IAssetRepository,
@@ -509,6 +510,19 @@ export class SupabaseAssetVersionRepository implements IAssetVersionRepository {
     return (data || []).map(this.mapRowToEntity);
   }
 
+  async listByAssetIds(assetIds: string[]): Promise<AssetVersion[]> {
+    return inChunks(assetIds, async (chunk) => {
+      const { data, error } = await (this.supabase as any)
+        .from("asset_versions")
+        .select("*")
+        .in("asset_id", chunk)
+        .order("version_number", { ascending: false });
+
+      if (error) throw new Error(`Error listing asset versions: ${error.message}`);
+      return (data || []).map(this.mapRowToEntity);
+    });
+  }
+
   async findActiveVersion(assetId: string): Promise<AssetVersion | null> {
     const { data, error } = await (this.supabase as any)
       .from("asset_versions")
@@ -519,6 +533,26 @@ export class SupabaseAssetVersionRepository implements IAssetVersionRepository {
 
     if (error) throw new Error(`Error fetching active asset version: ${error.message}`);
     return data ? this.mapRowToEntity(data) : null;
+  }
+
+  async findActiveVersionsByAssetIds(assetIds: string[]): Promise<Map<string, AssetVersion>> {
+    const rows = await inChunks(assetIds, async (chunk) => {
+      const { data, error } = await (this.supabase as any)
+        .from("asset_versions")
+        .select("*")
+        .in("asset_id", chunk)
+        .eq("is_active_version", true)
+        .order("version_number", { ascending: false });
+
+      if (error) throw new Error(`Error fetching active asset versions: ${error.message}`);
+      return (data || []).map(this.mapRowToEntity) as AssetVersion[];
+    });
+    // A file has one active version (setActiveVersion keeps it so); if there were more, the newest wins.
+    const byAsset = new Map<string, AssetVersion>();
+    for (const version of rows) {
+      if (!byAsset.has(version.assetId)) byAsset.set(version.assetId, version);
+    }
+    return byAsset;
   }
 
   async create(dto: CreateAssetVersionDTO): Promise<AssetVersion> {

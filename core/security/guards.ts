@@ -115,14 +115,26 @@ export async function requireWorkspaceMember(
   minRole: WorkspaceRoleLevel = "editor"
 ): Promise<WorkspaceAuthContext> {
   const { user, services } = await requireUser();
+  return checkWorkspaceMember(user, services, workspaceId, minRole);
+}
 
-  const workspace = await services.workspace.getWorkspaceById(workspaceId);
+/** requireWorkspaceMember for a caller whose session is already checked. */
+async function checkWorkspaceMember(
+  user: User,
+  services: AuthContext["services"],
+  workspaceId: string,
+  minRole: WorkspaceRoleLevel
+): Promise<WorkspaceAuthContext> {
+  // The workspace and the membership are read at once; the checks below run in the same order.
+  // services.member.getMember checks ownership and returns role: 'owner' if user is ownerId
+  const [workspace, member] = await Promise.all([
+    services.workspace.getWorkspaceById(workspaceId),
+    services.member.getMember(workspaceId, user.id),
+  ]);
   if (!workspace) {
     throw new Error("Workspace not found.");
   }
 
-  // services.member.getMember checks ownership and returns role: 'owner' if user is ownerId
-  const member = await services.member.getMember(workspaceId, user.id);
   if (!member || !member.role) {
     throw new Error("Forbidden: You do not have access to this workspace.");
   }
@@ -149,12 +161,20 @@ export async function requireDeliveryAccess(
   deliveryId: string,
   minRole: WorkspaceRoleLevel = "editor"
 ): Promise<DeliveryAuthContext> {
-  const { user, services } = await requireUser();
-  const delivery = await services.delivery.getDeliveryById(deliveryId.trim());
+  // The session and the delivery are read at once (RLS limits the delivery to the caller's
+  // workspaces either way); the checks below run in the same order.
+  const services = await getServerServices();
+  const [user, delivery] = await Promise.all([
+    services.auth.getCurrentUser(),
+    services.delivery.getDeliveryById(deliveryId.trim()),
+  ]);
+  if (!user) {
+    throw new Error("Unauthorized: Active user session required.");
+  }
   if (!delivery) {
     throw new Error("Delivery cut not found.");
   }
 
-  const { workspace, role } = await requireWorkspaceMember(delivery.workspaceId, minRole);
+  const { workspace, role } = await checkWorkspaceMember(user, services, delivery.workspaceId, minRole);
   return { user, services, delivery, workspace, role };
 }

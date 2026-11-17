@@ -18,13 +18,15 @@ export default async function DeliveryDetailPage({
 }) {
   const { workspaceSlug, projectId } = await params;
   const services = await getServerServices();
-  const user = await services.auth.getCurrentUser();
+  const [user, workspace] = await Promise.all([
+    services.auth.getCurrentUser(),
+    services.workspace.getWorkspaceBySlug(workspaceSlug),
+  ]);
 
   if (!user) {
     redirect(`/login?redirect=/${workspaceSlug}/deliveries/${projectId}`);
   }
 
-  const workspace = await services.workspace.getWorkspaceBySlug(workspaceSlug);
   if (!workspace) {
     redirect("/");
   }
@@ -52,18 +54,24 @@ async function DeliveryDetailContent({
   const services = await getServerServices();
   const INITIAL_PAGE_SIZE = 12;
 
-  // 1. Fetch delivery details with first page of assets, versions, and counts
-  const fullDetails = await services.delivery.getDeliveryWithFullDetails(projectId, {
-    page: 1,
-    limit: INITIAL_PAGE_SIZE,
-  });
-
-  // 2. Fetch or prepare workspace portfolio for 1-click publishing
-  const portfolio = await services.portfolio.getOrCreatePortfolio(
-    workspace.id,
-    workspace.brandName || "Cinematic Portfolio",
-    workspace.slug
-  );
+  // 1. The delivery with its first page of files (versions, comments, counts), and at the same
+  //    time what doesn't depend on it: the portfolio for 1-click publishing, the plan's features,
+  //    and whether the viewer may change the client link's settings (admins and owners; the
+  //    server and the database enforce the same rule).
+  const [fullDetails, portfolio, workspaceFeatures, membership, linksEnabled] = await Promise.all([
+    services.delivery.getDeliveryWithFullDetails(projectId, {
+      page: 1,
+      limit: INITIAL_PAGE_SIZE,
+    }),
+    services.portfolio.getOrCreatePortfolio(
+      workspace.id,
+      workspace.brandName || "Cinematic Portfolio",
+      workspace.slug
+    ),
+    services.subscription.getFeatures(workspace.id),
+    services.member.getMember(workspace.id, userId).catch(() => null),
+    services.shareLink.isInstalled(),
+  ]);
 
   let project = fullDetails ? fullDetails : null;
 
@@ -104,7 +112,7 @@ async function DeliveryDetailContent({
     } as any;
   }
 
-  // 3. Resolve client details (name, email, phone)
+  // 2. Resolve client details (name, email, phone)
   let clientName = project?.client?.name || (project as any).clientName || "Private Client";
   let clientEmail = project?.client?.email || "";
   let clientPhone = project?.client?.phoneNumber || "";
@@ -118,7 +126,7 @@ async function DeliveryDetailContent({
     }
   }
 
-  // 4. Map assets and feedback
+  // 3. Map assets and feedback
   let mappedAssets: Array<{
     id: string;
     title: string;
@@ -278,13 +286,6 @@ async function DeliveryDetailContent({
     ? { ...project.appearance, coverThumbnailUrl: signedCover || null }
     : project.appearance;
 
-  // Plan features, and whether the viewer may change the client link's settings (admins and owners;
-  // the server and the database enforce the same rule).
-  const [workspaceFeatures, membership, linksEnabled] = await Promise.all([
-    services.subscription.getFeatures(workspace.id),
-    services.member.getMember(workspace.id, userId).catch(() => null),
-    services.shareLink.isInstalled(),
-  ]);
   const canManageLinks = hasMinRole(membership?.role, "admin");
 
   return (

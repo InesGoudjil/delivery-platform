@@ -23,13 +23,18 @@ export default async function WorkspaceLayout({
 }) {
   const { workspaceSlug } = await params;
   const services = await getServerServices();
-  const user = await services.auth.getCurrentUser();
+  // The session and the workspace don't depend on each other (RLS reads the session from the
+  // request either way): one round trip for both.
+  const [user, workspaceBySlug] = await Promise.all([
+    services.auth.getCurrentUser(),
+    services.workspace.getWorkspaceBySlug(workspaceSlug),
+  ]);
 
   if (!user) {
     redirect(`/login?redirect=/${workspaceSlug}`);
   }
 
-  let workspace = await services.workspace.getWorkspaceBySlug(workspaceSlug);
+  const workspace = workspaceBySlug;
 
   if (!workspace) {
     const userWorkspaces = await services.workspace.getUserWorkspaces(user.id);
@@ -43,23 +48,22 @@ export default async function WorkspaceLayout({
     redirect(`/${created.slug}`);
   }
 
+  // The membership check and what the shell shows, in one round trip. Nothing is rendered before
+  // the check passes, and RLS limits these reads to the visitor's own rows anyway.
   const isOwner = workspace.ownerId === user.id;
-  const isMember = await services.member.isMember(workspace.id, user.id);
+  const [isMember, profile, { plan, entitlements }, userWorkspaces] = await Promise.all([
+    services.member.isMember(workspace.id, user.id),
+    services.profile.getProfile(user.id),
+    services.subscription.getPlanAndEntitlements(workspace.id),
+    services.workspace.getUserWorkspaces(user.id),
+  ]);
 
   if (!isOwner && !isMember) {
-    const userWorkspaces = await services.workspace.getUserWorkspaces(user.id);
     if (userWorkspaces.length > 0 && userWorkspaces[0].slug !== workspaceSlug) {
       redirect(`/${userWorkspaces[0].slug}`);
     }
     redirect("/");
   }
-
-  const [profile, plan, userWorkspaces, entitlements] = await Promise.all([
-    services.profile.getProfile(user.id),
-    services.subscription.getCurrentPlan(workspace.id),
-    services.workspace.getUserWorkspaces(user.id),
-    services.subscription.getEntitlements(workspace.id),
-  ]);
 
   return (
     <EntitlementsProvider entitlements={entitlements}>

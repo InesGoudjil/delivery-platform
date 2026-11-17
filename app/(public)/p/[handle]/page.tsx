@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { getServerAdminServices } from "@/core/server";
 import { resolveMediaUrl, resolveThumbnailUrl } from "@/lib/media";
 import {
@@ -24,12 +25,14 @@ import { presignPrivateMediaUrl } from "@/lib/media-server";
 import { numericAspectRatio } from "@/lib/media-ratios";
 import { isR2KeyInWorkspace, parseStoredMedia } from "@/lib/storage/keys";
 import type { IStorageProvider } from "@/core/providers/storage";
+import type { AssetVersion } from "@/core/entities/asset";
 
 const log = createScopedLogger({ page: "PublicPortfolio" });
 
-// Private files shown here (pieces published from a delivery) are signed for 6 hours, so
-// the rendered page must never be served from cache for longer than that.
-export const revalidate = 1800;
+// Rendered on every request. Private files shown here (pieces published from a delivery) are
+// signed for 6 hours, and a cached page can be served long after it was rendered (the cache
+// serves the old copy while it re-renders), so its links could already have expired.
+export const dynamic = "force-dynamic";
 const SIGNED_URL_SECONDS = 6 * 60 * 60;
 /** Shape used when a file's stored aspect ratio can't be read (the column defaults to 16:9). */
 const DEFAULT_ASSET_RATIO = 16 / 9;
@@ -55,26 +58,35 @@ interface PageProps {
   params: Promise<{ handle: string }>;
 }
 
+/**
+ * The workspace at this handle (its slug, or its portfolio's slug) and its portfolio, when the
+ * portfolio is published and the studio isn't suspended; otherwise null. Cached per request, so
+ * the metadata and the page share one lookup.
+ */
+const findPublishedPortfolio = cache(async (handle: string) => {
+  const services = await getServerAdminServices({ area: "portfolio" });
+  let workspace = await services.workspace.getWorkspaceBySlug(handle).catch(() => null);
+  let portfolio = workspace ? await services.portfolio.getPortfolioByWorkspace(workspace.id).catch(() => null) : null;
+  if (!workspace) {
+    const publicView = await services.portfolio.getPublicPortfolio(handle).catch(() => null);
+    if (publicView) {
+      workspace = await services.workspace.getWorkspaceById(publicView.workspaceId).catch(() => null);
+      portfolio = workspace ? await services.portfolio.getPortfolioByWorkspace(workspace.id).catch(() => null) : null;
+    }
+  }
+  // A suspended studio's portfolio is gone for visitors, like an unpublished one.
+  if (!workspace || !portfolio || !portfolio.isPublished || workspace.suspendedAt) return null;
+  return { services, workspace, portfolio };
+});
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { handle } = await params;
   try {
-    const services = await getServerAdminServices({ area: "portfolio" });
-    let workspace = await services.workspace.getWorkspaceBySlug(handle);
-    let portfolio = null;
-
-    if (workspace) {
-      portfolio = await services.portfolio.getPortfolioByWorkspace(workspace.id);
-    } else {
-      const publicView = await services.portfolio.getPublicPortfolio(handle);
-      if (publicView) {
-        portfolio = publicView;
-        workspace = await services.workspace.getWorkspaceById(publicView.workspaceId);
-      }
-    }
-
-    if (!portfolio || !portfolio.isPublished || workspace?.suspendedAt) {
+    const found = await findPublishedPortfolio(handle);
+    if (!found) {
       return { title: "Portfolio | CineSpace", robots: { index: false, follow: false } };
     }
+    const { workspace, portfolio } = found;
 
     const title = workspace?.brandName
       ? `${workspace.brandName} — Portfolio`
@@ -111,24 +123,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PublicPortfolioPage({ params }: PageProps) {
   const { handle } = await params;
-  const services = await getServerAdminServices({ area: "portfolio" });
 
   // 1. The workspace by its slug, or by its portfolio's slug. Only published portfolios.
-  let workspace = await services.workspace.getWorkspaceBySlug(handle).catch(() => null);
-  let portfolio = workspace ? await services.portfolio.getPortfolioByWorkspace(workspace.id).catch(() => null) : null;
-  if (!workspace) {
-    const publicView = await services.portfolio.getPublicPortfolio(handle).catch(() => null);
-    if (publicView) {
-      workspace = await services.workspace.getWorkspaceById(publicView.workspaceId).catch(() => null);
-      portfolio = workspace ? await services.portfolio.getPortfolioByWorkspace(workspace.id).catch(() => null) : null;
-    }
-  }
-  // A suspended studio's portfolio is gone for visitors, like an unpublished one.
-  if (!workspace || !portfolio || !portfolio.isPublished || workspace.suspendedAt) notFound();
+  const found = await findPublishedPortfolio(handle);
+  if (!found) notFound();
+  const { services, workspace, portfolio } = found;
   const workspaceId = workspace.id;
   const storage = services.storage;
 
-  // 2. Published showcase projects of this portfolio, and the standalone pieces.
+  // 2. Published showcase projects of this portfolio, the standalone pieces, the plan's features
+  //    and the owner's profile (their photo), all at once.
+  const ownerProfileLoad = workspace.ownerId
+    ? services.profile.getProfile(workspace.ownerId).catch((err) => {
+        log.warn({ err, ownerId: workspace.ownerId }, "Could not load owner profile avatar");
+        return null;
+      })
+    : Promise.resolve(null);
   let dbProjects: any[] = [];
   let standaloneAssets: any[] = [];
   let workspaceFeatures: any = null;
@@ -148,17 +158,29 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
   const realProjects: PortfolioProject[] = [];
   const realAssets: PortfolioAsset[] = [];
 
-  // 3. Each project shows only the files linked to it (project_assets), never the rest of
+  // 3. The files linked to every project and the active version of every file, in a few queries
+  //    for the whole page (not a few per project and one per file).
+  const [projectsWithAssets, pieceVersions] = await Promise.all([
+    services.project.withProjectAssets(dbProjects).catch((err) => {
+      log.warn({ err, workspaceId }, "Could not load the files of the portfolio's projects");
+      return null;
+    }),
+    services.asset.getActiveVersions(standaloneAssets.map((a: any) => a.id)).catch((err) => {
+      log.warn({ err, workspaceId }, "Could not load the versions of the portfolio's pieces");
+      return new Map<string, AssetVersion>();
+    }),
+  ]);
+
+  //    Each project shows only the files linked to it (project_assets), never the rest of
   //    its source delivery, and nothing in Trash or from another workspace.
-  for (const p of dbProjects) {
-    const projectWithAssets = await services.project.getProjectWithAssets(p.id).catch(() => null);
-    const assets = (projectWithAssets?.assets ?? []).filter(
+  for (const [index, p] of dbProjects.entries()) {
+    const assets = (projectsWithAssets?.[index]?.assets ?? []).filter(
       (a: any) => a?.workspaceId === workspaceId && !a.isArchived
     );
 
     const projectAssetIds: string[] = [];
     for (const a of assets) {
-      const activeVersion = (a as any).activeVersion || (await services.asset.getActiveVersion(a.id));
+      const activeVersion = a.activeVersion ?? null;
       const isStill = a.type === "photo_gallery" || a.category === "still";
       const rawMedia = await publicMediaUrl(
         activeVersion?.hlsManifestUrl || activeVersion?.rawFileUrl || activeVersion?.thumbnailUrl,
@@ -213,7 +235,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
 
   // 4. Standalone pieces (explicitly marked as portfolio pieces)
   for (const a of standaloneAssets) {
-    const activeVersion = await services.asset.getActiveVersion(a.id);
+    const activeVersion = pieceVersions.get(a.id) ?? null;
     const isStill = a.type === "photo_gallery" || a.category === "still";
     const rawMedia = await publicMediaUrl(
       activeVersion?.hlsManifestUrl || activeVersion?.rawFileUrl || activeVersion?.thumbnailUrl,
@@ -336,17 +358,8 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
   const brandLogo = workspace?.logoUrl ? resolveMediaUrl(workspace.logoUrl) : null;
 
   // Distinct Filmmaker Avatar (Owner user_profile level)
-  let ownerAvatarUrl: string | null = null;
-  if (workspace?.ownerId) {
-    try {
-      const ownerProfile = await services.profile.getProfile(workspace.ownerId);
-      if (ownerProfile?.avatarUrl) {
-        ownerAvatarUrl = resolveMediaUrl(ownerProfile.avatarUrl);
-      }
-    } catch (e) {
-      log.warn({ err: e, ownerId: workspace.ownerId }, "Could not load owner profile avatar");
-    }
-  }
+  const ownerProfile = await ownerProfileLoad;
+  const ownerAvatarUrl: string | null = ownerProfile?.avatarUrl ? resolveMediaUrl(ownerProfile.avatarUrl) : null;
 
   const filmmakerAvatar = ownerAvatarUrl || brandLogo || "";
   const heroCover = portfolio?.appearance?.heroCover || null;

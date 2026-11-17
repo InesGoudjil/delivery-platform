@@ -265,10 +265,47 @@ describe("core/services/SubscriptionService", () => {
           white_label: true,
         },
       };
-      vi.mocked(planRepo.findById!).mockResolvedValue(updatedProPlan);
+      vi.mocked(planRepo.listAllPlans!).mockResolvedValue([starterPlan, updatedProPlan]);
 
       const updatedFeatures = await service.getFeatures("ws_dynamic");
       expect(updatedFeatures.white_label).toBe(true);
+    });
+
+    it("reads the plan state in one round of parallel queries", async () => {
+      let inFlight = 0;
+      let mostAtOnce = 0;
+      const track = <T,>(value: T) => async () => {
+        inFlight++;
+        mostAtOnce = Math.max(mostAtOnce, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        inFlight--;
+        return value;
+      };
+      vi.mocked(planRepo.listAllPlans!).mockImplementation(track([starterPlan, proPlan]));
+      vi.mocked(subscriptionRepo.findByWorkspaceId!).mockImplementation(
+        track({ id: "sub_pro", workspaceId: "ws_pro", planId: "plan_pro", status: "active" } as any)
+      );
+      vi.mocked(featuresRepo.findByWorkspaceId!).mockImplementation(track(null));
+
+      const { plan, entitlements } = await service.getPlanAndEntitlements("ws_pro");
+
+      expect(mostAtOnce).toBe(3);
+      expect(plan.slug).toBe("pro");
+      expect(entitlements.planSlug).toBe("pro");
+      expect(planRepo.findById).not.toHaveBeenCalled();
+      expect(planRepo.findBySlug).not.toHaveBeenCalled();
+    });
+
+    it("falls back to Starter when the subscription's plan is retired", async () => {
+      vi.mocked(subscriptionRepo.findByWorkspaceId!).mockResolvedValue({
+        id: "sub_old",
+        workspaceId: "ws_old",
+        planId: "plan_pro",
+        status: "active",
+      } as any);
+      vi.mocked(planRepo.listAllPlans!).mockResolvedValue([starterPlan, { ...proPlan, isActive: false }]);
+
+      expect((await service.getCurrentPlan("ws_old"))?.slug).toBe("starter");
     });
   });
 

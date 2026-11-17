@@ -179,11 +179,13 @@ export class MemberService {
   }
 
   async isMember(workspaceId: string, userId: string): Promise<boolean> {
-    if (this.workspaceRepo) {
-      const ws = await this.workspaceRepo.findById(workspaceId);
-      if (ws && ws.ownerId === userId) return true;
-    }
-    const member = await this.memberRepo.findByWorkspaceAndUserId(workspaceId, userId);
+    // The workspace (for its owner) and the member row are read at once: every workspace page
+    // and many actions wait on this check.
+    const [ws, member] = await Promise.all([
+      this.loadWorkspace(workspaceId),
+      this.memberRepo.findByWorkspaceAndUserId(workspaceId, userId),
+    ]);
+    if (ws && ws.ownerId === userId) return true;
     return Boolean(member);
   }
 
@@ -192,7 +194,13 @@ export class MemberService {
    * workspace_members row (where "owner" means a co-owner). Ranks like has_workspace_role().
    */
   async getMember(workspaceId: string, userId: string): Promise<WorkspaceMember | null> {
-    return this.memberIn(await this.loadWorkspace(workspaceId), workspaceId, userId);
+    // As memberIn, with the workspace and the member row read at once.
+    const [workspace, row] = await Promise.all([
+      this.loadWorkspace(workspaceId),
+      this.memberRepo.findByWorkspaceAndUserId(workspaceId, userId),
+    ]);
+    if (workspace && workspace.ownerId === userId) return ownerMembership(workspace);
+    return row;
   }
 
   private async loadWorkspace(workspaceId: string): Promise<Workspace | null> {

@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR, { KeyedMutator } from "swr";
+import { useServerSeededData } from "./server-data";
 import {
   getWorkspacePortfolioDataAction,
   WorkspacePortfolioData,
@@ -198,6 +199,8 @@ export function useWorkspacePortfolio(
   initialData?: WorkspacePortfolioData
 ): UseWorkspacePortfolioReturn {
   const key = getWorkspacePortfolioKey(workspaceSlug);
+  // The server rendered this data for the page: it isn't fetched again on mount (lib/swr/server-data.ts).
+  const revalidateOnMount = useServerSeededData(key, initialData);
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<WorkspacePortfolioData>(
     key,
@@ -210,6 +213,7 @@ export function useWorkspacePortfolio(
     },
     {
       fallbackData: initialData,
+      revalidateOnMount,
       dedupingInterval: 10000,
       revalidateOnFocus: false,
       keepPreviousData: true,

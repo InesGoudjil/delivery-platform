@@ -52,24 +52,33 @@ export class ProjectService {
   async getProjectWithAssets(id: string): Promise<ShowcaseProjectWithAssets | null> {
     const project = await this.projectRepo.findById(id);
     if (!project) return null;
+    const [withAssets] = await this.withProjectAssets([project]);
+    return withAssets;
+  }
 
-    const assetIds = await this.projectRepo.getProjectAssetIds(project.id);
-    const rawAssets = await this.assetRepo.listByIds(assetIds);
+  /**
+   * These projects with the files linked to them (project_assets, in display order) and each
+   * file's active version. Two round trips however many projects: the links, then the files and
+   * their active versions together.
+   */
+  async withProjectAssets(projects: Project[]): Promise<ShowcaseProjectWithAssets[]> {
+    if (projects.length === 0) return [];
 
-    const enrichedAssets = await Promise.all(
-      rawAssets.map(async (asset) => {
-        const activeVersion = await this.assetVersionRepo.findActiveVersion(asset.id);
-        return {
-          ...asset,
-          activeVersion,
-        };
-      })
-    );
+    const idsByProject = await this.projectRepo.getProjectAssetIdsByProjectIds(projects.map((p) => p.id));
+    const assetIds = [...new Set([...idsByProject.values()].flat())];
+    const [rawAssets, activeVersions] = await Promise.all([
+      this.assetRepo.listByIds(assetIds),
+      this.assetVersionRepo.findActiveVersionsByAssetIds(assetIds),
+    ]);
+    const assetsById = new Map(rawAssets.map((asset) => [asset.id, asset]));
 
-    return {
+    return projects.map((project) => ({
       ...project,
-      assets: enrichedAssets,
-    };
+      assets: (idsByProject.get(project.id) ?? []).flatMap((assetId) => {
+        const asset = assetsById.get(assetId);
+        return asset ? [{ ...asset, activeVersion: activeVersions.get(assetId) ?? null }] : [];
+      }),
+    }));
   }
 
   async updateProject(id: string, data: UpdateProjectDTO): Promise<Project> {

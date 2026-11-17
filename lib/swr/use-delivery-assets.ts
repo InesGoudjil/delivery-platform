@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR, { KeyedMutator } from "swr";
+import { useServerSeededData } from "./server-data";
 import { getDeliveryAssetsAction } from "@/app/actions/deliveries";
 import type { GalleryItem } from "@/app/(workspace)/[workspaceSlug]/deliveries/[projectId]/_components/types";
 import { resolveMediaUrl } from "@/lib/media";
@@ -205,6 +206,8 @@ export function useDeliveryAssets(
   filter: "ALL" | "VIDEOS" | "PHOTOS" = "ALL"
 ): UseDeliveryAssetsReturn {
   const key = getDeliveryAssetsKey(deliveryId, filter);
+  // The server rendered the unfiltered list: it isn't fetched again on mount (lib/swr/server-data.ts).
+  const revalidateOnMount = useServerSeededData(key, filter === "ALL" ? initialData : undefined);
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<DeliveryAssetsData>(
     key,
@@ -221,6 +224,7 @@ export function useDeliveryAssets(
     },
     {
       fallbackData: initialData,
+      revalidateOnMount,
       dedupingInterval: 10000,
       revalidateOnFocus: false,
       keepPreviousData: true,

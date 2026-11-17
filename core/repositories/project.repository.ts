@@ -2,6 +2,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database.types";
 import { Project, CreateProjectDTO, UpdateProjectDTO } from "@/core/entities/project";
 import { IProjectRepository } from "./i-project-repository";
+import { inChunks } from "./in-chunks";
 
 export class SupabaseProjectRepository implements IProjectRepository {
   constructor(private readonly supabase: SupabaseClient<Database>) {}
@@ -159,6 +160,22 @@ export class SupabaseProjectRepository implements IProjectRepository {
 
     if (error) throw new Error(`Failed to fetch project assets: ${error.message}`);
     return (data || []).map((r: any) => r.asset_id);
+  }
+
+  async getProjectAssetIdsByProjectIds(projectIds: string[]): Promise<Map<string, string[]>> {
+    const rows = await inChunks(projectIds, async (chunk) => {
+      const { data, error } = await (this.supabase as any)
+        .from("project_assets")
+        .select("project_id, asset_id")
+        .in("project_id", chunk)
+        .order("display_order", { ascending: true });
+
+      if (error) throw new Error(`Failed to fetch project assets: ${error.message}`);
+      return (data || []) as Array<{ project_id: string; asset_id: string }>;
+    });
+    const byProject = new Map<string, string[]>(projectIds.map((id) => [id, []]));
+    for (const row of rows) byProject.get(row.project_id)?.push(row.asset_id);
+    return byProject;
   }
 
   async reorderProjects(portfolioId: string, projectIdsInOrder: string[]): Promise<void> {
