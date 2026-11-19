@@ -53,8 +53,8 @@ export default async function DocsPage({
       title: "Frame-Accurate Feedback & Marker Stacking",
       desc: "Clients pause at exact frames (1/24s precision) to leave feedback. Comments are timecoded, threaded, and can be checked off as resolved once the revision is rendered.",
       icon: Layers,
-      color: "text-[#ff8a45]",
-      bg: "bg-[#ff8a45]/10",
+      color: "text-[rgb(var(--acc2-rgb))]",
+      bg: "bg-primary/10",
     },
     {
       step: "04",

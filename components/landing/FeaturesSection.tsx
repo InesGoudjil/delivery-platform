@@ -182,6 +182,9 @@ export function FeaturesSection({ demoHref }: FeaturesSectionProps) {
                         <AppImage
                           src={item.img}
                           alt={item.title}
+                          // Local file: resized and converted by /_next/image. Two per row in a 7/12 column.
+                          unoptimized={false}
+                          sizes="(max-width: 1024px) 50vw, 30vw"
                           fallbackIcon="film"
                           containerClassName="size-full"
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-85"
@@ -216,6 +219,8 @@ export function FeaturesSection({ demoHref }: FeaturesSectionProps) {
                   <AppImage
                     src={IMG_MEETING}
                     alt="Client Review"
+                    unoptimized={false}
+                    sizes="(max-width: 1024px) 100vw, 58vw"
                     fallbackIcon="film"
                     containerClassName="size-full"
                     className="w-full h-full object-cover opacity-80"
@@ -389,6 +394,8 @@ export function FeaturesSection({ demoHref }: FeaturesSectionProps) {
                       <AppImage
                         src={IMG_HERO}
                         alt="Screening Room"
+                        unoptimized={false}
+                        sizes="(max-width: 1024px) 100vw, 50vw"
                         fallbackIcon="film"
                         containerClassName="size-full"
                         className="w-full h-full object-cover opacity-80"

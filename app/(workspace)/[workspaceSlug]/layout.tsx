@@ -67,7 +67,10 @@ export default async function WorkspaceLayout({
 
   return (
     <EntitlementsProvider entitlements={entitlements}>
-      <AccentThemeProvider initialAccent={workspace.accentColor}>
+      {/* Custom accent is a branding feature: plans without it keep the default CineSpace orange. */}
+      <AccentThemeProvider
+        initialAccent={entitlements.can.customBranding ? workspace.accentColor : null}
+      >
         <ModalProvider workspace={workspace}>
           <SidebarProvider defaultOpen={true}>
             <AmbientBackground variant="subtle" showNoise={false} />

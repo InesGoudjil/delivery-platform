@@ -297,7 +297,7 @@ export function PortfolioModals() {
               variant="ghost"
               size="icon-xs"
               onClick={() => setSelectedProject(null)}
-              className="absolute top-4 right-4 z-30 size-10 sm:size-9 rounded-full bg-black/60 hover:bg-white/20 text-white cursor-pointer border border-white/10 active:scale-95 touch-manipulation"
+              className="glass-icon-btn absolute top-4 right-4 z-30 size-10 sm:size-9 rounded-full touch-manipulation"
             >
               <X className="size-5" />
             </Button>
@@ -433,7 +433,7 @@ export function PortfolioModals() {
                 variant="ghost"
                 size="icon-xs"
                 onClick={() => setIsContactOpen(false)}
-                className="size-9 sm:size-8 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer active:scale-95 touch-manipulation"
+                className="glass-icon-btn size-9 sm:size-8 rounded-full touch-manipulation"
               >
                 <X className="size-4" />
               </Button>

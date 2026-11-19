@@ -17,7 +17,7 @@ import {
   Layers,
   Info,
 } from "lucide-react";
-import { UniversalDialog } from "@/components/ui/universal-dialog";
+import { UniversalDialog, UniversalDialogAction } from "@/components/ui/universal-dialog";
 import { TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import { updateAssetAction } from "@/app/actions/assets";
 import { PortfolioItem } from "../portfolio-client";
@@ -466,10 +466,59 @@ export function UploadFilmModal({
           if (!open) handleClose();
         }}
         size="2xl"
-        title="UPLOAD FILM OR STILL"
+        icon={<Film className="size-5" />}
+        title="Upload Film or Still"
         description="Add standalone films or high-res stills to your public portfolio. Supports batch multi-file uploads with background processing."
         showCloseButton={true}
         bodyClassName="space-y-5"
+        footer={
+          totalCount > 0 ? (
+            <div className="flex w-full flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <TypographyMuted className="text-xs text-zinc-400">
+                {completedCount === totalCount && totalCount > 0 ? (
+                  <TypographySpan className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                    <CheckCircle2 className="size-4" /> All {totalCount} items uploaded successfully!
+                  </TypographySpan>
+                ) : (
+                  <TypographySpan>
+                    {queuedCount} {queuedCount === 1 ? "file" : "files"} ready for upload
+                  </TypographySpan>
+                )}
+              </TypographyMuted>
+
+              <div className="flex items-center gap-2.5 justify-end">
+                {uploading ? (
+                  <>
+                    <UniversalDialogAction intent="danger" onClick={cancelActiveUpload}>
+                      Cancel Uploads
+                    </UniversalDialogAction>
+                    <UniversalDialogAction intent="secondary" onClick={handleClose}>
+                      Continue in Background
+                    </UniversalDialogAction>
+                  </>
+                ) : (
+                  <>
+                    <UniversalDialogAction intent="secondary" onClick={handleClose}>
+                      Cancel
+                    </UniversalDialogAction>
+                    <UniversalDialogAction
+                      intent="primary"
+                      onClick={handleStartBatchUpload}
+                      disabled={queuedCount === 0 || isAtLimit}
+                      icon={<Upload />}
+                    >
+                      {isAtLimit
+                        ? "Plan Limit Reached"
+                        : queuedCount === 1
+                        ? "Upload Film / Still"
+                        : `Upload All (${queuedCount} Files)`}
+                    </UniversalDialogAction>
+                  </>
+                )}
+              </div>
+            </div>
+          ) : undefined
+        }
       >
         {/* Background continuation alert while uploading */}
         {uploading && (
@@ -925,66 +974,13 @@ export function UploadFilmModal({
           </div>
         )}
 
-        {/* Modal Action Buttons Footer */}
-        {totalCount > 0 && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-white/10">
-            <TypographyMuted className="text-xs text-zinc-400">
-              {completedCount === totalCount && totalCount > 0 ? (
-                <TypographySpan className="text-emerald-400 font-semibold flex items-center gap-1.5">
-                  <CheckCircle2 className="size-4" /> All {totalCount} items uploaded successfully!
-                </TypographySpan>
-              ) : (
-                <TypographySpan>
-                  {queuedCount} {queuedCount === 1 ? "file" : "files"} ready for upload
-                </TypographySpan>
-              )}
-            </TypographyMuted>
-
-            <div className="flex items-center gap-2.5 justify-end">
-              {uploading ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={cancelActiveUpload}
-                    className="rounded-xl text-xs font-semibold text-destructive border-destructive/30 hover:bg-destructive/10"
-                  >
-                    Cancel Uploads
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleClose}
-                    className="rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-4 cursor-pointer"
-                  >
-                    Continue in Background
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  type="button"
-                  onClick={handleStartBatchUpload}
-                  disabled={queuedCount === 0 || isAtLimit}
-                  className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-extrabold px-6 py-2.5 h-auto shadow-lg shadow-primary/25 cursor-pointer uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Upload className="size-3.5 mr-1.5" />
-                  {isAtLimit
-                    ? "Plan Limit Reached"
-                    : queuedCount === 1
-                    ? "Upload Film / Still"
-                    : `Upload All (${queuedCount} Files)`}
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
       </UniversalDialog>
 
       <ImageCropEditorDialog
         isOpen={thumbCropState.isOpen}
         onClose={() => setThumbCropState((prev) => ({ ...prev, isOpen: false }))}
         imageSrc={thumbCropState.imageSrc}
-        title="EDIT & CROP FILM THUMBNAIL"
+        title="Edit & Crop Film Thumbnail"
         subtitle="Frame, zoom, rotate, or fine-tune the custom thumbnail for this portfolio film."
         defaultAspectRatio="16:9"
         aspectRatioOptions={["16:9", "9:16", "1:1", "4:3"]}

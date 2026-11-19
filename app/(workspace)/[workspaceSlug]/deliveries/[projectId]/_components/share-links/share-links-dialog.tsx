@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
   Activity,
@@ -25,7 +25,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { UniversalDialog } from "@/components/ui/universal-dialog";
+import { UniversalDialog, UniversalDialogAction } from "@/components/ui/universal-dialog";
 import { TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import {
   DropdownMenu,
@@ -249,7 +249,69 @@ export function ShareLinksDialog({
   };
 
   const title =
-    view.kind === "create" ? "NEW LINK" : view.kind === "edit" ? "EDIT LINK" : view.kind === "created" ? "LINK READY" : "SHARE LINKS";
+    view.kind === "create" ? "New Link" : view.kind === "edit" ? "Edit Link" : view.kind === "created" ? "Link Ready" : "Share Links";
+  const titleIcon =
+    view.kind === "create" ? (
+      <Plus className="size-5" />
+    ) : view.kind === "edit" ? (
+      <Pencil className="size-5" />
+    ) : view.kind === "created" ? (
+      <Check className="size-5" />
+    ) : (
+      <Link2 className="size-5" />
+    );
+  const description =
+    view.kind === "create"
+      ? "Set who it's for and what they can do."
+      : view.kind === "edit"
+        ? "Change this link's access and settings."
+        : view.kind === "created"
+          ? "Your link is ready to send."
+          : "Give each person their own link and see who opened it.";
+
+  // The create / edit forms keep their own buttons; the list and "created" views use the footer.
+  let footer: ReactNode = null;
+  if (view.kind === "created") {
+    const createdView = view;
+    footer = (
+      <>
+        <UniversalDialogAction intent="secondary" onClick={() => setView({ kind: "list" })}>
+          Back to Links
+        </UniversalDialogAction>
+        <UniversalDialogAction
+          intent="primary"
+          onClick={async () => {
+            const passcode = createdView.passcode;
+            const url = shareLinkUrl(createdView.link.token);
+            await navigator.clipboard.writeText(passcode ? `Review link: ${url}\nPasscode: ${passcode}` : url);
+            triggerToast(passcode ? "Link and passcode copied" : "Link copied");
+          }}
+          icon={<Copy />}
+        >
+          {createdView.passcode ? "Copy Link & Passcode" : "Copy Link"}
+        </UniversalDialogAction>
+      </>
+    );
+  } else if (view.kind === "list") {
+    footer = (
+      <>
+        <UniversalDialogAction intent="secondary" onClick={() => onOpenChange(false)}>
+          Close
+        </UniversalDialogAction>
+        {canManage && (
+          <UniversalDialogAction
+            intent="primary"
+            disabled={links === null || atLimit}
+            onClick={() => setView({ kind: "create" })}
+            title={atLimit ? "Your plan's link limit for this delivery is reached" : undefined}
+            icon={<Plus />}
+          >
+            New Link
+          </UniversalDialogAction>
+        )}
+      </>
+    );
+  }
 
   return (
     <UniversalDialog
@@ -261,8 +323,11 @@ export function ShareLinksDialog({
           {projectTitle}
         </TypographySpan>
       }
+      icon={titleIcon}
       title={title}
+      description={description}
       bodyClassName="space-y-4"
+      footer={footer}
     >
       {view.kind === "create" && (
         <ShareLinkForm plan={plan} saving={saving} upgradeHref={upgradeHref} onCancel={() => setView({ kind: "list" })} onCreate={create} />
@@ -299,24 +364,6 @@ export function ShareLinksDialog({
               </TypographyMuted>
             )}
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button type="button" variant="ghost" className="text-xs" onClick={() => setView({ kind: "list" })}>
-              Back to links
-            </Button>
-            <Button
-              type="button"
-              onClick={async () => {
-                const passcode = view.passcode;
-                const url = shareLinkUrl(view.link.token);
-                await navigator.clipboard.writeText(passcode ? `Review link: ${url}\nPasscode: ${passcode}` : url);
-                triggerToast(passcode ? "Link and passcode copied" : "Link copied");
-              }}
-              className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs px-5"
-            >
-              <Copy className="size-3.5 mr-1.5" />
-              {view.passcode ? "Copy link & passcode" : "Copy link"}
-            </Button>
-          </div>
         </div>
       )}
 
@@ -330,18 +377,6 @@ export function ShareLinksDialog({
                   ? `${unrevoked} active link${unrevoked === 1 ? "" : "s"}`
                   : `${unrevoked} of ${limit} link${limit === 1 ? "" : "s"} on your plan`}
             </TypographyMuted>
-            {canManage && (
-              <Button
-                type="button"
-                size="sm"
-                disabled={links === null || atLimit}
-                onClick={() => setView({ kind: "create" })}
-                title={atLimit ? "Your plan's link limit for this delivery is reached" : undefined}
-                className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-[11px] h-8 px-3"
-              >
-                <Plus className="size-3.5 mr-1" /> New link
-              </Button>
-            )}
           </div>
 
           {!canManage && links !== null && (
@@ -495,7 +530,7 @@ export function ShareLinksDialog({
                               {!link.isPrimary && (
                                 <DropdownMenuItem
                                   onClick={() => {
-                                    if (!window.confirm(`Delete "${link.label}"? Its URL stops working and its activity is removed.`)) return;
+                                    if (!window.confirm(`Delete "${link.label}"? Its URL stops working and it's removed from your links. Comments made through it stay.`)) return;
                                     void run(link, () => deleteShareLinkAction(link.id), "Link deleted");
                                   }}
                                   className="text-xs gap-2 cursor-pointer text-red-400"

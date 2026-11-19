@@ -97,6 +97,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "plan.create": "Created plan",
   "plan.add_yearly": "Added yearly price",
   "plan.update": "Edited plan",
+  "plan.save_tier": "Edited plan tier",
   "plan.delete": "Deleted or archived plan",
   "waitlist.invite_cohort": "Invited waitlist cohort",
   "user.sign_out_everywhere": "Signed out everywhere",

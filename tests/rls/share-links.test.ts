@@ -10,6 +10,7 @@ import { createTestDatabase, shimForPglite, wasBlocked, MIGRATIONS_DIR, type Tes
  */
 
 const MIGRATION = "20261116120000_share_links.sql";
+const SOFT_DELETE_MIGRATION = "20261119120000_share_links_soft_delete.sql";
 
 const U = {
   ownerA: "00000000-0000-4000-8000-0000000000a1",
@@ -197,6 +198,21 @@ describe("share links: who can see and change them", () => {
     const remove = (userId: string) => as(userId, `delete from public.share_links where id = '${L.agency}'`);
     expect(wasBlocked(await remove(U.editorA))).toBe(true);
     expect((await remove(U.ownerA)).affected).toBe(1);
+  });
+
+  it("are soft-deleted once the soft-delete migration runs: no hard deletes, and a deleted link stays deleted", async () => {
+    await owner(shimForPglite(readFileSync(join(MIGRATIONS_DIR, SOFT_DELETE_MIGRATION), "utf8")));
+    const [link] = await owner(
+      `insert into public.share_links (workspace_id, delivery_id, label) values ('${W.a}', '${D.a}', 'To delete') returning id`
+    );
+    expect(wasBlocked(await as(U.ownerA, `delete from public.share_links where id = '${link.id}'`))).toBe(true);
+
+    await owner(`update public.share_links set deleted_at = now(), revoked_at = now() where id = '${link.id}'`);
+    await expect(owner(`update public.share_links set revoked_at = null where id = '${link.id}'`)).rejects.toThrow();
+    await expect(owner(`select public.set_primary_share_link('${link.id}')`)).rejects.toThrow();
+
+    const primary = await primaryOf(D.a);
+    await expect(owner(`update public.share_links set deleted_at = now() where id = '${primary.id}'`)).rejects.toThrow();
   });
 
   it("can't have their primary link deleted, even by an owner", async () => {

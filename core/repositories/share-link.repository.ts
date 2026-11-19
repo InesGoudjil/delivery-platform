@@ -28,6 +28,7 @@ export function mapShareLinkRow(row: any): ShareLink {
     passcodeSealed: row.passcode_sealed ?? null,
     expiresAt: row.expires_at ?? null,
     revokedAt: row.revoked_at ?? null,
+    deletedAt: row.deleted_at ?? null,
     canComment: row.can_comment !== false,
     canApprove: row.can_approve !== false,
     canDownload: row.can_download === true,
@@ -70,6 +71,12 @@ function toRow(dto: Partial<CreateShareLinkDTO & UpdateShareLinkDTO>): Record<st
   return row;
 }
 
+/**
+ * Deleted links (soft delete, deleted_at) are left out of every read here. Filtered in code,
+ * not in the query, so reads keep working before 20261119120000_share_links_soft_delete.sql is applied.
+ */
+const isLive = (row: any) => !row?.deleted_at;
+
 export class SupabaseShareLinkRepository {
   constructor(private readonly supabase: SupabaseClient<Database>) {}
 
@@ -81,7 +88,7 @@ export class SupabaseShareLinkRepository {
   async findByTokenWithDelivery(token: string): Promise<{ link: ShareLink; delivery: Delivery } | null> {
     const { data, error } = await this.db.from("share_links").select(WITH_DELIVERY).eq("token", token).maybeSingle();
     if (error) throw new Error(`Error fetching share link by token: ${error.message}`);
-    if (!data?.delivery) return null;
+    if (!data?.delivery || !isLive(data)) return null;
     const { delivery, ...link } = data;
     return { link: mapShareLinkRow(link), delivery: mapDeliveryRow(delivery) };
   }
@@ -89,7 +96,7 @@ export class SupabaseShareLinkRepository {
   async findByIdWithDelivery(id: string): Promise<{ link: ShareLink; delivery: Delivery } | null> {
     const { data, error } = await this.db.from("share_links").select(WITH_DELIVERY).eq("id", id).maybeSingle();
     if (error) throw new Error(`Error fetching share link: ${error.message}`);
-    if (!data?.delivery) return null;
+    if (!data?.delivery || !isLive(data)) return null;
     const { delivery, ...link } = data;
     return { link: mapShareLinkRow(link), delivery: mapDeliveryRow(delivery) };
   }
@@ -97,7 +104,7 @@ export class SupabaseShareLinkRepository {
   async findById(id: string): Promise<ShareLink | null> {
     const { data, error } = await this.db.from("share_links").select("*").eq("id", id).maybeSingle();
     if (error) throw new Error(`Error fetching share link: ${error.message}`);
-    return data ? mapShareLinkRow(data) : null;
+    return data && isLive(data) ? mapShareLinkRow(data) : null;
   }
 
   /** A delivery's links: the primary link first, then oldest first. */
@@ -109,7 +116,7 @@ export class SupabaseShareLinkRepository {
       .order("is_primary", { ascending: false })
       .order("created_at", { ascending: true });
     if (error) throw new Error(`Error listing share links: ${error.message}`);
-    return (data ?? []).map(mapShareLinkRow);
+    return (data ?? []).filter(isLive).map(mapShareLinkRow);
   }
 
   /** The workspace's links with their deliveries, newest first. */
@@ -121,7 +128,7 @@ export class SupabaseShareLinkRepository {
       .order("created_at", { ascending: false })
       .limit(limit);
     if (error) throw new Error(`Error listing workspace share links: ${error.message}`);
-    return (data ?? []).map((row: any) => {
+    return (data ?? []).filter(isLive).map((row: any) => {
       const { delivery, ...link } = row;
       return {
         ...mapShareLinkRow(link),
@@ -131,15 +138,15 @@ export class SupabaseShareLinkRepository {
     });
   }
 
-  /** How many of the delivery's links aren't revoked (expired ones count until revoked or deleted). */
+  /** How many of the delivery's links aren't revoked or deleted (expired ones count until then). */
   async countUnrevokedByDelivery(deliveryId: string): Promise<number> {
-    const { count, error } = await this.db
+    const { data, error } = await this.db
       .from("share_links")
-      .select("id", { count: "exact", head: true })
+      .select("*")
       .eq("delivery_id", deliveryId)
       .is("revoked_at", null);
     if (error) throw new Error(`Error counting share links: ${error.message}`);
-    return count ?? 0;
+    return (data ?? []).filter(isLive).length;
   }
 
   async create(dto: CreateShareLinkDTO): Promise<ShareLink> {
@@ -172,8 +179,17 @@ export class SupabaseShareLinkRepository {
     return (data ?? []).length;
   }
 
-  async delete(id: string): Promise<void> {
-    const { error } = await this.db.from("share_links").delete().eq("id", id);
+  /**
+   * Soft delete: the row stays (with its activity and the comments that came through it), its
+   * URL stops working and it's hidden everywhere. Also turned off, for anything that only checks that.
+   */
+  async softDelete(id: string, revokedAt: string | null): Promise<void> {
+    const now = new Date().toISOString();
+    const { error } = await this.db
+      .from("share_links")
+      .update({ deleted_at: now, revoked_at: revokedAt ?? now, updated_at: now })
+      .eq("id", id)
+      .eq("is_primary", false);
     if (error) throw new Error(`Error deleting share link: ${error.message}`);
   }
 

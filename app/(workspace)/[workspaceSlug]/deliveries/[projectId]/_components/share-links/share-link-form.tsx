@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Check, Copy, Eye, EyeOff, Lock, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { UniversalDialogAction } from "@/components/ui/universal-dialog";
 import { TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import { generatePassphrase, passcodeProblem } from "@/lib/security/passphrase";
 import { SHARE_LINK_PRESETS, presetForPlan, type ShareLinkPreset } from "@/lib/share-links/presets";
@@ -410,17 +411,18 @@ export function ShareLinkForm({ link, plan, saving, onCancel, onCreate, onUpdate
       {problem && <TypographyMuted className="text-[11px] text-amber-300">{problem}</TypographyMuted>}
 
       <div className="flex items-center justify-end gap-2 pt-1">
-        <Button type="button" variant="ghost" onClick={onCancel} className="text-xs">
+        <UniversalDialogAction intent="secondary" onClick={onCancel}>
           Cancel
-        </Button>
-        <Button
-          type="button"
+        </UniversalDialogAction>
+        <UniversalDialogAction
+          intent="primary"
           onClick={submit}
-          disabled={Boolean(problem) || saving}
-          className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs px-5"
+          disabled={Boolean(problem)}
+          loading={saving}
+          loadingText="Saving..."
         >
-          {saving ? "Saving..." : editing ? "Save link" : "Create link"}
-        </Button>
+          {editing ? "Save Link" : "Create Link"}
+        </UniversalDialogAction>
       </div>
     </div>
   );

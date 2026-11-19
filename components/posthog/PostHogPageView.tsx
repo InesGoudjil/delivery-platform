@@ -2,11 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import {
-  getPostHogClient,
-  pauseReplayOnPrivatePage,
-  resumeReplayAfterPrivatePage,
-} from "@/lib/posthog/client";
+import { pauseReplayOnPrivatePage, resumeReplayAfterPrivatePage, withPostHog } from "@/lib/posthog/client";
 import { isPrivateAnalyticsPath } from "@/lib/analytics/private-paths";
 
 /**
@@ -26,12 +22,12 @@ export function PostHogPageView() {
       return;
     }
 
-    const client = getPostHogClient();
-    if (!client) return;
     resumeReplayAfterPrivatePage();
 
+    // The URL is read now; the event is sent once PostHog has loaded (it's started when idle).
     const qs = searchParams?.toString();
-    client.capture("$pageview", { $current_url: `${window.location.origin}${pathname}${qs ? `?${qs}` : ""}` });
+    const url = `${window.location.origin}${pathname}${qs ? `?${qs}` : ""}`;
+    withPostHog((client) => client.capture("$pageview", { $current_url: url }));
   }, [pathname, searchParams]);
 
   return null;

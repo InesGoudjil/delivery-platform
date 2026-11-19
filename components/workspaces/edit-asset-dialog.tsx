@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { UploadCloud, Loader2, Image as ImageIcon, Link as LinkIcon, Crop } from "lucide-react";
+import { UploadCloud, Loader2, Image as ImageIcon, Link as LinkIcon, Crop, PencilLine, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TypographyMuted, TypographySpan } from "@/components/ui/typography";
-import { UniversalDialog } from "@/components/ui/universal-dialog";
+import { UniversalDialog, UniversalDialogAction } from "@/components/ui/universal-dialog";
 import { requestAssetUploadAction } from "@/app/actions/upload";
 import { createUploadProgressToast } from "@/lib/upload-toast";
 import {
@@ -178,7 +178,7 @@ export function EditAssetDialog({
     }
   };
 
-  const computedTitle = dialogTitle || (item?.type === "project" ? "EDIT PROJECT" : "EDIT ASSET");
+  const computedTitle = dialogTitle || (item?.type === "project" ? "Edit Project" : "Edit Asset");
 
   return (
     <>
@@ -186,8 +186,31 @@ export function EditAssetDialog({
         open={isOpen}
         onOpenChange={(open) => !open && onClose()}
         size="lg"
+        icon={<PencilLine className="size-5" />}
         title={computedTitle}
         description="Update title, thumbnail cover, description, or display format."
+        footer={
+          <>
+            <UniversalDialogAction
+              intent="secondary"
+              onClick={onClose}
+              disabled={isSaving || isUploadingThumb}
+            >
+              Cancel
+            </UniversalDialogAction>
+            <UniversalDialogAction
+              intent="primary"
+              type="submit"
+              form="edit-asset-form"
+              disabled={isUploadingThumb}
+              loading={isSaving}
+              loadingText="Saving..."
+              icon={<Save />}
+            >
+              Save Changes
+            </UniversalDialogAction>
+          </>
+        }
       >
         {localError && (
           <div className="p-3 mb-4 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-400">
@@ -195,7 +218,7 @@ export function EditAssetDialog({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="edit-asset-form" onSubmit={handleSubmit} className="space-y-4">
           {/* TITLE */}
           <div className="space-y-1.5">
             <label className="text-[10px]  text-muted-foreground uppercase tracking-widest block">
@@ -461,31 +484,6 @@ export function EditAssetDialog({
             </div>
           </div>
 
-          {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={onClose}
-              disabled={isSaving || isUploadingThumb}
-              className="rounded-full text-muted-foreground hover:text-white hover:bg-white/5 cursor-pointer text-xs"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSaving || isUploadingThumb}
-              className="rounded-full bg-white hover:bg-white/90 text-black font-bold text-xs px-6 py-2 cursor-pointer transition-all shadow-md active:scale-95"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="size-3.5 mr-2 animate-spin" /> Saving...
-                </>
-              ) : (
-                "Save Changes"
-              )}
-            </Button>
-          </div>
         </form>
       </UniversalDialog>
 
@@ -493,7 +491,7 @@ export function EditAssetDialog({
         isOpen={cropState.isOpen}
         onClose={() => setCropState((prev) => ({ ...prev, isOpen: false }))}
         imageSrc={cropState.imageSrc}
-        title="EDIT & CROP ASSET THUMBNAIL"
+        title="Edit & Crop Asset Thumbnail"
         subtitle="Frame, zoom, rotate, or adjust tone for this asset's thumbnail cover."
         defaultAspectRatio={
           (["16:9", "16:10", "4:5", "9:16", "1:1", "4:3", "2.39:1", "3:1"].includes(aspectRatio)

@@ -1,10 +1,9 @@
 "use client";
 
 import React, { useState, ReactNode } from "react";
-import { AlertTriangle, Trash2, Loader2, HelpCircle } from "lucide-react";
-import { UniversalDialog } from "@/components/ui/universal-dialog";
-import { Button } from "@/components/ui/button";
-import { TypographyMuted, TypographySpan } from "@/components/ui/typography";
+import { AlertTriangle, Trash2, HelpCircle } from "lucide-react";
+import { UniversalDialog, UniversalDialogAction } from "@/components/ui/universal-dialog";
+import { TypographyMuted } from "@/components/ui/typography";
 
 export interface ConfirmModalProps {
   title: string;
@@ -74,37 +73,21 @@ export function ConfirmModal({
       showCloseButton={!isLoading}
       footer={
         <>
-          <Button
-            type="button"
-            variant="outline"
+          <UniversalDialogAction
+            intent="secondary"
             disabled={isLoading}
             onClick={handleCancel}
-            className="rounded-full border-white/15 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white text-xs font-semibold px-4 py-2 cursor-pointer"
           >
             {cancelText}
-          </Button>
-
-          <Button
-            type="button"
-            disabled={isLoading}
+          </UniversalDialogAction>
+          <UniversalDialogAction
+            intent={isDanger ? "danger" : isWarning ? "warning" : "primary"}
             onClick={handleConfirm}
-            className={`rounded-full font-bold text-xs px-5 py-2 flex items-center gap-1.5 shadow-lg cursor-pointer ${
-              isDanger
-                ? "bg-red-600 hover:bg-red-700 text-white shadow-red-600/20"
-                : isWarning
-                ? "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20"
-                : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20"
-            }`}
+            loading={isLoading}
+            loadingText="Processing..."
           >
-            {isLoading ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin" />
-                <TypographySpan>Processing...</TypographySpan>
-              </>
-            ) : (
-              <TypographySpan>{confirmText}</TypographySpan>
-            )}
-          </Button>
+            {confirmText}
+          </UniversalDialogAction>
         </>
       }
     >

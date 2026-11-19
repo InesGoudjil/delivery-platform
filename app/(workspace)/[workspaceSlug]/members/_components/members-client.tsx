@@ -20,7 +20,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { UniversalDialog } from "@/components/ui/universal-dialog";
+import { UniversalDialog, UniversalDialogAction } from "@/components/ui/universal-dialog";
 import { toast } from "sonner";
 import {
   TypographyH1,
@@ -322,6 +322,7 @@ export function MembersClient({
         open={showInviteModal}
         onOpenChange={setShowInviteModal}
         size="md"
+        icon={<UserPlus className="size-5" />}
         title="Invite Team Collaborator"
         badge={
           <TypographySpan className="text-[11px]  text-muted-foreground">
@@ -331,29 +332,19 @@ export function MembersClient({
         description="Collaborators can upload cuts, reply to client notes, and manage deliveries."
         footer={
           <>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setShowInviteModal(false)}
-              className="rounded-full text-xs cursor-pointer"
-            >
+            <UniversalDialogAction intent="secondary" onClick={() => setShowInviteModal(false)}>
               Cancel
-            </Button>
-            <Button
-              type="button"
+            </UniversalDialogAction>
+            <UniversalDialogAction
+              intent="primary"
               onClick={handleSendInvite}
-              disabled={isSubmitting || !inviteEmail.trim()}
-              className="rounded-full text-xs font-bold bg-primary text-black hover:bg-primary/90 cursor-pointer"
+              disabled={!inviteEmail.trim()}
+              loading={isSubmitting}
+              loadingText="Sending..."
+              icon={<Mail />}
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="size-3.5 mr-1.5 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                "Send Invitation"
-              )}
-            </Button>
+              Send Invitation
+            </UniversalDialogAction>
           </>
         }
       >

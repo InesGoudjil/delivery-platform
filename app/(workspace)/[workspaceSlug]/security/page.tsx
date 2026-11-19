@@ -22,14 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { UniversalDialog, UniversalDialogAction } from "@/components/ui/universal-dialog";
 import {
   TypographyH1,
   TypographyH3,
@@ -570,113 +563,97 @@ export default function SecurityPage() {
       </div>
 
       {/* 2FA Enrollment Modal */}
-      <Dialog open={isEnrolling} onOpenChange={(open) => !open && setIsEnrolling(false)}>
-        <DialogContent size="md" className="space-y-4">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold font-heading flex items-center gap-2">
-              <ShieldCheck className="size-5 text-primary" /> Setup Two-Factor Authentication
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Scan the QR code with your authenticator app (Google Authenticator, Apple Passwords, 1Password, Authy), then enter the 6-digit code.
-            </DialogDescription>
-          </DialogHeader>
-
-          {enrollData && (
-            <div className="space-y-5 py-2">
-              {/* QR Code Container */}
-              <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-border w-fit mx-auto shadow-inner">
-                {enrollData.totp.qr_code ? (
-                  <img
-                    src={enrollData.totp.qr_code}
-                    alt="2FA QR Code"
-                    className="size-48 object-contain"
-                  />
-                ) : (
-                  <div className="size-48 flex items-center justify-center text-xs text-neutral-500">
-                    Generating QR Code...
-                  </div>
-                )}
-              </div>
-
-              {/* Secret key for manual entry */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-muted-foreground block text-center">
-                  Cannot scan? Enter this key manually:
-                </label>
-                <div className="flex items-center justify-center gap-2">
-                  <code className="px-3 py-1 bg-muted border border-border rounded-lg text-xs font-mono text-primary font-bold tracking-wider select-all">
-                    {enrollData.totp.secret}
-                  </code>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={handleCopySecret}
-                    className="text-muted-foreground hover:text-foreground cursor-pointer"
-                    title="Copy Secret"
-                  >
-                    {copiedSecret ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
-                  </Button>
+      <UniversalDialog
+        open={isEnrolling}
+        onOpenChange={(open) => !open && setIsEnrolling(false)}
+        size="md"
+        icon={<ShieldCheck className="size-5" />}
+        title="Set Up Two-Factor Authentication"
+        description="Scan the QR code with your authenticator app (Google Authenticator, Apple Passwords, 1Password, Authy), then enter the 6-digit code."
+        footer={
+          <>
+            <UniversalDialogAction intent="secondary" onClick={() => setIsEnrolling(false)}>
+              Cancel
+            </UniversalDialogAction>
+            <UniversalDialogAction
+              intent="primary"
+              disabled={verifyCode.trim().length !== 6}
+              loading={isSubmittingCode}
+              loadingText="Verifying..."
+              icon={<Check />}
+              onClick={handleVerify2FACode}
+            >
+              Verify &amp; Activate
+            </UniversalDialogAction>
+          </>
+        }
+      >
+        {enrollData && (
+          <div className="space-y-5">
+            {/* QR Code Container */}
+            <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-white/15 w-fit mx-auto shadow-inner">
+              {enrollData.totp.qr_code ? (
+                <img
+                  src={enrollData.totp.qr_code}
+                  alt="2FA QR Code"
+                  className="size-48 object-contain"
+                />
+              ) : (
+                <div className="size-48 flex items-center justify-center text-xs text-neutral-500">
+                  Generating QR Code...
                 </div>
-              </div>
+              )}
+            </div>
 
-              {/* 6-Digit Code Input */}
-              <div className="space-y-2 pt-2 border-t border-border">
-                <label className="text-xs font-semibold text-foreground block text-center">
-                  Enter the 6-digit confirmation code:
-                </label>
-                <div className="max-w-[220px] mx-auto">
-                  <input
-                    type="text"
-                    maxLength={6}
-                    placeholder="123456"
-                    value={verifyCode}
-                    onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ""))}
-                    autoFocus
-                    className="w-full text-center text-lg tracking-[0.4em] font-mono bg-muted border border-border rounded-xl px-3 py-2 text-foreground focus:outline-none focus:border-primary"
-                  />
-                </div>
-
-                {verifyError && (
-                  <div className="text-center text-xs text-destructive flex items-center justify-center gap-1 mt-1">
-                    <AlertCircle className="size-3.5 shrink-0" />
-                    <span>{verifyError}</span>
-                  </div>
-                )}
+            {/* Secret key for manual entry */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-[#aeaeb4] block text-center">
+                Cannot scan? Enter this key manually:
+              </label>
+              <div className="flex items-center justify-center gap-2">
+                <code className="px-3 py-1 bg-white/5 border border-white/15 rounded-lg text-xs font-mono text-white font-bold tracking-wider select-all">
+                  {enrollData.totp.secret}
+                </code>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={handleCopySecret}
+                  className="text-[#aeaeb4] hover:text-white hover:bg-white/10 cursor-pointer"
+                  title="Copy Secret"
+                >
+                  {copiedSecret ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
+                </Button>
               </div>
             </div>
-          )}
 
-          <DialogFooter className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsEnrolling(false)}
-              className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              disabled={isSubmittingCode || verifyCode.trim().length !== 6}
-              onClick={handleVerify2FACode}
-              className="rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
-            >
-              {isSubmittingCode ? (
-                <>
-                  <Loader2 className="size-3.5 mr-1.5 animate-spin" /> Verifying...
-                </>
-              ) : (
-                <>
-                  <Check className="size-3.5 mr-1.5" /> Verify &amp; Activate
-                </>
+            {/* 6-Digit Code Input */}
+            <div className="space-y-2 pt-4 border-t border-white/10">
+              <label className="text-xs font-semibold text-white block text-center">
+                Enter the 6-digit confirmation code:
+              </label>
+              <div className="max-w-[220px] mx-auto">
+                <input
+                  type="text"
+                  maxLength={6}
+                  placeholder="123456"
+                  value={verifyCode}
+                  onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ""))}
+                  autoFocus
+                  className="w-full text-center text-lg tracking-[0.4em] font-mono bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-white placeholder:text-white/30 focus:outline-none focus:border-white/40"
+                />
+              </div>
+
+              {verifyError && (
+                <div className="text-center text-xs text-red-400 flex items-center justify-center gap-1 mt-1">
+                  <AlertCircle className="size-3.5 shrink-0" />
+                  <span>{verifyError}</span>
+                </div>
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </div>
+          </div>
+        )}
+      </UniversalDialog>
     </div>
   );
 }

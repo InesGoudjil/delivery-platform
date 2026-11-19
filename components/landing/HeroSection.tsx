@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Star, ArrowRight, Play } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -12,9 +13,45 @@ interface HeroSectionProps {
   startHref: string;
 }
 
+const REEL_ID = "bcb96cb5bbb50ee8093256f33146f473";
+/** The reel's frame at 1s: what the hero shows first, and keeps for reduced motion. */
+const REEL_POSTER = `https://videodelivery.net/${REEL_ID}/thumbnails/thumbnail.jpg?time=1s&height=720`;
+const REEL_PLAYER = `https://iframe.videodelivery.net/${REEL_ID}?autoplay=true&loop=true&muted=true&controls=false&preload=true&poster=${encodeURIComponent(REEL_POSTER)}`;
+
+/**
+ * Whether to start the hero reel: once the page has loaded and the browser is idle, so the
+ * player and its video don't compete with the page itself. Never for reduced motion.
+ */
+function useDeferredReel(): boolean {
+  const [start, setStart] = useState(false);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let idle: number | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      if ("requestIdleCallback" in window) idle = window.requestIdleCallback(() => setStart(true), { timeout: 2000 });
+      else timer = setTimeout(() => setStart(true), 200);
+    };
+    if (document.readyState === "complete") schedule();
+    else window.addEventListener("load", schedule, { once: true });
+    return () => {
+      window.removeEventListener("load", schedule);
+      if (idle !== undefined) window.cancelIdleCallback(idle);
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, []);
+  return start;
+}
+
 export function HeroSection({ demoHref, startHref }: HeroSectionProps) {
+  const startReel = useDeferredReel();
+  const [reelReady, setReelReady] = useState(false);
+
   return (
-    <section className="relative pt-6 sm:pt-10 overflow-hidden px-1">
+    // Bleeds into <main>'s gutter (-mx/px match its px-4 sm:px-6 lg:px-8): the content lines up
+    // with the other sections, while overflow-hidden clips at the gutter's edge instead of the
+    // content's, so the buttons' hover scale and glow aren't cut off.
+    <section className="relative -mx-4 px-4 pt-6 sm:-mx-6 sm:px-6 sm:pt-10 lg:-mx-8 lg:px-8 overflow-hidden">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           {/* Left Column: Headline & Action */}
           <div className="lg:col-span-6 space-y-6 text-left">
@@ -89,14 +126,28 @@ export function HeroSection({ demoHref, startHref }: HeroSectionProps) {
                   whileHover={{ scale: 1.01 }}
                   transition={{ duration: 0.3 }}
                 >
-                  {/* Clean studio looping cut without controls */}
-                  <iframe
-                    src="https://iframe.videodelivery.net/bcb96cb5bbb50ee8093256f33146f473?autoplay=true&loop=true&muted=true&controls=false&preload=true&poster=https%3A%2F%2Fvideodelivery.net%2Fbcb96cb5bbb50ee8093256f33146f473%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D1s%26height%3D720"
-                    className="w-full h-full border-none absolute inset-0 pointer-events-none"
-                    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-                    allowFullScreen
-                    title="CineSpace Studio Preview Reel"
+                  {/* The poster paints first; the looping, controls-free player fades in over it
+                      once it has loaded (see useDeferredReel). */}
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Stream sizes it; the optimizer can't fetch this host */}
+                  <img
+                    src={REEL_POSTER}
+                    alt=""
+                    fetchPriority="high"
+                    decoding="async"
+                    className="absolute inset-0 w-full h-full object-cover"
                   />
+                  {startReel && (
+                    <iframe
+                      src={REEL_PLAYER}
+                      onLoad={() => setReelReady(true)}
+                      className={`w-full h-full border-none absolute inset-0 pointer-events-none transition-opacity duration-700 ${
+                        reelReady ? "opacity-100" : "opacity-0"
+                      }`}
+                      allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                      allowFullScreen
+                      title="CineSpace Studio Preview Reel"
+                    />
+                  )}
                   {/* Subtle ambient lighting vignette overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
                 </motion.div>

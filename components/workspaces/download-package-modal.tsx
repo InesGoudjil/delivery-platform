@@ -15,7 +15,7 @@ import {
   Square,
 } from "lucide-react";
 import { toast } from "sonner";
-import { UniversalDialog } from "@/components/ui/universal-dialog";
+import { UniversalDialog, UniversalDialogAction } from "@/components/ui/universal-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AppImage } from "@/components/ui/app-image";
@@ -381,7 +381,7 @@ export function DownloadPackageModal({
       open={isOpen}
       onOpenChange={onOpenChange}
       size="2xl"
-      icon={<HardDriveDownload className="size-5 text-primary" />}
+      icon={<HardDriveDownload className="size-5" />}
       title="Master Deliverables Package"
       description={`${projectTitle} ${brandName ? `· ${brandName}` : ""}`}
       headerExtra={
@@ -399,11 +399,52 @@ export function DownloadPackageModal({
       }
       bodyClassName="space-y-5"
       footer={
-        <div className="w-full flex flex-col sm:flex-row items-center justify-between text-[11px] text-[#71717a]  gap-1">
-          <TypographySpan>
-            💡 Direct stream from cloud storage — zero browser memory limit
-          </TypographySpan>
-          <TypographySpan>Compatible with Free Download Manager, IDM &amp; browser shelf</TypographySpan>
+        <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="min-w-0 flex flex-col text-[11px] text-[#71717a] gap-0.5">
+            <TypographySpan>
+              💡 Direct stream from cloud storage — zero browser memory limit
+            </TypographySpan>
+            <TypographySpan>Compatible with Free Download Manager, IDM &amp; browser shelf</TypographySpan>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+            <UniversalDialogAction
+              intent="secondary"
+              onClick={() => onOpenChange(false)}
+            >
+              Close
+            </UniversalDialogAction>
+            {hasAnyDownloadable && (
+              <>
+                <UniversalDialogAction
+                  intent="secondary"
+                  disabled={selectedDownloadableItems.length === 0}
+                  onClick={handleCopyLinks}
+                  title="Copy direct download URLs for selected items"
+                  icon={
+                    hasCopiedLinks ? (
+                      <Check className="text-emerald-400" />
+                    ) : (
+                      <Copy />
+                    )
+                  }
+                >
+                  {hasCopiedLinks ? "Copied" : "Copy Links"}
+                </UniversalDialogAction>
+                <UniversalDialogAction
+                  intent="primary"
+                  onClick={handleDownloadSelectedSequential}
+                  disabled={selectedDownloadableItems.length === 0}
+                  loading={isQueueRunning}
+                  loadingText="Queueing..."
+                  icon={<Download />}
+                >
+                  {selectedDownloadableItems.length === validItems.length
+                    ? `Download All (${selectedDownloadableItems.length})`
+                    : `Download Selected (${selectedDownloadableItems.length})`}
+                </UniversalDialogAction>
+              </>
+            )}
+          </div>
         </div>
       }
     >
@@ -441,55 +482,6 @@ export function DownloadPackageModal({
                       )}) · Streams directly from cloud storage to disk.`
                     : "Multi-file queue transfers directly from cloud storage to your disk with zero browser RAM limit."}
                 </TypographyMuted>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={selectedDownloadableItems.length === 0}
-                  onClick={handleCopyLinks}
-                  className="rounded-full border-white/20 text-[#aeaeb4] hover:text-white hover:bg-white/10 text-xs  h-8 px-3 cursor-pointer"
-                  title="Copy direct download URLs for selected items"
-                >
-                  {hasCopiedLinks ? (
-                    <>
-                      <Check className="size-3 text-emerald-400 mr-1.5" />
-                      <TypographySpan>Copied</TypographySpan>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="size-3 mr-1.5" />
-                      <TypographySpan>Copy Links</TypographySpan>
-                    </>
-                  )}
-                </Button>
-
-                <Button
-                  type="button"
-                  onClick={handleDownloadSelectedSequential}
-                  disabled={
-                    isQueueRunning || selectedDownloadableItems.length === 0
-                  }
-                  className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs px-4 py-2 shadow-lg shadow-primary/20 border-0 transition-all cursor-pointer h-8 gap-1.5 disabled:opacity-50"
-                >
-                  {isQueueRunning ? (
-                    <>
-                      <Loader2 className="size-3.5 animate-spin" />
-                      <TypographySpan>Queueing...</TypographySpan>
-                    </>
-                  ) : (
-                    <>
-                      <Download className="size-3.5" />
-                      <TypographySpan>
-                        {selectedDownloadableItems.length === validItems.length
-                          ? `Download All (${selectedDownloadableItems.length})`
-                          : `Download Selected (${selectedDownloadableItems.length})`}
-                      </TypographySpan>
-                    </>
-                  )}
-                </Button>
               </div>
             </div>
 

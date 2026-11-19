@@ -767,7 +767,7 @@ export function PortfolioClient({
         workspaceId={workspace.id}
         onSave={handleSaveEdit}
         isSaving={isSavingItem}
-        dialogTitle={itemToEdit?.type === "project" ? "EDIT PROJECT" : "EDIT ASSET"}
+        dialogTitle={itemToEdit?.type === "project" ? "Edit Project" : "Edit Asset"}
       />
 
       {/* 10. Interactive Cover Image Crop & Edit Modal */}

@@ -114,7 +114,7 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
       {/* Filter Segmented Control Tabs */}
       <div className="flex justify-center">
         <div className="inline-flex p-1 rounded-full bg-[#18181b] border border-white/10 shadow-inner gap-1">
-          {(["films","projects", "stills"] as const).map((tab) => {
+          {(["films","stills","projects"] as const).map((tab) => {
             const isActive = activeTab === tab;
             return (
               <Button

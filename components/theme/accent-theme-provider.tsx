@@ -27,7 +27,10 @@ export function AccentThemeProvider({
     setAccentState(saved);
   }, [saved]);
 
-  // Dynamically update CSS custom properties on document root
+  // Retint the document root while this provider is mounted. Dialogs portal to <body>, so the
+  // variables have to live on :root rather than a wrapper. The cleanup matters: without it the
+  // accent stays on <html> after a client-side navigation out of the workspace (to the landing
+  // page, auth, admin, /new-workspace…), where it doesn't belong.
   useEffect(() => {
     const vars = generateAccentVariables(accent);
     const root = document.documentElement;
@@ -35,6 +38,11 @@ export function AccentThemeProvider({
     for (const [key, value] of Object.entries(vars)) {
       root.style.setProperty(key, value);
     }
+    return () => {
+      for (const key of Object.keys(vars)) {
+        root.style.removeProperty(key);
+      }
+    };
   }, [accent]);
 
   const value = useMemo(

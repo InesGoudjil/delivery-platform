@@ -68,6 +68,41 @@ export async function createStripeProductAndPrice(
 }
 
 /**
+ * A new price for a plan whose price changed. Stripe prices can't be edited, so this adds a price
+ * to the old price's product and deactivates the old price. Subscribers on the old price keep
+ * paying it (Stripe still bills archived prices); new checkouts use the new one.
+ */
+export async function replaceStripePrice(
+  oldStripePriceId: string,
+  priceCents: number,
+  currency: string = 'USD',
+  billingInterval: 'month' | 'year' = 'month'
+): Promise<string> {
+  const stripe = getStripeClient();
+  if (!stripe || oldStripePriceId.startsWith('price_mock_')) {
+    log.warn('Secret key unconfigured or mock price. Generating a fallback mock Stripe price ID.');
+    return `price_mock_${Date.now()}`;
+  }
+
+  try {
+    const oldPrice = await stripe.prices.retrieve(oldStripePriceId);
+    const productId = typeof oldPrice.product === 'string' ? oldPrice.product : oldPrice.product.id;
+
+    const price = await stripe.prices.create({
+      product: productId,
+      unit_amount: Math.max(0, priceCents),
+      currency: currency.toLowerCase(),
+      recurring: { interval: billingInterval },
+    });
+    await stripe.prices.update(oldStripePriceId, { active: false });
+    return price.id;
+  } catch (err: any) {
+    log.error({ err, oldStripePriceId }, 'Failed to replace price in Stripe');
+    throw new Error(`Stripe Error: ${err.message}`);
+  }
+}
+
+/**
  * Archives (deactivates) a Stripe Price and its parent Product.
  */
 export async function archiveStripeProductAndPrice(stripePriceId?: string | null): Promise<void> {

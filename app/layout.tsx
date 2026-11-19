@@ -13,57 +13,15 @@ import { PostHogIdentify } from "@/components/posthog/PostHogIdentify";
 import { PwaRegister } from "@/components/pwa/pwa-register";
 
 const satoshi = localFont({
+  // Only the faces the app uses (it never sets Light or a bold italic), as woff2: these are
+  // preloaded on every page, so each extra face is ~25 KB everyone downloads.
+  // 600 and 800 (semibold, extrabold) render with 700 and 900.
   src: [
-    {
-      path: "../public/fonts/Satoshi-Light.otf",
-      weight: "300",
-      style: "normal",
-    },
-    {
-      path: "../public/fonts/Satoshi-LightItalic.otf",
-      weight: "300",
-      style: "italic",
-    },
-    {
-      path: "../public/fonts/Satoshi-Regular.otf",
-      weight: "400",
-      style: "normal",
-    },
-    {
-      path: "../public/fonts/Satoshi-Italic.otf",
-      weight: "400",
-      style: "italic",
-    },
-    {
-      path: "../public/fonts/Satoshi-Medium.otf",
-      weight: "500",
-      style: "normal",
-    },
-    {
-      path: "../public/fonts/Satoshi-MediumItalic.otf",
-      weight: "500",
-      style: "italic",
-    },
-    {
-      path: "../public/fonts/Satoshi-Bold.otf",
-      weight: "700",
-      style: "normal",
-    },
-    {
-      path: "../public/fonts/Satoshi-BoldItalic.otf",
-      weight: "700",
-      style: "italic",
-    },
-    {
-      path: "../public/fonts/Satoshi-Black.otf",
-      weight: "900",
-      style: "normal",
-    },
-    {
-      path: "../public/fonts/Satoshi-BlackItalic.otf",
-      weight: "900",
-      style: "italic",
-    },
+    { path: "../public/fonts/Satoshi-Regular.woff2", weight: "400", style: "normal" },
+    { path: "../public/fonts/Satoshi-Italic.woff2", weight: "400", style: "italic" },
+    { path: "../public/fonts/Satoshi-Medium.woff2", weight: "500", style: "normal" },
+    { path: "../public/fonts/Satoshi-Bold.woff2", weight: "700", style: "normal" },
+    { path: "../public/fonts/Satoshi-Black.woff2", weight: "900", style: "normal" },
   ],
   variable: "--font-satoshi",
   display: "swap",

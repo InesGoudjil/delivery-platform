@@ -1,37 +1,23 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  Check,
-  Search,
-  ExternalLink,
-  Edit2,
-  DollarSign,
-  Plus,
-  Trash2,
-  AlertTriangle,
-} from "lucide-react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Info, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { updatePlanAction, createPlanAction, createYearlyPlanAction, deletePlanAction } from "@/app/actions/admin";
-import { Textarea } from "@/components/ui/textarea";
-import { planTier, yearlyPlanSlug, yearlySavingsPercent } from "@/core/entities/plan";
-import { formatUsd } from "@/lib/billing/price";
-
-/** The yearly price suggested when adding one: 25% off twelve monthly payments. */
-const SUGGESTED_YEARLY_DISCOUNT = 0.25;
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { deletePlanAction } from "@/app/actions/admin";
+import { planTier, yearlySavingsPercent } from "@/core/entities/plan";
+import type { WorkspaceFeatureConfig } from "@/core/entities/workspace";
+import { AdminPageHeader, AdminSection } from "../../_components/page-header";
+import { Pill, SubscriptionStatusBadge } from "../../_components/badges";
+import { KpiCard } from "../../_components/kpi-card";
+import { ReasonDialog } from "../../_components/reason-dialog";
+import { formatDate, formatGb, formatMoney, formatNumber, SUBSCRIPTION_STATUS_LABELS } from "../../_lib/format";
+import { CAPABILITIES, featuresDraftFrom, PlanEditorDialog, type PlanTierItem } from "./plan-editor-dialog";
 
 export interface AdminPlanItem {
   id: string;
@@ -43,9 +29,8 @@ export interface AdminPlanItem {
   sortOrder: number;
   isActive: boolean;
   activeSubscribersCount: number;
-  featuresSummary: string;
-  storageGB: number;
   stripePriceId?: string | null;
+  features: WorkspaceFeatureConfig;
 }
 
 export interface AdminSubscriptionListItem {
@@ -53,7 +38,10 @@ export interface AdminSubscriptionListItem {
   workspaceId: string;
   workspaceName: string;
   workspaceSlug: string;
+  planId: string;
   planName: string;
+  billingInterval: string;
+  priceCents: number;
   status: "active" | "trialing" | "past_due" | "canceled";
   currency: string;
   priceFormatted: string;
@@ -65,817 +53,422 @@ export interface SubscriptionsClientProps {
   subscriptions: AdminSubscriptionListItem[];
 }
 
-export function SubscriptionsClient({ plans: initialPlans, subscriptions }: SubscriptionsClientProps) {
-  const [isPending, startTransition] = useTransition();
-  const [plansList, setPlansList] = useState(initialPlans);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [serverError, setServerError] = useState<string | null>(null);
-  // Every admin change needs a reason; it goes into the audit log.
-  const [reason, setReason] = useState("");
-  const reasonValid = reason.trim().length >= 5;
+const ALL = "__all";
+const STATUSES = ["active", "trialing", "past_due", "canceled"] as const;
 
-  // Edit Plan Dialog
-  const [selectedPlan, setSelectedPlan] = useState<AdminPlanItem | null>(null);
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editPriceUsd, setEditPriceUsd] = useState(0);
-  const [editName, setEditName] = useState("");
-  const [editSuccess, setEditSuccess] = useState(false);
+/**
+ * Pairs each monthly plan with its yearly twin, in display order. A yearly plan whose monthly
+ * plan is gone gets a row of its own, so it can still be seen and removed.
+ */
+function toTiers(plans: AdminPlanItem[]): PlanTierItem[] {
+  const monthlySlugs = new Set(plans.filter((p) => p.billingInterval !== "year").map((p) => p.slug));
+  const tiers: PlanTierItem[] = [];
+  for (const plan of plans) {
+    if (plan.billingInterval === "year") {
+      if (!monthlySlugs.has(planTier(plan.slug))) tiers.push({ monthly: plan, yearly: null });
+      continue;
+    }
+    const yearly = plans.find((p) => p.billingInterval === "year" && planTier(p.slug) === plan.slug) ?? null;
+    tiers.push({ monthly: plan, yearly });
+  }
+  return tiers.sort((a, b) => a.monthly.sortOrder - b.monthly.sortOrder);
+}
 
-  // Create Plan Dialog
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [createName, setCreateName] = useState("");
-  const [createSlug, setCreateSlug] = useState("");
-  const [createPriceUsd, setCreatePriceUsd] = useState(29);
-  const [createStorageGb, setCreateStorageGb] = useState(500);
-  const [createClientLinks, setCreateClientLinks] = useState(-1);
-  const [createWhatsApp, setCreateWhatsApp] = useState(true);
-  const [createSuccess, setCreateSuccess] = useState(false);
+/** Sold yearly: the yearly plan is on sale, or hidden only because the whole tier is. */
+const sellsYearly = ({ monthly, yearly }: PlanTierItem) => Boolean(yearly && (yearly.isActive || !monthly.isActive));
+/** "Unlimited rooms", "1 room", "20 rooms". */
+const limit = (value: number, one: string, many: string) =>
+  value === -1 ? `Unlimited ${many}` : `${formatNumber(value)} ${value === 1 ? one : many}`;
 
-  // Delete Plan Dialog
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deleteSuccessMsg, setDeleteSuccessMsg] = useState<string | null>(null);
+export function SubscriptionsClient({ plans, subscriptions }: SubscriptionsClientProps) {
+  const router = useRouter();
+  const tiers = useMemo(() => toTiers(plans), [plans]);
+  const nextSortOrder = Math.max(0, ...plans.map((p) => p.sortOrder)) + 1;
 
-  // Add Yearly Price Dialog
-  const [yearlyModalOpen, setYearlyModalOpen] = useState(false);
-  const [yearlyPriceUsd, setYearlyPriceUsd] = useState(0);
-  const [yearlySuccess, setYearlySuccess] = useState(false);
+  const [editing, setEditing] = useState<PlanTierItem | "new" | null>(null);
+  const [deleting, setDeleting] = useState<PlanTierItem | null>(null);
 
-  // A paid, active monthly plan that isn't sold yearly yet.
-  const canAddYearly = (plan: AdminPlanItem) =>
-    plan.billingInterval !== "year" &&
-    plan.isActive &&
-    plan.priceCents > 0 &&
-    !plansList.some((p) => p.slug === yearlyPlanSlug(plan.slug));
-
-  const filteredSubscriptions = subscriptions.filter(
-    (s) =>
-      s.workspaceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.workspaceSlug.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.planName.toLowerCase().includes(searchQuery.toLowerCase())
+  // Revenue at today's prices: yearly subscriptions count as a twelfth of their price.
+  const active = subscriptions.filter((s) => s.status === "active");
+  const mrrCents = active.reduce(
+    (sum, s) => sum + (s.billingInterval === "year" ? Math.round(s.priceCents / 12) : s.priceCents),
+    0
   );
+  const payingCount = active.filter((s) => s.priceCents > 0).length;
+  const trialingCount = subscriptions.filter((s) => s.status === "trialing").length;
+  const pastDueCount = subscriptions.filter((s) => s.status === "past_due").length;
 
-  const handleOpenEditPlan = (plan: AdminPlanItem) => {
-    setSelectedPlan(plan);
-    setEditName(plan.name);
-    setEditPriceUsd(Math.round(plan.priceCents / 100));
-    setEditSuccess(false);
-    setServerError(null);
-    setReason("");
-    setEditModalOpen(true);
-  };
-
-  const handleOpenDeletePlan = (plan: AdminPlanItem) => {
-    setSelectedPlan(plan);
-    setDeleteSuccessMsg(null);
-    setServerError(null);
-    setReason("");
-    setDeleteModalOpen(true);
-  };
-
-  const handleOpenAddYearly = (plan: AdminPlanItem) => {
-    setSelectedPlan(plan);
-    setYearlyPriceUsd(Math.round(plan.priceCents * 12 * (1 - SUGGESTED_YEARLY_DISCOUNT)) / 100);
-    setYearlySuccess(false);
-    setServerError(null);
-    setReason("");
-    setYearlyModalOpen(true);
-  };
-
-  const handleAddYearlySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedPlan) return;
-    const monthlyPlan = selectedPlan;
-
-    startTransition(async () => {
-      const res = await createYearlyPlanAction({ planId: monthlyPlan.id, yearlyPriceUsd, reason });
-      if (res.success) {
-        const yearlyPlanItem: AdminPlanItem = {
-          id: res.plan.id,
-          name: res.plan.name,
-          slug: res.plan.slug,
-          priceCents: res.plan.priceCents,
-          currency: res.plan.currency,
-          billingInterval: res.plan.billingInterval,
-          sortOrder: res.plan.sortOrder,
-          isActive: res.plan.isActive,
-          activeSubscribersCount: 0,
-          featuresSummary: monthlyPlan.featuresSummary,
-          storageGB: monthlyPlan.storageGB,
-          stripePriceId: res.plan.stripePriceId,
-        };
-        setPlansList((prev) => [...prev, yearlyPlanItem]);
-        setYearlySuccess(true);
-        setTimeout(() => {
-          setYearlyModalOpen(false);
-          setYearlySuccess(false);
-        }, 1000);
-      } else {
-        setServerError(res.error || "Failed to add the yearly price.");
-      }
-    });
-  };
-
-  const handleSavePlanEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedPlan) return;
-
-    startTransition(async () => {
-      const priceChanged = editPriceUsd * 100 !== selectedPlan.priceCents;
-      const res = await updatePlanAction({
-        planId: selectedPlan.id,
-        name: editName,
-        ...(priceChanged ? { priceCents: editPriceUsd * 100 } : {}),
-        reason,
-      });
-
-      if (res.success) {
-        setPlansList((prev) =>
-          prev.map((p) =>
-            p.id === selectedPlan.id
-              ? { ...p, name: editName, priceCents: editPriceUsd * 100 }
-              : // The other half of a monthly/yearly pair is renamed with it (updatePlanAction).
-              planTier(p.slug) === planTier(selectedPlan.slug) && p.billingInterval !== selectedPlan.billingInterval
-              ? { ...p, name: editName }
-              : p
-          )
-        );
-        setEditSuccess(true);
-        setTimeout(() => {
-          setEditModalOpen(false);
-          setEditSuccess(false);
-        }, 1000);
-      } else {
-        setServerError(res.error || "Failed to update plan.");
-      }
-    });
-  };
-
-  const handleCreatePlanSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!createName.trim() || !createSlug.trim()) return;
-
-    startTransition(async () => {
-      const res = await createPlanAction({
-        name: createName.trim(),
-        slug: createSlug.trim(),
-        priceUsd: createPriceUsd,
-        storageGb: createStorageGb,
-        clientLinks: createClientLinks,
-        whatsappDelivery: createWhatsApp,
-        reason,
-      });
-      if (res.success) {
-        const newPlanItem: AdminPlanItem = {
-          id: res.plan.id,
-          name: res.plan.name,
-          slug: res.plan.slug,
-          priceCents: res.plan.priceCents,
-          currency: res.plan.currency,
-          billingInterval: res.plan.billingInterval,
-          sortOrder: res.plan.sortOrder,
-          isActive: res.plan.isActive,
-          activeSubscribersCount: 0,
-          featuresSummary: `${createStorageGb} GB Storage · ${createClientLinks === -1 ? 'Unlimited Links' : createClientLinks + ' Links'}`,
-          storageGB: createStorageGb,
-          stripePriceId: res.plan.stripePriceId,
-        };
-
-        setPlansList([...plansList, newPlanItem]);
-        setCreateSuccess(true);
-
-        setTimeout(() => {
-          setCreateModalOpen(false);
-          setCreateSuccess(false);
-          setCreateName("");
-          setCreateSlug("");
-        }, 1000);
-      } else {
-        setServerError(res.error || "Failed to create plan.");
-      }
-    });
-  };
-
-  const handleDeletePlanSubmit = () => {
-    if (!selectedPlan) return;
-
-    startTransition(async () => {
-      const res = await deletePlanAction({ planId: selectedPlan.id, reason });
-      if (res.success) {
-        setDeleteSuccessMsg(res.message || "Plan deleted successfully.");
-        if (res.action === "deleted") {
-          setPlansList((prev) => prev.filter((p) => p.id !== selectedPlan.id));
-        } else if (res.action === "archived") {
-          setPlansList((prev) =>
-            prev.map((p) => (p.id === selectedPlan.id ? { ...p, isActive: false } : p))
-          );
-        }
-
-        setTimeout(() => {
-          setDeleteModalOpen(false);
-          setDeleteSuccessMsg(null);
-        }, 1500);
-      } else {
-        setServerError(res.error || "Failed to delete plan.");
-      }
-    });
-  };
+  const paidOnSale = tiers.filter(
+    (t) => t.monthly.billingInterval !== "year" && t.monthly.isActive && t.monthly.priceCents > 0
+  );
+  const yearlyOnSale = paidOnSale.filter((t) => t.yearly?.isActive);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-200">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
-        <div>
-          <div className="text-xs  text-primary uppercase tracking-wider mb-1">
-            Stripe &amp; Billing Control
+    <div className="mx-auto max-w-7xl space-y-6">
+      <AdminPageHeader
+        title="Plans & subscriptions"
+        description="Every plan's prices, limits and features. The landing and subscription pages show what's set here."
+        actions={
+          <Button onClick={() => setEditing("new")}>
+            <Plus className="size-4" /> New plan
+          </Button>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard label="Estimated MRR" value={formatMoney(mrrCents, "USD")} hint="Active subscriptions at current prices" />
+        <KpiCard
+          label="Paying subscribers"
+          value={formatNumber(payingCount)}
+          hint={`${formatNumber(active.length)} active in all`}
+        />
+        <KpiCard label="Trialing" value={formatNumber(trialingCount)} />
+        <KpiCard
+          label="Past due"
+          value={formatNumber(pastDueCount)}
+          hint={pastDueCount > 0 ? "Payment failed; Stripe is retrying" : "No failed payments"}
+          tone={pastDueCount > 0 ? "warning" : "default"}
+        />
+      </div>
+
+      {paidOnSale.length > 0 && yearlyOnSale.length === 0 && (
+        <div role="status" className="flex gap-3 rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
+          <Info className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <div className="space-y-1">
+            <p className="font-medium">Yearly billing is off</p>
+            <p className="text-muted-foreground">
+              The pricing pages show the Monthly / Yearly switch once a paid plan has a yearly price. Edit a plan and
+              turn on <span className="font-medium text-foreground">Also sell yearly</span>.
+            </p>
           </div>
-          <h1 className="text-3xl font-black font-heading text-foreground tracking-tight">
-            Subscription Tiers &amp; Active Subscriptions
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Supervise recurring revenue, create dynamic Stripe counterpart plans, and enforce safety conditions.
-          </p>
         </div>
+      )}
 
-        <Button
-          onClick={() => {
-            setServerError(null);
-            setReason("");
-            setCreateModalOpen(true);
-          }}
-          className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 shadow-lg shadow-primary/20 cursor-pointer"
-        >
-          <Plus className="size-3.5 mr-1.5" /> Create New Tier
-        </Button>
-      </div>
-
-      {/* Plan Tiers Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {plansList.map((tier) => (
-          <Card
-            key={tier.id}
-            className={`bg-card border-border shadow-sm flex flex-col justify-between hover:border-primary/40 transition-colors ${
-              !tier.isActive ? "opacity-60 border-dashed" : planTier(tier.slug) === "studio" ? "border-purple-500/30" : planTier(tier.slug) === "pro" ? "border-primary/40" : ""
-            }`}
-          >
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <CardTitle className="text-base font-bold text-foreground">{tier.name}</CardTitle>
-                  {!tier.isActive && (
-                    <Badge variant="outline" className="text-[9px]  border-amber-500/40 text-amber-400 bg-amber-500/10">
-                      Archived
-                    </Badge>
-                  )}
-                </div>
-                <Badge variant="outline" className="text-[10px] ">
-                  {tier.activeSubscribersCount} Active
-                </Badge>
-              </div>
-
-              <div className="flex items-baseline justify-between mt-1">
-                <p className="text-2xl font-black font-heading text-primary">
-                  ${(tier.priceCents / 100).toFixed(0)}
-                  <span className="text-xs font-normal text-muted-foreground ">
-                    {tier.billingInterval === "year" ? " / yr" : " / mo"}
-                  </span>
-                </p>
-
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => handleOpenEditPlan(tier)}
-                    className="rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
-                    title="Edit Plan Pricing"
-                  >
-                    <Edit2 className="size-3.5" />
-                  </Button>
-
-                  {tier.slug !== "starter" && (
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => handleOpenDeletePlan(tier)}
-                      className="rounded-lg text-muted-foreground hover:text-red-400 cursor-pointer"
-                      title="Delete or Archive Plan"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-
-            <CardContent className="pt-2">
-              <p className="text-[11px] text-muted-foreground  leading-relaxed">
-                {tier.featuresSummary}
-              </p>
-              {tier.stripePriceId && (
-                <p className="text-[9px]  text-muted-foreground mt-2 truncate">
-                  Stripe ID: {tier.stripePriceId}
-                </p>
-              )}
-              {canAddYearly(tier) && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleOpenAddYearly(tier)}
-                  className="mt-3 h-7 rounded-full text-[11px] cursor-pointer"
-                >
-                  <Plus className="size-3 mr-1" /> Add yearly price
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Subscriptions Table */}
-      <Card className="bg-card border-border shadow-sm overflow-hidden">
-        <CardHeader className="p-6 pb-4 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <CardTitle className="text-base font-bold font-heading">
-              Platform Subscriptions ({filteredSubscriptions.length})
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Live subscription list for all registered creator studio workspaces.
-            </CardDescription>
-          </div>
-
-          <div className="relative min-w-[240px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Filter studio, slug, or plan..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8.5 h-8.5 text-xs rounded-xl bg-muted border-border"
-            />
-          </div>
-        </CardHeader>
-
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-muted/40 border-b border-border text-muted-foreground  uppercase text-[10px]">
-                <tr>
-                  <th className="p-4 pl-6">Studio Workspace</th>
-                  <th className="p-4">Plan Tier</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4">Monthly Rate</th>
-                  <th className="p-4">Joined Date</th>
-                  <th className="p-4 pr-6 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {filteredSubscriptions.map((sub) => (
-                  <tr key={sub.id} className="hover:bg-muted/40 transition-colors">
-                    <td className="p-4 pl-6 font-bold text-foreground">
-                      <Link
-                        href={`/${sub.workspaceSlug}/deliveries`}
-                        target="_blank"
-                        className="hover:text-primary transition-colors flex items-center gap-1.5"
-                      >
-                        <span>{sub.workspaceName}</span>
-                        <ExternalLink className="size-3 text-muted-foreground opacity-70" />
-                      </Link>
-                    </td>
-
-                    <td className="p-4">
-                      <Badge variant="outline" className="text-[10px]  capitalize border-border">
-                        {sub.planName}
-                      </Badge>
-                    </td>
-
-                    <td className="p-4">
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px]  capitalize ${
-                          sub.status === "active"
-                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-bold"
-                            : sub.status === "trialing"
-                            ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
-                            : "bg-muted text-muted-foreground border-border"
-                        }`}
-                      >
-                        {sub.status}
-                      </Badge>
-                    </td>
-
-                    <td className="p-4  font-semibold text-foreground">
-                      {sub.priceFormatted}
-                    </td>
-
-                    <td className="p-4  text-muted-foreground text-[11px]">
-                      {new Date(sub.createdAt).toLocaleDateString()}
-                    </td>
-
-                    <td className="p-4 pr-6 text-right">
-                      <Button
-                        asChild
-                        variant="ghost"
-                        size="sm"
-                        className="rounded-lg text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-                      >
-                        <Link href={`/admin/workspaces/${sub.workspaceId}`}>
-                          Inspect Workspace &rarr;
-                        </Link>
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* CREATE NEW PLAN DIALOG */}
-      <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
-        <DialogContent className="sm:max-w-md bg-card border-border">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              <Plus className="size-5 text-primary" />
-              Create Subscription Tier (Auto-Stripe Sync)
-            </DialogTitle>
-            <DialogDescription>
-              Define a new tier. A counterpart Stripe Product &amp; Price will be created automatically.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleCreatePlanSubmit} className="space-y-4 py-2">
-            {serverError && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs ">
-                {serverError}
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">
-                  Plan Name
-                </label>
-                <Input
-                  type="text"
-                  required
-                  placeholder="e.g. Enterprise"
-                  value={createName}
-                  onChange={(e) => {
-                    setCreateName(e.target.value);
-                    setCreateSlug(e.target.value.toLowerCase().trim().replace(/[^a-z0-9]/g, "-"));
-                  }}
-                  className="bg-muted border-border text-xs"
+      <AdminSection
+        title="Plans"
+        description={`In the order the pricing pages show them. ${yearlyOnSale.length} of ${paidOnSale.length} paid plans sold yearly.`}
+      >
+        <div className="-m-4 overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="pl-4 text-xs">Plan</TableHead>
+                <TableHead className="text-xs">Price</TableHead>
+                <TableHead className="text-xs">Subscribers</TableHead>
+                <TableHead className="text-xs">Limits</TableHead>
+                <TableHead className="text-xs">Features</TableHead>
+                <TableHead className="sticky right-0 bg-card pr-4 text-right text-xs">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {tiers.map((tier) => (
+                <PlanRow
+                  key={tier.monthly.id}
+                  tier={tier}
+                  onEdit={() => setEditing(tier)}
+                  onDelete={() => setDeleting(tier)}
                 />
-              </div>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </AdminSection>
 
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">
-                  Slug (URL Safe)
-                </label>
-                <Input
-                  type="text"
-                  required
-                  placeholder="enterprise"
-                  value={createSlug}
-                  onChange={(e) => setCreateSlug(e.target.value)}
-                  className="bg-muted border-border text-xs "
-                />
-              </div>
-            </div>
+      <SubscriptionsSection subscriptions={subscriptions} />
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">
-                  Monthly Price (USD)
-                </label>
-                <Input
-                  type="number"
-                  min={0}
-                  required
-                  value={createPriceUsd}
-                  onChange={(e) => setCreatePriceUsd(Number(e.target.value))}
-                  className="bg-muted border-border text-xs "
-                />
-              </div>
+      <PlanEditorDialog
+        open={editing !== null}
+        onOpenChange={(open) => !open && setEditing(null)}
+        tier={editing === "new" ? null : editing}
+        nextSortOrder={nextSortOrder}
+        onSaved={(message) => {
+          toast.success(message);
+          router.refresh();
+        }}
+      />
 
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1">
-                  Storage Allocation (GB)
-                </label>
-                <Input
-                  type="number"
-                  min={1}
-                  required
-                  value={createStorageGb}
-                  onChange={(e) => setCreateStorageGb(Number(e.target.value))}
-                  className="bg-muted border-border text-xs "
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-3 bg-muted rounded-xl border border-border">
-              <div>
-                <p className="text-xs font-bold text-foreground">WhatsApp Delivery</p>
-                <p className="text-[10px] text-muted-foreground">Include automated client broadcasts</p>
-              </div>
-              <Switch checked={createWhatsApp} onCheckedChange={setCreateWhatsApp} />
-            </div>
-
-            <div>
-              <label htmlFor="create-plan-reason" className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
-                Reason
-              </label>
-              <Textarea
-                id="create-plan-reason"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Why are you making this change? It's saved in the audit log."
-                rows={2}
-                maxLength={500}
-                className="text-xs"
-              />
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="submit"
-                disabled={isPending || createSuccess || !reasonValid}
-                className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90"
-              >
-                {createSuccess ? (
-                  <>
-                    <Check className="size-3.5 mr-1" /> Created &amp; Synced!
-                  </>
-                ) : isPending ? (
-                  "Syncing with Stripe..."
-                ) : (
-                  "Create Tier &amp; Stripe Product"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* EDIT PLAN DIALOG */}
-      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
-        <DialogContent className="sm:max-w-md bg-card border-border">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              <DollarSign className="size-5 text-primary" />
-              Edit Subscription Tier Configuration
-            </DialogTitle>
-            <DialogDescription>
-              Modify pricing and title for <strong className="text-foreground">{selectedPlan?.name}</strong>.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleSavePlanEdit} className="space-y-4 py-2">
-            {serverError && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs ">
-                {serverError}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
-                Plan Name
-              </label>
-              <Input
-                type="text"
-                required
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="bg-muted border-border text-xs"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
-                {selectedPlan?.billingInterval === "year" ? "Yearly" : "Monthly"} Price (USD)
-              </label>
-              <Input
-                type="number"
-                min={0}
-                required
-                value={editPriceUsd}
-                onChange={(e) => setEditPriceUsd(Number(e.target.value))}
-                disabled={Boolean(selectedPlan?.stripePriceId)}
-                className="bg-muted border-border text-xs "
-              />
-              {selectedPlan?.stripePriceId && (
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Stripe charges this price, so it can&apos;t change here. Create a plan with the new price, then archive this one.
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="edit-plan-reason" className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
-                Reason
-              </label>
-              <Textarea
-                id="edit-plan-reason"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Why are you making this change? It's saved in the audit log."
-                rows={2}
-                maxLength={500}
-                className="text-xs"
-              />
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="submit"
-                disabled={isPending || editSuccess || !reasonValid}
-                className="rounded-full bg-primary text-black font-bold text-xs hover:bg-primary/90"
-              >
-                {editSuccess ? (
-                  <>
-                    <Check className="size-3.5 mr-1" /> Plan Saved!
-                  </>
-                ) : isPending ? (
-                  "Updating..."
-                ) : (
-                  "Save Plan Details"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* ADD YEARLY PRICE DIALOG */}
-      <Dialog open={yearlyModalOpen} onOpenChange={setYearlyModalOpen}>
-        <DialogContent className="sm:max-w-md bg-card border-border">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              <DollarSign className="size-5 text-primary" />
-              Add a yearly price
-            </DialogTitle>
-            <DialogDescription>
-              Sell <strong className="text-foreground">{selectedPlan?.name}</strong> yearly too. This creates a
-              yearly Stripe price and a yearly plan with the same features, and the pricing pages then offer
-              monthly or yearly.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleAddYearlySubmit} className="space-y-4 py-2">
-            {serverError && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs ">
-                {serverError}
-              </div>
-            )}
-
-            <div>
-              <label htmlFor="yearly-price" className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
-                Yearly Price (USD)
-              </label>
-              <Input
-                id="yearly-price"
-                type="number"
-                min={1}
-                step="0.01"
-                required
-                value={yearlyPriceUsd}
-                onChange={(e) => setYearlyPriceUsd(Number(e.target.value))}
-                className="bg-muted border-border text-xs "
-              />
-              {selectedPlan && (
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Twelve monthly payments come to {formatUsd(selectedPlan.priceCents * 12)}, so this saves{" "}
-                  {yearlySavingsPercent(selectedPlan.priceCents, Math.round(yearlyPriceUsd * 100))}%. Stripe prices
-                  can&apos;t be changed afterwards.
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="yearly-plan-reason" className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
-                Reason
-              </label>
-              <Textarea
-                id="yearly-plan-reason"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Why are you making this change? It's saved in the audit log."
-                rows={2}
-                maxLength={500}
-                className="text-xs"
-              />
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="submit"
-                disabled={isPending || yearlySuccess || !reasonValid}
-                className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90"
-              >
-                {yearlySuccess ? (
-                  <>
-                    <Check className="size-3.5 mr-1" /> Yearly price added
-                  </>
-                ) : isPending ? (
-                  "Creating the Stripe price..."
-                ) : (
-                  "Create yearly price"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* DELETE / ARCHIVE PLAN CONFIRMATION DIALOG */}
-      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
-        <DialogContent className="sm:max-w-md bg-card border-border">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-red-400">
-              <AlertTriangle className="size-5 text-red-400" />
-              Delete / Archive Subscription Tier
-            </DialogTitle>
-            <DialogDescription>
-              Safety evaluation for plan tier{" "}
-              <strong className="text-foreground">{selectedPlan?.name}</strong> (slug: {selectedPlan?.slug}).
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2 text-xs">
-            {serverError && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs ">
-                {serverError}
-              </div>
-            )}
-
-            {deleteSuccessMsg ? (
-              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400  text-xs flex items-center gap-2">
-                <Check className="size-4 shrink-0" />
-                <span>{deleteSuccessMsg}</span>
-              </div>
-            ) : selectedPlan?.slug === "starter" ? (
-              <div className="p-3.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 ">
-                <p className="font-bold uppercase text-[11px] mb-1">🛡️ Protected System Plan</p>
-                <p>The "starter" plan cannot be deleted because new user registrations depend on it.</p>
-              </div>
-            ) : (selectedPlan?.activeSubscribersCount || 0) > 0 ? (
-              <div className="p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300  space-y-1.5">
-                <p className="font-bold uppercase text-[11px]">⚠️ Active Subscribers Detected</p>
-                <p>
-                  This plan currently has <strong>{selectedPlan?.activeSubscribersCount}</strong> active subscriber(s).
-                </p>
-                <p className="text-[11px] text-amber-200/80">
-                  To protect active accounts from losing their tier, the system will <strong>Archive / Deactivate</strong> this plan instead of hard deleting it. Existing subscribers keep their access, but the plan will be hidden from new users.
-                </p>
-              </div>
-            ) : (
-              <div className="p-3.5 rounded-xl bg-muted border border-border text-muted-foreground ">
-                <p className="font-bold text-foreground uppercase text-[11px] mb-1">0 Active Subscribers</p>
-                <p>This plan has zero subscribers and will be permanently deleted from the database and archived in Stripe.</p>
-              </div>
-            )}
-
-            {selectedPlan?.slug !== "starter" && !deleteSuccessMsg && (
-              <div>
-                <label htmlFor="delete-plan-reason" className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
-                  Reason
-                </label>
-                <Textarea
-                  id="delete-plan-reason"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="Why are you making this change? It's saved in the audit log."
-                  rows={2}
-                  maxLength={500}
-                  className="text-xs"
-                />
-              </div>
-            )}
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDeleteModalOpen(false)}
-                className="rounded-full text-xs"
-              >
-                Cancel
-              </Button>
-
-              {selectedPlan?.slug !== "starter" && !deleteSuccessMsg && (
-                <Button
-                  type="button"
-                  onClick={handleDeletePlanSubmit}
-                  disabled={isPending || !reasonValid}
-                  className="rounded-full bg-red-500 text-white font-bold text-xs hover:bg-red-600"
-                >
-                  {isPending ? "Processing..." : (selectedPlan?.activeSubscribersCount || 0) > 0 ? "Archive Plan" : "Permanently Delete Plan"}
-                </Button>
-              )}
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <DeletePlanDialog
+        tier={deleting}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        onDeleted={(message) => {
+          toast.success(message);
+          router.refresh();
+        }}
+      />
     </div>
+  );
+}
+
+function PlanRow({ tier, onEdit, onDelete }: { tier: PlanTierItem; onEdit: () => void; onDelete: () => void }) {
+  const { monthly, yearly } = tier;
+  const orphanYearly = monthly.billingInterval === "year";
+  const f = featuresDraftFrom(monthly.features, planTier(monthly.slug));
+  const subscribers = monthly.activeSubscribersCount + (yearly?.activeSubscribersCount ?? 0);
+  const saving = yearly ? yearlySavingsPercent(monthly.priceCents, yearly.priceCents) : 0;
+  const enabled = CAPABILITIES.filter((cap) => f[cap.key]);
+
+  return (
+    <TableRow className={monthly.isActive ? undefined : "text-muted-foreground"}>
+      <TableCell className="pl-4 align-top">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {orphanYearly ? (
+            <span className="font-medium text-foreground">{monthly.name}</span>
+          ) : (
+            <button type="button" onClick={onEdit} className="font-medium text-foreground hover:text-primary hover:underline">
+              {monthly.name}
+            </button>
+          )}
+          {!monthly.isActive && <Pill tone="warning">Hidden</Pill>}
+          {orphanYearly && <Pill tone="danger">No monthly plan</Pill>}
+        </div>
+        <p className="font-mono text-xs text-muted-foreground">{monthly.slug}</p>
+      </TableCell>
+
+      <TableCell className="align-top">
+        <p className="font-medium text-foreground">
+          {monthly.priceCents === 0
+            ? "Free"
+            : `${formatMoney(monthly.priceCents, monthly.currency)}/${orphanYearly ? "yr" : "mo"}`}
+        </p>
+        {!orphanYearly && monthly.priceCents > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {yearly && sellsYearly(tier) ? (
+              <>
+                {formatMoney(yearly.priceCents, yearly.currency)}/yr
+                {saving > 0 && <span className="text-primary"> · save {saving}%</span>}
+              </>
+            ) : (
+              "Monthly only"
+            )}
+          </p>
+        )}
+      </TableCell>
+
+      <TableCell className="align-top">
+        <p className="text-foreground">{formatNumber(subscribers)}</p>
+        {yearly && subscribers > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {formatNumber(monthly.activeSubscribersCount)} monthly · {formatNumber(yearly.activeSubscribersCount)} yearly
+          </p>
+        )}
+      </TableCell>
+
+      <TableCell className="min-w-56 align-top text-xs whitespace-normal text-muted-foreground">
+        <p>
+          <span className="text-foreground">{formatGb(f.storage_gb)}</span> storage · {f.team_seats} seat
+          {f.team_seats === 1 ? "" : "s"}
+        </p>
+        <p>
+          {limit(f.client_links, "room", "rooms")} · {limit(f.share_links_per_delivery, "link", "links")} per room
+        </p>
+        <p>
+          {limit(f.portfolio_videos, "portfolio video", "portfolio videos")} ·{" "}
+          {f.languages.map((l) => (l === "ar" ? "AR" : "EN")).join(" + ")}
+        </p>
+      </TableCell>
+
+      <TableCell className="min-w-48 align-top whitespace-normal">
+        <p className="text-xs">
+          <span className="font-medium text-foreground">
+            {enabled.length} of {CAPABILITIES.length}
+          </span>{" "}
+          <span className="text-muted-foreground">features</span>
+        </p>
+        <p
+          className="min-w-48 max-w-64 text-xs text-muted-foreground"
+          title={CAPABILITIES.map((cap) => `${f[cap.key] ? "✓" : "✗"} ${cap.label}`).join("\n")}
+        >
+          {enabled.length === 0 ? "None" : enabled.map((cap) => cap.short).join(" · ")}
+        </p>
+      </TableCell>
+
+      <TableCell className="sticky right-0 bg-card pr-4 text-right align-top">
+        <div className="flex justify-end gap-1">
+          {!orphanYearly && (
+            <Button variant="outline" size="sm" onClick={onEdit}>
+              <Pencil className="size-3.5" /> Edit
+            </Button>
+          )}
+          {monthly.slug !== "starter" && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onDelete}
+              className="text-muted-foreground hover:text-destructive"
+              aria-label={`Delete ${monthly.name}`}
+              title="Delete or archive"
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          )}
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function SubscriptionsSection({ subscriptions }: { subscriptions: AdminSubscriptionListItem[] }) {
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<string>(ALL);
+
+  const q = query.trim().toLowerCase();
+  const rows = subscriptions.filter(
+    (s) =>
+      (status === ALL || s.status === status) &&
+      (!q ||
+        s.workspaceName.toLowerCase().includes(q) ||
+        s.workspaceSlug.toLowerCase().includes(q) ||
+        s.planName.toLowerCase().includes(q))
+  );
+  const statusItems = [
+    { value: ALL, label: "Status: all" },
+    ...STATUSES.map((value) => ({ value, label: `Status: ${SUBSCRIPTION_STATUS_LABELS[value] ?? value}` })),
+  ];
+  const filtered = q !== "" || status !== ALL;
+
+  return (
+    <AdminSection
+      title="Subscriptions"
+      description={`${formatNumber(rows.length)} of ${formatNumber(subscriptions.length)} workspaces with a subscription.`}
+    >
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:w-72">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search workspace or plan"
+            aria-label="Search workspace or plan"
+            className="h-8 pl-8"
+          />
+        </div>
+        <Select items={statusItems} value={status} onValueChange={(value) => setStatus(value ? String(value) : ALL)}>
+          <SelectTrigger size="sm" aria-label="Status">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {statusItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {filtered && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setQuery("");
+              setStatus(ALL);
+            }}
+          >
+            <X className="size-3.5" /> Clear
+          </Button>
+        )}
+      </div>
+
+      <div className="-mx-4 -mb-4 overflow-x-auto border-t border-border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="pl-4 text-xs">Workspace</TableHead>
+              <TableHead className="text-xs">Plan</TableHead>
+              <TableHead className="text-xs">Status</TableHead>
+              <TableHead className="text-xs">Price</TableHead>
+              <TableHead className="pr-4 text-xs">Started</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center text-sm text-muted-foreground">
+                  {filtered ? "Nothing matches these filters." : "No subscriptions yet."}
+                </TableCell>
+              </TableRow>
+            ) : (
+              rows.map((sub) => (
+                <TableRow key={sub.id}>
+                  <TableCell className="pl-4">
+                    <Link href={`/admin/workspaces/${sub.workspaceId}`} className="font-medium hover:text-primary">
+                      {sub.workspaceName}
+                    </Link>
+                    {sub.workspaceSlug && <p className="font-mono text-xs text-muted-foreground">{sub.workspaceSlug}</p>}
+                  </TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center gap-1.5">
+                      {sub.planName}
+                      {sub.billingInterval === "year" && <Pill tone="primary">Yearly</Pill>}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <SubscriptionStatusBadge status={sub.status} />
+                  </TableCell>
+                  <TableCell>{sub.priceFormatted}</TableCell>
+                  <TableCell className="pr-4 text-muted-foreground">{formatDate(sub.createdAt)}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </AdminSection>
+  );
+}
+
+/** Deletes a tier: its yearly plan, then its monthly plan. A plan someone pays for is archived instead. */
+function DeletePlanDialog({
+  tier,
+  onOpenChange,
+  onDeleted,
+}: {
+  tier: PlanTierItem | null;
+  onOpenChange: (open: boolean) => void;
+  onDeleted: (message: string) => void;
+}) {
+  const subscribers = tier ? tier.monthly.activeSubscribersCount + (tier.yearly?.activeSubscribersCount ?? 0) : 0;
+
+  return (
+    <ReasonDialog
+      open={tier !== null}
+      onOpenChange={onOpenChange}
+      title={`Delete ${tier?.monthly.name ?? "plan"}`}
+      description={
+        tier?.yearly
+          ? "Removes the monthly and the yearly plan, and archives their Stripe prices."
+          : "Removes the plan and archives its Stripe price."
+      }
+      confirmLabel={subscribers > 0 ? "Archive plan" : "Delete permanently"}
+      destructive
+      onConfirm={async (reason) => {
+        if (!tier) return;
+        let changed = false;
+        for (const plan of [tier.yearly, tier.monthly]) {
+          if (!plan) continue;
+          const res = await deletePlanAction({ planId: plan.id, reason });
+          if (!res.success) {
+            if (changed) onDeleted(`Part of ${tier.monthly.name} was removed.`);
+            return res.error || `${plan.slug} couldn't be deleted.`;
+          }
+          changed = true;
+        }
+        onDeleted(subscribers > 0 ? `${tier.monthly.name} archived.` : `${tier.monthly.name} deleted.`);
+      }}
+    >
+      {subscribers > 0 ? (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
+          {formatNumber(subscribers)} workspace{subscribers === 1 ? " is" : "s are"} subscribed, so the plan is{" "}
+          <span className="font-medium">archived</span>, not deleted: they keep their access and price, and nobody new
+          can choose it.
+        </div>
+      ) : (
+        <p className="rounded-lg border border-border p-3 text-sm text-muted-foreground">
+          Nobody is subscribed, so the plan is permanently deleted. This can&apos;t be undone.
+        </p>
+      )}
+    </ReasonDialog>
   );
 }

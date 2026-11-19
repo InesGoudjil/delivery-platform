@@ -1,10 +1,9 @@
 "use client";
 
 import React from "react";
-import { Trash2, AlertTriangle, Loader2 } from "lucide-react";
-import { UniversalDialog } from "@/components/ui/universal-dialog";
-import { Button } from "@/components/ui/button";
-import { TypographyMuted, TypographySpan } from "@/components/ui/typography";
+import { Trash2, AlertTriangle } from "lucide-react";
+import { UniversalDialog, UniversalDialogAction } from "@/components/ui/universal-dialog";
+import { TypographyMuted } from "@/components/ui/typography";
 
 interface DeleteConfirmDialogProps {
   isOpen: boolean;
@@ -56,40 +55,24 @@ export function DeleteConfirmDialog({
       showCloseButton={!isDeleting}
       footer={
         <>
-          <Button
-            type="button"
-            variant="outline"
+          <UniversalDialogAction
+            intent="secondary"
             disabled={isDeleting}
             onClick={() => onOpenChange(false)}
-            className="rounded-full border-white/15 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white text-xs font-semibold px-4 py-2 cursor-pointer"
           >
             Cancel
-          </Button>
-
-          <Button
-            type="button"
-            disabled={isDeleting}
+          </UniversalDialogAction>
+          <UniversalDialogAction
+            intent={isPermanent ? "danger" : "warning"}
             onClick={async () => {
               await onConfirm();
             }}
-            className={`rounded-full font-bold text-xs px-5 py-2 flex items-center gap-1.5 shadow-lg cursor-pointer ${
-              isPermanent
-                ? "bg-red-600 hover:bg-red-700 text-white shadow-red-600/20"
-                : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20"
-            }`}
+            loading={isDeleting}
+            loadingText={isPermanent ? "Deleting..." : "Moving..."}
+            icon={<Trash2 />}
           >
-            {isDeleting ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin" />
-                <TypographySpan>{isPermanent ? "Deleting..." : "Moving..."}</TypographySpan>
-              </>
-            ) : (
-              <>
-                <Trash2 className="size-3.5" />
-                <TypographySpan>{displayConfirmText}</TypographySpan>
-              </>
-            )}
-          </Button>
+            {displayConfirmText}
+          </UniversalDialogAction>
         </>
       }
     >

@@ -1,5 +1,10 @@
 import Stripe from 'stripe';
-import { getStripeClient, createStripeProductAndPrice, archiveStripeProductAndPrice } from '@/lib/stripe/client';
+import {
+  getStripeClient,
+  createStripeProductAndPrice,
+  archiveStripeProductAndPrice,
+  replaceStripePrice,
+} from '@/lib/stripe/client';
 import { ISubscriptionRepository } from '@/core/repositories/subscription.repository';
 import { IPlanRepository } from '@/core/repositories/plan.repository';
 import { IWorkspaceMemberRepository } from '@/core/repositories/workspace-member.repository';
@@ -471,6 +476,24 @@ export class StripeService {
   }): Promise<{ stripePriceId: string | null; stripeProductId: string | null }> {
     return createStripeProductAndPrice(
       params.name,
+      params.priceCents,
+      params.currency || 'USD',
+      params.billingInterval || 'month'
+    );
+  }
+
+  /**
+   * A new Stripe price on the old price's product, for a plan whose price changed. The old price
+   * is deactivated; its subscribers keep paying it.
+   */
+  async replaceStripePrice(params: {
+    oldStripePriceId: string;
+    priceCents: number;
+    currency?: string;
+    billingInterval?: 'month' | 'year';
+  }): Promise<string> {
+    return replaceStripePrice(
+      params.oldStripePriceId,
       params.priceCents,
       params.currency || 'USD',
       params.billingInterval || 'month'
