@@ -43,10 +43,33 @@ export const featureValuesSchema = z
     priority_support: z.boolean().optional(),
     silo_archive: z.boolean().optional(),
     white_label: z.boolean().optional(),
+    extended_link_expiry: z.boolean().optional(),
+    share_links_per_delivery: z.number().int().min(-1).max(1_000).optional(),
   })
   .strict();
 
 export type FeatureValuesInput = z.infer<typeof featureValuesSchema>;
+
+/**
+ * A plan's whole feature set, as the plan editor saves it: the limits are required, so a plan
+ * can't be saved half set up. Left-out flags are off; a left-out share_links_per_delivery and
+ * extended_link_expiry follow their tier defaults (lib/share-links).
+ */
+export const planFeaturesSchema = featureValuesSchema.required({
+  storage_gb: true,
+  client_links: true,
+  portfolio_videos: true,
+  team_seats: true,
+  languages: true,
+});
+
+export type PlanFeaturesInput = z.infer<typeof planFeaturesSchema>;
+
+const planName = z.string().trim().min(2, "Plan name must be at least 2 characters").max(100);
+const priceUsd = z.coerce.number().nonnegative().max(100_000);
+/** A yearly price, or null for none. */
+const yearlyPriceUsd = z.coerce.number().positive("Enter the yearly price.").max(1_000_000).nullable();
+const sortOrder = z.coerce.number().int().min(0).max(1_000);
 
 export const updateWorkspaceFeaturesSchema = z.object({
   workspaceId: recordId("Workspace"),
@@ -59,7 +82,7 @@ export const updateWorkspaceFeaturesSchema = z.object({
 export type UpdateWorkspaceFeaturesInput = z.infer<typeof updateWorkspaceFeaturesSchema>;
 
 export const createPlanSchema = z.object({
-  name: z.string().trim().min(2, "Plan name must be at least 2 characters").max(100),
+  name: planName,
   slug: z
     .string()
     .trim()
@@ -69,12 +92,14 @@ export const createPlanSchema = z.object({
     .regex(/^[a-z0-9-]+$/, "Slug must only contain lowercase letters, digits and hyphens")
     .refine(
       (slug) => !slug.endsWith(YEARLY_SLUG_SUFFIX),
-      `Slugs ending in "${YEARLY_SLUG_SUFFIX}" are for yearly prices. Use "Add yearly price" on the monthly plan instead.`
+      `Slugs ending in "${YEARLY_SLUG_SUFFIX}" are for yearly prices. Set a yearly price on the plan instead.`
     ),
-  priceUsd: z.coerce.number().nonnegative().max(100_000).default(0),
-  storageGb: z.coerce.number().int().min(1).max(100_000).default(500),
-  clientLinks: z.coerce.number().int().min(-1).max(100_000).default(-1),
-  whatsappDelivery: z.boolean().default(false),
+  priceUsd: priceUsd.default(0),
+  /** Sells the plan yearly too, at this price. */
+  yearlyPriceUsd: yearlyPriceUsd.default(null),
+  sortOrder: sortOrder.default(10),
+  isActive: z.boolean().default(true),
+  features: planFeaturesSchema,
 });
 
 export type CreatePlanInput = z.infer<typeof createPlanSchema>;
@@ -97,6 +122,23 @@ export const updatePlanSchema = z.object({
 });
 
 export type UpdatePlanInput = z.infer<typeof updatePlanSchema>;
+
+/**
+ * Everything about a tier, saved at once from the plan editor: the monthly plan and its yearly
+ * twin (see YEARLY_SLUG_SUFFIX). `yearlyPriceUsd: null` stops selling it yearly.
+ */
+export const savePlanTierSchema = z.object({
+  /** The tier's monthly plan. */
+  planId: recordId("Plan"),
+  name: planName,
+  priceUsd,
+  yearlyPriceUsd,
+  sortOrder,
+  isActive: z.boolean(),
+  features: planFeaturesSchema,
+});
+
+export type SavePlanTierInput = z.infer<typeof savePlanTierSchema>;
 
 export const deletePlanSchema = z.object({
   planId: recordId("Plan"),

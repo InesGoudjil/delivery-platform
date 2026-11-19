@@ -20,6 +20,8 @@ export interface ShareLink {
   passcodeSealed: string | null;
   expiresAt: string | null;
   revokedAt: string | null;
+  /** Soft-deleted: never opens and is hidden from the studio. Repositories leave these out. */
+  deletedAt: string | null;
   canComment: boolean;
   canApprove: boolean;
   canDownload: boolean;
@@ -109,6 +111,7 @@ export function primaryLinkFromDelivery(delivery: Delivery): ShareLink {
     passcodeSealed: null,
     expiresAt: delivery.expiresAt ?? null,
     revokedAt: null,
+    deletedAt: null,
     canComment: delivery.isCommentAllowed !== false,
     canApprove: true,
     canDownload: delivery.isDownloadAllowed === true,

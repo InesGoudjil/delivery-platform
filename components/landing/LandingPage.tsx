@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { CheckCircle2 } from "lucide-react";
 import { HeaderSection } from "@/components/landing/HeaderSection";
 import { HeroSection } from "@/components/landing/HeroSection";
@@ -17,12 +18,16 @@ import { PartnershipSection } from "@/components/landing/PartnershipSection";
 import { FaqSection } from "@/components/landing/FaqSection";
 import { CtaSection } from "@/components/landing/CtaSection";
 import { FooterSection } from "@/components/landing/FooterSection";
-import { WaitlistModal } from "@/components/waitlist/WaitlistModal";
 import type { UserNavMenuProps } from "@/components/landing/UserNavMenu";
 import { AmbientBackground } from "@/components/ui/ambient-background";
 import { toast as sonnerToast } from "sonner";
 import { groupPlanTiers } from "@/core/entities/plan";
 import { forgetPlanIntent, rememberPlanIntent } from "@/lib/billing/plan-intent";
+
+/** Only referral visits (?ref=) open the waitlist modal, so everyone else never loads it. */
+const WaitlistModal = dynamic(() => import("@/components/waitlist/WaitlistModal").then((m) => m.WaitlistModal), {
+  ssr: false,
+});
 
 interface LandingPageProps {
   user?: UserNavMenuProps["user"] | null;
@@ -183,11 +188,13 @@ export default function LandingPage({
       <FooterSection />
 
       {/* Waitlist Modal (Auto opens on referral link visit or manual trigger) */}
-      <WaitlistModal
-        isOpen={showWaitlistModal}
-        onClose={() => setShowWaitlistModal(false)}
-        initialReferralCode={referralCode}
-      />
+      {referralCode && (
+        <WaitlistModal
+          isOpen={showWaitlistModal}
+          onClose={() => setShowWaitlistModal(false)}
+          initialReferralCode={referralCode}
+        />
+      )}
 
       {/* Floating Toast Notification */}
       {toast && (

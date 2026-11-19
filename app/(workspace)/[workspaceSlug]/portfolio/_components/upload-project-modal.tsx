@@ -17,7 +17,7 @@ import {
   Layers,
   Info,
 } from "lucide-react";
-import { UniversalDialog } from "@/components/ui/universal-dialog";
+import { UniversalDialog, UniversalDialogAction } from "@/components/ui/universal-dialog";
 import { TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import {
   createShowcaseProjectAction,
@@ -521,10 +521,58 @@ export function UploadProjectModal({
           if (!open) handleClose();
         }}
         size="3xl"
-        title="UPLOAD A PROJECT"
+        icon={<Layers className="size-5" />}
+        title="Upload a Project"
         description="Group films and photo stills from the same campaign or shoot into one showcase story on your portfolio. Supports multi-file batch upload."
         showCloseButton={true}
         bodyClassName="space-y-5"
+        footer={
+          <div className="flex w-full flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <TypographyMuted className="text-xs text-zinc-400">
+              {completedCount === totalCount && totalCount > 0 ? (
+                <TypographySpan className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                  <CheckCircle2 className="size-4" /> All {totalCount} items uploaded successfully!
+                </TypographySpan>
+              ) : (
+                <TypographySpan>
+                  {queuedCount} {queuedCount === 1 ? "asset" : "assets"} queued for this showcase project
+                </TypographySpan>
+              )}
+            </TypographyMuted>
+
+            <div className="flex items-center gap-2.5 justify-end">
+              {uploading ? (
+                <>
+                  <UniversalDialogAction intent="danger" onClick={cancelActiveUpload}>
+                    Cancel Uploads
+                  </UniversalDialogAction>
+                  <UniversalDialogAction intent="secondary" onClick={handleClose}>
+                    Continue in Background
+                  </UniversalDialogAction>
+                </>
+              ) : (
+                <>
+                  <UniversalDialogAction intent="secondary" onClick={handleClose}>
+                    Cancel
+                  </UniversalDialogAction>
+                  <UniversalDialogAction
+                    intent="primary"
+                    type="submit"
+                    form="upload-project-form"
+                    disabled={!projectName.trim() || uploading || isAtLimit}
+                    icon={<Plus />}
+                  >
+                    {isAtLimit
+                      ? "Plan Limit Reached"
+                      : queuedCount > 0
+                      ? `Create Project & Upload (${queuedCount} Files)`
+                      : "Create Project Container"}
+                  </UniversalDialogAction>
+                </>
+              )}
+            </div>
+          </div>
+        }
       >
         {/* Background continuation alert while uploading */}
         {uploading && (
@@ -576,7 +624,7 @@ export function UploadProjectModal({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form id="upload-project-form" onSubmit={handleSubmit} className="space-y-5">
           {/* Section 1: Project Details & Cover */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-black/30 border border-white/10 rounded-2xl p-4">
             {/* Left 2 Cols: Title, Category, Description */}
@@ -947,56 +995,6 @@ export function UploadProjectModal({
             </div>
           )}
 
-          {/* Modal Action Buttons Footer */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-white/10">
-            <TypographyMuted className="text-xs text-zinc-400">
-              {completedCount === totalCount && totalCount > 0 ? (
-                <TypographySpan className="text-emerald-400 font-semibold flex items-center gap-1.5">
-                  <CheckCircle2 className="size-4" /> All {totalCount} items uploaded successfully!
-                </TypographySpan>
-              ) : (
-                <TypographySpan>
-                  {queuedCount} {queuedCount === 1 ? "asset" : "assets"} queued for this showcase project
-                </TypographySpan>
-              )}
-            </TypographyMuted>
-
-            <div className="flex items-center gap-2.5 justify-end">
-              {uploading ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={cancelActiveUpload}
-                    className="rounded-xl text-xs font-semibold text-destructive border-destructive/30 hover:bg-destructive/10"
-                  >
-                    Cancel Uploads
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleClose}
-                    className="rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-4 cursor-pointer"
-                  >
-                    Continue in Background
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  type="submit"
-                  disabled={!projectName.trim() || uploading || isAtLimit}
-                  className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-extrabold px-6 py-2.5 h-auto shadow-lg shadow-primary/25 cursor-pointer uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Plus className="size-4 mr-1.5" />
-                  {isAtLimit
-                    ? "Plan Limit Reached"
-                    : queuedCount > 0
-                    ? `Create Project & Upload (${queuedCount} Files)`
-                    : "Create Project Container"}
-                </Button>
-              )}
-            </div>
-          </div>
         </form>
       </UniversalDialog>
 
@@ -1004,7 +1002,7 @@ export function UploadProjectModal({
         isOpen={coverCropState.isOpen}
         onClose={() => setCoverCropState((prev) => ({ ...prev, isOpen: false }))}
         imageSrc={coverCropState.imageSrc}
-        title="EDIT & CROP PROJECT COVER"
+        title="Edit & Crop Project Cover"
         subtitle="Frame, zoom, rotate, or fine-tune the cover banner for this showcase project."
         defaultAspectRatio="16:9"
         aspectRatioOptions={["16:9", "9:16", "1:1", "4:3"]}

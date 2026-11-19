@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { submitPartnershipAction } from "@/app/actions/inquiries";
 import { TurnstileWidget, isCaptchaEnabled, type TurnstileHandle } from "@/components/security/turnstile-widget";
-import { submitPartnershipSchema, safeValidate } from "@/lib/validations";
 
 interface PartnershipSectionProps {
   onShowToast?: (msg: string) => void;
@@ -27,6 +26,11 @@ export function PartnershipSection({ onShowToast }: PartnershipSectionProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Loaded on submit: zod and the schema aren't needed to show the page.
+    const [{ safeValidate }, { submitPartnershipSchema }] = await Promise.all([
+      import("@/lib/validations/common"),
+      import("@/lib/validations/inquiries"),
+    ]);
     const validated = safeValidate(submitPartnershipSchema, {
       fullName,
       email,

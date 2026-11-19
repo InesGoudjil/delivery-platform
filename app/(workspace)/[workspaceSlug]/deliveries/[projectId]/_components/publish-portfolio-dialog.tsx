@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { UniversalDialog } from "@/components/ui/universal-dialog";
+import { UniversalDialog, UniversalDialogAction } from "@/components/ui/universal-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { Typography, TypographySpan, TypographySmall, TypographyMuted, TypographyKicker } from "@/components/ui/typography";
+import { Typography, TypographyMuted, TypographyKicker } from "@/components/ui/typography";
 import { publishDeliveryToPortfolioAction } from "@/app/actions/deliveries";
 import { toast } from "sonner";
 
@@ -70,6 +69,7 @@ export function PublishPortfolioDialog({
       open={isOpen}
       onOpenChange={onOpenChange}
       size="md"
+      icon={<Sparkles className="size-5" />}
       badge={
         <Badge variant="kicker" className="w-fit">
           SHOWCASE SPOTLIGHT
@@ -79,25 +79,21 @@ export function PublishPortfolioDialog({
       description="Instantly promote this approved delivery cut into your public portfolio showcase without re-uploading files."
       footer={
         <>
-          <Button
-            type="button"
-            variant="ghost"
+          <UniversalDialogAction
+            intent="secondary"
             onClick={() => onOpenChange(false)}
-            className="rounded-full text-xs text-muted-foreground hover:text-foreground"
           >
             Cancel
-          </Button>
-          <Button
-            type="button"
+          </UniversalDialogAction>
+          <UniversalDialogAction
+            intent="primary"
             onClick={handlePublish}
-            disabled={isPublishing}
-            className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs px-5 py-2.5 cursor-pointer shadow-lg shadow-primary/20 flex items-center gap-2"
+            loading={isPublishing}
+            loadingText="Publishing..."
+            icon={<Sparkles />}
           >
-            <Sparkles className="size-3.5" />
-            <TypographySpan variant="kicker" className="font-extrabold text-xs text-primary-foreground">
-              {isPublishing ? "Publishing..." : "Publish to Portfolio"}
-            </TypographySpan>
-          </Button>
+            Publish to Portfolio
+          </UniversalDialogAction>
         </>
       }
     >

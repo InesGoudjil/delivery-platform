@@ -38,30 +38,19 @@ export default async function AdminSubscriptionsPage() {
     }
   }
 
-  const planItems: AdminPlanItem[] = plans.map((plan) => {
-    const features = plan.features || {};
-    const storageGB = typeof features.storage_gb === "number" ? features.storage_gb : 0;
-    const links =
-      features.client_links === -1
-        ? "Unlimited links"
-        : typeof features.client_links === "number"
-          ? `${features.client_links} active rooms`
-          : "Links not set";
-    return {
-      id: plan.id,
-      name: plan.name,
-      slug: plan.slug,
-      priceCents: plan.priceCents,
-      currency: plan.currency,
-      billingInterval: plan.billingInterval,
-      sortOrder: plan.sortOrder,
-      isActive: plan.isActive,
-      activeSubscribersCount: subscriberCounts.get(plan.id) ?? 0,
-      featuresSummary: `${storageGB ? `${storageGB} GB storage` : "Storage not set"} · ${links}${features.whatsapp_delivery ? " · WhatsApp delivery" : ""}`,
-      storageGB,
-      stripePriceId: plan.stripePriceId,
-    };
-  });
+  const planItems: AdminPlanItem[] = plans.map((plan) => ({
+    id: plan.id,
+    name: plan.name,
+    slug: plan.slug,
+    priceCents: plan.priceCents,
+    currency: plan.currency,
+    billingInterval: plan.billingInterval,
+    sortOrder: plan.sortOrder,
+    isActive: plan.isActive,
+    activeSubscribersCount: subscriberCounts.get(plan.id) ?? 0,
+    stripePriceId: plan.stripePriceId,
+    features: plan.features || {},
+  }));
 
   const subscriptionItems: AdminSubscriptionListItem[] = subscriptions.map((subscription) => {
     const workspace = workspaceById.get(subscription.workspaceId);
@@ -71,7 +60,10 @@ export default async function AdminSubscriptionsPage() {
       workspaceId: subscription.workspaceId,
       workspaceName: workspace?.brandName ?? "Deleted workspace",
       workspaceSlug: workspace?.slug ?? "",
+      planId: subscription.planId,
       planName: plan?.name ?? "Unknown plan",
+      billingInterval: plan?.billingInterval ?? "month",
+      priceCents: plan?.priceCents ?? 0,
       status: subscription.status,
       currency: subscription.currency,
       priceFormatted: plan ? formatPlanPrice(plan.priceCents, plan.currency, plan.billingInterval) : "—",

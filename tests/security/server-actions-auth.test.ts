@@ -137,6 +137,7 @@ const SERVICE_ROLE_ACTIONS: Record<string, string> = {
   "app/actions/admin.ts#createPlanAction": "platform admin, audited; plans aren't tenant data",
   "app/actions/admin.ts#createYearlyPlanAction": "platform admin, audited; plans aren't tenant data",
   "app/actions/admin.ts#updatePlanAction": "platform admin, audited; plans aren't tenant data",
+  "app/actions/admin.ts#savePlanTierAction": "platform admin, audited; plans aren't tenant data",
   "app/actions/admin.ts#deletePlanAction": "platform admin, audited; plans aren't tenant data",
   "app/actions/admin.ts#updateWorkspacePlanAction": "platform admin, audited; staff choose the workspace on purpose",
   "app/actions/admin.ts#updateWorkspaceFeaturesAction": "platform admin, audited; staff choose the workspace on purpose",

@@ -87,9 +87,10 @@ export class ShareLinkService {
     return this.writer.update(link.id, { revokedAt: null });
   }
 
+  /** Soft delete: the URL stops working and the link is hidden, but its row and history stay. */
   async remove(link: ShareLink): Promise<void> {
     if (link.isPrimary) throw new Error(PRIMARY_LINK_REFUSAL);
-    await this.writer.delete(link.id);
+    await this.writer.softDelete(link.id, link.revokedAt);
   }
 
   /** A new URL for the link. Everyone with the old one loses access (their unlock cookie too). */

@@ -190,7 +190,7 @@ export function ProjectExplorerModal({
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="absolute top-3 right-3 sm:top-6 sm:right-6 size-8 sm:size-9 rounded-full bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer z-20"
+              className="glass-icon-btn absolute top-3 right-3 sm:top-6 sm:right-6 size-8 sm:size-9 rounded-full z-20"
               title="Close project explorer (Esc)"
             >
               <X className="size-4 sm:size-4.5" />
@@ -213,7 +213,7 @@ export function ProjectExplorerModal({
                   variant="outline"
                   size="sm"
                   onClick={() => onEditProject(project)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-semibold text-white transition-colors cursor-pointer h-7"
+                  className="glass-icon-btn gap-1.5 px-3 h-7 rounded-full text-xs font-semibold"
                   title="Edit project details"
                 >
                   <Pencil className="size-3" />

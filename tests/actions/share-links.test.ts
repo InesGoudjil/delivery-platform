@@ -36,6 +36,7 @@ function makeLink(overrides: Partial<ShareLink> = {}): ShareLink {
     passcodeSealed: null,
     expiresAt: inDays(7),
     revokedAt: null,
+    deletedAt: null,
     canComment: true,
     canApprove: true,
     canDownload: false,
@@ -191,7 +192,7 @@ describe("bulkUpdateShareLinksAction", () => {
 describe("ShareLinkService rules", () => {
   const repo = () => ({
     update: vi.fn(async (_id: string, patch: any) => ({ ...makeLink(), ...patch })),
-    delete: vi.fn(async () => undefined),
+    softDelete: vi.fn(async () => undefined),
     setPrimary: vi.fn(async () => undefined),
     updateMany: vi.fn(async (_ws: string, ids: string[]) => ids.length),
   });
@@ -207,6 +208,13 @@ describe("ShareLinkService rules", () => {
 
     await service.updateMany(WS, [primary, makeLink({ id: "c0000000-0000-4000-8000-0000000000a2" })], { revokedAt: now });
     expect(writer.updateMany).toHaveBeenCalledWith(WS, ["c0000000-0000-4000-8000-0000000000a2"], { revokedAt: now });
+  });
+
+  it("deletes a link softly: the row stays, marked deleted", async () => {
+    const writer = repo();
+    const service = new ShareLinkService(repo() as any, writer as any);
+    await service.remove(makeLink());
+    expect(writer.softDelete).toHaveBeenCalledWith(LINK, null);
   });
 
   it("won't make a turned-off link the main one", async () => {

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const universalDialogSizes = {
@@ -93,7 +93,7 @@ function UniversalDialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="universal-dialog-close-button"
-            className="absolute top-4 right-4 sm:top-5 sm:right-5 z-20 size-8 rounded-full bg-white/5 hover:bg-white/15 text-[#aeaeb4] hover:text-white flex items-center justify-center transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="glass-icon-btn absolute top-4 right-4 sm:top-5 sm:right-5 z-20 size-8"
           >
             <X className="size-4" />
             <span className="sr-only">Close</span>
@@ -241,6 +241,65 @@ function UniversalDialogFooter({
   );
 }
 
+
+export type UniversalDialogActionIntent = "primary" | "secondary" | "danger" | "warning";
+
+const actionIntentClasses: Record<UniversalDialogActionIntent, string> = {
+  primary: "glass-btn",
+  secondary: "glass-btn-ghost",
+  danger: "glass-btn glass-btn-danger",
+  warning: "glass-btn glass-btn-warning",
+};
+
+export interface UniversalDialogActionProps extends React.ComponentProps<"button"> {
+  /** primary: the main action · secondary: cancel/back · danger: delete · warning: archive-like. */
+  intent?: UniversalDialogActionIntent;
+  /** Shows a spinner in place of the icon and disables the button. */
+  loading?: boolean;
+  /** Label shown while loading (defaults to the normal label). */
+  loadingText?: React.ReactNode;
+  icon?: React.ReactNode;
+  size?: "sm" | "md";
+}
+
+/**
+ * The one button style for dialog footers (and header actions). Every modal uses this instead
+ * of hand-styling its Cancel / Confirm buttons, so they all look and behave the same.
+ */
+function UniversalDialogAction({
+  intent = "primary",
+  loading = false,
+  loadingText,
+  icon,
+  size = "md",
+  className,
+  children,
+  disabled,
+  type = "button",
+  ...props
+}: UniversalDialogActionProps) {
+  return (
+    <button
+      type={type}
+      data-slot="universal-dialog-action"
+      data-intent={intent}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+      className={cn(
+        actionIntentClasses[intent],
+        size === "sm" ? "h-8 px-3.5 text-[11px]" : "h-9 px-5 text-xs",
+        "gap-1.5 font-bold whitespace-nowrap cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary/60 disabled:opacity-50 disabled:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0",
+        intent === "secondary" && "font-semibold",
+        className
+      )}
+      {...props}
+    >
+      {loading ? <Loader2 className="animate-spin" /> : icon}
+      {loading && loadingText ? loadingText : children}
+    </button>
+  );
+}
+
 export interface UniversalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -329,6 +388,7 @@ UniversalDialog.Description = UniversalDialogDescription;
 UniversalDialog.Body = UniversalDialogBody;
 UniversalDialog.Footer = UniversalDialogFooter;
 UniversalDialog.Close = UniversalDialogClose;
+UniversalDialog.Action = UniversalDialogAction;
 
 export {
   UniversalDialogRoot,
@@ -342,4 +402,5 @@ export {
   UniversalDialogBody,
   UniversalDialogFooter,
   UniversalDialogClose,
+  UniversalDialogAction,
 };

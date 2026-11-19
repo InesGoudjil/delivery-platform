@@ -32,6 +32,7 @@ function makeLink(overrides: Partial<ShareLink> = {}): ShareLink {
     passcodeSealed: null,
     expiresAt: null,
     revokedAt: null,
+    deletedAt: null,
     canComment: true,
     canApprove: true,
     canDownload: true,

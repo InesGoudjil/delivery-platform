@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UniversalDialog } from "@/components/ui/universal-dialog";
+import { UniversalDialog, UniversalDialogAction } from "@/components/ui/universal-dialog";
 import {
   TypographyH4,
   TypographyMuted,
@@ -164,12 +164,34 @@ export function ExperienceSection({
           if (!open) resetForm();
         }}
         size="lg"
-        icon={<Briefcase className="size-5 text-primary" />}
+        icon={<Briefcase className="size-5" />}
         title={editingExpId ? "Edit Experience / Credential" : "Add Experience / Credential"}
         description="Showcase commercial campaigns, studio roles, or agency projects."
+        footer={
+          <>
+            <UniversalDialogAction
+              intent="secondary"
+              onClick={() => {
+                setShowExperienceModal(false);
+                resetForm();
+              }}
+            >
+              Cancel
+            </UniversalDialogAction>
+            <UniversalDialogAction
+              intent="primary"
+              type="submit"
+              form="experience-form"
+              loading={isPending}
+              loadingText="Saving..."
+            >
+              {editingExpId ? "Save Changes" : "Add Credential"}
+            </UniversalDialogAction>
+          </>
+        }
       >
 
-          <form onSubmit={handleSaveExperience} className="space-y-3.5 text-xs">
+          <form id="experience-form" onSubmit={handleSaveExperience} className="space-y-3.5 text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-muted-foreground font-medium block">
@@ -272,26 +294,6 @@ export function ExperienceSection({
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-border">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  setShowExperienceModal(false);
-                  resetForm();
-                }}
-                className="rounded-xl text-xs text-muted-foreground cursor-pointer"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isPending}
-                className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs cursor-pointer"
-              >
-                {isPending ? "Saving..." : editingExpId ? "Save Changes" : "Add Credential"}
-              </Button>
-            </div>
           </form>
       </UniversalDialog>
 

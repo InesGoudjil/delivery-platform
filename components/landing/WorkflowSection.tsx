@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { Upload, Share2, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollReveal } from "@/components/ui/motion";
@@ -75,10 +76,13 @@ export function WorkflowSection() {
             <div className="relative aspect-[16/10] rounded-2xl overflow-hidden bg-gradient-to-tr from-primary/80 via-primary to-primary/40 p-3 flex items-center justify-center border border-white/10">
               <div className="absolute inset-0 bg-black/20" />
               <div className="relative z-10 w-full h-full rounded-xl bg-[#0f0f13] border border-white/15 overflow-hidden flex flex-col justify-between p-3">
-                <img
+                {/* Resized and converted by /_next/image; lazy, as it's below the fold. */}
+                <Image
                   src={item.img}
                   alt={item.title}
-                  className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                  className="object-cover opacity-60 group-hover:scale-105 transition-transform"
                 />
                 {/* <div className="relative z-10 flex justify-between items-start">
                   <span className="bg-primary text-primary-foreground text-[10px] font-extrabold px-2 py-0.5 rounded shadow ">

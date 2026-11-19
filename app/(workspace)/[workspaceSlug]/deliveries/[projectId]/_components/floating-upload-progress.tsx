@@ -54,7 +54,7 @@ export function FloatingUploadProgress({
         {/* Progress Bar Line */}
         <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden border border-border/20">
           <div
-            className="h-full bg-gradient-to-r from-primary to-[#ff8a45] transition-all duration-300 rounded-full"
+            className="h-full bg-gradient-to-r from-primary to-[rgb(var(--acc2-rgb))] transition-all duration-300 rounded-full"
             style={{ width: `${progress.percentage}%` }}
           />
         </div>

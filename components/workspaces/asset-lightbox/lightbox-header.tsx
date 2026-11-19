@@ -83,7 +83,7 @@ export function LightboxHeader({
                   variant="ghost"
                   size="icon-xs"
                   onClick={onBack}
-                  className="size-9 sm:size-8 rounded-full bg-white/5 hover:bg-white/15 text-white cursor-pointer border border-white/10 shrink-0 mt-0.5 active:scale-95 transition-all"
+                  className="glass-icon-btn size-9 sm:size-8 rounded-full mt-0.5"
                 >
                   <ArrowLeft className="size-4" />
                 </Button>
@@ -125,7 +125,7 @@ export function LightboxHeader({
                   variant="ghost"
                   size="icon-xs"
                   onClick={onShareLink}
-                  className="size-9 sm:size-8.5 rounded-full bg-white/5 hover:bg-white/15 text-white/80 hover:text-white cursor-pointer border border-white/10 transition-colors active:scale-95"
+                  className="glass-icon-btn size-9 sm:size-8.5 rounded-full"
                 >
                   <Share2 className="size-3.5" />
                 </Button>
@@ -144,7 +144,7 @@ export function LightboxHeader({
                   variant="ghost"
                   size="icon-xs"
                   onClick={onEditAsset}
-                  className="size-9 sm:size-8.5 rounded-full bg-white/5 hover:bg-white/15 text-white/80 hover:text-white cursor-pointer border border-white/10 transition-colors active:scale-95"
+                  className="glass-icon-btn size-9 sm:size-8.5 rounded-full"
                 >
                   <Pencil className="size-3.5" />
                 </Button>
@@ -163,7 +163,7 @@ export function LightboxHeader({
                   variant="ghost"
                   size="icon-xs"
                   onClick={onDeleteAsset}
-                  className="size-9 sm:size-8.5 rounded-full bg-white/5 hover:bg-red-500/20 text-white/70 hover:text-red-400 cursor-pointer border border-white/10 transition-colors active:scale-95"
+                  className="glass-icon-btn glass-icon-btn-danger size-9 sm:size-8.5 rounded-full"
                 >
                   <Trash2 className="size-3.5" />
                 </Button>
@@ -181,7 +181,7 @@ export function LightboxHeader({
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
-                className="size-10 sm:size-9 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white flex items-center justify-center cursor-pointer transition-colors border border-white/5 active:scale-95"
+                className="glass-icon-btn size-10 sm:size-9 rounded-full"
               >
                 <X className="size-5 sm:size-4.5" />
               </Button>

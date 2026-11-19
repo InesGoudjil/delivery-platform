@@ -16,11 +16,12 @@ import {
   Download,
   Mail,
   Clock,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { UniversalDialog } from "@/components/ui/universal-dialog";
+import { UniversalDialog, UniversalDialogAction } from "@/components/ui/universal-dialog";
 import { TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import { useOptionalEntitlements } from "@/components/providers/entitlements-provider";
 import Link from "next/link";
@@ -493,8 +494,43 @@ export function ShareLinkDialog({
           Client link
         </TypographySpan>
       }
-      title="SHARE A LINK"
+      icon={<Share2 className="size-5" />}
+      title="Share a Link"
+      description="Send a review link to your client, with optional passphrase and expiry."
       bodyClassName="space-y-6"
+      footer={
+        <>
+          {canWhatsApp ? (
+            <UniversalDialogAction
+              intent="secondary"
+              onClick={handleWhatsAppShare}
+              icon={<MessageCircle className="text-emerald-400" />}
+            >
+              Open WhatsApp
+            </UniversalDialogAction>
+          ) : (
+            <UniversalDialogAction
+              intent="secondary"
+              onClick={() =>
+                toast.error(
+                  "WhatsApp delivery is available on Basic, Pro, and Studio plans. Upgrade to unlock."
+                )
+              }
+              icon={<MessageCircle />}
+              className="opacity-70 cursor-not-allowed"
+            >
+              WhatsApp <Badge variant="secondary" className="text-[9px] ml-1 py-0 px-1 ">BASIC+</Badge>
+            </UniversalDialogAction>
+          )}
+          <UniversalDialogAction
+            intent="primary"
+            onClick={handleCopyLinkWithPassphrase}
+            icon={copiedLink ? <Check /> : <Link2 />}
+          >
+            {copiedLink ? "Copied!" : sharePassphrase && passphraseValue ? "Copy Link & Pass" : "Copy Link"}
+          </UniversalDialogAction>
+        </>
+      }
     >
       {/* URL Input Bar */}
         <div className="flex items-center justify-between bg-black/60 border border-white/10 rounded-2xl px-4 py-3 text-xs gap-3">
@@ -962,43 +998,6 @@ export function ShareLinkDialog({
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-3 pt-2">
-          {canWhatsApp ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleWhatsAppShare}
-              className="rounded-full border-white/20 bg-black/40 hover:bg-white/10 text-white font-extrabold text-xs py-3 h-auto cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <MessageCircle className="size-3.5 text-emerald-400" />
-              OPEN WHATSAPP
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                toast.error(
-                  "WhatsApp delivery is available on Basic, Pro, and Studio plans. Upgrade to unlock."
-                )
-              }
-              className="rounded-full border-white/10 bg-black/20 text-muted-foreground font-extrabold text-xs py-3 h-auto opacity-70 cursor-not-allowed"
-            >
-              <MessageCircle className="size-3.5 mr-1.5 text-muted-foreground" />
-              WHATSAPP <Badge variant="secondary" className="text-[9px] ml-1.5 py-0 px-1 ">BASIC+</Badge>
-            </Button>
-          )}
-
-          <Button
-            type="button"
-            onClick={handleCopyLinkWithPassphrase}
-            className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs py-3 h-auto shadow-lg shadow-primary/20 cursor-pointer"
-          >
-            <Link2 className="size-3.5 mr-1.5" />
-            {copiedLink ? "COPIED!" : sharePassphrase && passphraseValue ? "COPY LINK & PASS" : "COPY LINK"}
-          </Button>
-        </div>
     </UniversalDialog>
   );
 }

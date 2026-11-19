@@ -397,7 +397,7 @@ export function ImageCropEditorDialog({
             variant="ghost"
             size="icon-xs"
             onClick={onClose}
-            className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white shrink-0 cursor-pointer"
+            className="glass-icon-btn size-8 rounded-full"
           >
             <X className="size-4" />
           </Button>

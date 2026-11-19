@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { UploadCloud, Plus, Check, Trash2, Pencil, Crop, Link as LinkIcon, Loader2 } from "lucide-react";
+import { UploadCloud, Plus, Check, Trash2, Pencil, Crop, Link as LinkIcon, Loader2, FolderPen } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { UniversalDialog } from "@/components/ui/universal-dialog";
+import { UniversalDialog, UniversalDialogAction } from "@/components/ui/universal-dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/sonner";
 import {
@@ -162,37 +162,37 @@ export function EditDeliveryDialog({
         open={isOpen}
         onOpenChange={onOpenChange}
         size="md"
-        title="EDIT DELIVERY"
+        icon={<FolderPen className="size-5" />}
+        title="Edit Delivery"
         description="Update the cover, manage assets, or delete this delivery."
         bodyClassName="space-y-6"
         footer={
-          <div className="w-full space-y-2">
-            <Button
-              type="button"
-              onClick={onSaveChanges}
-              disabled={isUploadingCover}
-              className="w-full rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs py-3.5 h-auto shadow-lg shadow-primary/20 cursor-pointer"
-            >
-              {isUploadingCover ? (
-                <>
-                  <Loader2 className="size-4 mr-1.5 animate-spin" /> UPLOADING COVER...
-                </>
-              ) : (
-                <>
-                  <Check className="size-4 mr-1.5" /> SAVE CHANGES
-                </>
-              )}
-            </Button>
-
-            <Button
+          <>
+            <button
               type="button"
               onClick={onDeleteDelivery}
-              variant="outline"
-              className="w-full rounded-full border-destructive/30 text-destructive bg-destructive/10 hover:bg-destructive/20 font-bold text-xs py-3 h-auto cursor-pointer"
+              title="Delete delivery"
+              aria-label="Delete delivery"
+              className="glass-icon-btn glass-icon-btn-danger size-9 self-start sm:self-auto sm:mr-auto"
             >
-              <Trash2 className="size-3.5 mr-1.5" /> Delete delivery
-            </Button>
-          </div>
+              <Trash2 className="size-4" />
+            </button>
+            <UniversalDialogAction
+              intent="secondary"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </UniversalDialogAction>
+            <UniversalDialogAction
+              intent="primary"
+              onClick={onSaveChanges}
+              loading={isUploadingCover}
+              loadingText="Uploading Cover..."
+              icon={<Check />}
+            >
+              Save Changes
+            </UniversalDialogAction>
+          </>
         }
       >
 
@@ -387,7 +387,7 @@ export function EditDeliveryDialog({
         isOpen={cropState.isOpen}
         onClose={closeCropEditor}
         imageSrc={cropState.imageSrc}
-        title="EDIT & CROP DELIVERY COVER"
+        title="Edit & Crop Delivery Cover"
         subtitle="Frame, zoom, rotate, or fine-tune the hero cover for this client delivery room."
         defaultAspectRatio="16:9"
         aspectRatioOptions={["16:9", "3:1", "4:3"]}

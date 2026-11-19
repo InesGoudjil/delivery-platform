@@ -131,7 +131,7 @@ export function WaitlistModal({
           variant="ghost"
           size="icon-sm"
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-full text-white/50 hover:bg-white/10 hover:text-white"
+          className="glass-icon-btn absolute right-4 top-4 size-8 rounded-full z-20"
         >
           <X className="size-5" />
         </Button>

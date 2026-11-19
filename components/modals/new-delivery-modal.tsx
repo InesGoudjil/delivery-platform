@@ -3,9 +3,8 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { FolderPlus, AlertTriangle, Loader2 } from "lucide-react";
-import { UniversalDialog } from "@/components/ui/universal-dialog";
-import { Button } from "@/components/ui/button";
+import { FolderPlus, AlertTriangle } from "lucide-react";
+import { UniversalDialog, UniversalDialogAction } from "@/components/ui/universal-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TypographyMuted, TypographySpan } from "@/components/ui/typography";
@@ -93,34 +92,24 @@ export function NewDeliveryModal({
       showCloseButton={!creating}
       footer={
         <>
-          <Button
-            type="button"
-            variant="outline"
+          <UniversalDialogAction
+            intent="secondary"
             disabled={creating}
             onClick={() => onOpenChange(false)}
-            className="rounded-full border-white/15 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white text-xs font-semibold px-4 py-2 cursor-pointer"
           >
             Cancel
-          </Button>
-
-          <Button
+          </UniversalDialogAction>
+          <UniversalDialogAction
+            intent="primary"
             type="submit"
             form="new-delivery-form"
-            disabled={creating || isAtLimit}
-            className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs px-5 py-2 flex items-center gap-1.5 shadow-lg shadow-primary/20 cursor-pointer disabled:opacity-50"
+            disabled={isAtLimit}
+            loading={creating}
+            loadingText="Creating..."
+            icon={<FolderPlus />}
           >
-            {creating ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin" />
-                <TypographySpan>Creating...</TypographySpan>
-              </>
-            ) : (
-              <>
-                <FolderPlus className="size-3.5" />
-                <TypographySpan>Create Delivery</TypographySpan>
-              </>
-            )}
-          </Button>
+            Create Delivery
+          </UniversalDialogAction>
         </>
       }
     >

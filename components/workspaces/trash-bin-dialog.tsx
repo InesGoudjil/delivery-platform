@@ -13,7 +13,7 @@ import {
   Archive,
   RefreshCw,
 } from "lucide-react";
-import { UniversalDialog } from "@/components/ui/universal-dialog";
+import { UniversalDialog, UniversalDialogAction } from "@/components/ui/universal-dialog";
 import { Button } from "@/components/ui/button";
 import { TypographyH4, TypographyMuted, TypographySmall, TypographySpan } from "@/components/ui/typography";
 import { toast } from "sonner";
@@ -181,33 +181,28 @@ export function TrashBinDialog({
         description="Items in trash are automatically purged after 30 days."
         headerExtra={
           assets.length > 0 ? (
-            <Button
-              type="button"
-              variant="outline"
+            <UniversalDialogAction
+              intent="danger"
               size="sm"
               onClick={() => setShowEmptyConfirm(true)}
-              className="rounded-full border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-xs font-semibold px-3 py-1.5 flex items-center gap-1.5 cursor-pointer transition-colors"
+              icon={<Trash2 />}
             >
-              <Trash2 className="size-3.5" />
-              <TypographySpan>Empty Trash</TypographySpan>
-            </Button>
+              Empty Trash
+            </UniversalDialogAction>
           ) : null
         }
         footer={
-          <div className="w-full flex items-center justify-between text-[11px] text-zinc-400">
+          <div className="w-full flex items-center justify-between gap-3 text-[11px] text-zinc-400">
             <TypographySpan className="flex items-center gap-1.5">
               <AlertTriangle className="size-3.5 text-amber-400 shrink-0" />
               Restoring an asset returns it directly to its delivery room or portfolio.
             </TypographySpan>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
+            <UniversalDialogAction
+              intent="secondary"
               onClick={() => onOpenChange(false)}
-              className="rounded-full border-white/15 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white text-xs px-4 py-1.5 cursor-pointer"
             >
               Close
-            </Button>
+            </UniversalDialogAction>
           </div>
         }
       >

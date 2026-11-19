@@ -13,6 +13,7 @@ import {
   createPlanSchema,
   createYearlyPlanSchema,
   deletePlanSchema,
+  savePlanTierSchema,
   updatePlanSchema,
   sendSetupLinkSchema,
   updateUserRoleSchema,
@@ -26,7 +27,7 @@ import {
 import { shareTokenFromReviewLink } from "@/lib/client-room/demo-room";
 import type { AdminActionContext } from "./safe-action";
 import { createScopedLogger } from "@/lib/logger";
-import { planTier, yearlyPlanSlug } from "@/core/entities/plan";
+import { planTier, yearlyPlanSlug, type BillingInterval, type Plan } from "@/core/entities/plan";
 
 /*
  * Platform-admin actions. Each goes through createPlatformAdminAction(): platform admin with a
@@ -135,6 +136,85 @@ export const updateWorkspaceFeaturesAction = createPlatformAdminAction(
   }
 );
 
+/** Throws unless paying yearly costs less than twelve monthly payments. */
+function assertYearlySaves(monthlyCents: number, yearlyCents: number) {
+  if (monthlyCents <= 0) throw new Error("Free plans have no yearly price.");
+  if (yearlyCents >= monthlyCents * 12) {
+    throw new Error("The yearly price must be less than twelve monthly payments, or paying yearly saves nothing.");
+  }
+}
+
+/**
+ * The Stripe price to sell a plan at a new price. A plan with a Stripe price gets a new price on
+ * the same product (its subscribers stay on the old one); one without gets a product and price.
+ */
+async function stripePriceForNewPrice(
+  ctx: AdminActionContext,
+  plan: { name: string; stripePriceId?: string | null; currency: string },
+  priceCents: number,
+  billingInterval: BillingInterval
+): Promise<string | null> {
+  if (plan.stripePriceId) {
+    return ctx.services.stripe.replaceStripePrice({
+      oldStripePriceId: plan.stripePriceId,
+      priceCents,
+      currency: plan.currency,
+      billingInterval,
+    });
+  }
+  const { stripePriceId } = await ctx.services.stripe.createStripeProductAndPrice({
+    name: billingInterval === "year" ? `${plan.name} (yearly)` : plan.name,
+    priceCents,
+    currency: plan.currency,
+    billingInterval,
+  });
+  return stripePriceId;
+}
+
+/** Creates a monthly plan's yearly twin (`<slug>-yearly`) with its own Stripe price. */
+async function createYearlyTwin(ctx: AdminActionContext, monthly: Plan, priceCents: number): Promise<Plan> {
+  assertYearlySaves(monthly.priceCents, priceCents);
+  const slug = yearlyPlanSlug(monthly.slug);
+  if (await ctx.services.subscription.getPlanBySlug(slug)) {
+    throw new Error(`${monthly.name} has a yearly price already.`);
+  }
+
+  // 1. Its Stripe product and yearly price, so checkout can sell it.
+  const { stripePriceId } = await ctx.services.stripe.createStripeProductAndPrice({
+    name: `${monthly.name} (yearly)`,
+    priceCents,
+    currency: monthly.currency,
+    billingInterval: "year",
+  });
+
+  // 2. The yearly plan, with the monthly plan's features so both grant the same.
+  return ctx.services.subscription.createPlan({
+    name: monthly.name,
+    slug,
+    priceCents,
+    currency: monthly.currency,
+    billingInterval: "year",
+    sortOrder: monthly.sortOrder,
+    stripePriceId,
+    features: monthly.features,
+  });
+}
+
+function planSnapshot(plan: Plan) {
+  return {
+    id: plan.id,
+    name: plan.name,
+    slug: plan.slug,
+    priceCents: plan.priceCents,
+    currency: plan.currency,
+    billingInterval: plan.billingInterval,
+    sortOrder: plan.sortOrder,
+    isActive: plan.isActive,
+    stripePriceId: plan.stripePriceId,
+  };
+}
+
+/** Creates a tier: its monthly plan with every feature, and its yearly twin when given a yearly price. */
 export const createPlanAction = createPlatformAdminAction(
   {
     action: "plan.create",
@@ -143,14 +223,25 @@ export const createPlanAction = createPlatformAdminAction(
   },
   async (input, ctx) => {
     const priceCents = Math.round(input.priceUsd * 100);
+    const yearlyCents = input.yearlyPriceUsd === null ? null : Math.round(input.yearlyPriceUsd * 100);
+    // Checked before Stripe is touched.
+    if (yearlyCents !== null) assertYearlySaves(priceCents, yearlyCents);
+    if (await ctx.services.subscription.getPlanBySlug(input.slug)) {
+      throw new Error(`A plan with slug "${input.slug}" already exists.`);
+    }
 
-    // 1. Its Stripe product and price, so checkout can sell it.
-    const { stripePriceId } = await ctx.services.stripe.createStripeProductAndPrice({
-      name: input.name,
-      priceCents,
-      currency: "USD",
-      billingInterval: "month",
-    });
+    // 1. Its Stripe product and price, so checkout can sell it. Free plans need none.
+    const stripePriceId =
+      priceCents > 0
+        ? (
+            await ctx.services.stripe.createStripeProductAndPrice({
+              name: input.name,
+              priceCents,
+              currency: "USD",
+              billingInterval: "month",
+            })
+          ).stripePriceId
+        : null;
 
     // 2. The plan itself.
     const plan = await ctx.services.subscription.createPlan({
@@ -159,36 +250,23 @@ export const createPlanAction = createPlatformAdminAction(
       priceCents,
       currency: "USD",
       billingInterval: "month",
-      sortOrder: 10,
+      sortOrder: input.sortOrder,
       stripePriceId,
-      features: {
-        storage_gb: input.storageGb,
-        client_links: input.clientLinks,
-        whatsapp_delivery: input.whatsappDelivery,
-        portfolio_videos: -1,
-        team_seats: 1,
-        languages: ["ar", "en"],
-        password_protected: true,
-        watermark: true,
-        branding: true,
-        download_notifications: true,
-        priority_support: true,
-      },
+      features: input.features,
     });
+    const plans = [plan];
+    if (!input.isActive) plans[0] = await ctx.services.subscription.updatePlan(plan.id, { isActive: false });
 
-    ctx.recordChanges({
-      after: {
-        id: plan.id,
-        name: plan.name,
-        slug: plan.slug,
-        priceCents: plan.priceCents,
-        currency: plan.currency,
-        stripePriceId: plan.stripePriceId,
-        features: plan.features,
-      },
-    });
+    // 3. Its yearly twin.
+    if (yearlyCents !== null) {
+      let yearly = await createYearlyTwin(ctx, plans[0], yearlyCents);
+      if (!input.isActive) yearly = await ctx.services.subscription.updatePlan(yearly.id, { isActive: false });
+      plans.push(yearly);
+    }
+
+    ctx.recordChanges({ after: { plans: plans.map(planSnapshot), features: plan.features } });
     refreshAdminPages();
-    return { plan };
+    return { plans };
   }
 );
 
@@ -208,51 +286,120 @@ export const createYearlyPlanAction = createPlatformAdminAction(
     if (!monthly) throw new Error("Plan not found.");
     ctx.setTargetLabel(monthly.name);
     if (monthly.billingInterval === "year") throw new Error("This plan is billed yearly already.");
-    if (monthly.priceCents <= 0) throw new Error("Free plans have no yearly price.");
 
-    const slug = yearlyPlanSlug(monthly.slug);
-    if (await ctx.services.subscription.getPlanBySlug(slug)) {
-      throw new Error(`${monthly.name} has a yearly price already.`);
+    const plan = await createYearlyTwin(ctx, monthly, Math.round(input.yearlyPriceUsd * 100));
+    ctx.recordChanges({ after: planSnapshot(plan) });
+    refreshAdminPages();
+    return { plan };
+  }
+);
+
+/**
+ * Saves a whole tier from the plan editor: name, order, visibility, features, the monthly price
+ * and the yearly price (added, changed, or stopped). Both plans of the tier get the same name,
+ * order, visibility and features. A changed price gets a new Stripe price: existing subscribers
+ * keep paying what they signed up for, new checkouts pay the new price.
+ */
+export const savePlanTierAction = createPlatformAdminAction(
+  {
+    action: "plan.save_tier",
+    schema: savePlanTierSchema,
+    target: (input) => ({ type: "plan", id: input.planId }),
+  },
+  async (input, ctx) => {
+    const monthly = await ctx.services.subscription.getPlanById(input.planId);
+    if (!monthly) throw new Error("Plan not found.");
+    ctx.setTargetLabel(monthly.name);
+    if (monthly.billingInterval === "year") {
+      throw new Error("Open the tier's monthly plan: its yearly price is edited there.");
     }
 
-    const priceCents = Math.round(input.yearlyPriceUsd * 100);
-    if (priceCents >= monthly.priceCents * 12) {
-      throw new Error("The yearly price must be less than twelve monthly payments, or paying yearly saves nothing.");
+    const twin = await ctx.services.subscription.getPlanBySlug(yearlyPlanSlug(monthly.slug));
+    const yearly = twin && twin.id !== monthly.id && twin.billingInterval === "year" ? twin : null;
+
+    const priceCents = Math.round(input.priceUsd * 100);
+    const yearlyCents = input.yearlyPriceUsd === null ? null : Math.round(input.yearlyPriceUsd * 100);
+
+    // Every check before Stripe is touched, so a refused save changes nothing.
+    if (monthly.slug === "starter" && priceCents > 0) {
+      throw new Error("Starter is the free plan workspaces fall back to, so it stays free.");
     }
+    if (monthly.priceCents > 0 && priceCents === 0) {
+      throw new Error("A paid plan can't become free: its subscribers are billed in Stripe. Create a free plan instead.");
+    }
+    if (yearlyCents !== null) assertYearlySaves(priceCents, yearlyCents);
 
-    // 1. Its Stripe product and yearly price, so checkout can sell it.
-    const { stripePriceId } = await ctx.services.stripe.createStripeProductAndPrice({
-      name: `${monthly.name} (yearly)`,
-      priceCents,
-      currency: monthly.currency,
-      billingInterval: "year",
-    });
+    const shared: Partial<Plan> = {
+      name: input.name,
+      sortOrder: input.sortOrder,
+      isActive: input.isActive,
+      features: input.features,
+    };
 
-    // 2. The yearly plan, with the monthly plan's features so both grant the same.
-    const plan = await ctx.services.subscription.createPlan({
-      name: monthly.name,
-      slug,
-      priceCents,
-      currency: monthly.currency,
-      billingInterval: "year",
-      sortOrder: monthly.sortOrder,
-      stripePriceId,
-      features: monthly.features,
-    });
+    // 1. The monthly plan, with a new Stripe price when its price changed.
+    const monthlyChanges: Partial<Plan> = { ...shared };
+    if (priceCents !== monthly.priceCents) {
+      monthlyChanges.priceCents = priceCents;
+      monthlyChanges.stripePriceId = await stripePriceForNewPrice(
+        ctx,
+        { ...monthly, name: input.name },
+        priceCents,
+        "month"
+      );
+    }
+    const savedMonthly = await ctx.services.subscription.updatePlan(monthly.id, monthlyChanges);
+
+    // 2. The yearly plan: added, changed, or no longer sold.
+    let savedYearly: Plan | null = null;
+    let yearlyOutcome: "none" | "added" | "updated" | "archived" | "deleted" = "none";
+    if (yearly && yearlyCents === null) {
+      if (yearly.isActive) {
+        if (yearly.stripePriceId) {
+          await ctx.services.stripe.archiveStripeProductAndPrice(yearly.stripePriceId).catch((err: unknown) =>
+            log.warn({ err, stripePriceId: yearly.stripePriceId }, "Stripe archive notice")
+          );
+        }
+        // Archived when someone pays yearly, deleted otherwise.
+        yearlyOutcome = (await ctx.services.subscription.deletePlan(yearly.id)).action;
+      } else {
+        // Not sold already: keep it in step for its remaining subscribers.
+        savedYearly = await ctx.services.subscription.updatePlan(yearly.id, { ...shared, isActive: false });
+        yearlyOutcome = "updated";
+      }
+    } else if (yearly && yearlyCents !== null) {
+      const yearlyChanges: Partial<Plan> = { ...shared };
+      if (yearlyCents !== yearly.priceCents) {
+        yearlyChanges.priceCents = yearlyCents;
+        yearlyChanges.stripePriceId = await stripePriceForNewPrice(
+          ctx,
+          { ...yearly, name: input.name },
+          yearlyCents,
+          "year"
+        );
+      }
+      savedYearly = await ctx.services.subscription.updatePlan(yearly.id, yearlyChanges);
+      yearlyOutcome = "updated";
+    } else if (yearlyCents !== null) {
+      savedYearly = await createYearlyTwin(ctx, savedMonthly, yearlyCents);
+      if (!input.isActive) savedYearly = await ctx.services.subscription.updatePlan(savedYearly.id, { isActive: false });
+      yearlyOutcome = "added";
+    }
 
     ctx.recordChanges({
+      before: {
+        monthly: planSnapshot(monthly),
+        yearly: yearly ? planSnapshot(yearly) : null,
+        features: monthly.features,
+      },
       after: {
-        id: plan.id,
-        name: plan.name,
-        slug: plan.slug,
-        priceCents: plan.priceCents,
-        currency: plan.currency,
-        billingInterval: plan.billingInterval,
-        stripePriceId: plan.stripePriceId,
+        monthly: planSnapshot(savedMonthly),
+        yearly: savedYearly ? planSnapshot(savedYearly) : null,
+        yearlyOutcome,
+        features: savedMonthly.features,
       },
     });
     refreshAdminPages();
-    return { plan };
+    return { monthly: savedMonthly, yearly: savedYearly, yearlyOutcome };
   }
 );
 

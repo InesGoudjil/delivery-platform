@@ -168,7 +168,7 @@ export function PortfolioHero({
                 <Button
                   type="button"
                   onClick={() => setShowProjectModal(true)}
-                  className="rounded-full bg-gradient-to-r from-[#b8481e] via-[#db5722] to-[#8d3615] hover:brightness-110 active:brightness-95 text-white text-xs font-extrabold px-5 h-10 transition-all shadow-lg shadow-orange-950/40 flex items-center gap-1.5 border border-white/20 cursor-pointer uppercase tracking-wider"
+                  className="rounded-full bg-gradient-to-r from-[rgb(var(--acc-dk-rgb))] via-primary to-[rgb(var(--acc-dk-rgb))] hover:brightness-110 active:brightness-95 text-primary-foreground text-xs font-extrabold px-5 h-10 transition-all shadow-lg shadow-[0_10px_25px_-10px_rgba(var(--acc-rgb),0.6)] flex items-center gap-1.5 border border-white/20 cursor-pointer uppercase tracking-wider"
                 >
                   <Plus className="size-4 stroke-[3]" />
                   <TypographySpan>UPLOAD A PROJECT</TypographySpan>
