@@ -1,16 +1,21 @@
 import React from "react";
 import { HardDrive } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { env } from "@/lib/env";
+import { SKELETON_TEXT } from "../_components/skeleton-text";
 
 export default function StorageLoading() {
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-200">
       {/* Header Skeleton */}
       <div className="pb-6 border-b border-border space-y-2">
-        <Skeleton className="h-4 w-36 rounded-full" />
-        <Skeleton className="h-9 w-56 rounded-xl" />
-        <Skeleton className="h-4 w-full max-w-96 rounded-md" />
+        <Skeleton className="h-[22px] w-40 rounded-full" />
+        <SkeletonLine className={`${SKELETON_TEXT.pageTitleSm3xl} w-48 sm:w-56 max-w-full`} />
+        <div className="max-w-2xl">
+          <SkeletonLine className={`${SKELETON_TEXT.leadLine} w-full`} />
+          <SkeletonLine className="h-5 w-1/2 sm:hidden" />
+        </div>
       </div>
 
       {/* Main Active Storage Meter Skeleton */}
@@ -62,7 +67,8 @@ export default function StorageLoading() {
         </div>
       </Card>
 
-      {/* The Silo Skeleton */}
+      {/* The Silo: only while its switch is on, as on the page */}
+      {env.isSiloEnabled && (
       <Card className="rounded-2xl border border-border p-4 sm:p-6 md:p-8 space-y-5 shadow-sm hover:translate-y-0">
         <CardHeader className="p-0 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="flex items-start gap-3 min-w-0">
@@ -81,6 +87,7 @@ export default function StorageLoading() {
           </div>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

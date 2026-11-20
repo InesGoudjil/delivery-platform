@@ -88,8 +88,11 @@ export function useDeliveryRoom({
   const [commentAuthor] = useState(() => {
     if (keepLocal) return "You";
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("cinespace_reviewer_name");
-      if (stored?.trim()) return stored.trim();
+      // Storage can throw (site data blocked, some private windows): fall back to the defaults.
+      try {
+        const stored = localStorage.getItem("cinespace_reviewer_name");
+        if (stored?.trim()) return stored.trim();
+      } catch {}
     }
     return currentUser?.name || clientName || "Client Reviewer";
   });
@@ -137,25 +140,15 @@ export function useDeliveryRoom({
     return `${totalSizeBytes} B`;
   })();
 
-  // Pick location from delivery override, or fall back to workspace branding location
-  const displayLocation =
-    delivery.location?.trim() || brandingLocation?.trim() || "Dubai, UAE";
+  // Location from the delivery, else the studio's branding; none at all hides the stat (it used
+  // to show a demo city to real clients).
+  const displayLocation = delivery.location?.trim() || brandingLocation?.trim() || "";
 
-  // Pick date from delivery date or creation date
-  const formattedDate = (() => {
-    const rawDate = delivery.deliveryDate || delivery.createdAt;
-    if (!rawDate) return "02.21.26";
-    if (typeof rawDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
-      const [year, month, day] = rawDate.split("-");
-      return `${month}.${day}.${year.slice(-2)}`;
-    }
-    const d = new Date(rawDate);
-    if (isNaN(d.getTime())) return "02.21.26";
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    const yy = String(d.getFullYear()).slice(-2);
-    return `${dd}.${mm}.${yy}`;
-  })();
+  // The delivery date, else the day the room was made, always day.month.year. Delivery dates are
+  // plain "YYYY-MM-DD" text and used to come out month first while creation dates came out day
+  // first. Read in UTC: the room renders on the server and again in the visitor's browser, and a
+  // local-time reading gave the two different days near midnight (a hydration mismatch).
+  const formattedDate = formatRoomDate(delivery.deliveryDate || delivery.createdAt);
 
   const displayAssetCount = assets.length > 0 ? assets.length : (initialAssetCount || 0);
 
@@ -163,7 +156,7 @@ export function useDeliveryRoom({
   const expiryLabel = (() => {
     if (!delivery.expiresAt) return "Never expires";
     const diffMs = new Date(delivery.expiresAt).getTime() - Date.now();
-    if (diffMs <= 0) return `Expired on ${new Date(delivery.expiresAt).toLocaleDateString()}`;
+    if (diffMs <= 0) return `Expired on ${formatRoomDate(delivery.expiresAt)}`;
     const diffHours = diffMs / (1000 * 60 * 60);
     if (diffHours < 24) {
       const h = Math.max(1, Math.round(diffHours));
@@ -181,6 +174,7 @@ export function useDeliveryRoom({
     firstAsset?.type === "photo" ||
     firstAsset?.type === "still";
   const customDeliveryCover = delivery.appearance?.coverThumbnailUrl;
+  // No cover and no thumbnail: the banner shows its plain backdrop (it used to show a demo photo).
   const heroCoverUrl =
     (customDeliveryCover ? resolveMediaUrl(customDeliveryCover) : "") ||
     resolveThumbnailUrl(
@@ -188,7 +182,7 @@ export function useDeliveryRoom({
       firstVersion?.rawFileUrl,
       isFirstPhoto
     ) ||
-    "/images/projects/mercedes-amg-gt/1.webp";
+    "";
 
   const filteredAssets = assets.filter((a) => {
     if (assetTab === "all") return true;
@@ -251,15 +245,21 @@ export function useDeliveryRoom({
         }
         void mutatePrefix([`/deliver/${delivery.shareToken}`, "/api/deliveries"]);
       } else {
-        // Revert on error
-        setAssets((prev) =>
-          prev.map((a) => (a.id === assetId ? { ...a, isApproved: asset.isApproved } : a))
-        );
-        setDeliveryStatus(prevStatus);
-        toast.error(res.error || "Failed to update asset approval.");
+        revert(res.error || "Failed to update asset approval.");
       }
+    } catch {
+      // The call itself failed (offline, or the page is older than the server): nothing was saved.
+      revert("Couldn't save that. Check your connection and try again.");
     } finally {
       setApprovingAssetId(null);
+    }
+
+    function revert(message: string) {
+      setAssets((prev) =>
+        prev.map((a) => (a.id === assetId ? { ...a, isApproved: asset!.isApproved } : a))
+      );
+      setDeliveryStatus(prevStatus);
+      toast.error(message);
     }
   };
 
@@ -286,6 +286,10 @@ export function useDeliveryRoom({
         setDeliveryStatus(prevStatus);
         toast.error(res.error || "Failed to approve all cuts.");
       }
+    } catch {
+      setAssets(prevAssets);
+      setDeliveryStatus(prevStatus);
+      toast.error("Couldn't save that. Check your connection and try again.");
     } finally {
       setIsApprovingAll(false);
     }
@@ -313,6 +317,10 @@ export function useDeliveryRoom({
         setDeliveryStatus(prevStatus);
         toast.error(res.error || "Failed to undo approval.");
       }
+    } catch {
+      setAssets(prevAssets);
+      setDeliveryStatus(prevStatus);
+      toast.error("Couldn't save that. Check your connection and try again.");
     } finally {
       setIsApprovingAll(false);
     }
@@ -403,11 +411,8 @@ export function useDeliveryRoom({
 
     if (keepLocal) return;
 
-    const res = await toggleFeedbackResolvedAction(feedbackId, nextResolved, delivery.shareToken);
-
-    if (res?.error) {
-      toast.error(res.error);
-      // Revert if error
+    const revert = (message: string) => {
+      toast.error(message);
       setAssets((prev) =>
         prev.map((a) => ({
           ...a,
@@ -416,10 +421,32 @@ export function useDeliveryRoom({
           ),
         }))
       );
+    };
+    try {
+      const res = await toggleFeedbackResolvedAction(feedbackId, nextResolved, delivery.shareToken);
+      if (res?.error) revert(res.error);
+    } catch {
+      revert("Couldn't save that. Check your connection and try again.");
     }
   };
 
   const handleDeleteFeedback = async (feedbackId: string) => {
+    const owner = assets.find((a) => a.feedback.some((f) => f.id === feedbackId));
+    const removedIndex = owner ? owner.feedback.findIndex((f) => f.id === feedbackId) : -1;
+    const removed = owner && removedIndex >= 0 ? owner.feedback[removedIndex] : null;
+    const restore = (message: string) => {
+      toast.error(message);
+      if (!owner || !removed) return;
+      setAssets((prev) =>
+        prev.map((a) => {
+          if (a.id !== owner.id || a.feedback.some((f) => f.id === feedbackId)) return a;
+          const feedback = [...a.feedback];
+          feedback.splice(Math.min(removedIndex, feedback.length), 0, removed);
+          return { ...a, feedback };
+        })
+      );
+    };
+
     setAssets((prev) =>
       prev.map((a) => ({
         ...a,
@@ -432,15 +459,38 @@ export function useDeliveryRoom({
       return;
     }
 
-    const res = await deleteFeedbackAction(feedbackId, delivery.shareToken);
-    if (res?.error) {
-      toast.error(res.error || "Failed to delete feedback");
-    } else {
-      toast.success("Comment deleted");
+    try {
+      const res = await deleteFeedbackAction(feedbackId, delivery.shareToken);
+      if (res?.error) {
+        restore(res.error || "Failed to delete feedback");
+      } else {
+        toast.success("Comment deleted");
+      }
+    } catch {
+      restore("Couldn't save that. Check your connection and try again.");
     }
   };
 
   const handleDeleteReply = async (feedbackId: string, replyId: string) => {
+    const parent = assets.flatMap((a) => a.feedback).find((f) => f.id === feedbackId);
+    const replyIndex = parent?.replies?.findIndex((r) => r.id === replyId) ?? -1;
+    const removedReply = parent && replyIndex >= 0 ? parent.replies![replyIndex] : null;
+    const restore = (message: string) => {
+      toast.error(message);
+      if (!removedReply) return;
+      setAssets((prev) =>
+        prev.map((a) => ({
+          ...a,
+          feedback: a.feedback.map((f) => {
+            if (f.id !== feedbackId || (f.replies || []).some((r) => r.id === replyId)) return f;
+            const replies = [...(f.replies || [])];
+            replies.splice(Math.min(replyIndex, replies.length), 0, removedReply);
+            return { ...f, replies };
+          }),
+        }))
+      );
+    };
+
     setAssets((prev) =>
       prev.map((a) => ({
         ...a,
@@ -460,16 +510,35 @@ export function useDeliveryRoom({
       return;
     }
 
-    const res = await deleteFeedbackReplyAction(replyId, delivery.shareToken);
-    if (res?.error) {
-      toast.error(res.error || "Failed to delete reply");
-    } else {
-      toast.success("Reply deleted");
+    try {
+      const res = await deleteFeedbackReplyAction(replyId, delivery.shareToken);
+      if (res?.error) {
+        restore(res.error || "Failed to delete reply");
+      } else {
+        toast.success("Reply deleted");
+      }
+    } catch {
+      restore("Couldn't save that. Check your connection and try again.");
     }
   };
 
   const handleEditFeedback = async (feedbackId: string, newText: string) => {
     const nowIso = new Date().toISOString();
+    const previous = assets.flatMap((a) => a.feedback).find((f) => f.id === feedbackId);
+    const restore = (message: string) => {
+      toast.error(message);
+      if (!previous) return;
+      setAssets((prev) =>
+        prev.map((a) => ({
+          ...a,
+          feedback: a.feedback.map((f) =>
+            f.id === feedbackId
+              ? { ...f, commentText: previous.commentText, updatedAt: previous.updatedAt }
+              : f
+          ),
+        }))
+      );
+    };
     setAssets((prev) =>
       prev.map((a) => ({
         ...a,
@@ -484,20 +553,49 @@ export function useDeliveryRoom({
       return;
     }
 
-    const res = await updateFeedbackAction({
-      feedbackId,
-      commentText: newText,
-      shareToken: delivery.shareToken,
-    });
-    if (res?.error) {
-      toast.error(res.error || "Failed to update feedback");
-    } else {
-      toast.success("Comment updated");
+    try {
+      const res = await updateFeedbackAction({
+        feedbackId,
+        commentText: newText,
+        shareToken: delivery.shareToken,
+      });
+      if (res?.error) {
+        restore(res.error || "Failed to update feedback");
+      } else {
+        toast.success("Comment updated");
+      }
+    } catch {
+      restore("Couldn't save that. Check your connection and try again.");
     }
   };
 
   const handleEditReply = async (feedbackId: string, replyId: string, newText: string) => {
     const nowIso = new Date().toISOString();
+    const previousReply = assets
+      .flatMap((a) => a.feedback)
+      .find((f) => f.id === feedbackId)
+      ?.replies?.find((r) => r.id === replyId);
+    const restore = (message: string) => {
+      toast.error(message);
+      if (!previousReply) return;
+      setAssets((prev) =>
+        prev.map((a) => ({
+          ...a,
+          feedback: a.feedback.map((f) =>
+            f.id === feedbackId
+              ? {
+                  ...f,
+                  replies: (f.replies || []).map((r) =>
+                    r.id === replyId
+                      ? { ...r, commentText: previousReply.commentText, updatedAt: previousReply.updatedAt }
+                      : r
+                  ),
+                }
+              : f
+          ),
+        }))
+      );
+    };
     setAssets((prev) =>
       prev.map((a) => ({
         ...a,
@@ -519,15 +617,19 @@ export function useDeliveryRoom({
       return;
     }
 
-    const res = await updateFeedbackReplyAction({
-      replyId,
-      commentText: newText,
-      shareToken: delivery.shareToken,
-    });
-    if (res?.error) {
-      toast.error(res.error || "Failed to update reply");
-    } else {
-      toast.success("Reply updated");
+    try {
+      const res = await updateFeedbackReplyAction({
+        replyId,
+        commentText: newText,
+        shareToken: delivery.shareToken,
+      });
+      if (res?.error) {
+        restore(res.error || "Failed to update reply");
+      } else {
+        toast.success("Reply updated");
+      }
+    } catch {
+      restore("Couldn't save that. Check your connection and try again.");
     }
   };
 
@@ -544,7 +646,9 @@ export function useDeliveryRoom({
     const text = encodeURIComponent(
       `Hey ${workspace.brandName}! Regarding the "${delivery.title}" delivery cuts:\n${url}`
     );
-    window.open(`https://wa.me/?text=${text}`, "_blank");
+    // Straight to the studio when it has a number; otherwise WhatsApp asks who to send it to.
+    const number = (workspace.whatsappNumber || "").replace(/\D/g, "");
+    window.open(`https://wa.me/${number}?text=${text}`, "_blank", "noopener,noreferrer");
   };
 
   // Master Files Download & Creator Notification
@@ -778,4 +882,20 @@ export function useDeliveryRoom({
     handlePrevAsset,
     handleLightboxDownload,
   };
+}
+
+/**
+ * A room date as DD.MM.YY. "YYYY-MM-DD" text is taken as written; timestamps are read in UTC so
+ * the server and the browser agree. Empty when there's no usable date.
+ */
+export function formatRoomDate(value: string | null | undefined): string {
+  if (!value) return "";
+  const plain = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (plain) return `${plain[3]}.${plain[2]}.${plain[1].slice(-2)}`;
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "";
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const yy = String(d.getUTCFullYear()).slice(-2);
+  return `${dd}.${mm}.${yy}`;
 }

@@ -3,10 +3,14 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import {
+  Archive,
   Check,
+  CircleCheck,
   Clock,
   Lock,
   Download,
+  Eye,
+  EyeOff,
   MessageCircle,
   ArrowRight,
   Copy,
@@ -16,6 +20,8 @@ import {
   Layers,
   Film,
   SearchX,
+  Upload,
+  type LucideIcon,
 } from "lucide-react";
 import {
   Card,
@@ -30,26 +36,57 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TypographyH3, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import { toast } from "sonner";
-import { DeliveryProjectItem } from "../deliveries-client";
+import {
+  describeActivity,
+  type DeliveryActivityKind,
+  type DeliveryProjectItem,
+} from "@/lib/deliveries/list-view";
+
+const ACTIVITY_ICONS: Record<DeliveryActivityKind, LucideIcon> = {
+  archived: Archive,
+  notes: MessageCircle,
+  approved: CircleCheck,
+  downloaded: Download,
+  opened: Eye,
+  empty: Upload,
+  unopened: EyeOff,
+  created: Clock,
+};
+
+/** What an empty list says, when rooms exist but none is shown. */
+export interface DeliveryGridEmptyState {
+  title: string;
+  description: string;
+  action?: { label: string; onClick: () => void };
+}
 
 interface DeliveryCardGridProps {
-  items?: DeliveryProjectItem[];
-  deliveries?: DeliveryProjectItem[];
+  deliveries: DeliveryProjectItem[];
   workspaceSlug: string;
+  /** Relative times count from here (the server's render time, so both sides agree). */
+  now: number;
   canSendWhatsApp?: boolean;
   deletingId?: string | null;
   onDeleteDelivery?: (item: DeliveryProjectItem) => void;
+  /** Shown instead of the first-room invitation when filters hide every room. */
+  empty?: DeliveryGridEmptyState;
+  /** Client names become a filter: only that client's rooms (again: every client). */
+  activeClientId?: string | null;
+  onClientFilter?: (clientId: string) => void;
 }
 
 export function DeliveryCardGrid({
-  items,
   deliveries,
   workspaceSlug,
+  now,
   canSendWhatsApp = true,
   deletingId = null,
   onDeleteDelivery,
+  empty,
+  activeClientId = null,
+  onClientFilter,
 }: DeliveryCardGridProps) {
-  const displayDeliveries = deliveries || items || [];
+  const displayDeliveries = deliveries;
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleCopyLink = (token: string, id: string) => {
@@ -95,19 +132,33 @@ export function DeliveryCardGrid({
   };
 
   if (displayDeliveries.length === 0) {
+    const EmptyIcon = empty ? SearchX : Film;
     return (
       <Card className="rounded-3xl border border-dashed border-border bg-card/40 p-12 text-center shadow-none">
         <div className="size-12 rounded-2xl bg-muted/60 text-muted-foreground flex items-center justify-center mx-auto mb-3">
-          <Film className="size-6 text-muted-foreground/60" />
+          <EmptyIcon className="size-6 text-muted-foreground/60" />
         </div>
         <TypographyH3 className="text-base font-bold font-heading text-foreground">
-          No delivery rooms found
+          {empty ? empty.title : "No delivery rooms found"}
         </TypographyH3>
         <TypographyMuted className="text-xs text-muted-foreground max-w-sm mx-auto mt-1">
-          {items && items.length > 0
-            ? "No client deliveries match the selected filter. Try selecting 'All Projects'."
+          {empty
+            ? empty.description
             : "Get started by creating your first client delivery room using the 'New Delivery Room' button above."}
         </TypographyMuted>
+        {empty?.action && (
+          <div className="mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={empty.action.onClick}
+              className="rounded-full text-xs cursor-pointer"
+            >
+              {empty.action.label}
+            </Button>
+          </div>
+        )}
       </Card>
     );
   }
@@ -119,6 +170,10 @@ export function DeliveryCardGrid({
         const isDeleting = deletingId === item.id;
         const assetsCount = item.assetsCount ?? 0;
         const shareUrl = `/deliver/${item.shareToken}`;
+        const activity = describeActivity(item, now);
+        const ActivityIcon = ACTIVITY_ICONS[activity.kind];
+        const clientId = item.clientId;
+        const clientFiltered = clientId !== null && clientId === activeClientId;
 
         return (
           <Card
@@ -148,7 +203,20 @@ export function DeliveryCardGrid({
                   </CardTitle>
                 </Link>
                 <TypographyMuted className="text-xs text-muted-foreground font-sans">
-                  Client: <strong className="text-foreground">{item.clientName}</strong>
+                  Client:{" "}
+                  {clientId && onClientFilter ? (
+                    <button
+                      type="button"
+                      onClick={() => onClientFilter(clientId)}
+                      aria-pressed={clientFiltered}
+                      title={clientFiltered ? "Show every client" : `Show only rooms for ${item.clientName}`}
+                      className="font-bold text-foreground underline decoration-dotted decoration-muted-foreground/60 underline-offset-4 hover:text-primary hover:decoration-primary transition-colors cursor-pointer"
+                    >
+                      {item.clientName}
+                    </button>
+                  ) : (
+                    <strong className="text-foreground">{item.clientName}</strong>
+                  )}
                 </TypographyMuted>
 
                 {/* Specs / Badges */}
@@ -176,12 +244,19 @@ export function DeliveryCardGrid({
                       Stream Only
                     </Badge>
                   )}
-                  {item.commentsCount > 0 && (
+                  {item.openNotesCount > 0 && (
                     <Badge variant="orange" className="flex items-center gap-1 px-2.5 py-1 rounded-md font-normal">
-                      <MessageCircle className="size-3" /> {item.commentsCount} notes
+                      <MessageCircle className="size-3" /> {item.openNotesCount} open{" "}
+                      {item.openNotesCount === 1 ? "note" : "notes"}
                     </Badge>
                   )}
                 </div>
+
+                {/* The one thing worth knowing at a glance: open notes, approval, the client's last visit. */}
+                <TypographyMuted className="flex items-center gap-1.5 text-xs text-muted-foreground font-sans">
+                  <ActivityIcon aria-hidden="true" className="size-3.5 shrink-0" />
+                  <TypographySpan className="truncate">{activity.label}</TypographySpan>
+                </TypographyMuted>
               </CardContent>
             </div>
 

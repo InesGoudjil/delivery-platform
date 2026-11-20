@@ -27,8 +27,10 @@ export default function NotFound() {
             asChild
             className="rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 cursor-pointer h-10 px-6"
           >
+            {/* "/" is the public home page for everyone (signed in or not), and this page is what
+                a client with a dead link sees too, so the label says where it really goes. */}
             <Link href="/">
-              <Home className="size-4 mr-2" /> Back to Workspace
+              <Home className="size-4 mr-2" /> Back to home
             </Link>
           </Button>
         </div>

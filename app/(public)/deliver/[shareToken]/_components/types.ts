@@ -84,6 +84,8 @@ export interface DeliveryRoomProps {
     slug: string;
     logoUrl?: string | null;
     accentColor?: string | null;
+    /** The studio's WhatsApp number (from its portfolio settings), once the room is open. */
+    whatsappNumber?: string | null;
   };
   clientName?: string | null;
   brandingLocation?: string | null;

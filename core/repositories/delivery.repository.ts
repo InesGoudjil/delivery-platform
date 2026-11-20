@@ -35,6 +35,51 @@ export function mapDeliveryRow(row: any): Delivery {
   };
 }
 
+/** The latest of some ISO timestamps, ignoring missing or unreadable ones. null when none is left. */
+export function latestOf(...values: (string | null | undefined)[]): string | null {
+  let latest: string | null = null;
+  let latestTime = -Infinity;
+  for (const value of values) {
+    if (!value) continue;
+    const time = Date.parse(value);
+    if (Number.isFinite(time) && time > latestTime) {
+      latest = value;
+      latestTime = time;
+    }
+  }
+  return latest;
+}
+
+/** A view_workspace_deliveries_summary row as a DeliverySummaryItem. */
+function mapSummaryViewRow(row: any): DeliverySummaryItem {
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    clientId: row.client_id,
+    title: row.title,
+    description: row.description,
+    shareToken: row.share_token,
+    status: row.status as DeliveryStatus,
+    isDownloadAllowed: Boolean(row.is_download_allowed),
+    isCommentAllowed: Boolean(row.is_comment_allowed),
+    passcodeProtected: Boolean(row.passcode_protected),
+    clientName: row.client_name || "Private Client",
+    assetsCount: Number(row.assets_count || 0),
+    commentsCount: Number(row.comments_count || 0),
+    activeVersionNumber: row.active_version_number ? Number(row.active_version_number) : null,
+    activeDurationSeconds: row.active_duration_seconds ? Number(row.active_duration_seconds) : null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    approvedAt: row.approved_at ?? null,
+    approvedByName: row.approved_by_name ?? null,
+    openNotesCount: Number(row.open_notes_count || 0),
+    lastNoteAt: row.last_note_at ?? null,
+    lastOpenedAt: row.last_opened_at ?? null,
+    lastDownloadedAt: row.last_downloaded_at ?? null,
+    lastActivityAt: row.last_activity_at ?? row.updated_at ?? row.created_at,
+  };
+}
+
 export class SupabaseDeliveryRepository implements IDeliveryRepository {
   constructor(private readonly supabase: SupabaseClient<Database>) {}
 
@@ -87,65 +132,58 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
         .eq("workspace_id", workspaceId)
         .order("created_at", { ascending: false });
 
-      if (!viewError && Array.isArray(viewData)) {
-        return viewData.map((row: any) => ({
-          id: row.id,
-          workspaceId: row.workspace_id,
-          clientId: row.client_id,
-          title: row.title,
-          description: row.description,
-          shareToken: row.share_token,
-          status: row.status as DeliveryStatus,
-          isDownloadAllowed: Boolean(row.is_download_allowed),
-          isCommentAllowed: Boolean(row.is_comment_allowed),
-          passcodeProtected: Boolean(row.passcode_protected),
-          clientName: row.client_name || "Private Client",
-          assetsCount: Number(row.assets_count || 0),
-          commentsCount: Number(row.comments_count || 0),
-          activeVersionNumber: row.active_version_number ? Number(row.active_version_number) : null,
-          activeDurationSeconds: row.active_duration_seconds ? Number(row.active_duration_seconds) : null,
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-        }));
+      // The view from before 20261120120000_deliveries_summary_activity.sql has no activity
+      // columns. Then the query below works them out, so "Needs reply" and the activity sort
+      // stay right until the migration is applied.
+      if (!viewError && Array.isArray(viewData) && (viewData.length === 0 || "last_activity_at" in viewData[0])) {
+        return viewData.map(mapSummaryViewRow);
       }
     } catch {
       // Fall through to PostgREST relational query if view is pending creation
     }
 
-    // 2. High-performance single PostgREST relational query (1 HTTP roundtrip)
-    const { data, error } = await (this.supabase as any)
-      .from("deliveries")
-      .select(`
-        id,
-        workspace_id,
-        client_id,
-        title,
-        description,
-        share_token,
-        passcode_hash,
-        status,
-        is_download_allowed,
-        is_comment_allowed,
-        created_at,
-        updated_at,
-        client:clients(name),
-        assets(
+    // 2. High-performance single PostgREST relational query (1 HTTP roundtrip), next to the
+    //    links' visit times.
+    const [{ data, error }, linkActivity] = await Promise.all([
+      (this.supabase as any)
+        .from("deliveries")
+        .select(`
           id,
+          workspace_id,
+          client_id,
           title,
-          type,
-          sort_order,
-          is_archived,
-          versions:asset_versions(
+          description,
+          share_token,
+          passcode_hash,
+          status,
+          is_download_allowed,
+          is_comment_allowed,
+          approved_at,
+          approved_by_name,
+          created_at,
+          updated_at,
+          client:clients(name),
+          assets(
             id,
-            version_number,
-            duration_seconds,
-            is_active_version,
-            feedback(id)
+            title,
+            type,
+            sort_order,
+            is_archived,
+            created_at,
+            versions:asset_versions(
+              id,
+              version_number,
+              duration_seconds,
+              is_active_version,
+              created_at,
+              feedback(id, author_user_id, is_resolved, created_at, replies:feedback_replies(created_at))
+            )
           )
-        )
-      `)
-      .eq("workspace_id", workspaceId)
-      .order("created_at", { ascending: false });
+        `)
+        .eq("workspace_id", workspaceId)
+        .order("created_at", { ascending: false }),
+      this.listLinkActivity(workspaceId),
+    ]);
 
     if (error) throw new Error(`Error listing delivery summaries: ${error.message}`);
 
@@ -158,12 +196,28 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
         primaryAsset?.versions?.find((v: any) => v.is_active_version) ||
         primaryAsset?.versions?.[0];
 
+      // Same rules as the view: open notes are unresolved guest notes; a new version becomes
+      // the active one, so active versions give the newest upload.
       let commentsCount = 0;
+      let openNotesCount = 0;
+      let lastNoteAt: string | null = null;
+      let lastUploadAt: string | null = null;
       for (const a of rawAssets) {
+        lastUploadAt = latestOf(lastUploadAt, a.created_at);
         for (const v of a.versions || []) {
-          commentsCount += (v.feedback || []).length;
+          if (v.is_active_version) lastUploadAt = latestOf(lastUploadAt, v.created_at);
+          for (const f of v.feedback || []) {
+            commentsCount += 1;
+            if (f.author_user_id == null && f.is_resolved !== true) openNotesCount += 1;
+            lastNoteAt = latestOf(lastNoteAt, f.created_at, ...(f.replies || []).map((r: any) => r.created_at));
+          }
         }
       }
+
+      // Unknown (not "never") when the links couldn't be read.
+      const links = linkActivity
+        ? linkActivity.get(row.id) ?? { lastOpenedAt: null, lastDownloadedAt: null }
+        : undefined;
 
       return {
         id: row.id,
@@ -183,8 +237,52 @@ export class SupabaseDeliveryRepository implements IDeliveryRepository {
         activeDurationSeconds: primaryActiveVersion?.duration_seconds ? Number(primaryActiveVersion.duration_seconds) : null,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
+        approvedAt: row.approved_at ?? null,
+        approvedByName: row.approved_by_name ?? null,
+        openNotesCount,
+        lastNoteAt,
+        lastOpenedAt: links?.lastOpenedAt,
+        lastDownloadedAt: links?.lastDownloadedAt,
+        lastActivityAt:
+          latestOf(
+            row.updated_at,
+            row.approved_at,
+            lastUploadAt,
+            lastNoteAt,
+            links?.lastOpenedAt,
+            links?.lastDownloadedAt
+          ) ?? row.created_at,
       };
     });
+  }
+
+  /**
+   * The last client visit and download of each delivery, from its share links (deleted ones
+   * too: their visits happened). null when the links can't be read, for example before the
+   * share_links migration.
+   */
+  private async listLinkActivity(
+    workspaceId: string
+  ): Promise<Map<string, { lastOpenedAt: string | null; lastDownloadedAt: string | null }> | null> {
+    try {
+      const { data, error } = await (this.supabase as any)
+        .from("share_links")
+        .select("delivery_id, last_opened_at, last_downloaded_at")
+        .eq("workspace_id", workspaceId);
+      if (error || !Array.isArray(data)) return null;
+
+      const byDelivery = new Map<string, { lastOpenedAt: string | null; lastDownloadedAt: string | null }>();
+      for (const row of data) {
+        const current = byDelivery.get(row.delivery_id) ?? { lastOpenedAt: null, lastDownloadedAt: null };
+        byDelivery.set(row.delivery_id, {
+          lastOpenedAt: latestOf(current.lastOpenedAt, row.last_opened_at),
+          lastDownloadedAt: latestOf(current.lastDownloadedAt, row.last_downloaded_at),
+        });
+      }
+      return byDelivery;
+    } catch {
+      return null;
+    }
   }
 
   async listByClientId(clientId: string): Promise<Delivery[]> {

@@ -9,7 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 import { useOptionalEntitlements } from "@/components/providers/entitlements-provider";
+import {
+  NotificationLogRowsSkeleton,
+  SwitchSkeleton,
+  WhatsAppNumberSkeleton,
+} from "./_components/notifications-skeleton";
 import {
   TypographyH1,
   TypographyH3,
@@ -237,26 +243,35 @@ export default function NotificationsPage() {
                     </Link>
                   )}
                 </div>
+                {/* Until the settings arrive, placeholders: the defaults would show switches that then flip. */}
                 <div className="flex shrink-0 gap-6">
                   <div className="w-14 flex justify-center">
-                    <Switch
-                      disabled={isLoadingSettings || !canManage || locked}
-                      checked={!locked && prefs[alert.email]}
-                      onCheckedChange={(checked) =>
-                        setPref(alert.email, checked, `${alert.label} emails ${checked ? "on" : "off"}`)
-                      }
-                      aria-label={`${alert.label} by email`}
-                    />
+                    {isLoadingSettings ? (
+                      <SwitchSkeleton />
+                    ) : (
+                      <Switch
+                        disabled={!canManage || locked}
+                        checked={!locked && prefs[alert.email]}
+                        onCheckedChange={(checked) =>
+                          setPref(alert.email, checked, `${alert.label} emails ${checked ? "on" : "off"}`)
+                        }
+                        aria-label={`${alert.label} by email`}
+                      />
+                    )}
                   </div>
                   <div className="w-14 flex justify-center">
-                    <Switch
-                      disabled={isLoadingSettings || !canManage || locked || !whatsappReady}
-                      checked={!locked && whatsappReady && prefs[alert.whatsapp]}
-                      onCheckedChange={(checked) =>
-                        setPref(alert.whatsapp, checked, `${alert.label} on WhatsApp ${checked ? "on" : "off"}`)
-                      }
-                      aria-label={`${alert.label} on WhatsApp`}
-                    />
+                    {isLoadingSettings ? (
+                      <SwitchSkeleton />
+                    ) : (
+                      <Switch
+                        disabled={!canManage || locked || !whatsappReady}
+                        checked={!locked && whatsappReady && prefs[alert.whatsapp]}
+                        onCheckedChange={(checked) =>
+                          setPref(alert.whatsapp, checked, `${alert.label} on WhatsApp ${checked ? "on" : "off"}`)
+                        }
+                        aria-label={`${alert.label} on WhatsApp`}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
@@ -265,6 +280,7 @@ export default function NotificationsPage() {
         </div>
 
         <div className="px-6 py-4 border-t border-border space-y-1">
+          {isLoadingSettings && <SkeletonLine className="h-4 w-80 max-w-full" />}
           {!isLoadingSettings && !whatsappReady && (
             <TypographyMuted className="text-[11px] text-muted-foreground">
               {!whatsapp.available
@@ -418,9 +434,7 @@ function WhatsAppNumberCard({
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="size-4 animate-spin text-primary" /> Loading…
-        </div>
+        <WhatsAppNumberSkeleton />
       ) : !whatsapp.available ? (
         <div className="rounded-xl bg-muted/40 border border-border/60 p-4 text-xs text-muted-foreground">
           WhatsApp isn&apos;t switched on for CineSpace yet. Email alerts work as usual.
@@ -588,13 +602,15 @@ function NotificationLogList({ logs, loading }: { logs: NotificationLog[]; loadi
     <div className="rounded-2xl bg-card border border-border p-6 space-y-3 shadow-sm">
       <div className="flex items-center justify-between text-xs font-bold text-muted-foreground uppercase tracking-wider">
         <span>Recent notifications</span>
-        <span className="text-[11px] font-normal normal-case">{logs.length} logged</span>
+        {loading ? (
+          <Skeleton className="h-3 w-14 rounded" />
+        ) : (
+          <span className="text-[11px] font-normal normal-case">{logs.length} logged</span>
+        )}
       </div>
 
       {loading ? (
-        <div className="py-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="size-4 animate-spin text-primary" /> Loading history…
-        </div>
+        <NotificationLogRowsSkeleton />
       ) : logs.length === 0 ? (
         <div className="py-8 text-center rounded-xl bg-muted/40 border border-border/60 p-6 space-y-1">
           <Bell className="size-5 text-muted-foreground mx-auto mb-2 opacity-50" />

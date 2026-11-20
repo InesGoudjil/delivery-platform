@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { UniversalDialog, UniversalDialogAction } from "@/components/ui/universal-dialog";
 import {
   TypographyH1,
@@ -85,6 +86,7 @@ export default function SecurityPage() {
 
   // Link Expiration State
   const [expirationDays, setExpirationDays] = useState<number | null>(30);
+  const [isLoadingExpiration, setIsLoadingExpiration] = useState(true);
   const [isSavingExpiration, setIsSavingExpiration] = useState(false);
 
   // Session state
@@ -93,51 +95,56 @@ export default function SecurityPage() {
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
   const [isSigningOutOthers, setIsSigningOutOthers] = useState(false);
 
-  // Load 2FA status, user session info, and workspace settings
+  // Load 2FA status, user session info, and workspace settings. The three don't depend on each
+  // other, so they start together and each card fills in when its own data arrives (one failing
+  // no longer leaves the others loading).
   useEffect(() => {
     let mounted = true;
 
-    async function loadSecurityData() {
+    async function loadTwoFactor() {
       try {
-        // 1. Check Supabase MFA Factors
         const { data: factorsData } = await supabase.auth.mfa.listFactors();
         const verifiedFactor = factorsData?.totp?.find((f) => f.status === "verified");
-
         if (mounted) {
-          if (verifiedFactor) {
-            setIs2FAEnabled(true);
-            setActiveFactorId(verifiedFactor.id);
-          } else {
-            setIs2FAEnabled(false);
-            setActiveFactorId(null);
-          }
-          setIsLoading2FA(false);
+          setIs2FAEnabled(Boolean(verifiedFactor));
+          setActiveFactorId(verifiedFactor?.id ?? null);
         }
+      } catch (err) {
+        console.warn("Error loading 2FA status:", err);
+      } finally {
+        if (mounted) setIsLoading2FA(false);
+      }
+    }
 
-        // 2. Fetch Active Device Sessions
+    async function loadSessions() {
+      try {
         const sessionsRes = await getActiveSessionsAction();
-        if (mounted) {
-          if (sessionsRes.success && sessionsRes.data) {
-            setSessions(sessionsRes.data);
-          }
-          setIsLoadingSessions(false);
+        if (mounted && sessionsRes.success && sessionsRes.data) {
+          setSessions(sessionsRes.data);
         }
+      } catch (err) {
+        console.warn("Error loading active sessions:", err);
+      } finally {
+        if (mounted) setIsLoadingSessions(false);
+      }
+    }
 
-        // 3. Fetch Workspace Link Expiration Defaults
+    async function loadLinkExpiry() {
+      try {
         const settingsRes = await getWorkspaceSettingsAction(workspaceSlug);
         if (mounted && settingsRes.success && settingsRes.data) {
           setExpirationDays(settingsRes.data.defaultLinkExpirationDays ?? null);
         }
       } catch (err) {
-        console.warn("Error loading security data:", err);
-        if (mounted) {
-          setIsLoading2FA(false);
-          setIsLoadingSessions(false);
-        }
+        console.warn("Error loading the default link expiry:", err);
+      } finally {
+        if (mounted) setIsLoadingExpiration(false);
       }
     }
 
-    loadSecurityData();
+    loadTwoFactor();
+    loadSessions();
+    loadLinkExpiry();
     return () => {
       mounted = false;
     };
@@ -337,9 +344,7 @@ export default function SecurityPage() {
 
           <div>
             {isLoading2FA ? (
-              <Button disabled variant="outline" size="sm" className="rounded-xl text-xs">
-                <Loader2 className="size-3 mr-1.5 animate-spin" /> Checking...
-              </Button>
+              <Skeleton className="h-8 w-28 rounded-xl" />
             ) : is2FAEnabled ? (
               <Button
                 variant="outline"
@@ -384,6 +389,19 @@ export default function SecurityPage() {
         <div className="pt-2">
           <div className="flex flex-wrap gap-2.5">
             {EXPIRATION_OPTIONS.map((opt) => {
+              // Until the saved default arrives, each option is a placeholder of its own size, so
+              // no option shows as picked and then jumps to another.
+              if (isLoadingExpiration) {
+                return (
+                  <Skeleton
+                    key={opt.label}
+                    aria-hidden
+                    className="px-3.5 py-2 rounded-xl border border-transparent text-xs font-semibold text-transparent select-none"
+                  >
+                    {opt.label}
+                  </Skeleton>
+                );
+              }
               const isSelected = expirationDays === opt.value;
               const isLocked = !canExtendExpiry && isExtendedDefaultLinkDays(opt.value);
               return (
@@ -405,7 +423,7 @@ export default function SecurityPage() {
               );
             })}
           </div>
-          {!canExtendExpiry && isExtendedDefaultLinkDays(expirationDays) && (
+          {!isLoadingExpiration && !canExtendExpiry && isExtendedDefaultLinkDays(expirationDays) && (
             <TypographyMuted className="text-[11px] text-amber-600 dark:text-amber-400 mt-2.5 block">
               Your plan gives links 30 days at most, so new links get 30 days.
             </TypographyMuted>
@@ -465,9 +483,25 @@ export default function SecurityPage() {
 
         {/* Sessions List */}
         {isLoadingSessions ? (
-          <div className="p-6 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
-            <Loader2 className="size-4 animate-spin text-primary" />
-            <span>Loading active sessions...</span>
+          // Same rows as the list below: this device first, then one other.
+          <div className="space-y-3">
+            {[0, 1].map((i) => (
+              <div
+                key={i}
+                className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  i === 0 ? "bg-primary/5 border-primary/20" : "bg-muted/40 border-border"
+                }`}
+              >
+                <div className="flex items-start sm:items-center gap-3">
+                  <Skeleton className="size-[34px] rounded-xl shrink-0" />
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-3.5 w-36 rounded" />
+                    <Skeleton className="h-3 w-56 max-w-full rounded" />
+                  </div>
+                </div>
+                {i > 0 && <Skeleton className="h-8 w-16 rounded-xl self-end sm:self-auto shrink-0" />}
+              </div>
+            ))}
           </div>
         ) : sessions.length === 0 ? (
           <div className="p-4 rounded-xl bg-muted/60 border border-border text-xs text-muted-foreground">

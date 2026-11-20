@@ -376,7 +376,9 @@ export function PortfolioClient({
 
   // Direct Set-as-Hero handler from Showcase Grid
   const handleSetAsHero = (item: PortfolioItem) => {
-    const isVid = item.type === "film" || item.type === "project";
+    // Only a film plays in the hero. A project has no single film (no mediaUrl), so it heads the
+    // page as a still of its cover; saving it as a video put the image in a <video> tag.
+    const isVid = item.type === "film";
     const media = item.mediaUrl || item.thumbnailUrl;
     const thumb = item.thumbnailUrl;
 

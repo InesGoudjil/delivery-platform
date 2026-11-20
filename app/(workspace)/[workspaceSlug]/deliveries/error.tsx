@@ -4,13 +4,14 @@ import React, { useEffect } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
+import { errorScreenMessage } from "@/lib/error-screen";
 
 export default function DeliveriesError({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
   useEffect(() => {
     console.error("Deliveries Error Boundary:", error);
@@ -27,11 +28,11 @@ export default function DeliveriesError({
             Failed to Load Client Deliveries
           </TypographyH3>
           <TypographyMuted className="text-xs text-muted-foreground">
-            {error.message || "An error occurred while loading your client delivery rooms."}
+            {errorScreenMessage(error, "An error occurred while loading your client delivery rooms.")}
           </TypographyMuted>
         </div>
         <Button
-          onClick={() => reset()}
+          onClick={() => retry()}
           className="rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 cursor-pointer h-9 px-5"
         >
           <RefreshCw className="size-3.5 mr-2" /> Reload Deliveries

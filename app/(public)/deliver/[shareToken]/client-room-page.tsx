@@ -31,7 +31,9 @@ export async function ClientRoomPage({ room }: { room: ClientRoom }) {
     logoUrl: workspace?.logoUrl || null,
     accentColor: workspace?.accentColor || "#f5551d",
   };
-  const portfolioUrl = portfolio?.isPublished ? `/p/${portfolio.slug || branding.slug}` : undefined;
+  // A suspended studio's portfolio is closed too (it would only lead to a 404).
+  const portfolioUrl =
+    portfolio?.isPublished && !room.suspended ? `/p/${portfolio.slug || branding.slug}` : undefined;
 
   if (!room.canView && (room.state === "expired" || room.state === "unavailable" || room.state === "revoked")) {
     return (
@@ -80,7 +82,7 @@ export async function ClientRoomPage({ room }: { room: ClientRoom }) {
         deliveryDate: isLocked ? null : delivery.deliveryDate,
         createdAt: delivery.createdAt,
       }}
-      workspace={branding}
+      workspace={{ ...branding, whatsappNumber: isLocked ? null : portfolio?.whatsappNumber || null }}
       clientName={roomPage?.clientName ?? null}
       brandingLocation={isLocked ? null : portfolio?.stats?.location || null}
       initialTotalSizeBytes={initialTotalSizeBytes}

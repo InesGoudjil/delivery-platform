@@ -39,6 +39,28 @@ const typographyVariants = cva("font-sans transition-colors", {
 
 type ElementType = React.ElementType;
 
+/** A font-size utility, at any breakpoint: text-xs … text-9xl, or an arbitrary text-[18px] / text-[1.2rem]. */
+const FONT_SIZE_CLASS = /(?:^|\s)(?:[a-z0-9]+:)*text-(?:xs|sm|base|lg|xl|[2-9]xl|\[\d+(?:\.\d+)?(?:px|rem|em)\])(?=\s|$)/;
+const RESPONSIVE_FONT_SIZE_CLASS = /(^|\s)(?:sm|md|lg|xl|2xl):text-(?:xs|sm|base|lg|xl|[2-9]xl)(?=\s|$)/g;
+
+/**
+ * The variant's classes for this element. Several variants grow at sm/md by default (h1: 36 → 60 →
+ * 72px, lead: 16 → 18px, p: 14 → 16px, small: 12 → 14px). When a page gives the element its own
+ * size, that size holds at every width, along with any sm:/md: sizes the page adds: the variant's
+ * sm:/md: sizes are dropped. Before, they survived a page's own size (tailwind-merge only replaces a
+ * class at the same breakpoint): a title meant to be 30px was 72px on desktop, a "text-sm" label
+ * 48px, and a "text-3xl" dashboard number 16px.
+ */
+function variantClassesFor(
+  variant: NonNullable<VariantProps<typeof typographyVariants>["variant"]>,
+  color: VariantProps<typeof typographyVariants>["color"],
+  className: string | undefined
+): string {
+  const classes = typographyVariants({ variant, color });
+  if (!className || !FONT_SIZE_CLASS.test(className)) return classes;
+  return classes.replace(RESPONSIVE_FONT_SIZE_CLASS, "$1").replace(/\s+/g, " ").trim();
+}
+
 export interface TypographyProps<T extends ElementType = "p">
   extends Omit<React.HTMLAttributes<HTMLElement>, "color">,
     VariantProps<typeof typographyVariants> {
@@ -85,10 +107,7 @@ export function Typography<T extends ElementType = "p">({
 
   return (
     <Component
-      className={cn(
-        typographyVariants({ variant, color: resolvedColor }),
-        className
-      )}
+      className={cn(variantClassesFor(variant ?? "p", resolvedColor, className), className)}
       {...props}
     >
       {children}

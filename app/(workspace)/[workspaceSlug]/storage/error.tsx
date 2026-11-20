@@ -14,13 +14,14 @@ import {
 import { TiltCard } from "@/components/ui/motion";
 import { TypographyH2, TypographyMuted } from "@/components/ui/typography";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
+import { errorScreenMessage } from "@/lib/error-screen";
 
 export default function StorageError({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
   useEffect(() => {
     console.error("Storage Error Boundary:", error);
@@ -43,7 +44,7 @@ export default function StorageError({
                   Failed to Load Storage Metrics
                 </TypographyH2>
                 <TypographyMuted className="text-xs text-muted-foreground max-w-md mx-auto">
-                  {error.message || "An error occurred while connecting to storage database services."}
+                  {errorScreenMessage(error, "An error occurred while connecting to storage database services.")}
                 </TypographyMuted>
               </div>
             </CardHeader>
@@ -52,7 +53,7 @@ export default function StorageError({
                 <TooltipTrigger
                   render={
                     <Button
-                      onClick={() => reset()}
+                      onClick={() => retry()}
                       className="rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 cursor-pointer h-9 px-5 shadow-md shadow-primary/20"
                     >
                       <RefreshCw className="size-3.5 mr-2" /> Reload Storage Data

@@ -10,6 +10,13 @@ export interface SetQueryParamsOptions {
   scroll?: boolean;
   getNewPath?: boolean;
   arrayDelimiter?: string;
+  /**
+   * Change the URL through the History API only: useSearchParams follows it, but the page's
+   * server components don't render again. For state the browser already has everything for
+   * (filters, sort, search over loaded rows). Builds on the address bar's current query, so a
+   * late update can't undo an earlier one.
+   */
+  shallow?: boolean;
 }
 
 export interface GetQueryStringOptions {
@@ -139,14 +146,23 @@ export function useQueryParams() {
       scroll = false,
       getNewPath = false,
       arrayDelimiter = ",",
+      shallow = false,
     }: SetQueryParamsOptions) => {
-      const newPath = computeUpdatedPath(pathname, searchParams, {
-        set,
-        del,
-        arrayDelimiter,
-      });
+      const inBrowser = typeof window !== "undefined";
+      const newPath = computeUpdatedPath(
+        pathname,
+        shallow && inBrowser ? window.location.search : searchParams,
+        { set, del, arrayDelimiter }
+      );
 
       if (getNewPath) {
+        return newPath;
+      }
+
+      if (shallow && inBrowser) {
+        // Next.js keeps its own history state when given null.
+        if (replace) window.history.replaceState(null, "", newPath);
+        else window.history.pushState(null, "", newPath);
         return newPath;
       }
 

@@ -1,15 +1,18 @@
 import React from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { SKELETON_TEXT } from "../_components/skeleton-text";
 import { Card } from "@/components/ui/card";
 
 export default function HelpLoading() {
   return (
     <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in duration-200">
       {/* 1. Header Skeleton */}
-      <div className="pb-6 border-b border-border space-y-2">
-        <Skeleton className="h-3 w-36 rounded" />
-        <Skeleton className="h-9 w-72 rounded-xl" />
-        <Skeleton className="h-4 w-96 max-w-full rounded-md" />
+      <div className="pb-6 border-b border-border">
+        <SkeletonLine className="h-4 w-36 mb-1" />
+        {/* "Filmmaker Help & Shortcuts" takes two lines on phones */}
+        <SkeletonLine className={`${SKELETON_TEXT.pageTitle} w-full sm:w-[27rem] max-w-full`} />
+        <SkeletonLine className={`${SKELETON_TEXT.pageTitle} w-32 sm:hidden`} />
+        <SkeletonLine className={`${SKELETON_TEXT.leadLine} w-[40rem] max-w-full mt-1`} />
       </div>
 
       {/* 2. Quick Navigation Cards Skeleton */}
@@ -17,8 +20,10 @@ export default function HelpLoading() {
         {[1, 2, 3].map((i) => (
           <Card key={i} className="p-5 rounded-2xl bg-card border border-border space-y-3 shadow-sm hover:translate-y-0">
             <Skeleton className="size-9 rounded-xl" />
-            <Skeleton className="h-4 w-36 rounded" />
-            <Skeleton className="h-3 w-48 rounded" />
+            {/* The card titles are h3s with text-sm: 20px */}
+            <SkeletonLine className="h-5 w-40 max-w-full" />
+            <SkeletonLine className="h-4 w-48 max-w-full" />
+            <SkeletonLine className="h-4 w-36 max-w-full" />
           </Card>
         ))}
       </div>
@@ -26,8 +31,8 @@ export default function HelpLoading() {
       {/* 3. Keyboard Shortcuts Section Skeleton */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Skeleton className="size-5 rounded" />
-          <Skeleton className="h-6 w-64 rounded-lg" />
+          <Skeleton className="size-5 rounded shrink-0" />
+          <SkeletonLine className={`${SKELETON_TEXT.sectionTitle} w-80 max-w-full`} />
         </div>
         <Skeleton className="h-3.5 w-80 max-w-full rounded" />
 
@@ -47,8 +52,8 @@ export default function HelpLoading() {
       {/* 4. FAQ Section Skeleton */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Skeleton className="size-5 rounded" />
-          <Skeleton className="h-6 w-52 rounded-lg" />
+          <Skeleton className="size-5 rounded shrink-0" />
+          <SkeletonLine className={`${SKELETON_TEXT.sectionTitle} w-72 max-w-full`} />
         </div>
 
         <div className="grid grid-cols-1 gap-3">

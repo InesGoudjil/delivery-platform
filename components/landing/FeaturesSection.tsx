@@ -160,7 +160,7 @@ export function FeaturesSection({ demoHref }: FeaturesSectionProps) {
             <TypographyH2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight font-display">
               A PORTFOLIO THAT SELLS.
             </TypographyH2>
-            <TypographyLead className="text-base text-[#aeaeb4] leading-relaxed">
+            <TypographyLead className="text-base sm:text-lg text-[#aeaeb4] leading-relaxed">
               Your best work, always ready to share. A clean, branded page you can
               send to any lead in a tap — no PDFs, no WeTransfer links, no
               clutter.
@@ -293,7 +293,7 @@ export function FeaturesSection({ demoHref }: FeaturesSectionProps) {
             <TypographyH2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight font-display">
               FEEDBACK & APPROVAL.
             </TypographyH2>
-            <TypographyLead className="text-base text-[#aeaeb4] leading-relaxed">
+            <TypographyLead className="text-base sm:text-lg text-[#aeaeb4] leading-relaxed">
               Feedback without the chaos. Clients watch each cut, leave notes, and
               compare versions — and every approval is timestamped and locks that
               version.
@@ -310,7 +310,7 @@ export function FeaturesSection({ demoHref }: FeaturesSectionProps) {
             <TypographyH2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight font-display">
               DELIVER ON WHATSAPP.
             </TypographyH2>
-            <TypographyLead className="text-base text-[#aeaeb4] leading-relaxed">
+            <TypographyLead className="text-base sm:text-lg text-[#aeaeb4] leading-relaxed">
               Meet clients where they already are. Send a private link over
               WhatsApp — they open it in one tap, no account, no app. You're
               notified the moment they comment or approve.
@@ -362,7 +362,7 @@ export function FeaturesSection({ demoHref }: FeaturesSectionProps) {
               <TypographyH2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight font-display">
                 A SCREENING ROOM WITH YOUR NAME ON IT.
               </TypographyH2>
-              <TypographyLead className="text-base text-[#aeaeb4] leading-relaxed">
+              <TypographyLead className="text-base sm:text-lg text-[#aeaeb4] leading-relaxed">
                 Clients get a clean, branded page — versions side by side,
                 comments in one place, and a single tap to approve. No clutter, no
                 confusion.

@@ -7,13 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { TiltCard } from "@/components/ui/motion";
 import { TypographyH2, TypographyMuted, TypographySpan } from "@/components/ui/typography";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { errorScreenMessage } from "@/lib/error-screen";
 
 export default function SettingsError({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
   useEffect(() => {
     console.error("Settings Error Boundary:", error);
@@ -39,7 +40,7 @@ export default function SettingsError({
               Failed to Load Brand Settings
             </TypographyH2>
             <TypographyMuted className="text-xs text-muted-foreground max-w-md mx-auto">
-              {error.message || "An unexpected error occurred while loading your brand and customization settings."}
+              {errorScreenMessage(error, "An unexpected error occurred while loading your brand and customization settings.")}
             </TypographyMuted>
           </div>
 
@@ -48,7 +49,7 @@ export default function SettingsError({
               <TooltipTrigger
                 render={
                   <Button
-                    onClick={() => reset()}
+                    onClick={() => retry()}
                     className="rounded-full bg-primary text-primary-foreground font-extrabold text-xs hover:bg-primary/90 cursor-pointer h-10 px-6 uppercase tracking-wider shadow-lg shadow-primary/20"
                   >
                     <RefreshCw className="size-3.5 mr-2" />

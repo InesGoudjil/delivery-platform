@@ -1,55 +1,54 @@
 import React from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { SKELETON_TEXT } from "../_components/skeleton-text";
 import { Card } from "@/components/ui/card";
 
 export default function SecurityLoading() {
   return (
     <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in duration-200">
-      {/* 1. Header Skeleton */}
-      <div className="pb-6 border-b border-border space-y-2">
-        <Skeleton className="h-3 w-32 rounded" />
-        <Skeleton className="h-9 w-80 rounded-xl" />
-        <Skeleton className="h-4 w-96 max-w-full rounded-md" />
+      {/* 1. Header: "Security & Access Governance" takes two lines on phones */}
+      <div className="pb-6 border-b border-border">
+        <SkeletonLine className="h-4 w-32 mb-1" />
+        <SkeletonLine className={`${SKELETON_TEXT.pageTitle} w-full sm:w-[28rem] max-w-full`} />
+        <SkeletonLine className={`${SKELETON_TEXT.pageTitle} w-40 sm:hidden`} />
+        <SkeletonLine className={`${SKELETON_TEXT.leadLine} w-[40rem] max-w-full mt-1`} />
+        <SkeletonLine className="h-5 w-2/3 sm:hidden" />
       </div>
 
-      {/* 2. Account Authentication (2FA & Password) Card Skeleton */}
+      {/* 2. Account: two-factor, then email address and password (account-credentials.tsx) */}
       <Card className="rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-8 shadow-sm hover:translate-y-0">
-        {/* 2FA Section Skeleton */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
-          <div className="space-y-1.5 flex-1">
+          <div className="space-y-1 flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <Skeleton className="size-8 rounded-xl shrink-0" />
-              <Skeleton className="h-5 w-56 rounded-lg" />
-              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="size-[34px] rounded-xl shrink-0" />
+              <SkeletonLine className={`${SKELETON_TEXT.cardTitle} w-72 max-w-full`} />
             </div>
-            <Skeleton className="h-3.5 w-4/5 max-w-md rounded" />
+            <SkeletonLine className="h-4 w-full max-w-md" />
+            <SkeletonLine className="h-4 w-2/3 max-w-xs" />
           </div>
-          <Skeleton className="h-9 w-28 rounded-xl shrink-0" />
+          <Skeleton className="h-8 w-28 rounded-xl shrink-0" />
         </div>
 
-        {/* Password Change Form Skeleton */}
-        <div className="space-y-4 max-w-md">
-          <div className="flex items-center gap-3">
-            <Skeleton className="size-8 rounded-xl shrink-0" />
+        {[
+          { title: "w-44", fields: 1 },
+          { title: "w-64", fields: 3 },
+        ].map((section, index) => (
+          <div key={index} className={`space-y-4 ${index === 0 ? "pb-6 border-b border-border" : ""}`}>
             <div className="space-y-1">
-              <Skeleton className="h-5 w-44 rounded" />
-              <Skeleton className="h-3 w-60 rounded" />
+              <SkeletonLine className={`${SKELETON_TEXT.cardTitle} ${section.title} max-w-full`} />
+              <SkeletonLine className="h-4 w-80 max-w-full" />
+            </div>
+            <div className="space-y-4 max-w-md pt-2">
+              {Array.from({ length: section.fields }, (_, field) => (
+                <div key={field} className="space-y-1">
+                  <SkeletonLine className="h-4 w-28" />
+                  <Skeleton className="h-10 w-full rounded-xl" />
+                </div>
+              ))}
+              <Skeleton className="h-9 w-36 rounded-xl" />
             </div>
           </div>
-
-          <div className="space-y-3 pt-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="space-y-1.5">
-                <Skeleton className="h-3 w-28 rounded" />
-                <Skeleton className="h-10 w-full rounded-xl" />
-              </div>
-            ))}
-            <div className="flex items-center justify-between pt-2">
-              <Skeleton className="h-4 w-28 rounded" />
-              <Skeleton className="h-9 w-36 rounded-full" />
-            </div>
-          </div>
-        </div>
+        ))}
       </Card>
 
       {/* 3. Link Expiration Defaults Card Skeleton */}
