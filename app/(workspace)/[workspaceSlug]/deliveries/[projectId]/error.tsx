@@ -6,13 +6,14 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
+import { errorScreenMessage } from "@/lib/error-screen";
 
 export default function DeliveryDetailError({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
   const params = useParams();
   const workspaceSlug = (params?.workspaceSlug as string) || "studio";
@@ -32,12 +33,12 @@ export default function DeliveryDetailError({
             Failed to Load Delivery Project
           </TypographyH3>
           <TypographyMuted className="text-xs text-muted-foreground max-w-md mx-auto">
-            {error.message || "We encountered an issue loading this project's cut files and review notes."}
+            {errorScreenMessage(error, "We encountered an issue loading this project's cut files and review notes.")}
           </TypographyMuted>
         </div>
         <div className="flex items-center justify-center gap-3 pt-2">
           <Button
-            onClick={() => reset()}
+            onClick={() => retry()}
             className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 cursor-pointer h-9 px-5 shadow-sm"
           >
             <RefreshCw className="size-3.5 mr-2" /> Retry

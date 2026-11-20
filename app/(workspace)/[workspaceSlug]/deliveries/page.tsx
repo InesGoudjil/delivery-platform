@@ -27,20 +27,11 @@ async function DeliveriesFeed({
       durationStr = `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
     }
 
-    const updatedAt = new Date(item.updatedAt || item.createdAt);
-    const diffMins = Math.floor((Date.now() - updatedAt.getTime()) / (1000 * 60));
-    let lastActivity = "Just now";
-    if (diffMins > 60 * 24) {
-      lastActivity = `${Math.floor(diffMins / (60 * 24))} days ago`;
-    } else if (diffMins > 60) {
-      lastActivity = `${Math.floor(diffMins / 60)} hours ago`;
-    } else if (diffMins > 0) {
-      lastActivity = `${diffMins} mins ago`;
-    }
-
     return {
       id: item.id,
       title: item.title,
+      description: item.description ?? null,
+      clientId: item.clientId ?? null,
       clientName: item.clientName || "Private Client",
       version: item.activeVersionNumber ? `v${item.activeVersionNumber}_DirectorCut` : "v1_Master",
       duration: durationStr,
@@ -50,7 +41,15 @@ async function DeliveriesFeed({
       downloadsAllowed: item.isDownloadAllowed,
       assetsCount: item.assetsCount,
       commentsCount: item.commentsCount,
-      lastActivity,
+      openNotesCount: item.openNotesCount ?? 0,
+      createdAt: item.createdAt,
+      lastActivityAt: item.lastActivityAt || item.updatedAt || item.createdAt,
+      lastNoteAt: item.lastNoteAt ?? null,
+      // Left undefined when unknown, so the card doesn't claim "Not opened yet".
+      lastOpenedAt: item.lastOpenedAt,
+      lastDownloadedAt: item.lastDownloadedAt,
+      approvedAt: item.approvedAt ?? null,
+      approvedByName: item.approvedByName ?? null,
     };
   });
 
@@ -59,6 +58,8 @@ async function DeliveriesFeed({
       workspace={workspace}
       deliveries={deliveries}
       features={workspaceFeatures}
+      // Relative times ("2 h ago") count from here in the server render and in the browser.
+      renderedAt={Date.now()}
     />
   );
 }

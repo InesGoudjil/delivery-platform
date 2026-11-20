@@ -1,5 +1,6 @@
 import React from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { SKELETON_TEXT } from "../_components/skeleton-text";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function MembersLoading() {
@@ -7,19 +8,16 @@ export default function MembersLoading() {
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-200">
       {/* 1. Header Skeleton */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-3 w-28 rounded" />
-            <Skeleton className="h-3 w-3 rounded-full" />
-            <Skeleton className="h-3 w-36 rounded" />
-          </div>
-          <Skeleton className="h-9 w-60 rounded-xl" />
-          <Skeleton className="h-4 w-96 max-w-full rounded-md" />
+        <div className="min-w-0 flex-1">
+          <SkeletonLine className="h-4 w-72 max-w-full mb-1" />
+          <SkeletonLine className={`${SKELETON_TEXT.pageTitleSm3xl} w-60 sm:w-72 max-w-full`} />
+          <SkeletonLine className={`${SKELETON_TEXT.leadLine} w-[36rem] max-w-full mt-1`} />
+          <SkeletonLine className="h-5 w-2/3 sm:hidden" />
         </div>
 
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-8 w-36 rounded-full" />
+        <div className="flex items-center gap-3 shrink-0">
           <Skeleton className="h-9 w-36 rounded-full" />
+          <Skeleton className="h-8 w-40 rounded-full" />
         </div>
       </div>
 
@@ -39,7 +37,7 @@ export default function MembersLoading() {
 
       {/* 3. Active Members List Skeleton */}
       <div className="space-y-3">
-        <Skeleton className="h-4 w-36 rounded" />
+        <SkeletonLine className={`${SKELETON_TEXT.sectionLabel} w-44`} />
         <Card className="rounded-2xl border border-border bg-card divide-y divide-border overflow-hidden shadow-sm hover:translate-y-0">
           {[1, 2, 3].map((i) => (
             <div
@@ -68,7 +66,7 @@ export default function MembersLoading() {
 
       {/* 4. Pending Invitations Skeleton */}
       <div className="space-y-3">
-        <Skeleton className="h-4 w-40 rounded" />
+        <SkeletonLine className={`${SKELETON_TEXT.sectionLabel} w-52`} />
         <Card className="rounded-2xl border border-border bg-card divide-y divide-border overflow-hidden shadow-sm hover:translate-y-0">
           {[1, 2].map((i) => (
             <div

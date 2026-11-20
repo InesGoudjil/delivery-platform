@@ -33,9 +33,10 @@ export function LatestWork({ projects, assets, appearance }: LatestWorkProps) {
   const stills = assets.filter((a) => a.kind === "still");
 
   // State for active category tab: "projects" | "films" | "stills"
+  // Films first, unless the studio has none: then the first tab with something in it, so a
+  // stills-only or projects-only portfolio doesn't open on an empty tab.
   const [activeTab, setActiveTab] = useState<"projects" | "films" | "stills">(
-    "films"
-    // projects.length > 0 ? "projects" : films.length > 0 ? "films" : stills.length > 0 ? "stills" : "films"
+    films.length > 0 ? "films" : projects.length > 0 ? "projects" : stills.length > 0 ? "stills" : "films"
   );
 
   const PAGE_SIZE = 12;

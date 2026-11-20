@@ -86,5 +86,20 @@ export interface DeliverySummaryItem {
   activeDurationSeconds?: number | null;
   createdAt: string;
   updatedAt: string;
+  /** When the room was approved, and by whom. */
+  approvedAt?: string | null;
+  approvedByName?: string | null;
+  /** Unresolved notes written by clients (guests). The studio's own notes don't count. */
+  openNotesCount?: number;
+  /** The newest note or reply, from anyone. */
+  lastNoteAt?: string | null;
+  /**
+   * The last time a client opened, or downloaded from, any of the room's links. null: never.
+   * Left out when the links couldn't be read, so "never" isn't claimed by mistake.
+   */
+  lastOpenedAt?: string | null;
+  lastDownloadedAt?: string | null;
+  /** The latest of: notes, replies, client visits and downloads, new files, approval, room edits. */
+  lastActivityAt?: string | null;
 }
 

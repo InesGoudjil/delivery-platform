@@ -51,8 +51,14 @@ export function PortfolioProvider({
       customText ||
         `Hi ${profile.name}! I saw your portfolio on CineSpace (@${profile.handle}) and would like to discuss booking a project.`
     );
-    const cleanNumber = profile.whatsappNumber.replace(/[^0-9+]/g, "");
-    window.open(`https://wa.me/${cleanNumber}?text=${msg}`, "_blank");
+    // wa.me takes digits only. With no number set, WhatsApp would only offer a contact picker,
+    // so the inquiry form opens instead.
+    const cleanNumber = (profile.whatsappNumber || "").replace(/\D/g, "");
+    if (!cleanNumber) {
+      setIsContactOpen(true);
+      return;
+    }
+    window.open(`https://wa.me/${cleanNumber}?text=${msg}`, "_blank", "noopener,noreferrer");
   };
 
   const openPrimaryFeatured = () => {

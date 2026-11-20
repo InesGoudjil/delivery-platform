@@ -365,8 +365,10 @@ h6,
 
   /* Subtle pill/segmented background */
   .glass-pill {
-    backdrop-filter: blur(12px) saturate(150%);
+    /* Prefixed line first: when it comes last, the CSS build drops the standard one, and Chrome
+       and Firefox only read the standard one. */
     -webkit-backdrop-filter: blur(12px) saturate(150%);
+    backdrop-filter: blur(12px) saturate(150%);
     background: rgba(255, 255, 255, 0.7);
     border: 1px solid rgba(0, 0, 0, 0.08);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);

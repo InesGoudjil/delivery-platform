@@ -112,6 +112,8 @@ export class DeliveryService {
       clientName: "Private Client",
       assetsCount: 0,
       commentsCount: 0,
+      openNotesCount: 0,
+      lastActivityAt: d.updatedAt || d.createdAt,
       passcodeProtected: Boolean(d.passcodeHash),
     }));
   }

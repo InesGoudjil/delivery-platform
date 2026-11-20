@@ -76,7 +76,9 @@ export function DeliveryActionBar({
               )}
               <TypographySpan className="truncate">APPROVED · UNDO</TypographySpan>
             </Button>
-          ) : (
+          ) : totalAssets === 0 ? null : (
+            // Nothing to approve in an empty room (approving it would still mark the delivery
+            // approved and tell the studio).
             <Button
               onClick={onApproveAll}
               disabled={isApprovingAll}

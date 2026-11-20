@@ -288,7 +288,7 @@ export function PortfolioModals() {
         <UniversalDialogContent
           size="5xl"
           showCloseButton={false}
-          className="max-w-6xl max-h-[90vh] p-0 overflow-hidden bg-[#121214] border-white/15 rounded-3xl max-sm:!fixed max-sm:!inset-0 max-sm:!h-[100dvh] max-sm:!max-h-[100dvh] max-sm:!w-full max-sm:!rounded-none max-sm:!border-0 max-sm:!top-0 max-sm:!left-0"
+          className="max-w-6xl max-h-[90vh] p-0 overflow-hidden bg-[#121214] border-white/15 rounded-3xl max-sm:!fixed max-sm:!inset-0 max-sm:!h-[100dvh] max-sm:!max-h-[100dvh] max-sm:!w-full max-sm:!max-w-none max-sm:!rounded-none max-sm:!border-0 max-sm:!translate-x-0 max-sm:!translate-y-0 max-sm:!top-0 max-sm:!left-0"
         >
           {selectedProject && (
             <div className="relative w-full flex flex-col max-h-[90vh] max-sm:max-h-[100dvh] max-sm:h-[100dvh] overflow-hidden">
@@ -297,6 +297,7 @@ export function PortfolioModals() {
               variant="ghost"
               size="icon-xs"
               onClick={() => setSelectedProject(null)}
+              aria-label="Close"
               className="glass-icon-btn absolute top-4 right-4 z-30 size-10 sm:size-9 rounded-full touch-manipulation"
             >
               <X className="size-5" />
@@ -388,8 +389,9 @@ export function PortfolioModals() {
 
             {/* Modal Bottom Inquire */}
             <div className="p-4 bg-[#0a0a0b] border-t border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-safe">
+              {/* An empty span keeps the inquiry button on the right when there's no location. */}
               <TypographySpan className="text-xs text-zinc-400">
-                Location: {selectedProject.location}
+                {selectedProject.location ? `Location: ${selectedProject.location}` : ""}
               </TypographySpan>
               <Button
                 onClick={() =>
@@ -418,7 +420,7 @@ export function PortfolioModals() {
         <UniversalDialogContent
           size="lg"
           showCloseButton={false}
-          className="max-w-lg p-6 sm:p-8 bg-[#141416] border-white/15 rounded-3xl"
+          className="max-w-[min(32rem,calc(100%-1.5rem))] !overflow-y-auto overscroll-contain p-6 sm:p-8 bg-[#141416] border-white/15 rounded-3xl"
         >
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="space-y-0.5">
@@ -433,6 +435,7 @@ export function PortfolioModals() {
                 variant="ghost"
                 size="icon-xs"
                 onClick={() => setIsContactOpen(false)}
+                aria-label="Close"
                 className="glass-icon-btn size-9 sm:size-8 rounded-full touch-manipulation"
               >
                 <X className="size-4" />

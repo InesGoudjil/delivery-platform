@@ -5,13 +5,14 @@ import { AlertCircle, RefreshCw, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { TypographyH3, TypographyMuted } from "@/components/ui/typography";
+import { errorScreenMessage } from "@/lib/error-screen";
 
 export default function WorkspaceError({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
   useEffect(() => {
     console.error("Workspace Error Boundary:", error);
@@ -28,12 +29,12 @@ export default function WorkspaceError({
             Something went wrong loading this workspace
           </TypographyH3>
           <TypographyMuted className="text-xs text-muted-foreground max-w-md mx-auto">
-            {error.message || "An unexpected error occurred while loading your workspace dashboard."}
+            {errorScreenMessage(error, "An unexpected error occurred while loading your workspace dashboard.")}
           </TypographyMuted>
         </div>
         <div className="flex items-center justify-center gap-3 pt-2">
           <Button
-            onClick={() => reset()}
+            onClick={() => retry()}
             className="rounded-full bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 cursor-pointer h-9 px-5 shadow-sm"
           >
             <RefreshCw className="size-3.5 mr-2" /> Try Again

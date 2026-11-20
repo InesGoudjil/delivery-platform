@@ -4,6 +4,7 @@ import { getServerServices } from "@/core/server";
 import { hasMinRole } from "@/core/security/guards";
 import { toWorkspaceShareLinkView } from "@/lib/share-links/view";
 import { LinksClient } from "./links-client";
+import LinksLoading from "./loading";
 
 /**
  * Every client link in the workspace, across deliveries: what's active, what expires soon, who
@@ -26,16 +27,6 @@ async function LinksFeed({ workspace, userId }: { workspace: { id: string; slug:
       installed={installed}
       canManage={hasMinRole(membership.role, "admin")}
     />
-  );
-}
-
-function LinksLoading() {
-  return (
-    <div className="space-y-4 animate-pulse">
-      <div className="h-8 w-48 rounded-lg bg-muted" />
-      <div className="h-24 rounded-2xl bg-muted" />
-      <div className="h-64 rounded-2xl bg-muted" />
-    </div>
   );
 }
 

@@ -224,8 +224,9 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
       title: p.title,
       client: p.clientName || p.category || p.title,
       desc: p.description || `A cinematic showcase project featuring ${p.title}.`,
-      date: p.year || "2026",
-      location: p.location || "UAE",
+      // Only what the studio entered: these used to default to a demo year and country.
+      date: p.year || "",
+      location: p.location || "",
       cover: projectAssetIds[0] || p.id,
       coverImage: projectCover,
       tc: `${projectAssetIds.length} ${projectAssetIds.length === 1 ? "asset" : "assets"}`,
@@ -366,6 +367,16 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
   // The hero can be a file picked from a delivery: sign private ones like any other piece.
   const heroMediaUrl = await publicMediaUrl(heroCover?.mediaUrl, storage, workspaceId);
   const heroThumbUrl = await publicMediaUrl(heroCover?.thumbnailUrl || heroCover?.mediaUrl, storage, workspaceId);
+  // The hero component reads the cover's own fields, so it gets them signed too: the stored
+  // values of a file picked from a delivery are private (/api/media/private/…), which answers
+  // 401 to anyone outside the studio, so visitors saw a black hero.
+  const visitorHeroCover = heroCover
+    ? {
+        ...heroCover,
+        mediaUrl: heroCover.mediaUrl ? heroMediaUrl || null : null,
+        thumbnailUrl: heroCover.thumbnailUrl ? heroThumbUrl || null : null,
+      }
+    : null;
   const portfolioCoverUrl = await publicMediaUrl(portfolio?.coverAssetUrl, storage, workspaceId);
 
   const coverSelected =
@@ -385,7 +396,7 @@ export default async function PublicPortfolioPage({ params }: PageProps) {
     title: portfolio?.title || `${brandName} Portfolio`,
     avatar: filmmakerAvatar,
     logoUrl: brandLogo,
-    heroCover: heroCover,
+    heroCover: visitorHeroCover,
     bio:
       portfolio?.bio ||
       `${brandName} is a creative production studio specializing in commercial visual storytelling and cinematic delivery.`,

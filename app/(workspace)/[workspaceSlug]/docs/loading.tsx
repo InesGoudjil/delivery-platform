@@ -1,23 +1,26 @@
 import React from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { SKELETON_TEXT } from "../_components/skeleton-text";
 import { Card } from "@/components/ui/card";
 
 export default function DocsLoading() {
   return (
     <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in duration-200">
       {/* 1. Header Skeleton */}
-      <div className="pb-6 border-b border-border space-y-2">
-        <Skeleton className="h-3 w-40 rounded" />
-        <Skeleton className="h-9 w-80 rounded-xl" />
-        <Skeleton className="h-4 w-96 max-w-full rounded-md" />
+      {/* "CineSpace Platform Documentation" takes two lines on phones */}
+      <div className="pb-6 border-b border-border">
+        <SkeletonLine className="h-4 w-40 mb-1" />
+        <SkeletonLine className={`${SKELETON_TEXT.pageTitle} w-full sm:w-[33rem] max-w-full`} />
+        <SkeletonLine className={`${SKELETON_TEXT.pageTitle} w-40 sm:hidden`} />
+        <SkeletonLine className={`${SKELETON_TEXT.leadLine} w-[40rem] max-w-full mt-1`} />
       </div>
 
       {/* 2. Delivery Pipeline Steps Skeleton */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Skeleton className="size-5 rounded" />
-            <Skeleton className="h-6 w-60 rounded-lg" />
+          <div className="flex items-center gap-2 min-w-0">
+            <Skeleton className="size-5 rounded shrink-0" />
+            <SkeletonLine className={`${SKELETON_TEXT.sectionTitle} w-[22rem] max-w-full`} />
           </div>
           <Skeleton className="h-8 w-32 rounded-xl" />
         </div>
@@ -33,7 +36,7 @@ export default function DocsLoading() {
               <div className="space-y-2 flex-1">
                 <div className="flex items-center gap-2">
                   <Skeleton className="h-3 w-14 rounded" />
-                  <Skeleton className="h-4 w-52 rounded" />
+                  <SkeletonLine className={`${SKELETON_TEXT.cardTitle} w-52 sm:w-80 max-w-full`} />
                 </div>
                 <Skeleton className="h-3 w-full rounded" />
                 <Skeleton className="h-3 w-4/5 rounded" />
@@ -46,8 +49,8 @@ export default function DocsLoading() {
       {/* 3. Security Architecture Skeleton */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Skeleton className="size-5 rounded" />
-          <Skeleton className="h-6 w-56 rounded-lg" />
+          <Skeleton className="size-5 rounded shrink-0" />
+          <SkeletonLine className={`${SKELETON_TEXT.sectionTitle} w-72 max-w-full`} />
         </div>
         <Skeleton className="h-3.5 w-72 rounded" />
 

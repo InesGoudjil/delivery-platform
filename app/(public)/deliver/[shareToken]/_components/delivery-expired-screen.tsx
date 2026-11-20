@@ -104,7 +104,8 @@ export function DeliveryExpiredScreen({
               <ShieldAlert className="size-4 text-amber-400 shrink-0 mt-0.5" />
               <TypographySpan>
                 {isArchived ? (
-                  <>The studio has archived this delivery. Contact them if you still need these files.</>
+                  // "unavailable" covers an archived delivery and a suspended studio alike.
+                  <>This delivery isn&apos;t available any more. Contact the studio if you still need these files.</>
                 ) : isRevoked ? (
                   <>The studio turned this link off. Ask them for a new link if you still need these files.</>
                 ) : (

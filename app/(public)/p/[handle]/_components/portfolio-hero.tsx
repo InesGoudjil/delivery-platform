@@ -79,12 +79,17 @@ export function PortfolioHero({
           </div>
         ) : (
           <div className="absolute inset-0 transition-transform duration-700 ease-out group-hover:scale-105">
+            {/* The largest image on the page: full width, and fetched first rather than lazily
+                (the default sizes are a grid card's, which made Stream thumbnails blurry here). */}
             <AppImage
               src={bgImage}
               alt={heroTitle}
               fallbackIcon={isCoverVideo ? "film" : "image"}
               containerClassName="size-full"
               className="size-full object-cover"
+              sizes="100vw"
+              loading="eager"
+              fetchPriority="high"
             />
           </div>
         )}
@@ -107,6 +112,7 @@ export function PortfolioHero({
                 e.stopPropagation();
                 setIsMuted((prev) => !prev);
               }}
+              aria-label={isMuted ? "Unmute" : "Mute"}
               className="min-h-[38px] px-3.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border-white/20 text-white text-xs gap-1.5 shadow-xl transition-all cursor-pointer active:scale-95 touch-manipulation"
             >
               {isMuted ? (

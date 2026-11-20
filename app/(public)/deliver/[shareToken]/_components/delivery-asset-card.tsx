@@ -63,9 +63,8 @@ export function DeliveryAssetCard({
   const ver = asset.activeVersion || asset.versions[0] || null;
   const isPhoto = isPhotoAsset(asset);
 
-  const poster =
-    resolveThumbnailUrl(ver?.thumbnailUrl, ver?.rawFileUrl, isPhoto) ||
-    "/images/projects/mercedes-amg-gt/1.webp";
+  // No thumbnail (e.g. a video without one): the card's own "No preview" tile, not a demo photo.
+  const poster = resolveThumbnailUrl(ver?.thumbnailUrl, ver?.rawFileUrl, isPhoto) || "";
 
   const durationSec = ver?.durationSeconds ? Math.round(ver.durationSeconds) : null;
   const durationLabel = isPhoto

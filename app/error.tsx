@@ -4,13 +4,14 @@ import React, { useEffect } from "react";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { errorScreenMessage } from "@/lib/error-screen";
 
 export default function RootError({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
   useEffect(() => {
     console.error("Root application error:", error);
@@ -31,13 +32,13 @@ export default function RootError({
             Something Went Wrong
           </h2>
           <p className="text-xs text-[#8e8e93] leading-relaxed">
-            {error.message || "An unexpected error occurred while rendering this page."}
+            {errorScreenMessage(error, "An unexpected error occurred while rendering this page.")}
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <Button
-            onClick={() => reset()}
+            onClick={() => retry()}
             className="w-full sm:w-auto rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 cursor-pointer h-10 px-5"
           >
             <RefreshCw className="size-3.5 mr-2" /> Try Again
